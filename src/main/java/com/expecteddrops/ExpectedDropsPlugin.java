@@ -21,6 +21,7 @@ import java.util.TreeMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.HashSet;
 import javax.inject.Inject;
 import javax.swing.SwingUtilities;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,6 +39,10 @@ import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.RuneLite;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.chat.ChatColorType;
+import net.runelite.client.chat.ChatMessageBuilder;
+import net.runelite.client.chat.ChatMessageManager;
+import net.runelite.client.chat.QueuedMessage;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
@@ -90,6 +95,12 @@ public class ExpectedDropsPlugin extends Plugin
 	@Inject
 	private Gson gson;
 
+	@Inject
+	private ChatMessageManager chatMessageManager;
+
+	/** Bosses we already reminded about this session, so the reminder shows once. */
+	private final Set<String> remindedThisSession = new HashSet<>();
+
 	private Tracker tracker;
 	private ExpectedDropsPanel panel;
 	private NavigationButton navButton;
@@ -107,7 +118,8 @@ public class ExpectedDropsPlugin extends Plugin
 	protected void startUp() throws Exception
 	{
 		tracker = new Tracker(loadCatalog());
-		panel = new ExpectedDropsPanel(tracker, itemManager, this::raidSettings, this::itemIdFor, this::save);
+		panel = new ExpectedDropsPanel(tracker, itemManager, this::raidSettings, this::itemIdFor, this::save,
+			config::showWelcome, this::dismissWelcome);
 
 		BufferedImage icon = ImageUtil.loadImageResource(getClass(), "panel_icon.png");
 		navButton = NavigationButton.builder()
@@ -355,6 +367,10 @@ public class ExpectedDropsPlugin extends Plugin
 	private void changed(String boss, boolean fromKill)
 	{
 		save();
+		if (fromKill)
+		{
+			remindToSync(boss);
+		}
 		if (panel == null)
 		{
 			return;
@@ -373,6 +389,35 @@ public class ExpectedDropsPlugin extends Plugin
 		});
 	}
 
+	/** Once per session, tells the player in chat which page loads this boss's history. */
+	private void remindToSync(String boss)
+	{
+		if (!config.syncReminders() || !remindedThisSession.add(boss))
+		{
+			return;
+		}
+		String reminder = tracker.syncReminder(boss);
+		if (reminder == null)
+		{
+			return;
+		}
+		String message = new ChatMessageBuilder()
+			.append(ChatColorType.HIGHLIGHT)
+			.append("On Rate: ")
+			.append(ChatColorType.NORMAL)
+			.append(reminder)
+			.build();
+		chatMessageManager.queue(QueuedMessage.builder()
+			.type(ChatMessageType.CONSOLE)
+			.runeLiteFormattedMessage(message)
+			.build());
+	}
+
+	private void dismissWelcome()
+	{
+		configManager.setConfiguration(ExpectedDropsConfig.GROUP, "showWelcome", "false");
+	}
+
 	private void loadProfile()
 	{
 		String profile = configManager.getRSProfileKey();
@@ -381,6 +426,7 @@ public class ExpectedDropsPlugin extends Plugin
 			return;
 		}
 		loadedProfile = profile;
+		remindedThisSession.clear();
 		TrackerState state = null;
 		String json = configManager.getRSProfileConfiguration(ExpectedDropsConfig.GROUP, DATA_KEY);
 		if (json != null && !json.isEmpty())

@@ -20,6 +20,7 @@
 - **Luck percentile:** see how your drops compare with every other player at the same kill count.
 - **An "Any" row** that combines all of a boss's uniques.
 - **Hover any row** for the drop rate, your chance of having it by now, and how many kills give a 50% or 90% chance.
+- **Guided setup:** a welcome guide, a checklist of the collection log pages you still need to open, and a chat reminder when you kill a boss whose history isn't loaded yet.
 - **Saved per account.** Group Ironman, main and alts each keep their own numbers.
 
 ## Installing
@@ -32,10 +33,12 @@ On Rate has been submitted to the Plugin Hub and is waiting for review. Once it'
 
 ## Getting started
 
+The first time you open the panel, a short welcome guide walks you through this.
+
 1. **Keep the Loot Tracker plugin on.** It's on by default, and On Rate reads new drops from it.
-2. **Open your collection log** and click through the pages of the bosses you care about. On Rate reads your kill count and what you've already received from each page. The panel shows *Collection log synced* once a boss is done.
+2. **Open your collection log** and click through the pages of the bosses you care about. On Rate reads your kill count and what you've already received from each page. The **"Collection log: 12 / 46 synced"** line at the top of the panel shows your progress. Click it to see which pages are left, and click a page name to view that boss.
 3. **Doom of Mokhaiotl players:** open the Doom scoreboard once. It loads your completions for every delve level.
-4. **Go kill something.** The panel switches to the boss you just killed and updates by itself.
+4. **Go kill something.** The panel switches to the boss you just killed and updates by itself. If that boss's history isn't loaded yet, On Rate tells you in chat which page to open (once per session).
 
 ## Reading the panel
 
@@ -65,6 +68,8 @@ Abyssal Sire, Alchemical Hydra, Amoxliatl, Araxxor, Artio, Barrows, Callisto, Ca
 Open the settings with the cog next to **On Rate** in the Configuration panel.
 
 - **Follow last kill:** switch the panel to the boss you just killed. On by default.
+- **Show welcome guide:** show the getting-started steps at the top of the panel. *Got it* turns this off; turn it back on here.
+- **Sync reminders:** the chat reminder after killing a boss that isn't synced yet. On by default.
 - **Raid purple chances:** the chance of a unique per raid depends on your points and team, so set your own:
   - **Chambers of Xeric:** every 8,676 of your personal points is 1%. The default 3.5% matches about 30,000 points.
   - **Theatre of Blood:** a team gets a purple about once every 9.1 raids. Divide 11% by your team size; the default is 2.7%, for a 4-man.

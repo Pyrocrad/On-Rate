@@ -7,6 +7,7 @@ import com.expecteddrops.stats.BossStats;
 import com.expecteddrops.stats.DropMath;
 import com.expecteddrops.stats.RaidSettings;
 import com.expecteddrops.stats.RowStats;
+import com.expecteddrops.tracking.SyncStatus;
 import com.expecteddrops.tracking.Tracker;
 import com.expecteddrops.tracking.TrackerState;
 import com.google.gson.Gson;
@@ -16,6 +17,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -235,6 +237,46 @@ public class TrackerTest
 		// Uniques come from the loot tracker's Doom event.
 		tracker.onLoot("Doom of Mokhaiotl", 1, Collections.singletonList(new Tracker.LootItem("Avernic treads", 1)), now);
 		assertEquals(1, row(tracker.stats("Doom of Mokhaiotl", RAIDS), "Avernic treads").getReceived());
+	}
+
+	@Test
+	public void checklistTracksWhatIsSynced()
+	{
+		List<SyncStatus> before = tracker.syncChecklist();
+		assertTrue(before.stream().noneMatch(SyncStatus::isSynced));
+		// every page is listed once
+		Set<String> pages = new HashSet<>();
+		for (SyncStatus s : before)
+		{
+			assertTrue("duplicate page " + s.getPage(), pages.add(s.getPage().toLowerCase()));
+		}
+		assertTrue(pages.contains("vorkath"));
+		assertTrue(pages.contains("doom scoreboard"));
+
+		Map<String, Integer> items = new LinkedHashMap<>();
+		items.put("Vorkath's head", 1);
+		tracker.onClogPage("Vorkath", Collections.singletonList("Vorkath kills: 10"), items);
+		Map<Integer, Integer> levels = new LinkedHashMap<>();
+		levels.put(1, 5);
+		tracker.onDelveScoreboard(levels);
+
+		List<SyncStatus> after = tracker.syncChecklist();
+		assertEquals(2, after.stream().filter(SyncStatus::isSynced).count());
+		assertEquals(before.size(), after.size());
+	}
+
+	@Test
+	public void remindersSayWhatToOpen()
+	{
+		assertEquals("Open the \"Vorkath\" page in your collection log once to load your past drops.", tracker.syncReminder("Vorkath"));
+		assertEquals("Open the \"The Nightmare\" page in your collection log once to load your past drops.",
+			tracker.syncReminder("Phosani's Nightmare"));
+		assertTrue(tracker.syncReminder("Doom of Mokhaiotl").contains("Doom scoreboard"));
+		// Bosses without a readable page get no reminder.
+		assertNull(tracker.syncReminder("Callisto"));
+
+		tracker.onClogPage("Vorkath", Collections.singletonList("Vorkath kills: 10"), new LinkedHashMap<>());
+		assertNull(tracker.syncReminder("Vorkath"));
 	}
 
 	@Test

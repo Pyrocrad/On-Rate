@@ -20,6 +20,8 @@ public class BossProgress
 	boolean clogSynced;
 	/** Delve bosses only: completions per delve level (9 = "8+"). */
 	Map<Integer, Integer> levelKc = new HashMap<>();
+	/** Delve bosses only: true once the scoreboard has been read. */
+	boolean levelsSynced;
 
 	void ensureMaps()
 	{

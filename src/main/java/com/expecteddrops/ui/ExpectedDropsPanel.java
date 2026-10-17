@@ -6,6 +6,7 @@ import com.expecteddrops.stats.BossStats;
 import com.expecteddrops.stats.DropMath;
 import com.expecteddrops.stats.RaidSettings;
 import com.expecteddrops.stats.RowStats;
+import com.expecteddrops.tracking.SyncStatus;
 import com.expecteddrops.tracking.Tracker;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -14,6 +15,9 @@ import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 import java.util.function.ToIntFunction;
 import javax.swing.BorderFactory;
@@ -50,6 +54,13 @@ public class ExpectedDropsPanel extends PluginPanel
 	private final Supplier<RaidSettings> raidSettings;
 	private final ToIntFunction<String> itemIdFor;
 	private final Runnable save;
+	private final BooleanSupplier showWelcome;
+	private final Runnable dismissWelcome;
+
+	private final JPanel welcomePanel = new JPanel();
+	private final JLabel setupHeader = new JLabel();
+	private final JPanel setupList = new JPanel(new GridLayout(0, 1, 0, 2));
+	private boolean setupExpanded;
 
 	private final JComboBox<String> bossSelect = new JComboBox<>();
 	private final JLabel kcLabel = new JLabel();
@@ -65,9 +76,11 @@ public class ExpectedDropsPanel extends PluginPanel
 	private boolean updatingSelection;
 
 	public ExpectedDropsPanel(Tracker tracker, ItemManager itemManager, Supplier<RaidSettings> raidSettings,
-		ToIntFunction<String> itemIdFor, Runnable save)
+		ToIntFunction<String> itemIdFor, Runnable save, BooleanSupplier showWelcome, Runnable dismissWelcome)
 	{
 		super();
+		this.showWelcome = showWelcome;
+		this.dismissWelcome = dismissWelcome;
 		this.tracker = tracker;
 		this.itemManager = itemManager;
 		this.raidSettings = raidSettings;
@@ -88,6 +101,29 @@ public class ExpectedDropsPanel extends PluginPanel
 		title.setAlignmentX(LEFT_ALIGNMENT);
 		top.add(title);
 		top.add(spacer(6));
+
+		buildWelcome();
+		top.add(welcomePanel);
+
+		setupHeader.setFont(FontManager.getRunescapeSmallFont());
+		setupHeader.setAlignmentX(LEFT_ALIGNMENT);
+		setupHeader.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+		setupHeader.setToolTipText("Show or hide the collection log pages you still need to open");
+		setupHeader.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mouseClicked(MouseEvent e)
+			{
+				setupExpanded = !setupExpanded;
+				refresh();
+			}
+		});
+		top.add(setupHeader);
+		setupList.setOpaque(false);
+		setupList.setAlignmentX(LEFT_ALIGNMENT);
+		setupList.setBorder(new EmptyBorder(3, 8, 0, 0));
+		top.add(setupList);
+		top.add(spacer(8));
 
 		for (BossDefinition boss : tracker.getCatalog().getBosses())
 		{
@@ -174,6 +210,9 @@ public class ExpectedDropsPanel extends PluginPanel
 	/** Recomputes and redraws the selected boss. Call on the Swing thread. */
 	public void refresh()
 	{
+		welcomePanel.setVisible(showWelcome.getAsBoolean());
+		refreshSetup();
+
 		String bossName = (String) bossSelect.getSelectedItem();
 		rowsPanel.removeAll();
 		BossStats stats = bossName == null ? null : tracker.stats(bossName, raidSettings.get());
@@ -200,20 +239,21 @@ public class ExpectedDropsPanel extends PluginPanel
 				: String.format("Kills tracked: %,d", stats.getKillCount()));
 			levelsLabel.setVisible(false);
 		}
-		if (stats.isClogSynced())
+		String reminder = tracker.syncReminder(stats.getBoss().getName());
+		if (reminder != null)
 		{
-			syncLabel.setText("Collection log synced");
-			syncLabel.setForeground(GOOD.brighter());
+			syncLabel.setText("<html><body style='width: 160px'>Not synced yet. " + reminder + "</body></html>");
+			syncLabel.setForeground(ColorScheme.PROGRESS_INPROGRESS_COLOR);
 		}
-		else if (stats.getBoss().getClogPages().isEmpty())
+		else if (stats.isClogSynced())
 		{
-			syncLabel.setText("Counting drops from loot from now on");
-			syncLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+			syncLabel.setText("History loaded");
+			syncLabel.setForeground(GOOD.brighter());
 		}
 		else
 		{
-			syncLabel.setText("Open its collection log page to sync");
-			syncLabel.setForeground(ColorScheme.PROGRESS_INPROGRESS_COLOR);
+			syncLabel.setText("Counting drops from loot from now on");
+			syncLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		}
 		RowStats any = stats.getAnyRow();
 		summaryLabel.setText(String.format("Uniques: %d received, %.2f expected", any.getReceived(), any.getExpected()));
@@ -248,6 +288,119 @@ public class ExpectedDropsPanel extends PluginPanel
 
 		revalidate();
 		repaint();
+	}
+
+	private void buildWelcome()
+	{
+		welcomePanel.setLayout(new BorderLayout(0, 6));
+		welcomePanel.setAlignmentX(LEFT_ALIGNMENT);
+		welcomePanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		welcomePanel.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createMatteBorder(0, 3, 0, 0, ColorScheme.BRAND_ORANGE),
+			new EmptyBorder(8, 8, 8, 8)));
+
+		JLabel text = new JLabel("<html><body style='width: 140px'>"
+			+ "<b>Welcome to On Rate!</b><br><br>"
+			+ "<b>1.</b> Keep the <b>Loot Tracker</b> plugin on. New drops are read from it.<br><br>"
+			+ "<b>2.</b> Open your <b>collection log</b> and click the page of each boss you care about. "
+			+ "That loads your kill count and past drops. The list below shows which pages are left.<br><br>"
+			+ "<b>3.</b> Doing Doom of Mokhaiotl? Open the <b>Doom scoreboard</b> once.<br><br>"
+			+ "Then just go kill things: the panel follows your last kill."
+			+ "</body></html>");
+		text.setFont(FontManager.getRunescapeSmallFont());
+		text.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		welcomePanel.add(text, BorderLayout.CENTER);
+
+		JButton gotIt = new JButton("Got it");
+		gotIt.setFont(FontManager.getRunescapeSmallFont());
+		gotIt.setFocusPainted(false);
+		gotIt.setToolTipText("Hide this guide. Turn it back on with 'Show welcome guide' in the settings.");
+		gotIt.addActionListener(e ->
+		{
+			dismissWelcome.run();
+			welcomePanel.setVisible(false);
+			revalidate();
+			repaint();
+		});
+		JPanel buttonRow = new JPanel(new BorderLayout());
+		buttonRow.setOpaque(false);
+		buttonRow.add(gotIt, BorderLayout.WEST);
+		welcomePanel.add(buttonRow, BorderLayout.SOUTH);
+		welcomePanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, welcomePanel.getPreferredSize().height));
+	}
+
+	/** Header "Collection log: 12 / 49 synced" plus, when expanded, the pages still to open. */
+	private void refreshSetup()
+	{
+		List<SyncStatus> checklist = tracker.syncChecklist();
+		List<SyncStatus> missing = new ArrayList<>();
+		for (SyncStatus s : checklist)
+		{
+			if (!s.isSynced())
+			{
+				missing.add(s);
+			}
+		}
+		int done = checklist.size() - missing.size();
+
+		setupList.removeAll();
+		if (missing.isEmpty())
+		{
+			setupHeader.setText("\u2714 All history loaded (" + done + " pages)");
+			setupHeader.setForeground(GOOD.brighter());
+			setupHeader.setCursor(Cursor.getDefaultCursor());
+			setupList.setVisible(false);
+			return;
+		}
+
+		setupHeader.setText((setupExpanded ? "\u25be " : "\u25b8 ") + "Collection log: " + done + " / " + checklist.size()
+			+ " synced" + (setupExpanded ? "" : " (show)"));
+		setupHeader.setForeground(ColorScheme.PROGRESS_INPROGRESS_COLOR);
+		setupHeader.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+		setupList.setVisible(setupExpanded);
+		if (!setupExpanded)
+		{
+			return;
+		}
+		for (SyncStatus s : missing)
+		{
+			setupList.add(checklistItem(s));
+		}
+		setupList.setMaximumSize(new Dimension(Integer.MAX_VALUE, setupList.getPreferredSize().height));
+	}
+
+	private JLabel checklistItem(SyncStatus status)
+	{
+		JLabel label = new JLabel(status.getPage());
+		label.setFont(FontManager.getRunescapeSmallFont());
+		label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		label.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+		String where = Tracker.DELVE_SCOREBOARD.equals(status.getPage())
+			? "Open the Doom scoreboard in game"
+			: "Open this page in your collection log";
+		label.setToolTipText("<html>" + where + "<br>Loads: " + String.join(", ", status.getBosses())
+			+ "<br>Click to show it here</html>");
+		label.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mouseClicked(MouseEvent e)
+			{
+				showBoss(status.getBosses().get(0));
+			}
+
+			@Override
+			public void mouseEntered(MouseEvent e)
+			{
+				label.setForeground(Color.WHITE);
+			}
+
+			@Override
+			public void mouseExited(MouseEvent e)
+			{
+				label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+			}
+		});
+		return label;
 	}
 
 	private JPanel row(RowStats row, BossStats stats, String unit)

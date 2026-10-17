@@ -9,8 +9,11 @@ import com.expecteddrops.stats.RaidSettings;
 import com.expecteddrops.stats.RowStats;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.Set;
@@ -171,6 +174,7 @@ public class Tracker
 			return null;
 		}
 		BossProgress progress = state.get(boss.getName());
+		progress.levelsSynced = true;
 		for (Map.Entry<Integer, Integer> e : levels.entrySet())
 		{
 			if (e.getKey() >= 1 && e.getKey() <= BossDefinition.DELVE_LEVELS)
@@ -389,6 +393,66 @@ public class Tracker
 			}
 		}
 		return best;
+	}
+
+	/** Label used in the checklist and reminders for the Doom scoreboard. */
+	public static final String DELVE_SCOREBOARD = "Doom scoreboard";
+
+	/**
+	 * The setup checklist: every collection log page the plugin can read, in alphabetical
+	 * order, plus the Doom scoreboard. A page counts as synced once every boss on it is.
+	 */
+	public synchronized List<SyncStatus> syncChecklist()
+	{
+		Map<String, List<String>> bossesByPage = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+		Map<String, Boolean> syncedByPage = new LinkedHashMap<>();
+		List<SyncStatus> result = new ArrayList<>();
+		for (BossDefinition boss : catalog.getBosses())
+		{
+			BossProgress p = state.peek(boss.getName());
+			for (String page : boss.getClogPages())
+			{
+				bossesByPage.computeIfAbsent(page, k -> new ArrayList<>()).add(boss.getName());
+				boolean synced = p != null && p.clogSynced;
+				syncedByPage.merge(page.toLowerCase(Locale.ROOT), synced, Boolean::logicalAnd);
+			}
+			if (boss.isDelve())
+			{
+				result.add(new SyncStatus(DELVE_SCOREBOARD, Collections.singletonList(boss.getName()),
+					p != null && p.levelsSynced));
+			}
+		}
+		List<SyncStatus> pages = new ArrayList<>();
+		for (Map.Entry<String, List<String>> e : bossesByPage.entrySet())
+		{
+			pages.add(new SyncStatus(e.getKey(), e.getValue(),
+				syncedByPage.getOrDefault(e.getKey().toLowerCase(Locale.ROOT), false)));
+		}
+		pages.addAll(result);
+		return pages;
+	}
+
+	/**
+	 * What the player should open to load this boss's history, or null when nothing is
+	 * missing (or the boss has no collection log page we can read).
+	 */
+	public synchronized String syncReminder(String bossName)
+	{
+		BossDefinition boss = catalog.byName(bossName);
+		if (boss == null)
+		{
+			return null;
+		}
+		BossProgress p = state.peek(boss.getName());
+		if (boss.isDelve() && (p == null || !p.levelsSynced))
+		{
+			return "Open the Doom scoreboard once to load your completions for every delve level.";
+		}
+		if (!boss.getClogPages().isEmpty() && (p == null || !p.clogSynced))
+		{
+			return "Open the \"" + boss.getClogPages().get(0) + "\" page in your collection log once to load your past drops.";
+		}
+		return null;
 	}
 
 	public synchronized void reset(String bossName)

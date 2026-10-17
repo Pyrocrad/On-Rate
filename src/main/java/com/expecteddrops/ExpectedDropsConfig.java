@@ -21,6 +21,28 @@ public interface ExpectedDropsConfig extends Config
 		return true;
 	}
 
+	@ConfigItem(
+		keyName = "showWelcome",
+		name = "Show welcome guide",
+		description = "Show the getting-started steps at the top of the panel. 'Got it' turns this off.",
+		position = 2
+	)
+	default boolean showWelcome()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "syncReminders",
+		name = "Sync reminders",
+		description = "After killing a boss whose history isn't loaded yet, say in chat which collection log page to open (once per session)",
+		position = 3
+	)
+	default boolean syncReminders()
+	{
+		return true;
+	}
+
 	@ConfigSection(
 		name = "Raids",
 		description = "Raid unique chances depend on your points and team, so set them here",
