@@ -22,6 +22,8 @@ class DropBar extends JComponent
 	private double fraction;
 	private Color fill = ColorScheme.MEDIUM_GRAY_COLOR;
 	private String text = "";
+	/** When set, drawn on the left (shortened if needed) with {@link #text} on the right. */
+	private String leftText;
 
 	DropBar()
 	{
@@ -30,12 +32,44 @@ class DropBar extends JComponent
 		setMinimumSize(new Dimension(40, 22));
 	}
 
+	/** Bar with a name on the left and a value on the right, e.g. "Vorkath ... 64%". */
+	void set(double fraction, Color fill, String left, String right)
+	{
+		set(fraction, fill, right);
+		this.leftText = left;
+	}
+
 	void set(double fraction, Color fill, String text)
 	{
+		this.leftText = null;
 		this.fraction = Double.isNaN(fraction) ? 0 : Math.max(0, Math.min(1, fraction));
 		this.fill = fill;
 		this.text = text == null ? "" : text;
 		repaint();
+	}
+
+	private static void drawShadowed(Graphics2D g2, String s, int x, int y)
+	{
+		g2.setColor(Color.BLACK);
+		g2.drawString(s, x + 1, y + 1);
+		g2.setColor(Color.WHITE);
+		g2.drawString(s, x, y);
+	}
+
+	/** Shortens text with "..." until it fits in the given width. */
+	private static String fit(FontMetrics fm, String s, int width)
+	{
+		if (fm.stringWidth(s) <= width)
+		{
+			return s;
+		}
+		String dots = "...";
+		int end = s.length();
+		while (end > 0 && fm.stringWidth(s.substring(0, end) + dots) > width)
+		{
+			end--;
+		}
+		return s.substring(0, end).trim() + dots;
 	}
 
 	@Override
@@ -65,12 +99,17 @@ class DropBar extends JComponent
 			g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_OFF);
 			g2.setFont(getFont());
 			FontMetrics fm = g2.getFontMetrics();
-			int tx = (w - fm.stringWidth(text)) / 2;
 			int ty = (h - fm.getHeight()) / 2 + fm.getAscent();
-			g2.setColor(Color.BLACK);
-			g2.drawString(text, tx + 1, ty + 1);
-			g2.setColor(Color.WHITE);
-			g2.drawString(text, tx, ty);
+			if (leftText == null)
+			{
+				drawShadowed(g2, text, (w - fm.stringWidth(text)) / 2, ty);
+			}
+			else
+			{
+				int rightWidth = fm.stringWidth(text);
+				drawShadowed(g2, text, w - 5 - rightWidth, ty);
+				drawShadowed(g2, fit(fm, leftText, w - 5 - rightWidth - 6 - 5), 5, ty);
+			}
 		}
 		finally
 		{

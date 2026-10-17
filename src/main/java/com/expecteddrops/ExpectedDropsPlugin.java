@@ -1,6 +1,7 @@
 package com.expecteddrops;
 
 import com.expecteddrops.data.BossCatalog;
+import com.expecteddrops.raids.RaidPointsReader;
 import com.expecteddrops.stats.RaidSettings;
 import com.expecteddrops.tracking.Tracker;
 import com.expecteddrops.tracking.TrackerState;
@@ -44,6 +45,7 @@ import net.runelite.client.chat.ChatMessageBuilder;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.events.RuneScapeProfileChanged;
@@ -98,6 +100,12 @@ public class ExpectedDropsPlugin extends Plugin
 	@Inject
 	private ChatMessageManager chatMessageManager;
 
+	@Inject
+	private EventBus eventBus;
+
+	/** Reads raid points at the end of each raid (see RaidPointsReader for the credits). */
+	private RaidPointsReader raidPoints;
+
 	/** Bosses we already reminded about this session, so the reminder shows once. */
 	private final Set<String> remindedThisSession = new HashSet<>();
 
@@ -107,6 +115,10 @@ public class ExpectedDropsPlugin extends Plugin
 	private String loadedProfile;
 	private final Map<String, Integer> itemIds = new ConcurrentHashMap<>();
 	private boolean itemIdsResolved;
+	/** GE price per normalized item name, from RuneLite's own price list. Untradeables are 0. */
+	private final Map<String, Long> prices = new ConcurrentHashMap<>();
+	private long pricesRefreshedAt;
+	private static final long PRICE_REFRESH_MILLIS = 10 * 60_000;
 
 	@Provides
 	ExpectedDropsConfig provideConfig(ConfigManager configManager)
@@ -118,8 +130,9 @@ public class ExpectedDropsPlugin extends Plugin
 	protected void startUp() throws Exception
 	{
 		tracker = new Tracker(loadCatalog());
+		tracker.setSettings(raidSettings());
 		panel = new ExpectedDropsPanel(tracker, itemManager, this::raidSettings, this::itemIdFor, this::save,
-			config::showWelcome, this::dismissWelcome);
+			config::showWelcome, this::dismissWelcome, this::priceOf);
 
 		BufferedImage icon = ImageUtil.loadImageResource(getClass(), "panel_icon.png");
 		navButton = NavigationButton.builder()
@@ -129,6 +142,9 @@ public class ExpectedDropsPlugin extends Plugin
 			.panel(panel)
 			.build();
 		clientToolbar.addNavigation(navButton);
+
+		raidPoints = new RaidPointsReader(client, clientThread, tracker, boss -> changed(boss, false), config::readRaidPoints);
+		eventBus.register(raidPoints);
 
 		clientThread.invokeLater(() ->
 		{
@@ -144,6 +160,11 @@ public class ExpectedDropsPlugin extends Plugin
 	protected void shutDown() throws Exception
 	{
 		save();
+		if (raidPoints != null)
+		{
+			eventBus.unregister(raidPoints);
+			raidPoints = null;
+		}
 		clientToolbar.removeNavigation(navButton);
 		navButton = null;
 		panel = null;
@@ -151,6 +172,8 @@ public class ExpectedDropsPlugin extends Plugin
 		loadedProfile = null;
 		itemIds.clear();
 		itemIdsResolved = false;
+		prices.clear();
+		pricesRefreshedAt = 0;
 	}
 
 	private BossCatalog loadCatalog() throws Exception
@@ -176,25 +199,90 @@ public class ExpectedDropsPlugin extends Plugin
 
 	RaidSettings raidSettings()
 	{
-		return raid ->
+		return new RaidSettings()
 		{
-			double percent;
-			switch (raid)
+			@Override
+			public double uniqueChance(String raid)
 			{
-				case "cox":
-					percent = config.coxUniqueChance();
-					break;
-				case "tob":
-					percent = config.tobUniqueChance();
-					break;
-				case "toa":
-					percent = config.toaUniqueChance();
-					break;
-				default:
-					percent = 0;
+				return raidChance(raid);
 			}
-			return Math.max(0, Math.min(100, percent)) / 100.0;
+
+			@Override
+			public double contribution(String team, int kills)
+			{
+				if (!"royalTitans".equals(team) || kills <= 0)
+				{
+					return 1.0;
+				}
+				int duo = duoKills(kills);
+				return (kills - duo + 0.5 * duo) / kills;
+			}
+
+			@Override
+			public String contributionNote(String team, int kills)
+			{
+				if (!"royalTitans".equals(team))
+				{
+					return null;
+				}
+				int duo = duoKills(kills);
+				if (duo == 0)
+				{
+					return "Counted as solo kills. If you duo, change 'Royal Titans' in the plugin settings.";
+				}
+				if (duo >= kills)
+				{
+					return "Counted as duo kills: about half the uniques of a solo kill (the pet chance stays the same).";
+				}
+				return String.format("Counted as %,d solo and %,d duo kills (a duo gives about half the uniques).",
+					kills - duo, duo);
+			}
 		};
+	}
+
+	private int duoKills(int kills)
+	{
+		switch (config.royalTitansMode())
+		{
+			case DUO:
+				return kills;
+			case MIXED:
+				return Math.max(0, Math.min(kills, config.royalTitansDuoKills()));
+			default:
+				return 0;
+		}
+	}
+
+	private double raidChance(String raid)
+	{
+		double percent;
+		switch (raid)
+		{
+			case "cox":
+				percent = config.coxUniqueChance();
+				break;
+			case "coxCm":
+				percent = config.coxCmUniqueChance();
+				break;
+			case "tob":
+				percent = config.tobUniqueChance();
+				break;
+			case "tobHm":
+				percent = config.tobHmUniqueChance();
+				break;
+			case "toaEntry":
+				percent = config.toaEntryUniqueChance();
+				break;
+			case "toa":
+				percent = config.toaUniqueChance();
+				break;
+			case "toaExpert":
+				percent = config.toaExpertUniqueChance();
+				break;
+			default:
+				percent = 0;
+		}
+		return Math.max(0, Math.min(100, percent)) / 100.0;
 	}
 
 	@Subscribe
@@ -234,6 +322,7 @@ public class ExpectedDropsPlugin extends Plugin
 		{
 			changed(boss, true);
 		}
+		postNotes();
 	}
 
 	@Subscribe
@@ -254,6 +343,7 @@ public class ExpectedDropsPlugin extends Plugin
 		{
 			changed(boss, true);
 		}
+		postNotes();
 	}
 
 	@Subscribe
@@ -366,7 +456,10 @@ public class ExpectedDropsPlugin extends Plugin
 
 	private void changed(String boss, boolean fromKill)
 	{
+		// one point per day for the luck graph
+		tracker.recordHistory(java.time.LocalDate.now().toEpochDay(), raidSettings());
 		save();
+		refreshPrices(false);
 		if (fromKill)
 		{
 			remindToSync(boss);
@@ -389,6 +482,34 @@ public class ExpectedDropsPlugin extends Plugin
 		});
 	}
 
+	/** Posts drop and milestone messages from the tracker, if the player wants them. */
+	private void postNotes()
+	{
+		for (com.expecteddrops.tracking.Note note : tracker.drainNotes())
+		{
+			boolean wanted = note.getKind() == com.expecteddrops.tracking.Note.Kind.DROP
+				? config.dropMessages() : config.milestoneMessages();
+			if (wanted)
+			{
+				postChat(note.getText());
+			}
+		}
+	}
+
+	private void postChat(String text)
+	{
+		String message = new ChatMessageBuilder()
+			.append(ChatColorType.HIGHLIGHT)
+			.append("On Rate: ")
+			.append(ChatColorType.NORMAL)
+			.append(text)
+			.build();
+		chatMessageManager.queue(QueuedMessage.builder()
+			.type(ChatMessageType.CONSOLE)
+			.runeLiteFormattedMessage(message)
+			.build());
+	}
+
 	/** Once per session, tells the player in chat which page loads this boss's history. */
 	private void remindToSync(String boss)
 	{
@@ -401,16 +522,7 @@ public class ExpectedDropsPlugin extends Plugin
 		{
 			return;
 		}
-		String message = new ChatMessageBuilder()
-			.append(ChatColorType.HIGHLIGHT)
-			.append("On Rate: ")
-			.append(ChatColorType.NORMAL)
-			.append(reminder)
-			.build();
-		chatMessageManager.queue(QueuedMessage.builder()
-			.type(ChatMessageType.CONSOLE)
-			.runeLiteFormattedMessage(message)
-			.build());
+		postChat(reminder);
 	}
 
 	private void dismissWelcome()
@@ -441,20 +553,10 @@ public class ExpectedDropsPlugin extends Plugin
 			}
 		}
 		tracker.setState(state);
-		String startBoss = tracker.bossWithMostKills();
 		if (panel != null)
 		{
-			SwingUtilities.invokeLater(() ->
-			{
-				if (startBoss != null)
-				{
-					panel.showBoss(startBoss);
-				}
-				else
-				{
-					panel.refresh();
-				}
-			});
+			// Open on the account overview: how dry or spooned the account is overall.
+			SwingUtilities.invokeLater(() -> panel.showBoss(ExpectedDropsPanel.ACCOUNT));
 		}
 	}
 
@@ -493,10 +595,42 @@ public class ExpectedDropsPlugin extends Plugin
 			}
 		}
 		itemIdsResolved = true;
+		refreshPrices(true);
 		if (panel != null)
 		{
 			SwingUtilities.invokeLater(panel::refresh);
 		}
+	}
+
+	/**
+	 * Copies the GE prices of all tracked items from RuneLite's price list. RuneLite keeps
+	 * that list up to date itself; this plugin makes no web requests. Client thread only.
+	 */
+	private void refreshPrices(boolean force)
+	{
+		long now = System.currentTimeMillis();
+		if (!force && now - pricesRefreshedAt < PRICE_REFRESH_MILLIS)
+		{
+			return;
+		}
+		pricesRefreshedAt = now;
+		for (Map.Entry<String, Integer> e : itemIds.entrySet())
+		{
+			try
+			{
+				prices.put(e.getKey(), Math.max(0, itemManager.getItemPrice(e.getValue())));
+			}
+			catch (RuntimeException ex)
+			{
+				log.debug("No price for {}", e.getKey(), ex);
+			}
+		}
+	}
+
+	long priceOf(String itemName)
+	{
+		Long price = prices.get(BossCatalog.normalize(itemName));
+		return price == null ? 0 : price;
 	}
 
 	int itemIdFor(String itemName)

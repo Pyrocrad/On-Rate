@@ -1,5 +1,6 @@
 package com.expecteddrops.data;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -15,8 +16,11 @@ public class BossDefinition
 	private String raid;
 	private String kcMode;
 	private Boolean delve;
+	/** Team boss whose uniques scale with your damage share (setting key), or null. */
+	private String team;
 	private String note;
 	private List<DropDefinition> drops;
+	private List<BossPart> parts;
 
 	public BossDefinition()
 	{
@@ -36,14 +40,42 @@ public class BossDefinition
 		return name;
 	}
 
+	/** Chat kill-count names, including those of every part. */
 	public List<String> getKcNames()
 	{
-		return kc == null ? Collections.emptyList() : kc;
+		List<String> names = new ArrayList<>(kc == null ? Collections.emptyList() : kc);
+		for (BossPart part : getParts())
+		{
+			names.addAll(part.getKcNames());
+		}
+		return names;
 	}
 
+	/** Loot tracker names, including those of every part. */
 	public List<String> getLootNames()
 	{
-		return loot == null ? Collections.emptyList() : loot;
+		List<String> names = new ArrayList<>(loot == null ? Collections.emptyList() : loot);
+		for (BossPart part : getParts())
+		{
+			names.addAll(part.getLootNames());
+		}
+		return names;
+	}
+
+	/** The bosses on a combined page (Dagannoth Kings, Callisto and Artio...), or empty. */
+	public List<BossPart> getParts()
+	{
+		return parts == null ? Collections.emptyList() : parts;
+	}
+
+	public String getTeam()
+	{
+		return team;
+	}
+
+	public boolean hasParts()
+	{
+		return parts != null && !parts.isEmpty();
 	}
 
 	public List<String> getClogPages()
@@ -95,6 +127,21 @@ public class BossDefinition
 	public List<DropDefinition> getDrops()
 	{
 		return drops == null ? Collections.emptyList() : drops;
+	}
+
+	/** Total unique weight in one raid mode. */
+	public double getTotalWeight(String part)
+	{
+		double total = 0;
+		for (DropDefinition drop : getDrops())
+		{
+			Double w = drop.getWeight(part);
+			if (w != null)
+			{
+				total += w;
+			}
+		}
+		return total;
 	}
 
 	public double getTotalWeight()

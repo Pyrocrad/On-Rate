@@ -15,12 +15,22 @@ public class DropDefinition
 	private String rate;
 	private Double weight;
 	private String perUnique;
+	/** Tombs of Amascut: lowest raid level where this unique drops normally (below it, 1 in 50 is kept). */
+	private Integer minRaidLevel;
 	private List<String> match;
 	private Boolean any;
 	private Boolean pet;
 	private Boolean clogShared;
+	/** True for items you can only get once (a prayer scroll you read). Pets count as once too. */
+	private Boolean once;
+	/** True when this drop does not scale with damage share at team bosses (e.g. Bran). */
+	private Boolean noShare;
 	/** Per-level rates for delve bosses, keyed "1".."9" (9 = level 8+). */
 	private Map<String, String> levelRates;
+	/** Per-part rates for combined pages, keyed by part name. */
+	private Map<String, String> partRates;
+	/** Raid modes whose unique table differs: weight per part name. */
+	private Map<String, Double> partWeights;
 
 	public DropDefinition()
 	{
@@ -51,6 +61,26 @@ public class DropDefinition
 	public Double getWeight()
 	{
 		return weight;
+	}
+
+	/** Weight of this item in one raid mode (falls back to the normal weight). */
+	public Double getWeight(String part)
+	{
+		if (partWeights != null && part != null && partWeights.containsKey(part))
+		{
+			return partWeights.get(part);
+		}
+		return weight;
+	}
+
+	public Integer getMinRaidLevel()
+	{
+		return minRaidLevel;
+	}
+
+	public void setMinRaidLevel(Integer minRaidLevel)
+	{
+		this.minRaidLevel = minRaidLevel;
 	}
 
 	public String getPerUnique()
@@ -86,6 +116,17 @@ public class DropDefinition
 		this.levelRates = levelRates;
 	}
 
+	/** Rate text for one part of a combined page, or null if that part doesn't drop it. */
+	public String getPartRate(String part)
+	{
+		return partRates == null ? null : partRates.get(part);
+	}
+
+	public boolean hasPartRates()
+	{
+		return partRates != null && !partRates.isEmpty();
+	}
+
 	public boolean countsTowardAny()
 	{
 		return any == null || any;
@@ -94,6 +135,20 @@ public class DropDefinition
 	public boolean isPet()
 	{
 		return pet != null && pet;
+	}
+
+	/**
+	 * Items the collection log counts at most once: pets (duplicates aren't logged) and
+	 * items that stop dropping after the first, like Royal Titans prayer scrolls.
+	 */
+	public boolean isOnce()
+	{
+		return isPet() || (once != null && once);
+	}
+
+	public boolean isNoShare()
+	{
+		return noShare != null && noShare;
 	}
 
 	public boolean isClogSharedFlag()

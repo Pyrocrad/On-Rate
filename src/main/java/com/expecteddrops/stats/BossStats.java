@@ -17,6 +17,7 @@ public class BossStats
 	private final List<RowStats> rows;
 	private final double raidUniqueChance;
 	private final Map<Integer, Integer> levelCounts;
+	private Map<String, Integer> partCounts;
 
 	public BossStats(BossDefinition boss, int killCount, boolean killCountKnown, boolean clogSynced,
 		RowStats anyRow, List<RowStats> rows, double raidUniqueChance, Map<Integer, Integer> levelCounts)
@@ -60,6 +61,17 @@ public class BossStats
 	public List<RowStats> getRows()
 	{
 		return rows;
+	}
+
+	/** Kill count per part for combined pages, otherwise null. */
+	public Map<String, Integer> getPartCounts()
+	{
+		return partCounts;
+	}
+
+	public void setPartCounts(Map<String, Integer> partCounts)
+	{
+		this.partCounts = partCounts;
 	}
 
 	/** Completions per delve level for delve bosses, otherwise null. */

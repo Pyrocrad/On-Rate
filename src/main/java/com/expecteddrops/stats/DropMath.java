@@ -106,6 +106,122 @@ public final class DropMath
 		return (long) Math.ceil(Math.log1p(-probability) / Math.log1p(-rate));
 	}
 
+	/**
+	 * A word for a luck percentile, from the player's point of view.
+	 * Empty when there's nothing to judge yet.
+	 */
+	public static String verdict(double luck)
+	{
+		if (Double.isNaN(luck))
+		{
+			return "";
+		}
+		if (luck < 0.10)
+		{
+			return "Very dry";
+		}
+		if (luck < 0.35)
+		{
+			return "Dry";
+		}
+		if (luck <= 0.65)
+		{
+			return "On rate";
+		}
+		if (luck <= 0.90)
+		{
+			return "Spooned";
+		}
+		return "Very spooned";
+	}
+
+	/**
+	 * Luck percentile for total value: the share of players with the same kills who got
+	 * less GP from these items than you (ties count half). Rare, expensive items dominate
+	 * value, so a formula would be misleading; instead we simulate the kills many times.
+	 * Uses a fixed seed so the number doesn't jump around between refreshes.
+	 *
+	 * @param expected expected number of drops per item
+	 * @param prices   price per item (0 for untradeables, which are skipped)
+	 * @param received total value actually received
+	 * @return percentile between 0 and 1, or NaN when nothing of value is expected yet
+	 */
+	public static double valueLuck(double[] expected, long[] prices, long received, int samples, long seed)
+	{
+		double total = 0;
+		for (int i = 0; i < expected.length; i++)
+		{
+			if (prices[i] > 0)
+			{
+				total += expected[i] * prices[i];
+			}
+		}
+		if (total <= 0)
+		{
+			return Double.NaN;
+		}
+		java.util.Random random = new java.util.Random(seed);
+		double below = 0;
+		for (int s = 0; s < samples; s++)
+		{
+			long value = 0;
+			for (int i = 0; i < expected.length; i++)
+			{
+				if (prices[i] > 0 && expected[i] > 0)
+				{
+					value += poisson(random, expected[i]) * prices[i];
+				}
+			}
+			if (value < received)
+			{
+				below += 1;
+			}
+			else if (value == received)
+			{
+				below += 0.5;
+			}
+		}
+		return below / samples;
+	}
+
+	/** A random number of drops when {@code mean} are expected. */
+	static long poisson(java.util.Random random, double mean)
+	{
+		if (mean > 30)
+		{
+			// normal approximation is accurate here and much faster
+			return Math.max(0, Math.round(mean + Math.sqrt(mean) * random.nextGaussian()));
+		}
+		double limit = Math.exp(-mean);
+		double product = random.nextDouble();
+		long count = 0;
+		while (product > limit)
+		{
+			product *= random.nextDouble();
+			count++;
+		}
+		return count;
+	}
+
+	/** "1.24b", "345.6m", "12.3k" or "950" coins. */
+	public static String formatGp(double gp)
+	{
+		double abs = Math.abs(gp);
+		if (abs >= 1_000_000_000)
+		{
+			return String.format("%.2fb", gp / 1_000_000_000);
+		}
+		if (abs >= 1_000_000)
+		{
+			return String.format("%.1fm", gp / 1_000_000);
+		}
+		if (abs >= 1_000)
+		{
+			return String.format("%.1fk", gp / 1_000);
+		}
+		return String.format("%.0f", gp);
+	}
+
 	/** "1/181" style text for a per-kill rate. */
 	public static String formatRate(double rate)
 	{

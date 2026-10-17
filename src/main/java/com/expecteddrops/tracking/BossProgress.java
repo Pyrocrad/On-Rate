@@ -1,6 +1,8 @@
 package com.expecteddrops.tracking;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -22,6 +24,16 @@ public class BossProgress
 	Map<Integer, Integer> levelKc = new HashMap<>();
 	/** Delve bosses only: true once the scoreboard has been read. */
 	boolean levelsSynced;
+	/** Kill count at the last drop of each item that On Rate saw (normalized item name). */
+	Map<String, Integer> lastDropKc = new HashMap<>();
+	/** Kill count when On Rate first knew it; how long ago older drops came is unknown. */
+	Integer trackingStartKc;
+	/** Highest milestone already announced per item in its current dry streak. */
+	Map<String, Integer> milestone = new HashMap<>();
+	/** Kill count at the last milestone check, so a big jump (first sync) stays quiet. */
+	Integer lastCheckedKc;
+	/** Raids only: each raid finished with On Rate, with its points (see RaidRecord). */
+	List<RaidRecord> raids = new ArrayList<>();
 
 	void ensureMaps()
 	{
@@ -36,6 +48,18 @@ public class BossProgress
 		if (levelKc == null)
 		{
 			levelKc = new HashMap<>();
+		}
+		if (lastDropKc == null)
+		{
+			lastDropKc = new HashMap<>();
+		}
+		if (milestone == null)
+		{
+			milestone = new HashMap<>();
+		}
+		if (raids == null)
+		{
+			raids = new ArrayList<>();
 		}
 		if (received == null)
 		{

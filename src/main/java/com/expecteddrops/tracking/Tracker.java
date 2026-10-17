@@ -2,20 +2,25 @@ package com.expecteddrops.tracking;
 
 import com.expecteddrops.data.BossCatalog;
 import com.expecteddrops.data.BossDefinition;
+import com.expecteddrops.data.BossPart;
 import com.expecteddrops.data.DropDefinition;
+import com.expecteddrops.stats.AccountStats;
 import com.expecteddrops.stats.BossStats;
 import com.expecteddrops.stats.DropMath;
+import com.expecteddrops.stats.RaidChance;
 import com.expecteddrops.stats.RaidSettings;
 import com.expecteddrops.stats.RowStats;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.function.ToLongFunction;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -51,10 +56,38 @@ public class Tracker
 		}
 	}
 
+	private static final int[] MILESTONES = {1, 2, 3, 5, 10};
+	/** A kill count jump bigger than this (a sync, a first message) doesn't announce milestones. */
+	private static final int MAX_QUIET_JUMP = 5;
+
 	private final BossCatalog catalog;
+	private final List<Note> outbox = new ArrayList<>();
+	private RaidSettings settings = raid -> 0;
 	private TrackerState state = new TrackerState();
 	private String lastBoss;
+	/** For combined pages: which part (e.g. Dagannoth Rex) was killed last. */
+	private String lastPart;
 	private long lastKillMillis;
+	/** A finished raid's data that arrived before its completion count message. */
+	private RaidRecord pendingRecord;
+	private long pendingRecordMillis;
+	/** The raid mode whose completion message came last, for data that arrives after it. */
+	private String lastRaidBoss;
+	private String lastRaidPart;
+	private int lastRaidKc;
+	private long lastRaidMillis;
+	/** The latest Tombs of Amascut record, for the team total the ToA plugin sends after it. */
+	private RaidRecord latestToa;
+	private long latestToaMillis;
+	private int[] pendingParty;
+	private long pendingPartyMillis;
+	/** Points and the completion count message arrive within seconds of each other. */
+	private static final long RAID_MATCH_MILLIS = 60_000;
+	/** The Theatre of Blood board can be read a while after the completion message. */
+	private static final long TOB_MATCH_MILLIS = 5 * 60_000;
+	private static final long PARTY_MATCH_MILLIS = 2 * 60_000;
+	/** Most raid records kept per raid. */
+	private static final int MAX_RAID_RECORDS = 5000;
 
 	public Tracker(BossCatalog catalog)
 	{
@@ -64,6 +97,20 @@ public class Tracker
 	public BossCatalog getCatalog()
 	{
 		return catalog;
+	}
+
+	/** Settings used for streaks and milestone messages (raid chances, team shares). */
+	public synchronized void setSettings(RaidSettings settings)
+	{
+		this.settings = settings;
+	}
+
+	/** Chat messages produced since the last call (drops and milestones). */
+	public synchronized List<Note> drainNotes()
+	{
+		List<Note> notes = new ArrayList<>(outbox);
+		outbox.clear();
+		return notes;
 	}
 
 	public synchronized void setState(TrackerState state)
@@ -111,6 +158,10 @@ public class Tracker
 			int kc = Integer.parseInt(m.group("kc").replace(",", ""));
 			state.get(boss.getName()).chatKc.put(BossCatalog.normalize(counter), kc);
 			markKill(boss, nowMillis);
+			lastPart = partForName(boss, counter, true);
+			startTracking(boss);
+			onRaidCompletion(boss, lastPart, kc, nowMillis);
+			checkMilestones(boss);
 			return boss.getName();
 		}
 
@@ -138,6 +189,215 @@ public class Tracker
 		return null;
 	}
 
+	/**
+	 * Data read at the end of a raid: points (CoX, estimated for ToA) or the ToB board.
+	 * The completion count message tells which mode it was; it may come just before or
+	 * just after. Returns the boss whose numbers changed, or null.
+	 */
+	public synchronized String onRaidRecord(RaidRecord record, long nowMillis)
+	{
+		if (record == null || record.family == null)
+		{
+			return null;
+		}
+		record.savedMillis = nowMillis;
+		if ("toa".equals(record.family))
+		{
+			latestToa = record;
+			latestToaMillis = nowMillis;
+			applyPendingParty(record, nowMillis);
+		}
+		if (lastRaidBoss != null && nowMillis - lastRaidMillis <= matchWindow(record.family)
+			&& raidFamily(lastRaidBoss, lastRaidPart).startsWith(record.family))
+		{
+			String boss = lastRaidBoss;
+			saveRecord(boss, lastRaidPart, lastRaidKc, record);
+			lastRaidBoss = null;
+			return boss;
+		}
+		pendingRecord = record;
+		pendingRecordMillis = nowMillis;
+		return null;
+	}
+
+	/**
+	 * Team and personal points the Tombs of Amascut plugin sends at the end of a raid.
+	 * They replace On Rate's own estimate for the latest ToA raid.
+	 */
+	public synchronized String onPartyPoints(int personalPoints, int teamPoints, long nowMillis)
+	{
+		if (personalPoints <= 0 || teamPoints <= 0)
+		{
+			return null;
+		}
+		if (latestToa != null && nowMillis - latestToaMillis <= PARTY_MATCH_MILLIS)
+		{
+			latestToa.personalPoints = personalPoints;
+			latestToa.teamPoints = teamPoints;
+			latestToa = null;
+			for (BossDefinition boss : catalog.getBosses())
+			{
+				if ("toa".equals(boss.getRaid()))
+				{
+					return boss.getName();
+				}
+			}
+			return null;
+		}
+		pendingParty = new int[]{personalPoints, teamPoints};
+		pendingPartyMillis = nowMillis;
+		return null;
+	}
+
+	private void applyPendingParty(RaidRecord record, long nowMillis)
+	{
+		if (pendingParty != null && nowMillis - pendingPartyMillis <= PARTY_MATCH_MILLIS)
+		{
+			record.personalPoints = pendingParty[0];
+			record.teamPoints = pendingParty[1];
+			latestToa = null;
+		}
+		pendingParty = null;
+	}
+
+	private static long matchWindow(String family)
+	{
+		return "tob".equals(family) ? TOB_MATCH_MILLIS : RAID_MATCH_MILLIS;
+	}
+
+	private void onRaidCompletion(BossDefinition boss, String part, int kc, long nowMillis)
+	{
+		String family = raidFamily(boss.getName(), part);
+		if (family.isEmpty())
+		{
+			return;
+		}
+		if (pendingRecord != null && nowMillis - pendingRecordMillis <= matchWindow(pendingRecord.family)
+			&& family.startsWith(pendingRecord.family))
+		{
+			saveRecord(boss.getName(), part, kc, pendingRecord);
+			pendingRecord = null;
+			lastRaidBoss = null;
+			return;
+		}
+		pendingRecord = null;
+		lastRaidBoss = boss.getName();
+		lastRaidPart = part;
+		lastRaidKc = kc;
+		lastRaidMillis = nowMillis;
+	}
+
+	/** The raid setting key of a boss part ("coxCm"), or "" when it isn't a raid. */
+	private String raidFamily(String bossName, String partName)
+	{
+		BossDefinition boss = catalog.byName(bossName);
+		if (boss == null || boss.getRaid() == null)
+		{
+			return "";
+		}
+		if (partName != null && boss.hasParts())
+		{
+			for (BossPart part : boss.getParts())
+			{
+				if (part.getName().equals(partName))
+				{
+					return part.getRaid() == null || "none".equals(part.getRaid()) ? "" : part.getRaid();
+				}
+			}
+		}
+		return boss.hasParts() ? "" : boss.getRaid();
+	}
+
+	private void saveRecord(String bossName, String part, int kc, RaidRecord record)
+	{
+		record.part = part == null ? bossName : part;
+		record.kc = kc;
+		List<RaidRecord> raids = state.get(bossName).raids;
+		raids.add(record);
+		while (raids.size() > MAX_RAID_RECORDS)
+		{
+			raids.remove(0);
+		}
+	}
+
+	/** Most points the luck graph keeps (about three years of daily play). */
+	private static final int MAX_HISTORY = 1000;
+
+	/**
+	 * Saves today's account luck for the graph. One point per day: a later call on the same
+	 * day replaces it. Returns true when something was stored.
+	 */
+	public synchronized boolean recordHistory(long day, RaidSettings raids)
+	{
+		AccountStats account = accountStats(raids);
+		RowStats total = account.getTotal();
+		if (total.getExpected() <= 0 || Double.isNaN(total.getLuck()))
+		{
+			return false;
+		}
+		List<HistoryPoint> history = state.history();
+		HistoryPoint point = new HistoryPoint(day, total.getExpected(), total.getReceived(), total.getLuck());
+		if (!history.isEmpty() && history.get(history.size() - 1).day >= day)
+		{
+			history.set(history.size() - 1, point);
+		}
+		else
+		{
+			history.add(point);
+		}
+		while (history.size() > MAX_HISTORY)
+		{
+			history.remove(0);
+		}
+		return true;
+	}
+
+	/** The luck graph's points, oldest first. */
+	public synchronized List<HistoryPoint> history()
+	{
+		return new ArrayList<>(state.history());
+	}
+
+	/** Your expected uniques for this raid from its points, or NaN when they are unknown. */
+	public static double purpleChance(RaidRecord record)
+	{
+		if (record == null || record.family == null)
+		{
+			return Double.NaN;
+		}
+		switch (record.family)
+		{
+			case "cox":
+				return RaidChance.cox(record.personalPoints, record.teamPoints);
+			case "toa":
+				return RaidChance.toa(record.personalPoints, record.partyPoints, record.teamPoints,
+					record.teamSize, record.raidLevel);
+			default:
+				return Double.NaN;
+		}
+	}
+
+	/** Completions of this raid mode whose purple chance came from your points. */
+	public synchronized int measuredRaids(String bossName, String part)
+	{
+		int n = 0;
+		for (RaidRecord r : raidRecords(bossName))
+		{
+			if ((part == null ? bossName : part).equals(r.part) && !Double.isNaN(purpleChance(r)))
+			{
+				n++;
+			}
+		}
+		return n;
+	}
+
+	/** Every raid saved for this boss, oldest first. */
+	public synchronized List<RaidRecord> raidRecords(String bossName)
+	{
+		BossProgress progress = state.peek(bossName);
+		return progress == null ? new ArrayList<>() : new ArrayList<>(progress.raids);
+	}
+
 	private BossDefinition delveBoss()
 	{
 		for (BossDefinition boss : catalog.getBosses())
@@ -159,6 +419,8 @@ public class Tracker
 		}
 		state.get(boss.getName()).levelKc.merge(level, 1, Integer::sum);
 		markKill(boss, nowMillis);
+		startTracking(boss);
+		checkMilestones(boss);
 		return boss.getName();
 	}
 
@@ -182,6 +444,7 @@ public class Tracker
 				progress.levelKc.put(e.getKey(), e.getValue());
 			}
 		}
+		startTracking(boss);
 		return boss.getName();
 	}
 
@@ -206,6 +469,7 @@ public class Tracker
 		{
 			return null;
 		}
+		recordDrop(boss, drop, itemName);
 		state.get(boss.getName()).received.merge(BossCatalog.normalize(itemName), 1, Integer::sum);
 		return boss.getName();
 	}
@@ -221,15 +485,297 @@ public class Tracker
 		{
 			return null;
 		}
+		DropDefinition pet = null;
 		for (DropDefinition drop : boss.getDrops())
 		{
-			if (drop.isPet())
+			if (!drop.isPet())
 			{
-				state.get(boss.getName()).received.merge(BossCatalog.normalize(drop.getName()), 1, Integer::sum);
-				return boss.getName();
+				continue;
+			}
+			// On a combined page, each boss has its own pet: take the one of the part killed last.
+			if (pet == null || (lastPart != null && drop.getPartRate(lastPart) != null))
+			{
+				pet = drop;
+			}
+		}
+		if (pet == null)
+		{
+			return null;
+		}
+		recordDrop(boss, pet, pet.getName());
+		state.get(boss.getName()).received.merge(BossCatalog.normalize(pet.getName()), 1, Integer::sum);
+		return boss.getName();
+	}
+
+	private int currentKc(BossDefinition boss)
+	{
+		BossStats s = stats(boss.getName(), settings);
+		return s == null ? 0 : s.getKillCount();
+	}
+
+	/** Remembers the kill count at which On Rate started following this boss. */
+	private void startTracking(BossDefinition boss)
+	{
+		BossProgress progress = state.get(boss.getName());
+		if (progress.trackingStartKc == null)
+		{
+			progress.trackingStartKc = currentKc(boss);
+		}
+	}
+
+	/** Word for what is counted at this boss: kills, raids, chests or levels. */
+	static String unit(BossDefinition boss)
+	{
+		if (boss.getRaid() != null)
+		{
+			return "raids";
+		}
+		if (boss.isDelve())
+		{
+			return "levels";
+		}
+		for (String kc : boss.getKcNames())
+		{
+			if (kc.toLowerCase(Locale.ROOT).contains("chest"))
+			{
+				return "chests";
+			}
+		}
+		return "kills";
+	}
+
+	/**
+	 * A unique dropped: remember the kill count, and say how many kills it took.
+	 * Call before the received count goes up.
+	 */
+	private void recordDrop(BossDefinition boss, DropDefinition drop, String itemName)
+	{
+		BossProgress progress = state.get(boss.getName());
+		String key = BossCatalog.normalize(itemName);
+		int kc = currentKc(boss);
+		Integer previous = progress.lastDropKc.get(key);
+		Integer before = progress.received.get(key);
+		double rate = rateOf(boss, drop);
+
+		String unit = unit(boss);
+		String name = drop.getDisplayName().equals(drop.getName()) ? itemName : drop.getDisplayName();
+		// "first" is only certain when the collection log told us the history of this item
+		boolean historyKnown = progress.clogSynced && !catalog.isClogShared(key);
+		String text = null;
+		if (previous != null && kc > previous)
+		{
+			int kills = kc - previous;
+			text = String.format("%s after %,d %s (%s the rate).", name, kills, unit, multiple(kills * rate));
+		}
+		else if (historyKnown && (before == null || before == 0) && kc > 0)
+		{
+			text = String.format("Your first %s, after %,d %s (%s the rate).", name, kc, unit, multiple(kc * rate));
+		}
+		else if (progress.trackingStartKc != null && kc > progress.trackingStartKc)
+		{
+			int kills = kc - progress.trackingStartKc;
+			text = String.format("%s after at least %,d %s.", name, kills, unit);
+		}
+		if (text != null && rate > 0)
+		{
+			outbox.add(new Note(Note.Kind.DROP, text));
+		}
+		progress.lastDropKc.put(key, kc);
+		progress.milestone.remove(key);
+	}
+
+	/** Average per-kill rate of a drop at this boss so far (works for raids, parts and delves). */
+	private double rateOf(BossDefinition boss, DropDefinition drop)
+	{
+		BossStats s = stats(boss.getName(), settings);
+		if (s == null)
+		{
+			return 0;
+		}
+		for (RowStats row : s.getRows())
+		{
+			if (row.getIconItem() != null && row.getIconItem().equals(drop.getName()))
+			{
+				return row.getRate();
+			}
+		}
+		return 0;
+	}
+
+	private static String multiple(double m)
+	{
+		if (m < 0.1)
+		{
+			return String.format("%.2fx", m);
+		}
+		return m < 10 ? String.format("%.1fx", m) : String.format("%.0fx", m);
+	}
+
+	/**
+	 * After a kill: announce items that just passed 1x, 2x, 3x, 5x or 10x the drop rate
+	 * without dropping. Several at once become one message. A big jump in kill count
+	 * (first sync, first message after installing) only catches up quietly.
+	 */
+	private void checkMilestones(BossDefinition boss)
+	{
+		BossProgress progress = state.get(boss.getName());
+		BossStats s = stats(boss.getName(), settings);
+		if (s == null)
+		{
+			return;
+		}
+		int kc = s.getKillCount();
+		Integer lastChecked = progress.lastCheckedKc;
+		boolean quiet = lastChecked == null || kc <= lastChecked || kc - lastChecked > MAX_QUIET_JUMP;
+		progress.lastCheckedKc = kc;
+
+		List<String> names = new ArrayList<>();
+		List<Integer> levels = new ArrayList<>();
+		for (int i = 0; i < s.getRows().size(); i++)
+		{
+			RowStats row = s.getRows().get(i);
+			DropDefinition drop = boss.getDrops().get(i);
+			if (!drop.countsTowardAny() || row.getStreak() == null || row.getRate() <= 0)
+			{
+				continue;
+			}
+			double m = row.getStreakMultiple();
+			int level = -1;
+			for (int t = 0; t < MILESTONES.length; t++)
+			{
+				if (m >= MILESTONES[t])
+				{
+					level = t;
+				}
+			}
+			String key = BossCatalog.normalize(drop.getName());
+			int announced = progress.milestone.getOrDefault(key, -1);
+			if (level > announced)
+			{
+				progress.milestone.put(key, level);
+				if (!quiet)
+				{
+					names.add(row.getLabel());
+					levels.add(MILESTONES[level]);
+				}
+			}
+		}
+		if (names.isEmpty())
+		{
+			return;
+		}
+		String unit = unit(boss);
+		if (names.size() == 1)
+		{
+			RowStats row = rowFor(s, names.get(0));
+			String streak = row.isStreakExact()
+				? String.format("%,d %s without one", row.getStreak(), unit)
+				: String.format("at least %,d %s since your last one", row.getStreak(), unit);
+			outbox.add(new Note(Note.Kind.MILESTONE, String.format("%s: %dx the drop rate dry (%s).",
+				names.get(0), levels.get(0), streak)));
+			return;
+		}
+		int top = levels.get(0);
+		boolean same = levels.stream().allMatch(l -> l == top);
+		StringBuilder list = new StringBuilder();
+		int shown = Math.min(3, names.size());
+		for (int i = 0; i < shown; i++)
+		{
+			if (i > 0)
+			{
+				list.append(i == shown - 1 && names.size() == shown ? " and " : ", ");
+			}
+			list.append(names.get(i));
+			if (!same)
+			{
+				list.append(" (").append(levels.get(i)).append("x)");
+			}
+		}
+		if (names.size() > shown)
+		{
+			list.append(" and ").append(names.size() - shown).append(" more");
+		}
+		outbox.add(new Note(Note.Kind.MILESTONE, same
+			? String.format("%s: %d items passed %dx the drop rate dry: %s.", boss.getName(), names.size(), top, list)
+			: String.format("%s: %d items passed a dry milestone: %s.", boss.getName(), names.size(), list)));
+	}
+
+	private static RowStats rowFor(BossStats s, String label)
+	{
+		for (RowStats row : s.getRows())
+		{
+			if (row.getLabel().equals(label))
+			{
+				return row;
 			}
 		}
 		return null;
+	}
+
+	/**
+	 * The part of a combined page that a chat counter or loot name belongs to, or null.
+	 * When several parts match (e.g. "Corrupted Gauntlet" also contains "Gauntlet"),
+	 * the longest match wins.
+	 */
+	private static String partForName(BossDefinition boss, String text, boolean kcNames)
+	{
+		String t = BossCatalog.normalize(text);
+		// Mode keywords ("expert", "(cm)", "hard mode"...) are the most reliable sign.
+		for (BossPart part : boss.getParts())
+		{
+			for (String keyword : part.getKeywords())
+			{
+				if (t.contains(BossCatalog.normalize(keyword)))
+				{
+					return part.getName();
+				}
+			}
+		}
+		String best = null;
+		int bestLength = -1;
+		for (BossPart part : boss.getParts())
+		{
+			List<String> names = new ArrayList<>(kcNames ? part.getKcNames() : part.getLootNames());
+			names.add(part.getName());
+			for (String name : names)
+			{
+				String n = BossCatalog.normalize(name);
+				if (t.contains(n) && n.length() > bestLength)
+				{
+					best = part.getName();
+					bestLength = n.length();
+				}
+			}
+		}
+		return best;
+	}
+
+	/** Kill count per part of a combined page (chat count or collection log count, whichever is higher). */
+	private static Map<String, Integer> partKills(BossDefinition boss, BossProgress progress)
+	{
+		Map<String, Integer> result = new LinkedHashMap<>();
+		for (BossPart part : boss.getParts())
+		{
+			int kc = 0;
+			if (progress != null)
+			{
+				for (String name : part.getKcNames())
+				{
+					Integer v = progress.chatKc.get(BossCatalog.normalize(name));
+					if (v != null)
+					{
+						kc = Math.max(kc, v);
+					}
+				}
+				Integer clog = progress.clogKc.get(BossCatalog.normalize(part.getName()));
+				if (clog != null)
+				{
+					kc = Math.max(kc, clog);
+				}
+			}
+			result.put(part.getName(), kc);
+		}
+		return result;
 	}
 
 	/**
@@ -244,6 +790,10 @@ public class Tracker
 		}
 		BossProgress progress = state.get(boss.getName());
 		progress.lootKills += Math.max(1, amount);
+		if (boss.hasParts())
+		{
+			lastPart = partForName(boss, source, false);
+		}
 
 		for (LootItem item : items)
 		{
@@ -252,10 +802,12 @@ public class Tracker
 			{
 				// One stack is one drop; the collection log counts quantity, but for
 				// the uniques we track those are the same thing.
+				recordDrop(boss, drop, item.name);
 				progress.received.merge(BossCatalog.normalize(item.name), 1, Integer::sum);
 			}
 		}
 		markKill(boss, nowMillis);
+		startTracking(boss);
 		return boss.getName();
 	}
 
@@ -293,6 +845,19 @@ public class Tracker
 				}
 				parsed.add(new String[]{label, value});
 			}
+			if (boss.hasParts())
+			{
+				// Combined page: one counter per boss, e.g. "Dagannoth Rex kills: 436".
+				for (String[] p : parsed)
+				{
+					String part = partForName(boss, p[0], true);
+					if (part != null)
+					{
+						progress.clogKc.put(BossCatalog.normalize(part), Integer.parseInt(p[1]));
+					}
+				}
+				parsed.clear();
+			}
 			List<String[]> matching = new ArrayList<>();
 			for (String[] p : parsed)
 			{
@@ -323,16 +888,30 @@ public class Tracker
 					String key = BossCatalog.normalize(name);
 					if (catalog.isClogShared(key))
 					{
+						// Can't tell which boss these came from, but the total is right for the account.
+						Integer total = findQuantity(items, key);
+						if (total != null && !drop.isClogSharedFlag())
+						{
+							state.sharedClog().put(key, total);
+						}
 						continue;
 					}
 					Integer qty = findQuantity(items, key);
 					if (qty != null)
 					{
+						Integer before = progress.received.get(key);
+						if (before != null && qty > before && progress.trackingStartKc != null)
+						{
+							// a new copy since the last look; the best guess for when is "now"
+							progress.lastDropKc.put(key, currentKc(boss));
+							progress.milestone.remove(key);
+						}
 						progress.received.put(key, qty);
 					}
 				}
 			}
 			progress.clogSynced = true;
+			startTracking(boss);
 			changed.add(boss.getName());
 		}
 		return changed;
@@ -384,7 +963,7 @@ public class Tracker
 				continue;
 			}
 			BossProgress p = state.peek(name);
-			int kc = boss.isDelve() ? sum(p.levelKc.values()) : Math.max(p.lootKills, Math.max(combine(p.chatKc.values(), boss.combineKcWithMax()),
+			int kc = boss.isDelve() ? sum(p.levelKc.values()) : boss.hasParts() ? sum(partKills(boss, p).values()) : Math.max(p.lootKills, Math.max(combine(p.chatKc.values(), boss.combineKcWithMax()),
 				combine(p.clogKc.values(), boss.combineKcWithMax())));
 			if (kc > bestKc)
 			{
@@ -485,6 +1064,68 @@ public class Tracker
 		return null;
 	}
 
+	/**
+	 * Rate of a drop for one part of a combined page (one boss, or one raid mode).
+	 * Explicit part rates win; raid modes use their own purple chance and weights.
+	 */
+	public static double partRate(BossDefinition boss, BossPart part, DropDefinition drop, RaidSettings raids)
+	{
+		if (drop.hasPartRates())
+		{
+			return DropMath.parseRate(drop.getPartRate(part.getName()));
+		}
+		if (part.getRaid() != null)
+		{
+			double unique = raids.uniqueChance(part.getRaid());
+			Double weight = drop.getWeight(part.getName());
+			if (weight != null)
+			{
+				double total = boss.getTotalWeight(part.getName());
+				return total > 0 ? unique * weight / total : 0;
+			}
+			if (drop.getPerUnique() != null)
+			{
+				return unique * DropMath.parseRate(drop.getPerUnique());
+			}
+		}
+		return DropMath.parseRate(drop.getRate());
+	}
+
+	/**
+	 * Expected count of a drop from one part. For raid modes, completions whose points
+	 * were read use their own purple chance; older ones use the setting.
+	 */
+	private static double partExpected(BossDefinition boss, BossPart part, DropDefinition drop, RaidSettings raids,
+		int completions, BossProgress progress)
+	{
+		double perRaid = partRate(boss, part, drop, raids);
+		if (progress == null || part.getRaid() == null || drop.hasPartRates() || progress.raids.isEmpty())
+		{
+			return completions * perRaid;
+		}
+		List<RaidRecord> known = new ArrayList<>();
+		for (RaidRecord r : progress.raids)
+		{
+			if (part.getName().equals(r.part) && !Double.isNaN(purpleChance(r)))
+			{
+				known.add(r);
+			}
+		}
+		int counted = Math.min(known.size(), completions);
+		if (counted == 0)
+		{
+			return completions * perRaid;
+		}
+		// share of a purple that is this item (the same for every raid of this mode)
+		double share = partRate(boss, part, drop, key -> 1.0);
+		double expected = (completions - counted) * perRaid;
+		for (RaidRecord r : known.subList(known.size() - counted, known.size()))
+		{
+			expected += purpleChance(r) * share * RaidChance.toaLevelFactor(r.raidLevel, drop.getMinRaidLevel());
+		}
+		return expected;
+	}
+
 	/** Per-kill rate for a drop, taking raid settings into account. */
 	public static double effectiveRate(BossDefinition boss, DropDefinition drop, RaidSettings raids)
 	{
@@ -518,7 +1159,15 @@ public class Tracker
 		boolean known = false;
 		boolean synced = false;
 		Map<Integer, Integer> levels = null;
-		if (boss.isDelve())
+		Map<String, Integer> parts = null;
+		if (boss.hasParts())
+		{
+			parts = partKills(boss, progress);
+			kc = sum(parts.values());
+			known = progress != null && (!progress.chatKc.isEmpty() || !progress.clogKc.isEmpty());
+			synced = progress != null && progress.clogSynced;
+		}
+		else if (boss.isDelve())
 		{
 			levels = new TreeMap<>();
 			for (int l = 1; l <= BossDefinition.DELVE_LEVELS; l++)
@@ -546,7 +1195,16 @@ public class Tracker
 		{
 			double expected;
 			double rate;
-			if (levels != null)
+			if (parts != null)
+			{
+				expected = 0;
+				for (BossPart part : boss.getParts())
+				{
+					expected += partExpected(boss, part, drop, raids, parts.get(part.getName()), progress);
+				}
+				rate = kc > 0 ? expected / kc : 0;
+			}
+			else if (levels != null)
 			{
 				expected = 0;
 				for (Map.Entry<Integer, Integer> e : levels.entrySet())
@@ -559,6 +1217,11 @@ public class Tracker
 			else
 			{
 				rate = effectiveRate(boss, drop, raids);
+				if (boss.getTeam() != null && !drop.isNoShare())
+				{
+					// team boss: your chance scales with your share of the damage
+					rate *= raids.contribution(boss.getTeam(), kc);
+				}
 				expected = rate * kc;
 			}
 			int received = 0;
@@ -573,16 +1236,220 @@ public class Tracker
 					}
 				}
 			}
-			rows.add(new RowStats(drop.getDisplayName(), drop.getName(), rate, expected, received, false));
+			RowStats row = new RowStats(drop.getDisplayName(), drop.getName(), rate, expected, received, false);
+			if (!(drop.isOnce() && received > 0))
+			{
+				Integer last = null;
+				if (progress != null)
+				{
+					for (String name : drop.getAllNames())
+					{
+						Integer kcAt = progress.lastDropKc.get(BossCatalog.normalize(name));
+						if (kcAt != null && (last == null || kcAt > last))
+						{
+							last = kcAt;
+						}
+					}
+				}
+				if (last != null)
+				{
+					row.withStreak(Math.max(0, kc - last), true);
+				}
+				else if (received == 0 && progress != null && progress.clogSynced
+					&& !catalog.isClogShared(BossCatalog.normalize(drop.getName())))
+				{
+					row.withStreak(kc, true);
+				}
+				else if (progress != null && progress.trackingStartKc != null)
+				{
+					row.withStreak(Math.max(0, kc - progress.trackingStartKc), false);
+				}
+			}
+			if (drop.isOnce())
+			{
+				// The collection log counts these at most once, so for luck it's "have it or not".
+				received = Math.min(received, 1);
+				row = row.once(received);
+			}
+			rows.add(row);
 			if (drop.countsTowardAny())
 			{
-				anyExpected += expected;
+				// For once-only items the total counts the chance of having one by now.
+				anyExpected += drop.isOnce() ? DropMath.chanceAtLeastOne(expected) : expected;
 				anyReceived += received;
 			}
 		}
 		RowStats any = new RowStats("Any", null, 0, anyExpected, anyReceived, true);
+		// "Any" streak: kills since the most recent unique On Rate knows of.
+		double anyRate = 0;
+		Integer lastAny = null;
+		for (int i = 0; i < boss.getDrops().size(); i++)
+		{
+			DropDefinition drop = boss.getDrops().get(i);
+			if (!drop.countsTowardAny())
+			{
+				continue;
+			}
+			anyRate += rows.get(i).getRate();
+			if (progress != null)
+			{
+				for (String name : drop.getAllNames())
+				{
+					Integer kcAt = progress.lastDropKc.get(BossCatalog.normalize(name));
+					if (kcAt != null && (lastAny == null || kcAt > lastAny))
+					{
+						lastAny = kcAt;
+					}
+				}
+			}
+		}
+		any.withRate(anyRate);
+		if (lastAny != null)
+		{
+			any.withStreak(Math.max(0, kc - lastAny), true);
+		}
+		else if (anyReceived == 0 && synced)
+		{
+			any.withStreak(kc, true);
+		}
+		else if (progress != null && progress.trackingStartKc != null)
+		{
+			any.withStreak(Math.max(0, kc - progress.trackingStartKc), false);
+		}
 		double raidChance = boss.getRaid() != null ? raids.uniqueChance(boss.getRaid()) : Double.NaN;
-		return new BossStats(boss, kc, known, synced, any, rows, raidChance, levels);
+		BossStats stats = new BossStats(boss, kc, known, synced, any, rows, raidChance, levels);
+		stats.setPartCounts(parts);
+		return stats;
+	}
+
+	/**
+	 * Every boss with kills or drops, added up: how dry or spooned the account is overall.
+	 */
+	public synchronized AccountStats accountStats(RaidSettings raids)
+	{
+		return accountStats(raids, null);
+	}
+
+	/**
+	 * Same as {@link #accountStats(RaidSettings)}, plus GE value when {@code prices} is given.
+	 * Prices are per item name; untradeable items have price 0, so they count for the number
+	 * of uniques but not for value.
+	 */
+	public synchronized AccountStats accountStats(RaidSettings raids, ToLongFunction<String> prices)
+	{
+		List<Double> valueExpected = new ArrayList<>();
+		List<Long> valuePrices = new ArrayList<>();
+		double expectedValue = 0;
+		long receivedValue = 0;
+		// Shared items: what the per-boss rows counted, and their price, to top up with the log total.
+		Map<String, Integer> sharedCounted = new HashMap<>();
+		Map<String, Long> sharedPrice = new HashMap<>();
+
+		List<RowStats> rows = new ArrayList<>();
+		Map<String, Integer> killCounts = new LinkedHashMap<>();
+		double expected = 0;
+		int received = 0;
+		for (BossDefinition boss : catalog.getBosses())
+		{
+			BossStats s = stats(boss.getName(), raids);
+			RowStats any = s.getAnyRow();
+			if (s.getKillCount() <= 0 && any.getReceived() <= 0)
+			{
+				continue;
+			}
+			RowStats bossRow = new RowStats(boss.getName(), iconFor(boss), 0, any.getExpected(), any.getReceived(), false);
+			double driest = Double.NaN;
+			String driestItem = null;
+			for (int i = 0; i < boss.getDrops().size(); i++)
+			{
+				RowStats r = s.getRows().get(i);
+				double m = r.getStreakMultiple();
+				if (boss.getDrops().get(i).countsTowardAny() && !Double.isNaN(m) && (Double.isNaN(driest) || m > driest))
+				{
+					driest = m;
+					driestItem = r.getLabel();
+				}
+			}
+			rows.add(bossRow.withDriest(driest, driestItem));
+			for (int i = 0; i < boss.getDrops().size(); i++)
+			{
+				DropDefinition drop = boss.getDrops().get(i);
+				String key = BossCatalog.normalize(drop.getName());
+				if (drop.countsTowardAny() && catalog.isClogShared(key))
+				{
+					sharedCounted.merge(key, s.getRows().get(i).getReceived(), Integer::sum);
+					if (prices != null)
+					{
+						sharedPrice.put(key, Math.max(0, prices.applyAsLong(drop.getName())));
+					}
+				}
+			}
+			if (prices != null)
+			{
+				for (int i = 0; i < boss.getDrops().size(); i++)
+				{
+					DropDefinition drop = boss.getDrops().get(i);
+					RowStats row = s.getRows().get(i);
+					if (!drop.countsTowardAny())
+					{
+						continue;
+					}
+					long price = Math.max(0, prices.applyAsLong(drop.getName()));
+					if (price <= 0)
+					{
+						continue;
+					}
+					valueExpected.add(row.getExpected());
+					valuePrices.add(price);
+					expectedValue += row.getExpected() * price;
+					receivedValue += row.getReceived() * price;
+				}
+			}
+			killCounts.put(boss.getName(), s.getKillCount());
+			expected += any.getExpected();
+			received += any.getReceived();
+		}
+		// The collection log total of a shared item is exact for the whole account: use it
+		// where it's higher than what the per-boss rows could count.
+		for (Map.Entry<String, Integer> e : sharedCounted.entrySet())
+		{
+			Integer logTotal = state.sharedClog().get(e.getKey());
+			if (logTotal != null && logTotal > e.getValue())
+			{
+				int extra = logTotal - e.getValue();
+				received += extra;
+				receivedValue += extra * sharedPrice.getOrDefault(e.getKey(), 0L);
+			}
+		}
+		rows.sort((a, b) -> Double.compare(b.getExpected(), a.getExpected()));
+		RowStats total = new RowStats("All", null, 0, expected, received, true);
+		AccountStats account = new AccountStats(total, rows, killCounts);
+		if (prices != null)
+		{
+			double[] lambdas = new double[valueExpected.size()];
+			long[] itemPrices = new long[valuePrices.size()];
+			for (int i = 0; i < lambdas.length; i++)
+			{
+				lambdas[i] = valueExpected.get(i);
+				itemPrices[i] = valuePrices.get(i);
+			}
+			double luck = DropMath.valueLuck(lambdas, itemPrices, receivedValue, 5000, 1234567L);
+			account.setValue(expectedValue, receivedValue, luck);
+		}
+		return account;
+	}
+
+	/** The item that stands for a boss in the overview: its pet, or else its first unique. */
+	private static String iconFor(BossDefinition boss)
+	{
+		for (DropDefinition drop : boss.getDrops())
+		{
+			if (drop.isPet())
+			{
+				return drop.getName();
+			}
+		}
+		return boss.getDrops().isEmpty() ? null : boss.getDrops().get(0).getName();
 	}
 
 	private static int sum(Collection<Integer> values)

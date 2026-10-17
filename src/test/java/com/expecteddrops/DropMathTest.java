@@ -48,6 +48,35 @@ public class DropMathTest
 	}
 
 	@Test
+	public void valueLuckMatchesCountLuckForOneItem()
+	{
+		// With a single item, value luck is just count luck in GP.
+		double byCount = DropMath.luckPercentile(2, 1.3);
+		double byValue = DropMath.valueLuck(new double[]{1.3}, new long[]{1_000_000}, 2_000_000, 20000, 42);
+		assertEquals(byCount, byValue, 0.02);
+	}
+
+	@Test
+	public void oneTwistedBowOutweighsManyDryDrops()
+	{
+		// Expected: 0.5 bows (1.2b each) and 20 cheap drops (1m each); received 1 bow and 5 cheap drops.
+		double luck = DropMath.valueLuck(new double[]{0.5, 20}, new long[]{1_200_000_000L, 1_000_000},
+			1_205_000_000L, 20000, 42);
+		assertTrue(luck > 0.6);
+		// ...while by count that player is very dry
+		assertTrue(DropMath.luckPercentile(6, 20.5) < 0.01);
+		assertTrue(Double.isNaN(DropMath.valueLuck(new double[]{1}, new long[]{0}, 0, 100, 1)));
+	}
+
+	@Test
+	public void formatsGp()
+	{
+		assertEquals("1.20b", DropMath.formatGp(1_200_000_000L));
+		assertEquals("345.6m", DropMath.formatGp(345_600_000));
+		assertEquals("12.3k", DropMath.formatGp(12_300));
+	}
+
+	@Test
 	public void killsForChance()
 	{
 		// 50% for a 1/50 drop takes 35 kills, 90% takes 114.
