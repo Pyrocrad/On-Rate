@@ -6,10 +6,9 @@
 > The Delve Calculator shows expected vs received drops for Doom of Mokhaiotl, and On Rate exists because that panel was so good that I wanted it for every boss. The layout, the Expected/Received split and the per-level Doom rates all come from Speaax's work. If you mainly do Doom, go and install the Delve Calculator too: it has Doom-specific features this plugin doesn't. See [Credits](#credits).
 
 <p>
-<img src="docs/doom-expected.png" width="225" alt="Doom of Mokhaiotl, Expected tab">
-<img src="docs/doom-received.png" width="225" alt="Doom of Mokhaiotl, Received tab">
-<img src="docs/vorkath-expected.png" width="225" alt="Vorkath, Expected tab">
-<img src="docs/vorkath-received.png" width="225" alt="Vorkath, Received tab">
+<img src="docs/boss-page.png" width="225" alt="Boss page">
+<img src="docs/account-overview.png" width="225" alt="Account overview">
+<img src="docs/extras.png" width="225" alt="Boss page with the trip card and drop history turned on">
 </p>
 
 ## Features
@@ -18,10 +17,11 @@
 - **Works out of the box.** Your kill count updates after every kill, and new drops are picked up automatically.
 - **Imports your history** from your collection log, so you don't start from zero.
 - **Luck percentile:** see how your drops compare with every other player at the same kill count.
-- **An "Any" row** that combines all of a boss's uniques.
+- **An "Any unique" row** that combines all of a boss's uniques.
 - **A verdict for every boss**, from "Very dry" to "Very spooned", in big letters at the top.
+- **A clean layout:** one bar per item shows what you got against where you should be. Prefer another look? Choose the Delve Calculator's bars, a compact table, chance rings or a luck gauge.
 - **Account overview:** every boss added up into one total, with a row per boss that you can sort (driest first, luckiest first...), plus **GE value luck**, so two twisted bows count for more than a pile of cheap drops.
-- **Luck graph:** how your account's luck changes day by day.
+- **Optional extras:** a luck graph, a "this trip" card, drop history timelines, an in-game overlay and colour-blind colours.
 - **Uses your raid points:** read from the game in Chambers of Xeric and estimated from your damage in Tombs of Amascut, so each raid gets its own purple chance. Based on [Raid Data Tracker](https://github.com/Raitab/raid-data-tracker) (see [Credits](#credits)).
 - **Search box:** type "vork", "cox" or "kril" to jump to a boss.
 - **Dry streaks:** hover any item to see how many kills since your last copy, and how many times the drop rate that is.
@@ -49,40 +49,43 @@ The first time you open the panel, a short welcome guide walks you through this.
 
 ## Reading the panel
 
-Pick a boss from the dropdown, or let the panel follow your kills. To find a boss quickly, type in the search box above the dropdown: part of the name ("vork", "kril") or the usual short name ("cox", "tob", "toa", "dk"). Enter opens the first match.
+Pick a boss from the dropdown, or let the panel follow your kills. To find a boss quickly, type in the search box above the dropdown: part of the name ("vork", "kril") or the usual short name ("cox", "tob", "toa", "dk"). Enter opens the first match. The **Account** button next to it always takes you back to the account overview. The **?** at the top right explains what you're looking at.
 
-At the top you see the boss, your kill count and the **verdict** in big letters: Very dry, Dry, On rate, Spooned or Very spooned. Under it, how lucky you are compared with other players and how many uniques you got against how many you should have.
+### Boss page
+
+- At the top: the boss, your kill count and the **verdict** in big letters: Very dry, Dry, On rate, Spooned or Very spooned. Under it, how many uniques you got against how many you should have, and how you compare with other players at the same kill count ("luckier than 70%" means 70% of them have fewer drops than you).
+- Then one row per item, with **Any unique** first. The bar's fill is how many you got; the **white line** is how many you should have by now. Behind the line is dry, past it is spooned.
+- **Hover an item** for its drop rate, your chance of having it by now, how many kills give a 50% or 90% chance, and your **dry streak**: kills since your last copy and how many times the drop rate that is. If your last copy dropped before you installed On Rate, it says "at least".
 
 ### Account overview
 
-The first entry in the dropdown, and what the panel opens on. It adds up every boss you have kills at:
+What the panel opens on. It adds up every boss you have kills at:
 
-<img src="docs/account-overview.png" width="225" alt="Account overview with the luck graph">
+- The **verdict** at the top is your whole account.
+- **GE value** compares the Grand Exchange value of what you got with what you should have had, and gives its own verdict. An account that's dry on the number of drops but hit two twisted bows shows up as spooned here. Prices come from RuneLite's own price list, so On Rate makes no web requests. Untradeable items like pets and jars count for the number of uniques but as 0 GP for value. You can hide it in the settings.
+- One row per boss with its verdict. Use **Sort** to put the most expected, driest, luckiest, most killed or alphabetical first. Click a boss to open it, or hover it to see its driest item.
 
-- The **"All"** row is your whole account: how many uniques you should have had by now, against how many you got.
-- The **verdict** at the top sums up your whole account. The scale runs Very dry, Dry, On rate, Spooned, Very spooned.
-- **Luck over time** is a graph of your account's luck: one point per day you play, from 0% (driest) to 100% (most spooned). The middle band is "on rate". Hover the graph to see a day's numbers. It starts on the day you install On Rate (or update to this version), so it takes a couple of days before you see a line. Loading your collection log pages makes the line jump on the first day; that's your history coming in.
-- **GE value** compares the Grand Exchange value of what you got with what you should have had, and gives its own verdict. An account that's dry on the number of drops but hit two twisted bows shows up as spooned here. Prices come from RuneLite's own price list, so On Rate makes no web requests. Untradeable items like pets and jars count for the number of uniques but as 0 GP for value.
-- Below that is one row per boss. On the Received tab each row shows the boss's verdict. Use **Sort** to put the most expected, driest, luckiest, most killed or alphabetical first. Click a row to open that boss.
+### Other views
 
-### Expected tab
+Prefer something else than the bars? Pick a **Luck view** in the settings:
 
-Works exactly like the Delve Calculator:
+<img src="docs/luck-views.png" alt="The other luck views">
 
-- The **number on the right** is how many of that item you should have by now.
-- The **bar** is your progress towards the next one.
+- **Target bars** (default): described above.
+- **Bars with tabs (Delve Calculator):** the classic Expected and Received tabs. On *Expected* the number is how many you should have and the bar your progress to the next one ("Any · 41.8% · 4" means 4.418 uniques by now); on *Received* the number is how many you got and the bar how lucky that is.
+- **Compact table:** one line per item: got / expected and a luck percentage.
+- **Chance rings:** each ring fills up as your chance of having the item grows. Once you have it, the ring shows your chance of the next one by now.
+- **Luck gauge:** a speedometer from dry to spooned, with every item (or boss) as a dot on the same scale.
 
-For example, **"Any · 41.8% · 4"** means you should have had 4.418 uniques by now: four whole drops, and 41.8% of the way to a fifth.
+### Extras
 
-### Received tab
+All off by default; turn them on in the settings under **Display**.
 
-- The **number on the right** is how many you actually got.
-- The **bar** shows how lucky that is: *"Luckier than 74%"* means 74% of players with the same kill count have fewer drops than you. 50% is exactly average.
-- **Colours:** red is dry, yellow is about average, green is spooned.
-
-### Dry streaks
-
-Hover any item to see its **dry streak**: how many kills since your last copy, and how many times the drop rate that is ("82 kills since your last one, that's 1.6× the drop rate"). If your last copy dropped before you installed On Rate, it says "at least", because the streak counts from when On Rate started tracking. In the account overview, hover a boss to see its driest item right now.
+- **Luck graph:** your account's luck over time, one point per day you play, in the account overview. On Rate saves a point every day even while the graph is hidden, so it has data when you turn it on.
+- **This trip card:** kills, uniques and expected for your current trip on the boss page, plus kills per hour and the drops you got. A trip ends when you kill another boss, after 30 minutes without a kill, or with the *Start a new trip* button.
+- **Drop history:** a timeline per item with the kills your drops came at, the average spacing and your current dry streak. Only drops On Rate saw itself are known.
+- **In-game overlay:** a small box on the game screen while you kill a boss: verdict, uniques, your driest item and the trip.
+- **Colour-blind colours:** orange to blue instead of red to green.
 
 ## Supported bosses
 
@@ -103,6 +106,8 @@ Open the settings with the cog next to **On Rate** in the Configuration panel.
 - **Sync reminders:** the chat reminder after killing a boss that isn't synced yet. On by default.
 - **Drop messages:** a chat line when you get a unique, saying how many kills it took. On by default.
 - **Dry milestone messages:** a chat line when you pass 1x, 2x, 3x, 5x or 10x the drop rate dry on an item. On by default.
+- **Luck view:** how your luck is shown (see [Other views](#other-views)).
+- **GE value**, **Luck graph**, **This trip card**, **Drop history**, **In-game overlay** and **Colour-blind colours**: see [Extras](#extras). Only GE value is on by default.
 - **Royal Titans:** choose **Solo**, **Duo** or **Some of each**. With *Some of each*, also enter how many of your kills were in a duo; the rest count as solo. In a duo you get about half the uniques of a solo kill, while the pet chance stays the same.
 - **Use raid points:** at the end of each raid, On Rate saves your points with the completion and works out that raid's purple chance from them. On by default. How it gets the points:
   - **Chambers of Xeric:** read straight from the game when "Congratulations - your raid is complete!" appears: your points, the team's points and the team size.
