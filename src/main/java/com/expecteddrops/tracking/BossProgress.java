@@ -16,6 +16,10 @@ public class BossProgress
 	Map<String, Integer> clogKc = new HashMap<>();
 	/** Kills seen through the loot tracker since the plugin was installed. */
 	int lootKills;
+	/** Loot-only bosses: lootKills when the log page was last read, to add kills since then. */
+	Integer lootKillsAtSync;
+	/** Group bosses: kills per team size (players around you at the kill) that On Rate saw. */
+	Map<Integer, Integer> teamKills = new HashMap<>();
 	/** Received count per normalized item name. */
 	Map<String, Integer> received = new HashMap<>();
 	/** True once the boss's collection log page has been opened. */
@@ -70,6 +74,10 @@ public class BossProgress
 		if (received == null)
 		{
 			received = new HashMap<>();
+		}
+		if (teamKills == null)
+		{
+			teamKills = new HashMap<>();
 		}
 	}
 }

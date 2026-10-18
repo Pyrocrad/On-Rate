@@ -5,6 +5,7 @@ import com.expecteddrops.data.BossDefinition;
 import com.expecteddrops.data.BossPart;
 import com.expecteddrops.data.DropDefinition;
 import com.expecteddrops.stats.AccountStats;
+import com.expecteddrops.stats.SharedPool;
 import com.expecteddrops.stats.BossStats;
 import com.expecteddrops.stats.DropMath;
 import com.expecteddrops.stats.RaidChance;
@@ -99,6 +100,46 @@ public class Tracker
 		return catalog;
 	}
 
+	/** Players around you right now (you included), or 0 when unknown or turned off. */
+	private java.util.function.IntSupplier teamSize = () -> 0;
+
+	/** How to count the players around you at a group boss kill (see BossDefinition#isDetectTeam). */
+	public synchronized void setTeamSizeDetector(java.util.function.IntSupplier teamSize)
+	{
+		this.teamSize = teamSize == null ? () -> 0 : teamSize;
+	}
+
+	/** Shared items: count bosses with an unknown kill count as 0 kills instead of waiting. */
+	private java.util.function.BooleanSupplier unknownKillsAsZero = () -> false;
+
+	public synchronized void setUnknownKillsAsZero(java.util.function.BooleanSupplier unknownKillsAsZero)
+	{
+		this.unknownKillsAsZero = unknownKillsAsZero == null ? () -> false : unknownKillsAsZero;
+	}
+
+	/** Group bosses: how many kills On Rate saw per team size. Empty for other bosses. */
+	public synchronized Map<Integer, Integer> teamKills(String bossName)
+	{
+		BossProgress p = state.peek(bossName);
+		return p == null ? Collections.emptyMap() : new TreeMap<>(p.teamKills);
+	}
+
+	/**
+	 * Your share of the kills at a group boss: a kill with 4 players counts as a quarter.
+	 * Kills On Rate didn't see (before it was installed) count as solo.
+	 */
+	private static double sharedKills(BossProgress p, int kc)
+	{
+		int seen = 0;
+		double share = 0;
+		for (Map.Entry<Integer, Integer> e : p.teamKills.entrySet())
+		{
+			seen += e.getValue();
+			share += e.getValue() / (double) Math.max(1, e.getKey());
+		}
+		return Math.max(0, kc - seen) + share;
+	}
+
 	/** Settings used for streaks and milestone messages (raid chances, team shares). */
 	public synchronized void setSettings(RaidSettings settings)
 	{
@@ -157,7 +198,16 @@ public class Tracker
 				return null;
 			}
 			int kc = Integer.parseInt(m.group("kc").replace(",", ""));
-			state.get(boss.getName()).chatKc.put(BossCatalog.normalize(counter), kc);
+			BossProgress progress = state.get(boss.getName());
+			Integer previous = progress.chatKc.put(BossCatalog.normalize(counter), kc);
+			if (boss.isDetectTeam() && (previous == null || kc > previous))
+			{
+				int size = teamSize.getAsInt();
+				if (size > 0)
+				{
+					progress.teamKills.merge(size, 1, Integer::sum);
+				}
+			}
 			markKill(boss, nowMillis);
 			afterKill(boss, nowMillis);
 			lastPart = partForName(boss, counter, true);
@@ -377,6 +427,31 @@ public class Tracker
 			default:
 				return Double.NaN;
 		}
+	}
+
+	/**
+	 * Share of a purple that is this item at a raid level (ToA's weights shift towards the
+	 * rarer items at high raid levels). Falls back to {@code normal} without level weights.
+	 */
+	private static double levelShare(BossDefinition boss, DropDefinition drop, int raidLevel, double normal)
+	{
+		boolean any = false;
+		double total = 0;
+		for (DropDefinition d : boss.getDrops())
+		{
+			any |= d.hasLevelWeights();
+			Double w = d.getWeightAtLevel(raidLevel);
+			if (w != null)
+			{
+				total += w;
+			}
+		}
+		Double w = drop.getWeightAtLevel(raidLevel);
+		if (!any || w == null || total <= 0)
+		{
+			return normal;
+		}
+		return w / total;
 	}
 
 	/**
@@ -813,11 +888,16 @@ public class Tracker
 			return null;
 		}
 		BossProgress progress = state.get(boss.getName());
-		progress.lootKills += Math.max(1, amount);
-		if (boss.getKcNames().isEmpty())
+		boolean minion = catalog.isMinionLoot(source);
+		if (!minion)
 		{
-			// no kill count message for this boss: the loot is the kill
-			afterKill(boss, nowMillis);
+			// a bodyguard's loot counts for its general, but it isn't a kill of the general
+			progress.lootKills += Math.max(1, amount);
+			if (boss.getKcNames().isEmpty())
+			{
+				// no kill count message for this boss: the loot is the kill
+				afterKill(boss, nowMillis);
+			}
 		}
 		if (boss.hasParts())
 		{
@@ -833,6 +913,15 @@ public class Tracker
 				// the uniques we track those are the same thing.
 				recordDrop(boss, drop, item.name);
 				progress.received.merge(BossCatalog.normalize(item.name), 1, Integer::sum);
+			}
+			else if (item.quantity > 0)
+			{
+				// An item several bosses drop: once the log total is known, keep it up to date.
+				String pool = catalog.poolOf(boss, item.name);
+				if (pool != null && state.sharedClog().containsKey(pool))
+				{
+					state.sharedClog().merge(pool, 1, Integer::sum);
+				}
 			}
 		}
 		markKill(boss, nowMillis);
@@ -906,6 +995,25 @@ public class Tracker
 				{
 					progress.clogKc.put(BossCatalog.normalize(p[0]), Integer.parseInt(p[1]));
 				}
+				progress.lootKillsAtSync = progress.lootKills;
+			}
+
+			// Items several bosses drop: the log total is the same on every page that shows it.
+			for (Map.Entry<String, DropDefinition> e : catalog.poolsOf(boss).entrySet())
+			{
+				Integer total = null;
+				for (String name : e.getValue().getAllNames())
+				{
+					Integer q = findQuantity(items, BossCatalog.normalize(name));
+					if (q != null)
+					{
+						total = (total == null ? 0 : total) + q;
+					}
+				}
+				if (total != null)
+				{
+					state.sharedClog().put(e.getKey(), e.getValue().dropsFromQuantity(total));
+				}
 			}
 
 			// Received counts: the collection log is the full history, so it replaces
@@ -928,6 +1036,8 @@ public class Tracker
 					Integer qty = findQuantity(items, key);
 					if (qty != null)
 					{
+						// stackable items: the log counts items, we count drops
+						qty = drop.dropsFromQuantity(qty);
 						Integer before = progress.received.get(key);
 						if (before != null && qty > before && progress.trackingStartKc != null)
 						{
@@ -1260,7 +1370,8 @@ public class Tracker
 		double expected = (completions - counted) * perRaid;
 		for (RaidRecord r : known.subList(known.size() - counted, known.size()))
 		{
-			expected += recordChance(r, part, raids) * share * RaidChance.toaLevelFactor(r.raidLevel, drop.getMinRaidLevel());
+			double itemShare = r.raidLevel >= 0 ? levelShare(boss, drop, r.raidLevel, share) : share;
+			expected += recordChance(r, part, raids) * itemShare * RaidChance.toaLevelFactor(r.raidLevel, drop.getMinRaidLevel());
 		}
 		return expected;
 	}
@@ -1281,6 +1392,11 @@ public class Tracker
 			{
 				rate = unique * DropMath.parseRate(drop.getPerUnique());
 			}
+		}
+		if (drop.getMinionRate() != null && boss.getMinions() > 0)
+		{
+			// God Wars bodyguards roll some of the general's uniques too
+			rate += boss.getMinions() * DropMath.parseRate(drop.getMinionRate());
 		}
 		return rate;
 	}
@@ -1324,6 +1440,11 @@ public class Tracker
 			int clog = combine(progress.clogKc.values(), boss.combineKcWithMax());
 			known = !progress.chatKc.isEmpty() || !progress.clogKc.isEmpty();
 			kc = known ? Math.max(chat, clog) : progress.lootKills;
+			if (boss.getKcNames().isEmpty() && !progress.clogKc.isEmpty() && progress.lootKillsAtSync != null)
+			{
+				// no kill count message: the log count plus the kills seen since it was read
+				kc = Math.max(kc, clog + Math.max(0, progress.lootKills - progress.lootKillsAtSync));
+			}
 			synced = progress.clogSynced;
 		}
 
@@ -1361,7 +1482,16 @@ public class Tracker
 					// team boss: your chance scales with your share of the damage
 					rate *= raids.contribution(boss.getTeam(), kc);
 				}
-				expected = rate * kc;
+				if (boss.isDetectTeam() && !drop.isNoShare() && progress != null && !progress.teamKills.isEmpty())
+				{
+					// group boss: each kill counts for your share of the team you had then
+					expected = rate * sharedKills(progress, kc);
+					rate = kc > 0 ? expected / kc : rate;
+				}
+				else
+				{
+					expected = rate * kc;
+				}
 			}
 			int received = 0;
 			if (progress != null)
@@ -1480,19 +1610,18 @@ public class Tracker
 		List<Long> valuePrices = new ArrayList<>();
 		double expectedValue = 0;
 		long receivedValue = 0;
-		// Shared items: what the per-boss rows counted, and their price, to top up with the log total.
-		Map<String, Integer> sharedCounted = new HashMap<>();
-		Map<String, Long> sharedPrice = new HashMap<>();
 
 		List<RowStats> rows = new ArrayList<>();
 		Map<String, Integer> killCounts = new LinkedHashMap<>();
 		double expected = 0;
 		int received = 0;
+		// every boss's numbers worked out once, then shared with the shared-items pass
+		Map<String, BossStats> cache = new HashMap<>();
 		for (BossDefinition boss : catalog.getBosses())
 		{
-			BossStats s = stats(boss.getName(), raids);
+			BossStats s = cachedStats(boss.getName(), raids, cache);
 			RowStats any = s.getAnyRow();
-			if (s.getKillCount() <= 0 && any.getReceived() <= 0)
+			if (boss.getDrops().isEmpty() || (s.getKillCount() <= 0 && any.getReceived() <= 0))
 			{
 				continue;
 			}
@@ -1510,19 +1639,6 @@ public class Tracker
 				}
 			}
 			rows.add(bossRow.withDriest(driest, driestItem));
-			for (int i = 0; i < boss.getDrops().size(); i++)
-			{
-				DropDefinition drop = boss.getDrops().get(i);
-				String key = BossCatalog.normalize(drop.getName());
-				if (drop.countsTowardAny() && catalog.isClogShared(key))
-				{
-					sharedCounted.merge(key, s.getRows().get(i).getReceived(), Integer::sum);
-					if (prices != null)
-					{
-						sharedPrice.put(key, Math.max(0, prices.applyAsLong(drop.getName())));
-					}
-				}
-			}
 			if (prices != null)
 			{
 				for (int i = 0; i < boss.getDrops().size(); i++)
@@ -1548,21 +1664,32 @@ public class Tracker
 			expected += any.getExpected();
 			received += any.getReceived();
 		}
-		// The collection log total of a shared item is exact for the whole account: use it
-		// where it's higher than what the per-boss rows could count.
-		for (Map.Entry<String, Integer> e : sharedCounted.entrySet())
+		// Items several bosses drop: all those bosses' expected against the one log total.
+		List<SharedPool> pools = sharedPools(raids, cache);
+		for (SharedPool pool : pools)
 		{
-			Integer logTotal = state.sharedClog().get(e.getKey());
-			if (logTotal != null && logTotal > e.getValue())
+			if (!pool.isComplete())
 			{
-				int extra = logTotal - e.getValue();
-				received += extra;
-				receivedValue += extra * sharedPrice.getOrDefault(e.getKey(), 0L);
+				continue;
+			}
+			expected += pool.getExpected();
+			received += pool.getReceived();
+			if (prices != null)
+			{
+				long price = Math.max(0, prices.applyAsLong(pool.getItemName()));
+				if (price > 0)
+				{
+					valueExpected.add(pool.getExpected());
+					valuePrices.add(price);
+					expectedValue += pool.getExpected() * price;
+					receivedValue += pool.getReceived() * price;
+				}
 			}
 		}
 		rows.sort((a, b) -> Double.compare(b.getExpected(), a.getExpected()));
 		RowStats total = new RowStats("All", null, 0, expected, received, true);
 		AccountStats account = new AccountStats(total, rows, killCounts);
+		account.setSharedPools(pools);
 		if (prices != null)
 		{
 			double[] lambdas = new double[valueExpected.size()];
@@ -1576,6 +1703,107 @@ public class Tracker
 			account.setValue(expectedValue, receivedValue, luck);
 		}
 		return account;
+	}
+
+	/**
+	 * Every item several bosses drop. Complete when the log total is known and every boss
+	 * that drops it has a known kill count; otherwise lists the pages still to open.
+	 */
+	public synchronized List<SharedPool> sharedPools(RaidSettings raids)
+	{
+		return sharedPools(raids, new HashMap<>());
+	}
+
+	private BossStats cachedStats(String bossName, RaidSettings raids, Map<String, BossStats> cache)
+	{
+		BossStats s = cache.get(bossName);
+		if (s == null)
+		{
+			s = stats(bossName, raids);
+			cache.put(bossName, s);
+		}
+		return s;
+	}
+
+	private List<SharedPool> sharedPools(RaidSettings raids, Map<String, BossStats> cache)
+	{
+		List<SharedPool> result = new ArrayList<>();
+		for (Map.Entry<String, List<BossCatalog.PoolSource>> e : catalog.getPools().entrySet())
+		{
+			Integer logTotal = state.sharedClog().get(e.getKey());
+			double expected = 0;
+			boolean once = false;
+			String label = null;
+			String itemName = null;
+			List<String> bosses = new ArrayList<>();
+			List<String> missing = new ArrayList<>();
+			for (BossCatalog.PoolSource src : e.getValue())
+			{
+				BossDefinition boss = src.getBoss();
+				DropDefinition drop = src.getDrop();
+				if (label == null)
+				{
+					label = drop.getDisplayName();
+					itemName = drop.getName();
+				}
+				once |= drop.isOnce();
+				bosses.add(boss.getName());
+				BossStats s = cachedStats(boss.getName(), raids, cache);
+				BossProgress p = state.peek(boss.getName());
+				boolean kcKnown = s != null && (s.isKillCountKnown() || s.isClogSynced()
+					|| (p != null && p.lootKills > 0 && boss.getKcNames().isEmpty()));
+				if (!kcKnown && !unknownKillsAsZero.getAsBoolean())
+				{
+					String page = boss.getClogPages().isEmpty() ? boss.getName() : boss.getClogPages().get(0);
+					if (!missing.contains(page))
+					{
+						missing.add(page);
+					}
+				}
+				if (s != null)
+				{
+					expected += poolExpected(boss, drop, s, raids);
+				}
+			}
+			if (logTotal == null && missing.isEmpty())
+			{
+				// every kill count is known, but no page showing this item was opened yet
+				BossDefinition first = e.getValue().get(0).getBoss();
+				missing.add(first.getClogPages().isEmpty() ? first.getName() : first.getClogPages().get(0));
+			}
+			int got = logTotal == null ? 0 : logTotal;
+			if (once)
+			{
+				expected = DropMath.chanceAtLeastOne(expected);
+				got = Math.min(got, 1);
+			}
+			result.add(new SharedPool(label, itemName, expected, got, bosses, missing));
+		}
+		return result;
+	}
+
+	/** Expected drops of a pooled item from one boss, from its kill counts. */
+	private static double poolExpected(BossDefinition boss, DropDefinition drop, BossStats s, RaidSettings raids)
+	{
+		if (s.getPartCounts() != null && boss.hasParts())
+		{
+			double expected = 0;
+			for (BossPart part : boss.getParts())
+			{
+				Integer kc = s.getPartCounts().get(part.getName());
+				if (kc != null)
+				{
+					expected += kc * partRate(boss, part, drop, raids);
+				}
+			}
+			return expected;
+		}
+		double rate = effectiveRate(boss, drop, raids);
+		if (boss.getTeam() != null && !drop.isNoShare())
+		{
+			rate *= raids.contribution(boss.getTeam(), s.getKillCount());
+		}
+		return rate * s.getKillCount();
 	}
 
 	/** The item that stands for a boss in the overview: its pet, or else its first unique. */

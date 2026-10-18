@@ -27,6 +27,8 @@ public class BossCatalog
 	private final Set<String> excludedItems = new java.util.TreeSet<>();
 	private final Set<String> allItemNames = new HashSet<>();
 	private final Set<String> excludedBosses = new java.util.TreeSet<>();
+	private final Map<String, List<PoolSource>> pools = new java.util.TreeMap<>();
+	private final Set<String> minionLootNames = new HashSet<>();
 
 	private static class FileFormat
 	{
@@ -66,8 +68,10 @@ public class BossCatalog
 			}
 		}
 
-		// Leave those items out altogether: counting them would add expected drops without
-		// the matching received ones. A boss left with nothing to track is left out too.
+		// Leave those items out of the boss pages: their log total can't be split per boss.
+		// Items several bosses drop are pooled for the account instead (all those bosses'
+		// expected added up against the one log total); flagged items that also come from
+		// outside the bosses (dragon 2h sword) can't be pooled and are left out entirely.
 		List<BossDefinition> sorted = new ArrayList<>();
 		for (BossDefinition boss : bosses)
 		{
@@ -75,9 +79,15 @@ public class BossCatalog
 			{
 				for (String item : drop.getAllNames())
 				{
-					if (clogSharedItems.contains(normalize(item)))
+					String key = normalize(item);
+					if (clogSharedItems.contains(key))
 					{
 						excludedItems.add(drop.getDisplayName());
+						if (!drop.isClogSharedFlag() && itemBossCount.getOrDefault(key, 0) > 1)
+						{
+							pools.computeIfAbsent(normalize(drop.getName()), k -> new ArrayList<>())
+								.add(new PoolSource(boss, drop));
+						}
 						return true;
 					}
 				}
@@ -85,12 +95,10 @@ public class BossCatalog
 			});
 			if (boss.getDrops().isEmpty())
 			{
+				// still tracked for its kill count (shared items need it), but has no page of its own
 				excludedBosses.add(boss.getName());
 			}
-			else
-			{
-				sorted.add(boss);
-			}
+			sorted.add(boss);
 		}
 		sorted.sort(Comparator.comparing(b -> b.getName().toLowerCase(Locale.ROOT)));
 		this.bosses = Collections.unmodifiableList(sorted);
@@ -106,6 +114,11 @@ public class BossCatalog
 			{
 				byLootName.put(normalize(loot), boss);
 			}
+			for (String minion : boss.getMinionLoot())
+			{
+				byLootName.put(normalize(minion), boss);
+				minionLootNames.add(normalize(minion));
+			}
 			for (String page : boss.getClogPages())
 			{
 				byClogPage.computeIfAbsent(normalize(page), k -> new ArrayList<>()).add(boss);
@@ -118,6 +131,81 @@ public class BossCatalog
 				}
 			}
 		}
+	}
+
+	/** One boss that drops a pooled (shared) item, with its drop definition. */
+	public static final class PoolSource
+	{
+		private final BossDefinition boss;
+		private final DropDefinition drop;
+
+		PoolSource(BossDefinition boss, DropDefinition drop)
+		{
+			this.boss = boss;
+			this.drop = drop;
+		}
+
+		public BossDefinition getBoss()
+		{
+			return boss;
+		}
+
+		public DropDefinition getDrop()
+		{
+			return drop;
+		}
+	}
+
+	/** Items several bosses drop, keyed by normalized name, with every boss that drops them. */
+	public Map<String, List<PoolSource>> getPools()
+	{
+		return Collections.unmodifiableMap(pools);
+	}
+
+	/** The pooled item (normalized) this boss drops under {@code itemName}, or null. */
+	public String poolOf(BossDefinition boss, String itemName)
+	{
+		String key = normalize(itemName);
+		for (Map.Entry<String, List<PoolSource>> e : pools.entrySet())
+		{
+			for (PoolSource src : e.getValue())
+			{
+				if (src.boss == boss)
+				{
+					for (String n : src.drop.getAllNames())
+					{
+						if (normalize(n).equals(key))
+						{
+							return e.getKey();
+						}
+					}
+				}
+			}
+		}
+		return null;
+	}
+
+	/** The pooled items this boss drops: pool key (normalized item name) to its drop row. */
+	public Map<String, DropDefinition> poolsOf(BossDefinition boss)
+	{
+		Map<String, DropDefinition> result = new java.util.LinkedHashMap<>();
+		for (Map.Entry<String, List<PoolSource>> e : pools.entrySet())
+		{
+			for (PoolSource src : e.getValue())
+			{
+				if (src.boss == boss)
+				{
+					result.put(e.getKey(), src.drop);
+				}
+			}
+		}
+		return result;
+	}
+
+	/** True for a minion's loot tracker name (its loot counts for the boss, not as a kill). */
+	public boolean isMinionLoot(String lootName)
+	{
+		return minionLootNames.contains(normalize(lootName));
 	}
 
 	/** Bosses with nothing left to track once shared items are left out (Chaos Elemental). */

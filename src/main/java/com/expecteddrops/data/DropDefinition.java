@@ -17,6 +17,12 @@ public class DropDefinition
 	private String perUnique;
 	/** Tombs of Amascut: lowest raid level where this unique drops normally (below it, 1 in 50 is kept). */
 	private Integer minRaidLevel;
+	/** Tombs of Amascut: weight from a raid level on (e.g. {"400": 4}); below the lowest key the normal weight. */
+	private java.util.Map<String, Double> levelWeights;
+	/** Items that drop in stacks: average stack size. The collection log counts items, not drops. */
+	private Double stack;
+	/** Rate per minion kill (God Wars bodyguards), added for each minion of the boss. */
+	private String minionRate;
 	private List<String> match;
 	private Boolean any;
 	private Boolean pet;
@@ -71,6 +77,46 @@ public class DropDefinition
 			return partWeights.get(part);
 		}
 		return weight;
+	}
+
+	/** This item's weight at a raid level: the entry for the highest level at or below it. */
+	public Double getWeightAtLevel(int raidLevel)
+	{
+		Double w = weight;
+		int best = Integer.MIN_VALUE;
+		if (levelWeights != null)
+		{
+			for (java.util.Map.Entry<String, Double> e : levelWeights.entrySet())
+			{
+				int level = Integer.parseInt(e.getKey());
+				if (level <= raidLevel && level > best)
+				{
+					best = level;
+					w = e.getValue();
+				}
+			}
+		}
+		return w;
+	}
+
+	public String getMinionRate()
+	{
+		return minionRate;
+	}
+
+	public boolean hasLevelWeights()
+	{
+		return levelWeights != null && !levelWeights.isEmpty();
+	}
+
+	/** Collection log quantity turned into a number of drops for stackable items. */
+	public int dropsFromQuantity(int quantity)
+	{
+		if (stack == null || stack <= 1 || quantity <= 0)
+		{
+			return quantity;
+		}
+		return Math.max(1, (int) Math.round(quantity / stack));
 	}
 
 	public Integer getMinRaidLevel()

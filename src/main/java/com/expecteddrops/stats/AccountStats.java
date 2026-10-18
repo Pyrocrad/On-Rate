@@ -15,6 +15,7 @@ public class AccountStats
 	private double expectedValue;
 	private long receivedValue;
 	private double valueLuck = Double.NaN;
+	private List<SharedPool> sharedPools = Collections.emptyList();
 
 	public AccountStats(RowStats total, List<RowStats> rows, Map<String, Integer> killCounts)
 	{
@@ -58,6 +59,17 @@ public class AccountStats
 		this.expectedValue = expectedValue;
 		this.receivedValue = receivedValue;
 		this.valueLuck = valueLuck;
+	}
+
+	/** Items several bosses drop: complete ones are in the total, the rest still need log pages. */
+	public List<SharedPool> getSharedPools()
+	{
+		return sharedPools;
+	}
+
+	public void setSharedPools(List<SharedPool> sharedPools)
+	{
+		this.sharedPools = Collections.unmodifiableList(sharedPools);
 	}
 
 	public int getKillCount(String boss)

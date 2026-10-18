@@ -36,6 +36,9 @@ import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.ItemComposition;
+import net.runelite.api.Player;
+import net.runelite.api.WorldView;
+import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.ScriptPostFired;
@@ -135,11 +138,29 @@ public class ExpectedDropsPlugin extends Plugin
 		return configManager.getConfig(ExpectedDropsConfig.class);
 	}
 
+	/**
+	 * Settings from earlier versions that were renamed (so a new default applies) or removed.
+	 * Their old values are cleared so they don't linger in the RuneLite profile.
+	 */
+	static final String[] OLD_SETTINGS = {
+		"toaUniqueChance", "tobUniqueChance", "tobHmUniqueChance", "coxCmUniqueChance",
+		"royalTitansMode", "royalTitansDuoKills",
+	};
+
 	@Override
 	protected void startUp() throws Exception
 	{
+		for (String key : OLD_SETTINGS)
+		{
+			if (configManager.getConfiguration(ExpectedDropsConfig.GROUP, key) != null)
+			{
+				configManager.unsetConfiguration(ExpectedDropsConfig.GROUP, key);
+			}
+		}
 		tracker = new Tracker(loadCatalog());
 		tracker.setSettings(raidSettings());
+		tracker.setTeamSizeDetector(() -> config.detectTeamSize() ? playersAround() : 0);
+		tracker.setUnknownKillsAsZero(config::sharedUnknownAsZero);
 		panel = new ExpectedDropsPanel(tracker, itemManager, this::raidSettings, this::itemIdFor, this::save,
 			config::showWelcome, this::dismissWelcome, this::priceOf, this::viewOptions);
 
@@ -192,6 +213,38 @@ public class ExpectedDropsPlugin extends Plugin
 		itemIdsResolved = false;
 		prices.clear();
 		pricesRefreshedAt = 0;
+	}
+
+	/** Players within this many tiles of you at a group boss kill count as your team. */
+	private static final int TEAM_RADIUS_TILES = 15;
+	private static final int LOCAL_UNITS_PER_TILE = 128;
+
+	/** You plus the players around you (called on the client thread, from the kill message). */
+	private int playersAround()
+	{
+		Player me = client.getLocalPlayer();
+		WorldView view = client.getTopLevelWorldView();
+		LocalPoint here = me == null ? null : me.getLocalLocation();
+		if (here == null || view == null)
+		{
+			return 0;
+		}
+		int count = 0;
+		for (Player p : view.players())
+		{
+			LocalPoint there = p == null ? null : p.getLocalLocation();
+			if (there == null)
+			{
+				continue;
+			}
+			int dx = Math.abs(there.getX() - here.getX()) / LOCAL_UNITS_PER_TILE;
+			int dy = Math.abs(there.getY() - here.getY()) / LOCAL_UNITS_PER_TILE;
+			if (Math.max(dx, dy) <= TEAM_RADIUS_TILES)
+			{
+				count++;
+			}
+		}
+		return Math.max(1, count);
 	}
 
 	private BossCatalog loadCatalog() throws Exception

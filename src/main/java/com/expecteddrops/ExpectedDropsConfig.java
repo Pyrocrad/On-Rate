@@ -159,6 +159,19 @@ public interface ExpectedDropsConfig extends Config
 		return false;
 	}
 
+	@ConfigItem(
+		keyName = "sharedUnknownAsZero",
+		name = "Shared items: unopened bosses = 0 kills",
+		description = "Count bosses whose kill count On Rate doesn't know as 0 kills, so shared items (dragon pickaxe, "
+			+ "Virtus...) count without opening every boss's log page. Wrong if you did kill them before installing On Rate.",
+		position = 14,
+		section = displaySection
+	)
+	default boolean sharedUnknownAsZero()
+	{
+		return false;
+	}
+
 	@ConfigSection(
 		name = "Team bosses",
 		description = "At team bosses your chance of a unique scales with your share of the damage",
@@ -189,6 +202,19 @@ public interface ExpectedDropsConfig extends Config
 	default int royalTitansSoloKills()
 	{
 		return 0;
+	}
+
+	@ConfigItem(
+		keyName = "detectTeamSize",
+		name = "Count your team",
+		description = "At Nex, Yama, the Hueycoatl and the Corporeal Beast, count the players around you at each kill "
+			+ "and give you that share of the kill (a quarter with four players). Kills from before count as solo.",
+		position = 53,
+		section = teamSection
+	)
+	default boolean detectTeamSize()
+	{
+		return true;
 	}
 
 	@ConfigSection(

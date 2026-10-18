@@ -10,6 +10,7 @@ import com.expecteddrops.stats.DropMath;
 import com.expecteddrops.stats.RaidChance;
 import com.expecteddrops.stats.RaidSettings;
 import com.expecteddrops.stats.RowStats;
+import com.expecteddrops.stats.SharedPool;
 import com.expecteddrops.tracking.Note;
 import com.expecteddrops.tracking.DropHistory;
 import com.expecteddrops.tracking.RaidRecord;
@@ -72,13 +73,15 @@ public class TrackerTest
 	{
 		assertTrue(catalog.getBosses().size() >= 50);
 		// Chaos Elemental only has the dragon pickaxe and a pet it shares with Chaos Fanatic
+		// it has no page of its own, but its kill count still counts for those shared items
 		assertTrue(catalog.getExcludedBosses().contains("Chaos Elemental"));
-		assertNull(catalog.byName("Chaos Elemental"));
+		assertNotNull(catalog.byName("Chaos Elemental"));
 		Set<String> names = new HashSet<>();
 		for (BossDefinition boss : catalog.getBosses())
 		{
 			assertTrue("duplicate boss " + boss.getName(), names.add(boss.getName()));
-			assertFalse("no drops for " + boss.getName(), boss.getDrops().isEmpty());
+			assertTrue("no drops for " + boss.getName(),
+				!boss.getDrops().isEmpty() || catalog.getExcludedBosses().contains(boss.getName()));
 			assertTrue("no way to count kills for " + boss.getName(),
 				!boss.getKcNames().isEmpty() || !boss.getLootNames().isEmpty());
 			int pets = 0;
@@ -458,9 +461,176 @@ public class TrackerTest
 		tracker.onClogPage("General Graardor", Collections.singletonList("General Graardor kills: 762"), graardor);
 		BossStats boss = tracker.stats("General Graardor", RAIDS);
 		assertEquals(1, boss.getAnyRow().getReceived());
-		assertEquals(762 * (3 / 384.0 + 1 / 508.0 + 1 / 5000.0), boss.getAnyRow().getExpected(), 0.5);
+		// the bodyguards roll the armour too (1/16,256 each, three of them per kill)
+		assertEquals(762 * (3 * (1 / 381.0 + 3 / 16256.0) + 1 / 508.0) + DropMath.chanceAtLeastOne(762 / 5000.0),
+			boss.getAnyRow().getExpected(), 1e-9);
 		AccountStats account = tracker.accountStats(RAIDS);
+		// shard 1 is shared by all four generals: not counted until their pages are open too
 		assertEquals(1, account.getTotal().getReceived());
+	}
+
+	@Test
+	public void sharedItemsArePooledOnceEveryBossIsKnown()
+	{
+		Map<String, Integer> skotizo = new LinkedHashMap<>();
+		skotizo.put("Uncut onyx", 2);
+		tracker.onClogPage("Skotizo", Collections.singletonList("Skotizo kills: 100"), skotizo);
+		AccountStats before = tracker.accountStats(RAIDS);
+		SharedPool onyx = pool(before, "Uncut onyx");
+		assertFalse(onyx.isComplete());
+		assertEquals(Collections.singletonList("Zulrah"), onyx.getMissingPages());
+		int receivedBefore = before.getTotal().getReceived();
+
+		Map<String, Integer> zulrah = new LinkedHashMap<>();
+		zulrah.put("Uncut onyx", 2);
+		zulrah.put("Tanzanite fang", 1);
+		tracker.onClogPage("Zulrah", Collections.singletonList("Zulrah kills: 1000"), zulrah);
+		AccountStats after = tracker.accountStats(RAIDS);
+		onyx = pool(after, "Uncut onyx");
+		assertTrue(onyx.isComplete());
+		assertEquals(2, onyx.getReceived());
+		double expected = 0;
+		for (BossCatalog.PoolSource src : catalog.getPools().get("uncut onyx"))
+		{
+			int kc = src.getBoss().getName().equals("Skotizo") ? 100 : 1000;
+			expected += kc * Tracker.effectiveRate(src.getBoss(), src.getDrop(), RAIDS);
+		}
+		assertEquals(expected, onyx.getExpected(), 1e-9);
+		// the onyx counts in the account total now, along with the fang
+		assertEquals(receivedBefore + 1 + 2, after.getTotal().getReceived());
+
+		// a new onyx from the loot tracker keeps the log total up to date
+		tracker.onLoot("Zulrah", 1, Collections.singletonList(new Tracker.LootItem("Uncut onyx", 1)), now);
+		assertEquals(3, pool(tracker.accountStats(RAIDS), "Uncut onyx").getReceived());
+	}
+
+	@Test
+	public void chaosElementalKillsCountForTheDragonPickaxe()
+	{
+		assertTrue(catalog.getPools().containsKey("dragon pickaxe"));
+		boolean chaos = false;
+		for (BossCatalog.PoolSource src : catalog.getPools().get("dragon pickaxe"))
+		{
+			chaos |= src.getBoss().getName().equals("Chaos Elemental");
+		}
+		assertTrue(chaos);
+		// flagged items that also come from outside the bosses are never pooled
+		assertFalse(catalog.getPools().containsKey("dragon 2h sword"));
+	}
+
+	@Test
+	public void bodyguardLootCountsButIsNotAKill()
+	{
+		tracker.onChatMessage("Your General Graardor kill count is: <col=ff0000>10</col>.", now);
+		tracker.onLoot("General Graardor", 1, Collections.emptyList(), now);
+		tracker.onLoot("Sergeant Steelwill", 1, Collections.singletonList(new Tracker.LootItem("Bandos boots", 1)), now);
+		BossStats s = tracker.stats("General Graardor", RAIDS);
+		assertEquals(10, s.getKillCount());
+		assertEquals(1, row(s, "Bandos boots").getReceived());
+		assertEquals(1 / 381.0 + 3 / 16256.0, row(s, "Bandos boots").getRate(), 1e-12);
+		assertEquals(1 / 127.0 + 3 * 3 / 16129.0, Tracker.effectiveRate(catalog.byName("Commander Zilyana"),
+			findDrop(catalog.byName("Commander Zilyana"), "Saradomin sword"), RAIDS), 1e-12);
+		assertTrue(catalog.byName("General Graardor").isEstimate());
+		assertFalse(catalog.byName("Vorkath").isEstimate());
+		assertTrue(catalog.byName("Chambers of Xeric").isEstimate());
+	}
+
+	@Test
+	public void demonicGorillasCountKillsFromLootAfterTheLog()
+	{
+		BossDefinition gorillas = catalog.byLootName("Demonic gorilla");
+		assertNotNull(gorillas);
+		assertEquals("Glough's Experiments", gorillas.getName());
+		Map<String, Integer> page = new LinkedHashMap<>();
+		page.put("Zenyte shard", 1);
+		page.put("Ballista limbs", 0);
+		tracker.onLoot("Demonic gorilla", 1, Collections.emptyList(), now);
+		tracker.onClogPage("Glough's Experiments", Collections.singletonList("Demonic Gorilla kills: 400"), page);
+		assertEquals(400, tracker.stats("Glough's Experiments", RAIDS).getKillCount());
+		tracker.onLoot("Demonic gorilla", 1, Collections.emptyList(), now);
+		tracker.onLoot("Demonic gorilla", 1, Collections.singletonList(new Tracker.LootItem("Zenyte shard", 1)), now);
+		BossStats s = tracker.stats("Glough's Experiments", RAIDS);
+		assertEquals(402, s.getKillCount());
+		assertEquals(2, row(s, "Zenyte shard").getReceived());
+		assertEquals(402 / 300.0, row(s, "Zenyte shard").getExpected(), 1e-9);
+
+		BossDefinition maggot = catalog.byKcName("Maggot King");
+		assertNotNull(maggot);
+		assertTrue(maggot.isEstimate());
+	}
+
+	@Test
+	public void groupBossesCountYourShareOfEachKill()
+	{
+		int[] around = {1};
+		tracker.setTeamSizeDetector(() -> around[0]);
+		// 100 kills from before On Rate could see them: solo
+		tracker.onChatMessage("Your Nex kill count is: <col=ff0000>100</col>.", now);
+		around[0] = 4;
+		for (int kc = 101; kc <= 120; kc++)
+		{
+			tracker.onChatMessage("Your Nex kill count is: <col=ff0000>" + kc + "</col>.", now);
+		}
+		// the same message again doesn't count twice
+		tracker.onChatMessage("Your Nex kill count is: <col=ff0000>120</col>.", now);
+		Map<Integer, Integer> seen = tracker.teamKills("Nex");
+		assertEquals(Integer.valueOf(1), seen.get(1));
+		assertEquals(Integer.valueOf(20), seen.get(4));
+		BossStats s = tracker.stats("Nex", RAIDS);
+		assertEquals(120, s.getKillCount());
+		// 99 unseen + 1 solo + 20 kills at a quarter each
+		assertEquals((99 + 1 + 20 / 4.0) / 172.0, row(s, "Zaryte vambraces").getExpected(), 1e-9);
+		// the pet doesn't scale with the team
+		assertEquals(120 / 500.0, row(s, "Nexling").getExpected(), 1e-9);
+
+		// other bosses ignore the team size
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>10</col>.", now);
+		assertTrue(tracker.teamKills("Vorkath").isEmpty());
+	}
+
+	@Test
+	public void unknownBossesCanCountAsZeroForSharedItems()
+	{
+		Map<String, Integer> skotizo = new LinkedHashMap<>();
+		skotizo.put("Uncut onyx", 1);
+		tracker.onClogPage("Skotizo", Collections.singletonList("Skotizo kills: 100"), skotizo);
+		assertFalse(pool(tracker.accountStats(RAIDS), "Uncut onyx").isComplete());
+		tracker.setUnknownKillsAsZero(() -> true);
+		SharedPool onyx = pool(tracker.accountStats(RAIDS), "Uncut onyx");
+		assertTrue(onyx.isComplete());
+		assertEquals(100 / 1000.0, onyx.getExpected(), 1e-9);
+	}
+
+	@Test
+	public void grotesqueGuardiansRollTwice()
+	{
+		BossDefinition gg = catalog.byName("Grotesque Guardians");
+		assertEquals(1 / 500.0, Tracker.effectiveRate(gg, findDrop(gg, "Black tourmaline core"), RAIDS), 1e-12);
+		assertEquals(1 / 250.0, Tracker.effectiveRate(gg, findDrop(gg, "Granite gloves"), RAIDS), 1e-12);
+	}
+
+	private static SharedPool pool(AccountStats account, String label)
+	{
+		for (SharedPool p : account.getSharedPools())
+		{
+			if (p.getLabel().equals(label))
+			{
+				return p;
+			}
+		}
+		throw new AssertionError("no pool " + label);
+	}
+
+	private static DropDefinition findDrop(BossDefinition boss, String name)
+	{
+		for (DropDefinition d : boss.getDrops())
+		{
+			if (d.getName().equals(name))
+			{
+				return d;
+			}
+		}
+		throw new AssertionError(name);
 	}
 
 	@Test
@@ -783,8 +953,9 @@ public class TrackerTest
 			}
 		}
 		assertNotNull(fang);
-		// 49 raids at the 5% Expert setting plus this one at 5%, fang is 7/24
-		assertEquals(50 * 0.05 * 7 / 24.0, fang.getExpected(), 1e-9);
+		// 49 raids at the 5% Expert setting (fang 7/24) plus this one at 5%, at raid level 400
+		// where the fang is 4/19
+		assertEquals(49 * 0.05 * 7 / 24.0 + 0.05 * 4 / 19.0, fang.getExpected(), 1e-9);
 	}
 
 	@Test
@@ -942,5 +1113,40 @@ public class TrackerTest
 		Tracker loaded = new Tracker(catalog);
 		loaded.setState(gson.fromJson(gson.toJson(tracker.getState()), TrackerState.class));
 		assertEquals(Arrays.asList(10, 47), loaded.dropHistory("Vorkath").getDrops().get("Vorkath's head"));
+	}
+
+	@Test
+	public void stackedItemsCountAsDrops()
+	{
+		Map<String, Integer> hydra = new LinkedHashMap<>();
+		hydra.put("Dragon thrownaxe", 1480);
+		hydra.put("Dragon knife", 600);
+		hydra.put("Hydra's claw", 1);
+		tracker.onClogPage("Alchemical Hydra", Collections.singletonList("Alchemical Hydra kills: 2000"), hydra);
+		BossStats s = tracker.stats("Alchemical Hydra", RAIDS);
+		assertEquals(2, row(s, "Dragon thrownaxe").getReceived());
+		assertEquals(1, row(s, "Dragon knife").getReceived());
+		assertEquals(1, row(s, "Hydra's claw").getReceived());
+		assertEquals(2000 / 256.0, row(s, "Alchemical hydra heads").getExpected(), 1e-9);
+	}
+
+	@Test
+	public void araxxorHalberdPiecesAreOneIn600Each()
+	{
+		tracker.onChatMessage("Your Araxxor kill count is: <col=ff0000>600</col>.", now);
+		assertEquals(1.0, row(tracker.stats("Araxxor", RAIDS), "Noxious blade").getExpected(), 1e-9);
+	}
+
+	@Test
+	public void toaHighRaidLevelsShiftTheWeights()
+	{
+		tracker.onChatMessage("Your completed Tombs of Amascut: Expert Mode count is: <col=ff0000>1</col>.", now);
+		// raid level 400: fang 4, Lightbearer 5, ward 3, Masori 2+2+2, shadow 1 = 19
+		tracker.onRaidRecord(RaidRecord.toa(18_500, 0, 0, 1, 400), now + 1000);
+		BossStats toa = tracker.stats("Tombs of Amascut", RAIDS);
+		double chance = RaidChance.toa(18_500, 0, 0, 1, 400);
+		assertEquals(chance * 4 / 19, row(toa, "Osmumten's fang").getExpected(), 1e-12);
+		assertEquals(chance * 5 / 19, row(toa, "Lightbearer").getExpected(), 1e-12);
+		assertEquals(chance * 1 / 19, row(toa, "Tumeken's shadow (uncharged)").getExpected(), 1e-12);
 	}
 }

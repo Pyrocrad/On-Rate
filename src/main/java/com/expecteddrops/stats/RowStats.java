@@ -16,6 +16,7 @@ public class RowStats
 	private boolean streakExact;
 	private double driestMultiple = Double.NaN;
 	private String driestItem;
+	private String mark = "";
 
 	public RowStats(String label, String iconItem, double rate, double expected, int received, boolean any)
 	{
@@ -61,6 +62,19 @@ public class RowStats
 		this.driestMultiple = multiple;
 		this.driestItem = item;
 		return this;
+	}
+
+	/** Adds a mark shown after the label (" *" for estimates); the label itself stays the same. */
+	public RowStats withMark(String mark)
+	{
+		this.mark = mark == null ? "" : mark;
+		return this;
+	}
+
+	/** The label as shown in the panel, with its mark. */
+	public String getShownLabel()
+	{
+		return label + mark;
 	}
 
 	public double getDriestMultiple()

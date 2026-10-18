@@ -21,6 +21,14 @@ public class BossDefinition
 	private String note;
 	private List<DropDefinition> drops;
 	private List<BossPart> parts;
+	/** Minions killed with the boss that roll some of its uniques (God Wars bodyguards). */
+	private Integer minions;
+	/** Loot tracker names of those minions: their loot counts for the boss, not as kills. */
+	private List<String> minionLoot;
+	/** True when the rates are an estimate (team, points, assumed setup): shown with a "*". */
+	private Boolean estimate;
+	/** Group boss where On Rate counts the players around you at each kill (Nex, Corp...). */
+	private Boolean detectTeam;
 
 	public BossDefinition()
 	{
@@ -38,6 +46,28 @@ public class BossDefinition
 	public String getName()
 	{
 		return name;
+	}
+
+	public int getMinions()
+	{
+		return minions == null ? 0 : minions;
+	}
+
+	public List<String> getMinionLoot()
+	{
+		return minionLoot == null ? Collections.emptyList() : minionLoot;
+	}
+
+	/** Group boss: uniques are shared with the players you kill it with, counted at each kill. */
+	public boolean isDetectTeam()
+	{
+		return Boolean.TRUE.equals(detectTeam);
+	}
+
+	/** Rates depend on team, points or an assumed setup, so the numbers are an estimate. */
+	public boolean isEstimate()
+	{
+		return Boolean.TRUE.equals(estimate) || raid != null || team != null;
 	}
 
 	/** Chat kill-count names, including those of every part. */
