@@ -100,6 +100,7 @@ public class ExpectedDropsPanel extends PluginPanel
 	private boolean setupExpanded;
 
 	private final HintField searchField = new HintField("Search bosses...");
+	private final JButton accountButton = new JButton("Account");
 	private final JComboBox<String> bossSelect = new JComboBox<>();
 	private final JLabel headerIcon = new JLabel();
 	private final JLabel headerName = new JLabel();
@@ -205,7 +206,18 @@ public class ExpectedDropsPanel extends PluginPanel
 				showBoss(bossSelect.getItemAt(0));
 			}
 		});
-		top.add(searchField);
+		// one click back to the account overview, wherever you are
+		accountButton.setFont(FontManager.getRunescapeSmallFont());
+		accountButton.setFocusPainted(false);
+		accountButton.setToolTipText("Back to the account overview");
+		accountButton.addActionListener(e -> showBoss(ACCOUNT));
+		JPanel searchRow = new JPanel(new BorderLayout(4, 0));
+		searchRow.setOpaque(false);
+		searchRow.setAlignmentX(LEFT_ALIGNMENT);
+		searchRow.add(accountButton, BorderLayout.WEST);
+		searchRow.add(searchField, BorderLayout.CENTER);
+		searchRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+		top.add(searchRow);
 		top.add(spacer(4));
 
 		fillBossList("");
@@ -471,6 +483,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		rowsPanel.removeAll();
 		styleTabs();
 		boolean account = ACCOUNT.equals(bossName);
+		accountButton.setEnabled(!account);
 		graphPanel.setVisible(account);
 		sortRow.setVisible(account);
 		syncLabel.setVisible(!account);
@@ -557,10 +570,15 @@ public class ExpectedDropsPanel extends PluginPanel
 				{
 					modes.append(", ");
 				}
+				int team = Math.max(1, raidSettings.get().teamSize(part.getRaid()));
 				modes.append(part.getName()).append(' ')
-					.append(new java.math.BigDecimal(raidSettings.get().uniqueChance(part.getRaid()) * 100)
+					.append(new java.math.BigDecimal(raidSettings.get().uniqueChance(part.getRaid()) * team * 100)
 						.setScale(2, java.math.RoundingMode.HALF_UP).stripTrailingZeros().toPlainString())
 					.append('%');
+				if (team > 1)
+				{
+					modes.append(" for the team of ").append(team);
+				}
 			}
 			note.append("Purple chance for raids without points: ").append(modes).append(". Change these in the plugin settings.");
 			note.append(raidPointsNote(stats.getBoss()));
@@ -635,7 +653,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		if (boards > 0)
 		{
 			sb.append(String.format("<br><br>Saved from the end-of-raid board: %,d raid%s, MVP in %,d, %,d death%s. "
-				+ "ToB has no points to read, so these still use the setting.",
+				+ "ToB has no points to read, so these use the team chance from the settings split over each raid's real team size.",
 				boards, boards == 1 ? "" : "s", mvps, deaths, deaths == 1 ? "" : "s"));
 		}
 		return sb.toString();
@@ -729,9 +747,9 @@ public class ExpectedDropsPanel extends PluginPanel
 			: "Every boss you have kills at, added up. Click a boss to open it.<br><br>"
 			+ "GE value uses RuneLite's own price list. Untradeable items (pets, jars...) count for the number of "
 			+ "uniques but as 0 GP for value, so a twisted bow outweighs a pile of cheap drops.<br><br>"
-			+ "Items that several bosses drop (godsword shards, Virtus...) use your collection log total in "
-			+ "the All row; the boss rows only count the ones On Rate saw itself. Pets count once, like in the log. "
-			+ "Raid numbers depend on your purple chance settings, and team bosses assume you do all the damage.";
+			+ "Items that several bosses drop (dragon pickaxe, godsword shards, Virtus, onyx...) are left out: "
+			+ "the collection log can't say which boss they came from. Pets count once, like in the log. "
+			+ "Raids without points use your purple chance settings, and team bosses assume you do all the damage.";
 		noteLabel.setText("<html><body style='width: 165px'>" + note + "</body></html>");
 	}
 

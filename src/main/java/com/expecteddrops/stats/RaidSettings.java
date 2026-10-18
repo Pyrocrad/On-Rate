@@ -10,6 +10,15 @@ public interface RaidSettings
 	double uniqueChance(String raid);
 
 	/**
+	 * The team size {@link #uniqueChance} assumes (ToB splits the team's purples between
+	 * the players). Raids with a known team size scale from this.
+	 */
+	default int teamSize(String raid)
+	{
+		return 1;
+	}
+
+	/**
 	 * Your average share of the drops at a team boss over {@code kills} kills: 1 when you
 	 * did everything solo, 0.5 for all duos. Pets that don't scale are not affected.
 	 */

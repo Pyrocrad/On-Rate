@@ -124,6 +124,24 @@ public class BossDefinition
 		return note;
 	}
 
+	/** Drops the uniques that match, e.g. items several bosses share. */
+	void removeDrops(java.util.function.Predicate<DropDefinition> remove)
+	{
+		if (drops == null)
+		{
+			return;
+		}
+		List<DropDefinition> kept = new java.util.ArrayList<>();
+		for (DropDefinition drop : drops)
+		{
+			if (!remove.test(drop))
+			{
+				kept.add(drop);
+			}
+		}
+		drops = kept;
+	}
+
 	public List<DropDefinition> getDrops()
 	{
 		return drops == null ? Collections.emptyList() : drops;

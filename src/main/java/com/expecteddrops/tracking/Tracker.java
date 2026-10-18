@@ -377,6 +377,26 @@ public class Tracker
 		}
 	}
 
+	/**
+	 * Your purple chance for one saved raid: from its points (CoX, ToA), or for ToB the
+	 * team chance from the settings split over that raid's real team size. NaN when
+	 * neither is known, so the setting is used.
+	 */
+	static double recordChance(RaidRecord record, BossPart part, RaidSettings raids)
+	{
+		double chance = purpleChance(record);
+		if (!Double.isNaN(chance))
+		{
+			return chance;
+		}
+		String key = part.getRaid();
+		if ("tob".equals(record.family) && record.teamSize > 0 && key != null && !"none".equals(key))
+		{
+			return raids.uniqueChance(key) * Math.max(1, raids.teamSize(key)) / record.teamSize;
+		}
+		return Double.NaN;
+	}
+
 	/** Completions of this raid mode whose purple chance came from your points. */
 	public synchronized int measuredRaids(String bossName, String part)
 	{
@@ -1106,7 +1126,7 @@ public class Tracker
 		List<RaidRecord> known = new ArrayList<>();
 		for (RaidRecord r : progress.raids)
 		{
-			if (part.getName().equals(r.part) && !Double.isNaN(purpleChance(r)))
+			if (part.getName().equals(r.part) && !Double.isNaN(recordChance(r, part, raids)))
 			{
 				known.add(r);
 			}
@@ -1121,7 +1141,7 @@ public class Tracker
 		double expected = (completions - counted) * perRaid;
 		for (RaidRecord r : known.subList(known.size() - counted, known.size()))
 		{
-			expected += purpleChance(r) * share * RaidChance.toaLevelFactor(r.raidLevel, drop.getMinRaidLevel());
+			expected += recordChance(r, part, raids) * share * RaidChance.toaLevelFactor(r.raidLevel, drop.getMinRaidLevel());
 		}
 		return expected;
 	}

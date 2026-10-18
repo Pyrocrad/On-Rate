@@ -132,44 +132,57 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigItem(
 		keyName = "coxCmUniqueChance",
 		name = "CoX Challenge Mode (%)",
-		description = "Your chance of a unique per Challenge Mode raid, in percent, for raids without points. Same formula as normal mode: every 8,676 of your personal points is 1%.",
+		description = "Your chance of a unique per Challenge Mode raid, in percent, for raids without points. Same formula as normal mode (every 8,676 of your personal points is 1%); a Challenge Mode raid is usually 6.3 to 6.9%.",
 		position = 13,
 		section = raidsSection
 	)
 	default double coxCmUniqueChance()
 	{
-		return 3.5;
+		return 6.6;
 	}
 
 	@ConfigItem(
-		keyName = "tobUniqueChance",
-		name = "ToB purple chance (%)",
-		description = "Your chance of a unique per normal Theatre raid, in percent. A team gets one about 1 in 9.1 raids (11%); divide by your team size (4-man is about 2.7%).",
+		keyName = "tobTeamChance",
+		name = "ToB team purple chance (%)",
+		description = "The team's chance of a unique per normal Theatre raid, in percent: about 1 in 9.1 raids (11%) with no deaths. On Rate divides it by the team size. Entry Mode has no uniques.",
 		position = 14,
 		section = raidsSection
 	)
-	default double tobUniqueChance()
+	default double tobTeamChance()
 	{
-		return 2.7;
+		return 11.0;
 	}
 
 	@ConfigItem(
-		keyName = "tobHmUniqueChance",
-		name = "ToB Hard Mode (%)",
-		description = "Your chance of a unique per Hard Mode raid, in percent. A team gets one about 1 in 7.7 raids (13%); divide by your team size (4-man is about 3.2%).",
+		keyName = "tobHmTeamChance",
+		name = "ToB Hard Mode team (%)",
+		description = "The team's chance of a unique per Hard Mode raid, in percent: about 1 in 7.7 raids (13%). On Rate divides it by the team size.",
 		position = 15,
 		section = raidsSection
 	)
-	default double tobHmUniqueChance()
+	default double tobHmTeamChance()
 	{
-		return 3.2;
+		return 13.0;
+	}
+
+	@ConfigItem(
+		keyName = "tobTeamSize",
+		name = "ToB team size",
+		description = "How many players you usually raid Theatre of Blood with. Your share of the team's purples is 1 / team size. Raids where On Rate read the end-of-raid board use that raid's real team size.",
+		position = 16,
+		section = raidsSection
+	)
+	@Range(min = 1, max = 5)
+	default int tobTeamSize()
+	{
+		return 4;
 	}
 
 	@ConfigItem(
 		keyName = "toaEntryUniqueChance",
 		name = "ToA Entry Mode (%)",
 		description = "Your chance of a unique per Entry Mode raid without points, in percent. Very low: at low raid levels most rolled uniques are turned into other loot.",
-		position = 16,
+		position = 17,
 		section = raidsSection
 	)
 	default double toaEntryUniqueChance()
@@ -181,7 +194,7 @@ public interface ExpectedDropsConfig extends Config
 		keyName = "toaUniqueChance",
 		name = "ToA Normal (%)",
 		description = "Your chance of a unique per normal Tombs raid without points, in percent. It depends on raid level and your points; the OSRS Wiki's ToA page has a calculator.",
-		position = 17,
+		position = 18,
 		section = raidsSection
 	)
 	default double toaUniqueChance()
@@ -193,7 +206,7 @@ public interface ExpectedDropsConfig extends Config
 		keyName = "toaExpertUniqueChance",
 		name = "ToA Expert Mode (%)",
 		description = "Your chance of a unique per Expert Mode raid without points, in percent. It depends on raid level and your points; the OSRS Wiki's ToA page has a calculator.",
-		position = 18,
+		position = 19,
 		section = raidsSection
 	)
 	default double toaExpertUniqueChance()

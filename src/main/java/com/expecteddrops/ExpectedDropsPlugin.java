@@ -9,8 +9,6 @@ import com.expecteddrops.ui.ExpectedDropsPanel;
 import com.google.gson.Gson;
 import com.google.inject.Provides;
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -38,7 +36,6 @@ import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
-import net.runelite.client.RuneLite;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.ChatColorType;
 import net.runelite.client.chat.ChatMessageBuilder;
@@ -73,8 +70,6 @@ public class ExpectedDropsPlugin extends Plugin
 	/** Doom of Mokhaiotl scoreboard: completions per delve level in children 46, 49, ... 70 (the last is "8+"). */
 	private static final int DOOM_SCOREBOARD_GROUP = 920;
 	private static final int DOOM_SCOREBOARD_FIRST_CHILD = 46;
-	/** Put a file with this name here to use your own rates instead of the bundled ones. */
-	static final File CUSTOM_DATA = new File(new File(RuneLite.RUNELITE_DIR, "on-rate"), "bosses.json");
 
 	@Inject
 	private Client client;
@@ -178,18 +173,7 @@ public class ExpectedDropsPlugin extends Plugin
 
 	private BossCatalog loadCatalog() throws Exception
 	{
-		if (CUSTOM_DATA.isFile())
-		{
-			try (Reader reader = new InputStreamReader(new FileInputStream(CUSTOM_DATA), StandardCharsets.UTF_8))
-			{
-				log.info("Using custom drop data from {}", CUSTOM_DATA);
-				return BossCatalog.load(gson, reader);
-			}
-			catch (Exception e)
-			{
-				log.warn("Could not read {}, falling back to the bundled rates", CUSTOM_DATA, e);
-			}
-		}
+		// Only the rates bundled with the plugin: On Rate reads and writes no files.
 		try (InputStream in = getClass().getResourceAsStream("bosses.json");
 			Reader reader = new InputStreamReader(in, StandardCharsets.UTF_8))
 		{
@@ -205,6 +189,12 @@ public class ExpectedDropsPlugin extends Plugin
 			public double uniqueChance(String raid)
 			{
 				return raidChance(raid);
+			}
+
+			@Override
+			public int teamSize(String raid)
+			{
+				return raid.startsWith("tob") ? tobTeamSize() : 1;
 			}
 
 			@Override
@@ -240,6 +230,11 @@ public class ExpectedDropsPlugin extends Plugin
 		};
 	}
 
+	private int tobTeamSize()
+	{
+		return Math.max(1, Math.min(5, config.tobTeamSize()));
+	}
+
 	private int duoKills(int kills)
 	{
 		switch (config.royalTitansMode())
@@ -265,10 +260,10 @@ public class ExpectedDropsPlugin extends Plugin
 				percent = config.coxCmUniqueChance();
 				break;
 			case "tob":
-				percent = config.tobUniqueChance();
+				percent = config.tobTeamChance() / tobTeamSize();
 				break;
 			case "tobHm":
-				percent = config.tobHmUniqueChance();
+				percent = config.tobHmTeamChance() / tobTeamSize();
 				break;
 			case "toaEntry":
 				percent = config.toaEntryUniqueChance();

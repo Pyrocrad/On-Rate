@@ -69,6 +69,9 @@ public class TrackerTest
 	public void bundledDataIsValid()
 	{
 		assertTrue(catalog.getBosses().size() >= 50);
+		// Chaos Elemental only has the dragon pickaxe and a pet it shares with Chaos Fanatic
+		assertTrue(catalog.getExcludedBosses().contains("Chaos Elemental"));
+		assertNull(catalog.byName("Chaos Elemental"));
 		Set<String> names = new HashSet<>();
 		for (BossDefinition boss : catalog.getBosses())
 		{
@@ -205,8 +208,8 @@ public class TrackerTest
 		assertTrue(stats.isClogSynced());
 		assertEquals(7, row(stats, "Vorkath's head").getReceived());
 		assertEquals(1, row(stats, "Vorki").getReceived());
-		// Draconic visage also drops from KBD, so the log total isn't credited to Vorkath.
-		assertEquals(0, row(stats, "Draconic visage").getReceived());
+		// Draconic visage also drops from KBD, so it isn't tracked at all.
+		assertFalse(stats.getRows().stream().anyMatch(r -> r.getLabel().equals("Draconic visage")));
 
 		// New drops after the sync are added on top.
 		tracker.onLoot("Vorkath", 1, Collections.singletonList(new Tracker.LootItem("Vorkath's head", 1)), now);
@@ -430,19 +433,32 @@ public class TrackerTest
 	}
 
 	@Test
-	public void sharedItemsUseTheLogTotalForTheAccount()
+	public void itemsSeveralBossesDropAreLeftOut()
 	{
+		// the dragon pickaxe, godsword shards, Virtus, onyx... have one log total for all
+		// their bosses, so they would count as expected but never as received
+		for (String item : new String[]{"Dragon pickaxe", "Godsword shard 1", "Godsword shard 2", "Godsword shard 3",
+			"Chromium ingot", "Virtus mask", "Virtus robe top", "Virtus robe bottom", "Dragon chainbody",
+			"Draconic visage", "Uncut onyx", "Pet chaos elemental", "Dragon 2h sword"})
+		{
+			assertTrue(item, catalog.getExcludedItems().contains(item));
+			for (BossDefinition boss : catalog.getBosses())
+			{
+				for (DropDefinition drop : boss.getDrops())
+				{
+					assertFalse(boss.getName() + " still has " + item, drop.getName().equalsIgnoreCase(item));
+				}
+			}
+		}
 		Map<String, Integer> graardor = new LinkedHashMap<>();
 		graardor.put("Bandos chestplate", 1);
 		graardor.put("Godsword shard 1", 2);
 		tracker.onClogPage("General Graardor", Collections.singletonList("General Graardor kills: 762"), graardor);
 		BossStats boss = tracker.stats("General Graardor", RAIDS);
-		// on the boss page the shards can't be credited (they also come from the other GWD bosses)...
-		assertEquals(0, row(boss, "Godsword shard 1").getReceived());
-		// ...but the account total uses the log total
-		AccountStats account = tracker.accountStats(RAIDS, name -> name.startsWith("Godsword shard") ? 10_000_000L : 0L);
-		assertEquals(3, account.getTotal().getReceived());
-		assertEquals(20_000_000L, account.getReceivedValue());
+		assertEquals(1, boss.getAnyRow().getReceived());
+		assertEquals(762 * (3 / 384.0 + 1 / 508.0 + 1 / 5000.0), boss.getAnyRow().getExpected(), 0.5);
+		AccountStats account = tracker.accountStats(RAIDS);
+		assertEquals(1, account.getTotal().getReceived());
 	}
 
 	@Test
@@ -457,7 +473,7 @@ public class TrackerTest
 		// ...but having the pet at 9000 kc is roughly average, not dry
 		assertTrue(vorki.getLuck() > 0.45 && vorki.getLuck() < 0.55);
 		double withoutPet = stats.getAnyRow().getExpected() - (1 - Math.exp(-3.0));
-		assertEquals(9000 * (1 / 50.0 + 1 / 1000.0 + 1 / 3000.0 + 2 / 5000.0), withoutPet, 1e-9);
+		assertEquals(9000 * (1 / 50.0 + 1 / 1000.0 + 1 / 3000.0 + 1 / 5000.0), withoutPet, 1e-9);
 
 		tracker.onChatMessage("Your Royal Titan kill count is: <col=ff0000>600</col>.", now);
 		BossStats titans = tracker.stats("Royal Titans", RAIDS);
@@ -664,8 +680,9 @@ public class TrackerTest
 	{
 		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>50</col>.", now);
 		RowStats any = tracker.stats("Vorkath", RAIDS).getAnyRow();
-		// head, necklace, jar and the two visages, plus the pet as "have it or not"
-		double lambda = 50 * (1 / 50.0 + 1 / 1000.0 + 1 / 3000.0 + 1 / 5000.0 + 1 / 5000.0) + (1 - Math.exp(-50 / 3000.0));
+		// head, necklace, jar and the skeletal visage (the draconic one is shared with KBD),
+		// plus the pet as "have it or not"
+		double lambda = 50 * (1 / 50.0 + 1 / 1000.0 + 1 / 3000.0 + 1 / 5000.0) + (1 - Math.exp(-50 / 3000.0));
 		assertEquals(lambda, any.getExpected(), 1e-9);
 		assertEquals(DropMath.luckPercentile(0, lambda), any.getLuck(), 1e-12);
 	}
@@ -803,16 +820,41 @@ public class TrackerTest
 	}
 
 	@Test
-	public void tobBoardIsSavedButUsesTheSetting()
+	public void tobSplitsTheTeamChanceOverTheTeamSize()
 	{
+		// settings: 11% for the team, usually a 4-man
+		RaidSettings tob = new RaidSettings()
+		{
+			@Override
+			public double uniqueChance(String raid)
+			{
+				return "tob".equals(raid) ? 0.11 / 4 : 0;
+			}
+
+			@Override
+			public int teamSize(String raid)
+			{
+				return raid.startsWith("tob") ? 4 : 1;
+			}
+		};
 		tracker.onChatMessage("Your completed Theatre of Blood count is: <col=ff0000>20</col>.", now);
-		tracker.onRaidRecord(RaidRecord.tob(4, 1, 3, true), now + 120_000);
+		// the board of the 20th raid says it was a duo, MVP, one death
+		tracker.onRaidRecord(RaidRecord.tob(2, 1, 3, true), now + 120_000);
 		List<RaidRecord> saved = tracker.raidRecords("Theatre of Blood");
 		assertEquals(1, saved.size());
-		assertEquals(4, saved.get(0).getTeamSize());
+		assertEquals(2, saved.get(0).getTeamSize());
 		assertEquals(Boolean.TRUE, saved.get(0).getMvp());
 		assertEquals(0, tracker.measuredRaids("Theatre of Blood", "Normal"));
-		assertEquals(20 * 0.027, tracker.stats("Theatre of Blood", RAIDS).getRows().get(0).getExpected() / (8 / 19.0), 1e-9);
+		double purples = 0;
+		for (RowStats row : tracker.stats("Theatre of Blood", tob).getRows())
+		{
+			if (!row.isOnce())
+			{
+				purples += row.getExpected();
+			}
+		}
+		// 19 raids as a 4-man and the duo raid
+		assertEquals(19 * 0.11 / 4 + 0.11 / 2, purples, 1e-9);
 	}
 
 	@Test

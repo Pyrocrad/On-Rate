@@ -23,7 +23,10 @@ public class BossCatalog
 	private final Map<String, BossDefinition> byLootName = new HashMap<>();
 	private final Map<String, List<BossDefinition>> byClogPage = new HashMap<>();
 	private final Set<String> clogSharedItems = new HashSet<>();
+	/** Display names of the shared items that were left out, for the panel. */
+	private final Set<String> excludedItems = new java.util.TreeSet<>();
 	private final Set<String> allItemNames = new HashSet<>();
+	private final Set<String> excludedBosses = new java.util.TreeSet<>();
 
 	private static class FileFormat
 	{
@@ -32,11 +35,66 @@ public class BossCatalog
 
 	public BossCatalog(List<BossDefinition> bosses)
 	{
-		List<BossDefinition> sorted = new ArrayList<>(bosses);
+		// An item that several bosses drop has one collection log total for all of them,
+		// so that total can't be credited to any single boss.
+		Map<String, Integer> itemBossCount = new HashMap<>();
+		for (BossDefinition boss : bosses)
+		{
+			Set<String> namesForBoss = new HashSet<>();
+			for (DropDefinition drop : boss.getDrops())
+			{
+				for (String item : drop.getAllNames())
+				{
+					String key = normalize(item);
+					namesForBoss.add(key);
+					if (drop.isClogSharedFlag())
+					{
+						clogSharedItems.add(key);
+					}
+				}
+			}
+			for (String key : namesForBoss)
+			{
+				itemBossCount.merge(key, 1, Integer::sum);
+			}
+		}
+		for (Map.Entry<String, Integer> e : itemBossCount.entrySet())
+		{
+			if (e.getValue() > 1)
+			{
+				clogSharedItems.add(e.getKey());
+			}
+		}
+
+		// Leave those items out altogether: counting them would add expected drops without
+		// the matching received ones. A boss left with nothing to track is left out too.
+		List<BossDefinition> sorted = new ArrayList<>();
+		for (BossDefinition boss : bosses)
+		{
+			boss.removeDrops(drop ->
+			{
+				for (String item : drop.getAllNames())
+				{
+					if (clogSharedItems.contains(normalize(item)))
+					{
+						excludedItems.add(drop.getDisplayName());
+						return true;
+					}
+				}
+				return false;
+			});
+			if (boss.getDrops().isEmpty())
+			{
+				excludedBosses.add(boss.getName());
+			}
+			else
+			{
+				sorted.add(boss);
+			}
+		}
 		sorted.sort(Comparator.comparing(b -> b.getName().toLowerCase(Locale.ROOT)));
 		this.bosses = Collections.unmodifiableList(sorted);
 
-		Map<String, Integer> itemBossCount = new HashMap<>();
 		for (BossDefinition boss : sorted)
 		{
 			byName.put(normalize(boss.getName()), boss);
@@ -52,36 +110,20 @@ public class BossCatalog
 			{
 				byClogPage.computeIfAbsent(normalize(page), k -> new ArrayList<>()).add(boss);
 			}
-
-			Set<String> namesForBoss = new HashSet<>();
 			for (DropDefinition drop : boss.getDrops())
 			{
 				for (String item : drop.getAllNames())
 				{
-					String key = normalize(item);
-					namesForBoss.add(key);
-					allItemNames.add(key);
-					if (drop.isClogSharedFlag())
-					{
-						clogSharedItems.add(key);
-					}
+					allItemNames.add(normalize(item));
 				}
 			}
-			for (String key : namesForBoss)
-			{
-				itemBossCount.merge(key, 1, Integer::sum);
-			}
 		}
+	}
 
-		// An item that several bosses drop has one collection log total for all of them,
-		// so that total can't be credited to any single boss.
-		for (Map.Entry<String, Integer> e : itemBossCount.entrySet())
-		{
-			if (e.getValue() > 1)
-			{
-				clogSharedItems.add(e.getKey());
-			}
-		}
+	/** Bosses with nothing left to track once shared items are left out (Chaos Elemental). */
+	public Set<String> getExcludedBosses()
+	{
+		return Collections.unmodifiableSet(excludedBosses);
 	}
 
 	public static BossCatalog load(Gson gson, Reader reader)
@@ -130,6 +172,12 @@ public class BossCatalog
 	{
 		List<BossDefinition> list = byClogPage.get(normalize(pageTitle));
 		return list == null ? Collections.emptyList() : list;
+	}
+
+	/** Items several bosses drop, which On Rate leaves out (dragon pickaxe, uncut onyx...). */
+	public Set<String> getExcludedItems()
+	{
+		return Collections.unmodifiableSet(excludedItems);
 	}
 
 	public boolean isClogShared(String itemName)
