@@ -4,7 +4,7 @@ package com.expecteddrops.ui;
 public class ViewOptions
 {
 	/** Plain defaults: target bars, GE value on, extras off. */
-	public static final ViewOptions DEFAULT = new ViewOptions(ItemView.TARGET_BARS, true, false, false, false, false);
+	public static final ViewOptions DEFAULT = new ViewOptions(ItemView.COMPACT, true, false, false, false, false);
 
 	private final ItemView itemView;
 	private final boolean geValue;
@@ -24,7 +24,7 @@ public class ViewOptions
 		boolean colourBlind, boolean topItems)
 	{
 		this.topItems = topItems;
-		this.itemView = itemView == null ? ItemView.TARGET_BARS : itemView;
+		this.itemView = itemView == null ? ItemView.COMPACT : itemView;
 		this.geValue = geValue;
 		this.luckGraph = luckGraph;
 		this.dropHistory = dropHistory;

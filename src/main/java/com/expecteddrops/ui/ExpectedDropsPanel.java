@@ -611,6 +611,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			addTripCard(stats.getBoss().getName());
 		}
 		renderBossItems(stats, unit, o.getItemView());
+		renderBossPools(stats, o.getItemView());
 		if (o.isDropHistory())
 		{
 			addDropHistory(stats, unit);
@@ -835,7 +836,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			renderTopItems(account);
 		}
 		renderAccountItems(account, total, rows, o.getItemView());
-		renderSharedPools(account, o.getItemView());
+		renderSharedPools(account);
 		if (!hidden.isEmpty())
 		{
 			java.util.Collections.sort(hidden);
@@ -900,74 +901,126 @@ public class ExpectedDropsPanel extends PluginPanel
 		+ "Treat the numbers as an estimate.</body></html>";
 
 	/**
-	 * Items several bosses drop, each with one collection log total: the expected of all
-	 * those bosses together against that total. Only complete ones count in the total.
+	 * Account overview: one quiet line about shared items. They count in the total once every
+	 * boss that drops them is known; the rest say which log page to open next.
 	 */
-	private void renderSharedPools(AccountStats account, ItemView view)
+	private void renderSharedPools(AccountStats account)
 	{
-		List<com.expecteddrops.stats.SharedPool> complete = new ArrayList<>();
+		int counted = 0;
 		List<com.expecteddrops.stats.SharedPool> waiting = new ArrayList<>();
 		for (com.expecteddrops.stats.SharedPool pool : account.getSharedPools())
 		{
-			if (!pool.isComplete())
+			if (pool.isComplete())
 			{
-				// only worth mentioning when you've done some of its bosses
-				boolean started = false;
-				for (String boss : pool.getBosses())
-				{
-					started |= account.getKillCount(boss) > 0;
-				}
-				if (started)
+				counted++;
+				continue;
+			}
+			for (String boss : pool.getBosses())
+			{
+				if (account.getKillCount(boss) > 0)
 				{
 					waiting.add(pool);
+					break;
 				}
 			}
-			else if (pool.getExpected() >= MIN_EXPECTED_SHOWN || pool.getReceived() > 0)
+		}
+		if (counted == 0 && waiting.isEmpty())
+		{
+			return;
+		}
+		StringBuilder tip = new StringBuilder("<html><body style='width: 220px'>Items several bosses drop (dragon pickaxe, "
+			+ "godsword shards, Virtus, onyx...) have one collection log total for all of them, so they're judged on all those "
+			+ "bosses together. You find them on each boss's page. They count in your account total once On Rate knows the "
+			+ "kill count of every boss that drops them.");
+		if (!waiting.isEmpty())
+		{
+			tip.append("<br><br>Still needed:");
+			for (com.expecteddrops.stats.SharedPool pool : waiting)
 			{
-				complete.add(pool);
+				tip.append("<br><b>").append(pool.getLabel()).append("</b>: ").append(String.join(", ", pool.getMissingPages()));
 			}
 		}
-		if (complete.isEmpty() && waiting.isEmpty())
+		tip.append("</body></html>");
+		String next = waiting.isEmpty() ? null : nextPageToOpen(waiting);
+		String text = String.format("Shared items: %d counted", counted)
+			+ (waiting.isEmpty() ? "" : String.format(", %d need%s a log page. Next: open <b>%s</b>",
+			waiting.size(), waiting.size() == 1 ? "s" : "", next));
+		rowsPanel.add(spacer(4));
+		JLabel line = smallLabel("<html><body style='width: 165px'>" + text + "</body></html>", ColorScheme.LIGHT_GRAY_COLOR);
+		line.setAlignmentX(LEFT_ALIGNMENT);
+		line.setToolTipText(tip.toString());
+		rowsPanel.add(line);
+	}
+
+	/**
+	 * Boss page: the shared items this boss drops, judged on every boss that drops them
+	 * together (the log has one total). Bosses whose kills aren't known yet count as 0.
+	 */
+	private void renderBossPools(BossStats stats, ItemView view)
+	{
+		List<com.expecteddrops.stats.SharedPool> pools = tracker.sharedPoolsFor(stats.getBoss().getName(), raidSettings.get());
+		if (pools.isEmpty())
 		{
 			return;
 		}
 		rowsPanel.add(spacer(8));
-		JLabel title = smallLabel("Shared items", Color.WHITE);
+		JLabel title = smallLabel("Shared with other bosses", Color.WHITE);
 		title.setFont(FontManager.getRunescapeBoldFont());
 		title.setAlignmentX(LEFT_ALIGNMENT);
-		title.setToolTipText("<html><body style='width: 200px'>Items several bosses drop. The collection log has one total "
-			+ "for all of them, so each is judged on every boss's kills together. These count in your account total.</body></html>");
+		title.setToolTipText("<html><body style='width: 200px'>These drop from other bosses too, and the collection log has "
+			+ "one total for all of them. So each is judged on all those bosses' kills together: the same numbers show on "
+			+ "every boss that drops it. Hover one to see which bosses.</body></html>");
 		rowsPanel.add(title);
-		for (com.expecteddrops.stats.SharedPool pool : complete)
+		if (view == ItemView.COMPACT)
 		{
+			rowsPanel.add(compactHeader("Item"));
+		}
+		java.util.Set<String> missing = new java.util.TreeSet<>();
+		List<String> unknown = new ArrayList<>();
+		for (com.expecteddrops.stats.SharedPool pool : pools)
+		{
+			if (!pool.isLogKnown())
+			{
+				// how many you have is unknown until a log page showing it is opened
+				unknown.add(pool.getLabel());
+				continue;
+			}
 			RowStats row = pool.toRow();
 			String tip = poolTooltip(pool, row);
-			rowsPanel.add(spacer(2));
 			if (view == ItemView.COMPACT)
 			{
 				rowsPanel.add(compactRow(row, tip, null));
 			}
 			else
 			{
-				rowsPanel.add(luckRow(row, tip, null));
+				rowsPanel.add(spacer(2));
+				rowsPanel.add(targetRow(row, tip));
 			}
+			missing.addAll(pool.getMissingPages());
 		}
-		if (!waiting.isEmpty())
+		missing.remove(stats.getBoss().getClogPages().isEmpty() ? stats.getBoss().getName() : stats.getBoss().getClogPages().get(0));
+		StringBuilder text = new StringBuilder();
+		if (!unknown.isEmpty())
 		{
-			StringBuilder tip = new StringBuilder("<html><body style='width: 220px'>Open these collection log pages to count them:");
-			for (com.expecteddrops.stats.SharedPool pool : waiting)
+			String page = stats.getBoss().getClogPages().isEmpty() ? stats.getBoss().getName() : stats.getBoss().getClogPages().get(0);
+			text.append(String.join(", ", unknown)).append(": open the ").append(page)
+				.append(" page in your collection log to load how many you have.");
+		}
+		if (!missing.isEmpty())
+		{
+			if (text.length() > 0)
 			{
-				tip.append("<br><b>").append(pool.getLabel()).append("</b>: ").append(String.join(", ", pool.getMissingPages()));
+				text.append("<br><br>");
 			}
-			tip.append("<br><br>Or turn on <i>Shared items: unopened bosses = 0 kills</i> in the settings (Display) "
-				+ "if you never killed the bosses that are missing.</body></html>");
+			text.append("Not counted yet: kills at ").append(String.join(", ", missing))
+				.append(". Open their log pages if you've killed them.");
+		}
+		if (text.length() > 0)
+		{
 			rowsPanel.add(spacer(4));
-			String next = nextPageToOpen(waiting);
-			JLabel more = smallLabel(String.format("<html><body style='width: 165px'>+ %d more waiting for log pages.%s</body></html>",
-				waiting.size(), next == null ? "" : " Next: open <b>" + next + "</b>"), ColorScheme.LIGHT_GRAY_COLOR);
-			more.setAlignmentX(LEFT_ALIGNMENT);
-			more.setToolTipText(tip.toString());
-			rowsPanel.add(more);
+			JLabel line = smallLabel("<html><body style='width: 165px'>" + text + "</body></html>", ColorScheme.LIGHT_GRAY_COLOR);
+			line.setAlignmentX(LEFT_ALIGNMENT);
+			rowsPanel.add(line);
 		}
 	}
 
@@ -1218,6 +1271,10 @@ public class ExpectedDropsPanel extends PluginPanel
 		if (!Double.isNaN(luck))
 		{
 			sb.append(String.format("Luckier than %.0f%% of players: %s", luck * 100, DropMath.verdict(luck)));
+		}
+		if (!pool.isComplete())
+		{
+			sb.append("<br><br>Kills not counted yet (open these log pages): ").append(String.join(", ", pool.getMissingPages()));
 		}
 		return sb.append("</body></html>").toString();
 	}

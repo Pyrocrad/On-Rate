@@ -241,17 +241,6 @@
       ]
     },
     {
-      "name": "Glough's Experiments", "clog": ["Glough's Experiments"], "loot": ["Demonic gorilla"], "estimate": true, "note": "Demonic gorillas. Tortured gorillas drop the same items (much more rarely), and the collection log counts those too.",
-      "drops": [
-        {"name": "Zenyte shard", "rate": "1/300"},
-        {"name": "Ballista limbs", "rate": "1/500"},
-        {"name": "Ballista spring", "rate": "1/500"},
-        {"name": "Light frame", "rate": "1/750"},
-        {"name": "Heavy frame", "rate": "1/1500"},
-        {"name": "Monkey tail", "rate": "1/1500"}
-      ]
-    },
-    {
       "name": "Giant Mole", "kc": ["Giant Mole"], "loot": ["Giant Mole"], "clog": ["Giant Mole"], "note": "Mole claws and skins drop on every kill, so they aren't counted as uniques.",
       "drops": [
         {"name": "Immaculate mole skin", "rate": "1/50"},
@@ -524,13 +513,6 @@
         {"name": "Masori body", "weight": 2, "minRaidLevel": 150},
         {"name": "Masori chaps", "weight": 2, "minRaidLevel": 150},
         {"name": "Tumeken's shadow (uncharged)", "weight": 1, "minRaidLevel": 150}
-      ]
-    },
-    {
-      "name": "Tormented Demons", "kc": [], "loot": ["Tormented Demon"], "clog": ["Tormented Demons"], "note": "No kill count message: kills are counted from loot.",
-      "drops": [
-        {"name": "Tormented synapse", "rate": "1/500"},
-        {"name": "Burning claw", "rate": "1/501"}
       ]
     },
     {

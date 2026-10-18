@@ -15,6 +15,7 @@ public class SharedPool
 	private final int received;
 	private final List<String> bosses;
 	private final List<String> missingPages;
+	private boolean logKnown = true;
 
 	public SharedPool(String label, String itemName, double expected, int received, List<String> bosses, List<String> missingPages)
 	{
@@ -58,6 +59,18 @@ public class SharedPool
 	public List<String> getMissingPages()
 	{
 		return missingPages;
+	}
+
+	/** False until a collection log page showing this item has been opened (received unknown). */
+	public boolean isLogKnown()
+	{
+		return logKnown;
+	}
+
+	public SharedPool withLogKnown(boolean logKnown)
+	{
+		this.logKnown = logKnown;
+		return this;
 	}
 
 	public boolean isComplete()

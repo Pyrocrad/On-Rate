@@ -23,7 +23,6 @@ Unless a line says otherwise, rates come from the boss's page on the [Old School
 | Commander Zilyana, General Graardor, K'ril Tsutsaroth, Kree'arra | [Zilyana](https://oldschool.runescape.wiki/w/Commander_Zilyana), [Graardor](https://oldschool.runescape.wiki/w/General_Graardor), [K'ril](https://oldschool.runescape.wiki/w/K%27ril_Tsutsaroth), [Kree'arra](https://oldschool.runescape.wiki/w/Kree%27arra) | Bodyguard rates from [Sergeant Strongstack](https://oldschool.runescape.wiki/w/Sergeant_Strongstack), [Flight Kilisa](https://oldschool.runescape.wiki/w/Flight_Kilisa) and [Tstanon Karlak](https://oldschool.runescape.wiki/w/Tstanon_Karlak): 1/16,256 per Bandos piece, 1/16,129 per Armadyl piece, 3/16,129 for the spear and Saradomin sword, 1/1,524 per godsword shard. |
 | Corporeal Beast | [Corporeal Beast](https://oldschool.runescape.wiki/w/Corporeal_Beast) | Spirit shield 8/512 = 1/64. Sigil rates already include the 1/585 sigil table. |
 | Crazy Archaeologist | [Crazy archaeologist](https://oldschool.runescape.wiki/w/Crazy_archaeologist) | |
-| Demonic gorillas | [Demonic gorilla](https://oldschool.runescape.wiki/w/Demonic_gorilla) | |
 | Deranged Archaeologist | [Deranged archaeologist](https://oldschool.runescape.wiki/w/Deranged_archaeologist) | |
 | Duke Sucellus, The Leviathan, The Whisperer, Vardorvis | [Leviathan](https://oldschool.runescape.wiki/w/The_Leviathan), [Whisperer](https://oldschool.runescape.wiki/w/The_Whisperer), [Vardorvis](https://oldschool.runescape.wiki/w/Vardorvis) | Normal mode. Duke follows the same pattern (1/720); its wiki table didn't load during the check. |
 | Giant Mole | [Giant Mole](https://oldschool.runescape.wiki/w/Giant_Mole) | Mole claws and skins drop every kill, so they aren't tracked. |
@@ -44,7 +43,6 @@ Unless a line says otherwise, rates come from the boss's page on the [Old School
 | Skotizo | [Skotizo](https://oldschool.runescape.wiki/w/Skotizo) | |
 | The Mad Angel | [The Mad Angel](https://oldschool.runescape.wiki/w/The_Mad_Angel) | |
 | Thermonuclear Smoke Devil | [Thermonuclear smoke devil](https://oldschool.runescape.wiki/w/Thermonuclear_smoke_devil) | |
-| Tormented Demons | [Tormented Demon](https://oldschool.runescape.wiki/w/Tormented_Demon) | Burning claw 499/250,000 ≈ 1/501. |
 | TzTok-Jad, TzKal-Zuk | [TzTok-Jad](https://oldschool.runescape.wiki/w/TzTok-Jad), [TzKal-Zuk](https://oldschool.runescape.wiki/w/TzKal-Zuk) | Off-task rates. |
 | Venenatis and Spindel | [Venenatis](https://oldschool.runescape.wiki/w/Venenatis), [Spindel](https://oldschool.runescape.wiki/w/Spindel) | |
 | Vet'ion and Calvar'ion | [Vet'ion](https://oldschool.runescape.wiki/w/Vet%27ion), [Calvar'ion](https://oldschool.runescape.wiki/w/Calvar%27ion) | |

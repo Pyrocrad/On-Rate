@@ -183,14 +183,24 @@ public class TrackerTest
 		assertEquals(1, stats.getRows().get(0).getReceived());
 	}
 
+	/** A made-up boss with no kill count message, counted from the Loot Tracker only. */
+	private static Tracker lootOnlyTracker()
+	{
+		BossDefinition boss = new BossDefinition("Test Beast", Collections.emptyList(),
+			Collections.singletonList("Test beast"), Collections.singletonList("Test Beast"),
+			Collections.singletonList(new DropDefinition("Test fang", "1/300")));
+		return new Tracker(new BossCatalog(Collections.singletonList(boss)));
+	}
+
 	@Test
 	public void lootOnlyBossCountsKillsFromLoot()
 	{
+		Tracker t = lootOnlyTracker();
 		for (int i = 0; i < 3; i++)
 		{
-			tracker.onLoot("Tormented Demon", 1, Collections.singletonList(new Tracker.LootItem("Ashes", 1)), now);
+			t.onLoot("Test beast", 1, Collections.singletonList(new Tracker.LootItem("Ashes", 1)), now);
 		}
-		BossStats stats = tracker.stats("Tormented Demons", RAIDS);
+		BossStats stats = t.stats("Test Beast", RAIDS);
 		assertEquals(3, stats.getKillCount());
 		assertFalse(stats.isKillCountKnown());
 	}
@@ -536,27 +546,27 @@ public class TrackerTest
 	}
 
 	@Test
-	public void demonicGorillasCountKillsFromLootAfterTheLog()
+	public void lootOnlyBossesCountKillsFromLootAfterTheLog()
 	{
-		BossDefinition gorillas = catalog.byLootName("Demonic gorilla");
-		assertNotNull(gorillas);
-		assertEquals("Glough's Experiments", gorillas.getName());
+		Tracker t = lootOnlyTracker();
 		Map<String, Integer> page = new LinkedHashMap<>();
-		page.put("Zenyte shard", 1);
-		page.put("Ballista limbs", 0);
-		tracker.onLoot("Demonic gorilla", 1, Collections.emptyList(), now);
-		tracker.onClogPage("Glough's Experiments", Collections.singletonList("Demonic Gorilla kills: 400"), page);
-		assertEquals(400, tracker.stats("Glough's Experiments", RAIDS).getKillCount());
-		tracker.onLoot("Demonic gorilla", 1, Collections.emptyList(), now);
-		tracker.onLoot("Demonic gorilla", 1, Collections.singletonList(new Tracker.LootItem("Zenyte shard", 1)), now);
-		BossStats s = tracker.stats("Glough's Experiments", RAIDS);
+		page.put("Test fang", 1);
+		t.onLoot("Test beast", 1, Collections.emptyList(), now);
+		t.onClogPage("Test Beast", Collections.singletonList("Test Beast kills: 400"), page);
+		assertEquals(400, t.stats("Test Beast", RAIDS).getKillCount());
+		t.onLoot("Test beast", 1, Collections.emptyList(), now);
+		t.onLoot("Test beast", 1, Collections.singletonList(new Tracker.LootItem("Test fang", 1)), now);
+		BossStats s = t.stats("Test Beast", RAIDS);
 		assertEquals(402, s.getKillCount());
-		assertEquals(2, row(s, "Zenyte shard").getReceived());
-		assertEquals(402 / 300.0, row(s, "Zenyte shard").getExpected(), 1e-9);
+		assertEquals(2, row(s, "Test fang").getReceived());
+		assertEquals(402 / 300.0, row(s, "Test fang").getExpected(), 1e-9);
 
 		BossDefinition maggot = catalog.byKcName("Maggot King");
 		assertNotNull(maggot);
 		assertTrue(maggot.isEstimate());
+		// only the Bosses and Raids tabs of the collection log
+		assertNull(catalog.byName("Tormented Demons"));
+		assertNull(catalog.byName("Glough's Experiments"));
 	}
 
 	@Test
@@ -628,16 +638,44 @@ public class TrackerTest
 	}
 
 	@Test
-	public void unknownBossesCanCountAsZeroForSharedItems()
+	public void itemsInTheLogWithoutKillsDontCount()
+	{
+		// dragon thrownaxes can come from elsewhere: with 0 Hydra kills they say nothing about Hydra
+		Map<String, Integer> hydra = new LinkedHashMap<>();
+		hydra.put("Dragon thrownaxe", 750);
+		tracker.onClogPage("Alchemical Hydra", Collections.singletonList("Alchemical Hydra kills: 0"), hydra);
+		BossStats s = tracker.stats("Alchemical Hydra", RAIDS);
+		assertEquals(0, s.getKillCount());
+		assertEquals(0, s.getAnyRow().getReceived());
+		AccountStats account = tracker.accountStats(RAIDS);
+		for (RowStats row : account.getRows())
+		{
+			assertFalse(row.getLabel().equals("Alchemical Hydra"));
+		}
+		// once there are kills, the log counts again
+		tracker.onChatMessage("Your Alchemical Hydra kill count is: <col=ff0000>5</col>.", now);
+		assertEquals(1, row(tracker.stats("Alchemical Hydra", RAIDS), "Dragon thrownaxe").getReceived());
+	}
+
+	@Test
+	public void sharedItemsShowOnEachBossThatDropsThem()
 	{
 		Map<String, Integer> skotizo = new LinkedHashMap<>();
 		skotizo.put("Uncut onyx", 1);
 		tracker.onClogPage("Skotizo", Collections.singletonList("Skotizo kills: 100"), skotizo);
-		assertFalse(pool(tracker.accountStats(RAIDS), "Uncut onyx").isComplete());
-		tracker.setUnknownKillsAsZero(() -> true);
-		SharedPool onyx = pool(tracker.accountStats(RAIDS), "Uncut onyx");
-		assertTrue(onyx.isComplete());
+		List<SharedPool> forZulrah = tracker.sharedPoolsFor("Zulrah", RAIDS);
+		assertEquals(1, forZulrah.size());
+		SharedPool onyx = forZulrah.get(0);
+		assertTrue(onyx.isLogKnown());
+		assertFalse(onyx.isComplete());
+		// Zulrah's kills aren't known yet, so only Skotizo's count for now
 		assertEquals(100 / 1000.0, onyx.getExpected(), 1e-9);
+		assertEquals(Collections.singletonList("Zulrah"), onyx.getMissingPages());
+		// a dragon pickaxe page was never opened: how many you have is unknown
+		for (SharedPool p : tracker.sharedPoolsFor("Kalphite Queen", RAIDS))
+		{
+			assertFalse(p.getLabel(), p.isLogKnown());
+		}
 	}
 
 	@Test

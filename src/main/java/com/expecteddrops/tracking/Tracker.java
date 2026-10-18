@@ -110,14 +110,6 @@ public class Tracker
 		this.teamSize = teamSize == null ? () -> 0 : teamSize;
 	}
 
-	/** Shared items: count bosses with an unknown kill count as 0 kills instead of waiting. */
-	private java.util.function.BooleanSupplier unknownKillsAsZero = () -> false;
-
-	public synchronized void setUnknownKillsAsZero(java.util.function.BooleanSupplier unknownKillsAsZero)
-	{
-		this.unknownKillsAsZero = unknownKillsAsZero == null ? () -> false : unknownKillsAsZero;
-	}
-
 	/** Group bosses: how many kills On Rate saw per team size. Empty for other bosses. */
 	public synchronized Map<Integer, Integer> teamKills(String bossName)
 	{
@@ -1518,7 +1510,9 @@ public class Tracker
 				}
 			}
 			int received = 0;
-			if (progress != null)
+			// No kills here: anything in the log came from elsewhere (dragon thrownaxes
+			// bought or looted outside Hydra...), so it doesn't count for this boss.
+			if (progress != null && kc > 0)
 			{
 				for (String name : drop.getAllNames())
 				{
@@ -1646,7 +1640,7 @@ public class Tracker
 		{
 			BossStats s = cachedStats(boss.getName(), raids, cache);
 			RowStats any = s.getAnyRow();
-			if (boss.getDrops().isEmpty() || (s.getKillCount() <= 0 && any.getReceived() <= 0))
+			if (boss.getDrops().isEmpty() || s.getKillCount() <= 0)
 			{
 				continue;
 			}
@@ -1748,6 +1742,20 @@ public class Tracker
 		return sharedPools(raids, new HashMap<>());
 	}
 
+	/** The shared items this boss drops (with every boss that drops them), for its page. */
+	public synchronized List<SharedPool> sharedPoolsFor(String bossName, RaidSettings raids)
+	{
+		List<SharedPool> result = new ArrayList<>();
+		for (SharedPool pool : sharedPools(raids))
+		{
+			if (pool.getBosses().contains(bossName))
+			{
+				result.add(pool);
+			}
+		}
+		return result;
+	}
+
 	private BossStats cachedStats(String bossName, RaidSettings raids, Map<String, BossStats> cache)
 	{
 		BossStats s = cache.get(bossName);
@@ -1786,7 +1794,7 @@ public class Tracker
 				BossProgress p = state.peek(boss.getName());
 				boolean kcKnown = s != null && (s.isKillCountKnown() || s.isClogSynced()
 					|| (p != null && p.lootKills > 0 && boss.getKcNames().isEmpty()));
-				if (!kcKnown && !unknownKillsAsZero.getAsBoolean())
+				if (!kcKnown)
 				{
 					String page = boss.getClogPages().isEmpty() ? boss.getName() : boss.getClogPages().get(0);
 					if (!missing.contains(page))
@@ -1811,7 +1819,7 @@ public class Tracker
 				expected = DropMath.chanceAtLeastOne(expected);
 				got = Math.min(got, 1);
 			}
-			result.add(new SharedPool(label, itemName, expected, got, bosses, missing));
+			result.add(new SharedPool(label, itemName, expected, got, bosses, missing).withLogKnown(logTotal != null));
 		}
 		return result;
 	}

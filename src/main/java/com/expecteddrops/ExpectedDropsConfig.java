@@ -84,7 +84,7 @@ public interface ExpectedDropsConfig extends Config
 	)
 	default ItemView itemView()
 	{
-		return ItemView.TARGET_BARS;
+		return ItemView.COMPACT;
 	}
 
 	@ConfigItem(
@@ -167,19 +167,6 @@ public interface ExpectedDropsConfig extends Config
 		section = displaySection
 	)
 	default boolean colourBlind()
-	{
-		return false;
-	}
-
-	@ConfigItem(
-		keyName = "sharedUnknownAsZero",
-		name = "Shared items: unopened bosses = 0 kills",
-		description = "Count bosses whose kill count On Rate doesn't know as 0 kills, so shared items (dragon pickaxe, "
-			+ "Virtus...) count without opening every boss's log page. Wrong if you did kill them before installing On Rate.",
-		position = 15,
-		section = displaySection
-	)
-	default boolean sharedUnknownAsZero()
 	{
 		return false;
 	}

@@ -144,7 +144,7 @@ public class ExpectedDropsPlugin extends Plugin
 	 */
 	static final String[] OLD_SETTINGS = {
 		"toaUniqueChance", "tobUniqueChance", "tobHmUniqueChance", "coxCmUniqueChance",
-		"royalTitansMode", "royalTitansDuoKills",
+		"royalTitansMode", "royalTitansDuoKills", "sharedUnknownAsZero",
 	};
 
 	@Override
@@ -160,7 +160,6 @@ public class ExpectedDropsPlugin extends Plugin
 		tracker = new Tracker(loadCatalog());
 		tracker.setSettings(raidSettings());
 		tracker.setTeamSizeDetector(() -> config.detectTeamSize() ? playersAround() : 0);
-		tracker.setUnknownKillsAsZero(config::sharedUnknownAsZero);
 		panel = new ExpectedDropsPanel(tracker, itemManager, this::raidSettings, this::itemIdFor, this::save,
 			config::showWelcome, this::dismissWelcome, this::priceOf, this::viewOptions);
 
