@@ -6,14 +6,13 @@
 > The Delve Calculator shows expected vs received drops for Doom of Mokhaiotl, and On Rate exists because that panel was so good that I wanted it for every boss. The layout, the Expected/Received split and the per-level Doom rates all come from Speaax's work. If you mainly do Doom, go and install the Delve Calculator too: it has Doom-specific features this plugin doesn't. See [Credits](#credits).
 
 <p>
-<img src="docs/boss-page.png" width="225" alt="Boss page">
-<img src="docs/account-overview.png" width="225" alt="Account overview">
-<img src="docs/extras.png" width="225" alt="Boss page with the trip card and drop history turned on">
+<img src="docs/boss-page.png" width="240" alt="Boss page: Chambers of Xeric">
+<img src="docs/account-overview.png" width="230" alt="Account overview, driest bosses first">
 </p>
 
 ## Features
 
-- **Expected vs received drops for 59 bosses and all three raids**, including Doom of Mokhaiotl with its per-delve-level rates.
+- **Expected vs received drops for over 60 bosses and all three raids**, including Doom of Mokhaiotl with its per-delve-level rates.
 - **Works out of the box.** Your kill count updates after every kill, and new drops are picked up automatically.
 - **Imports your history** from your collection log, so you don't start from zero.
 - **Luck percentile:** see how your drops compare with every other player at the same kill count.
@@ -23,6 +22,9 @@
 - **Account overview:** every boss added up into one total, with a row per boss that you can sort (driest first, luckiest first...), plus **GE value luck**, so two twisted bows count for more than a pile of cheap drops.
 - **Optional extras:** a luck graph, a "this trip" card, drop history timelines, an in-game overlay and colour-blind colours.
 - **Uses your raid points:** read from the game in Chambers of Xeric and estimated from your damage in Tombs of Amascut, so each raid gets its own purple chance. Based on [Raid Data Tracker](https://github.com/Raitab/raid-data-tracker) (see [Credits](#credits)).
+- **Shared items counted together:** the dragon pickaxe, godsword shards, Virtus, uncut onyx and other items several bosses drop are judged on all those bosses' kills at once, against the one collection log total.
+- **God Wars bodyguards** count too: their share of the general's uniques is included in the rates.
+- **A "\*" marks estimates:** bosses whose numbers depend on your team, points or an assumed setup.
 - **Search box:** type "vork", "cox" or "kril" to jump to a boss.
 - **Dry streaks:** hover any item to see how many kills since your last copy, and how many times the drop rate that is.
 - **Chat messages:** a short line when a unique drops ("Vorkath's head after 312 kills (2.4x the rate).") and when you pass 1x, 2x, 3x, 5x or 10x the drop rate dry. Both can be turned off.
@@ -63,7 +65,9 @@ What the panel opens on. It adds up every boss you have kills at:
 
 - The **verdict** at the top is your whole account.
 - **GE value** compares the Grand Exchange value of what you got with what you should have had, and gives its own verdict. An account that's dry on the number of drops but hit two twisted bows shows up as spooned here. Prices come from RuneLite's own price list, so On Rate makes no web requests. Untradeable items like pets and jars count for the number of uniques but as 0 GP for value. You can hide it in the settings.
-- One row per boss with its verdict. Use **Sort** to put the most expected, driest, luckiest, most killed or alphabetical first. Click a boss to open it, or hover it to see its driest item.
+- One row per boss with its verdict. Bosses with almost nothing expected yet (under 0.05 uniques, so a handful of kills) aren't listed, because they say nothing about luck; a line at the bottom says how many, and they still count in your account total. Use **Sort** to put the most expected, driest, luckiest, most killed or alphabetical first. Click a boss to open it, or hover it to see its driest item.
+- **Shared items** below the bosses: items that several bosses drop (see [Good to know](#good-to-know)), each judged on all its bosses together. Hover one to see which bosses drop it. An item only shows up, and counts in your total, once On Rate knows the kill count of every boss that drops it; a line at the bottom says how many are still waiting and which collection log page to open next (hover it for the full list).
+- A **\*** after a boss name means its numbers are an estimate: raids, team bosses and bosses where On Rate assumes a setup (all six Barrows brothers, all three God Wars bodyguards). Hover the boss name for more.
 
 ### Other views
 
@@ -89,11 +93,15 @@ All off by default; turn them on in the settings under **Display**.
 
 ## Supported bosses
 
-Abyssal Sire, Alchemical Hydra, Amoxliatl, Araxxor, Barrows, Brutus, Bryophyta, Callisto and Artio, Cerberus, Chambers of Xeric, Chaos Fanatic, Commander Zilyana, Corporeal Beast, Crazy Archaeologist, Dagannoth Kings, Deranged Archaeologist, Doom of Mokhaiotl, Duke Sucellus, General Graardor, Giant Mole, Grotesque Guardians, Hespori, Hueycoatl, K'ril Tsutsaroth, Kalphite Queen, King Black Dragon, Kraken, Kree'arra, Moons of Peril, Nex, Obor, Phantom Muspah, Phosani's Nightmare, Royal Titans, Sarachnis, Scorpia, Scurrius, Shellbane Gryphon, Skotizo, The Gauntlet, The Leviathan, The Mad Angel, The Whisperer, Theatre of Blood, Thermonuclear Smoke Devil, Tombs of Amascut, Tormented Demons, TzKal-Zuk, TzTok-Jad, Vardorvis, Venenatis and Spindel, Vet'ion and Calvar'ion, Vorkath, Yama, Zalcano and Zulrah.
+Abyssal Sire, Alchemical Hydra, Amoxliatl, Araxxor, Barrows, Brutus, Bryophyta, Callisto and Artio, Cerberus, Chambers of Xeric, Chaos Fanatic, Commander Zilyana, Corporeal Beast, Crazy Archaeologist, Dagannoth Kings, Deranged Archaeologist, Demonic gorillas (Glough's Experiments), Doom of Mokhaiotl, Duke Sucellus, General Graardor, Giant Mole, Grotesque Guardians, Hespori, Hueycoatl, K'ril Tsutsaroth, Kalphite Queen, King Black Dragon, Kraken, Kree'arra, Maggot King, Moons of Peril, Nex, Obor, Phantom Muspah, Phosani's Nightmare, Royal Titans, Sarachnis, Scorpia, Scurrius, Shellbane Gryphon, Skotizo, The Gauntlet, The Leviathan, The Mad Angel, The Whisperer, Theatre of Blood, Thermonuclear Smoke Devil, Tombs of Amascut, Tormented Demons, TzKal-Zuk, TzTok-Jad, Vardorvis, Venenatis and Spindel, Vet'ion and Calvar'ion, Vorkath, Yama, Zalcano and Zulrah.
 
 Bosses that share a collection log page are shown together, just like in the log: **Dagannoth Kings**, **Callisto and Artio**, **Vet'ion and Calvar'ion**, **Venenatis and Spindel**, and **The Gauntlet** (normal and Corrupted). Each boss on the page keeps its own kill count and drop rates.
 
-**Chaos Elemental** isn't tracked: its only uniques are the dragon pickaxe and a pet it shares with Chaos Fanatic, which are both left out (see [Good to know](#good-to-know)).
+**Chaos Elemental** has no page of its own: its only uniques are the dragon pickaxe, the dragon 2h sword and a pet it shares with Chaos Fanatic. Its kill count still counts for the shared dragon pickaxe and pet (see [Good to know](#good-to-know)).
+
+**God Wars Dungeon** generals assume you kill all three bodyguards every kill. The bodyguards roll some of the general's uniques (1/16,256 for each Bandos piece, 1/16,129 for each Armadyl piece, 3/16,129 for the Saradomin sword and Zamorakian spear, 1/1,524 for each godsword shard), and the collection log counts those under the general. Bodyguard loot counts for the general but not as a kill.
+
+**Maggot King**: the pet can also come from taking eggs, which On Rate can't count, so its pet row is a low estimate. **Demonic gorillas** are tracked on the Glough's Experiments page from the Loot Tracker, as the game sends no kill count message for them; tortured gorillas drop the same items much more rarely and the log counts those too.
 
 **Barrows** assumes you kill all six brothers before every chest, and **Moons of Peril** assumes you defeat all three moons before opening the Lunar Chest.
 
@@ -108,7 +116,9 @@ Open the settings with the cog next to **On Rate** in the Configuration panel.
 - **Dry milestone messages:** a chat line when you pass 1x, 2x, 3x, 5x or 10x the drop rate dry on an item. On by default.
 - **Luck view:** how your luck is shown (see [Other views](#other-views)).
 - **GE value**, **Luck graph**, **This trip card**, **Drop history**, **In-game overlay** and **Colour-blind colours**: see [Extras](#extras). Only GE value is on by default.
+- **Shared items: unopened bosses = 0 kills:** count bosses whose kill count On Rate doesn't know as 0 kills, so shared items count without opening every boss's log page. Off by default, because it's wrong if you killed those bosses before installing On Rate.
 - **Royal Titans:** kills count as **duo** kills unless you change it to **Solo** or **Some of each**. With *Some of each*, also enter how many of your kills were solo; the rest count as duo. In a duo you get about half the uniques of a solo kill, while the pet chance stays the same.
+- **Count your team:** at Nex, Yama, the Hueycoatl and the Corporeal Beast, On Rate counts the players within 15 tiles of you at each kill and gives you that share of the kill: a quarter with four players, a half in a duo. The boss's page says how many kills it saw and the average team size. Kills from before count as solo, and the pet chance doesn't scale (except at Corp, where only the top damager gets loot). On by default.
 - **Use raid points:** at the end of each raid, On Rate saves your points with the completion and works out that raid's purple chance from them. On by default. How it gets the points:
   - **Chambers of Xeric:** read straight from the game when "Congratulations - your raid is complete!" appears: your points, the team's points and the team size.
   - **Tombs of Amascut:** the game never shows your points, so On Rate estimates them the way [Raid Data Tracker](https://github.com/Raitab/raid-data-tracker) and the Tombs of Amascut plugin do: your own hits times a points factor per monster, rooms capped at 20,000 (Crondis 10,000), 64,000 in total, Wardens phase 2 stops counting once it has been downed more than three times, fixed points for puzzle rooms, 300 per player for MVP items, and minus 20% (at least 1,000) per death. The raid level is read from the game. In a team On Rate only knows your own points; if you have the **Tombs of Amascut** plugin installed, its party total is used instead. On Rate needs to see the raid start, so a raid you were already in when you turned it on uses the setting.
@@ -133,8 +143,8 @@ Open the settings with the cog next to **On Rate** in the Configuration panel.
 
 ## Good to know
 
-- **Rates are solo / full-contribution base rates**, without diary or Combat Achievement boosts. In team content (Nex, Hueycoatl, Yama duos, Corporeal Beast with others), your real chance is lower than shown. Royal Titans counts as duo kills by default and has its own solo/duo setting.
-- **Items several bosses drop are left out completely**: the dragon pickaxe, godsword shards, Virtus, chromium ingots, draconic visage, uncut onyx, dragon chainbody, dragon 2h sword and the Chaos Elemental pet. The collection log has one total for all their bosses, so On Rate can't tell which boss each copy came from; counting them would add expected drops without the matching received ones and make accounts look drier than they are.
+- **Rates are solo / full-contribution base rates**, without diary, Combat Achievement or Slayer task boosts. At Nex, Yama, the Hueycoatl and Corp, On Rate counts your team from the players around you (see [Settings](#settings)); it assumes everyone does the same damage, so a carry or a leech is off. Royal Titans counts as duo kills by default and has its own solo/duo setting. Where every rate comes from, and when it was last checked against the wiki, is in [docs/RATES.md](docs/RATES.md).
+- **Items several bosses drop are counted together**: the dragon pickaxe, godsword shards, Virtus, chromium ingots, draconic visage, uncut onyx, dragon chainbody and the Chaos Elemental pet. The collection log has one total for all their bosses, so On Rate can't tell which boss each copy came from. Instead of guessing, it leaves them off the boss pages and lists them under **Shared items** in the account overview: every boss's expected added up, against the one log total. That only works once On Rate knows the kill count of every boss that drops the item, so open those collection log pages (a boss you never killed shows 0 kills, which is fine). The **dragon 2h sword** is left out completely, because it also drops from monsters outside the bosses.
 - **Gauntlet loot** goes to a chest the Loot Tracker doesn't see. On Rate notices new items through the collection log message; open The Gauntlet's collection log page after a session to update repeat seeds.
 - **Pets** are counted from the "funny feeling" message right after a kill. Like the collection log, On Rate counts a pet once: for luck, what matters is whether you have it by now, not how many duplicates you might have rolled. Royal Titans prayer scrolls work the same way, because they stop dropping once read.
 - **Not covered yet:** Fortis Colosseum (its rates depend on the wave) and the team version of The Nightmare.
@@ -159,6 +169,7 @@ On Rate shows the same expected numbers as the Delve Calculator for Doom; the pl
 
 - **The [Old School RuneScape Wiki](https://oldschool.runescape.wiki)** for the drop rates of every other boss.
 - **The RuneLite developers** for the client and the Loot Tracker plugin that On Rate builds on.
+- **The Drop Luck Ledger and Spoon Meter plugins** for ideas: counting shared items across their bosses, the God Wars bodyguards, marking estimates, and a few rate fixes (Araxxor, Alchemical Hydra, Tombs of Amascut item mix). No code was taken from them.
 
 ## For developers
 
@@ -170,6 +181,23 @@ To run On Rate from source, you need Java 11 or newer and IntelliJ IDEA:
 To log in with a Jagex account in that window, start RuneLite once through the Jagex Launcher with `--insecure-write-credentials` set in *RuneLite (configure) → Client arguments*.
 
 `gradlew test` runs the maths and tracking tests.
+
+Every upload to GitHub is built against the latest RuneLite and tested automatically (`.github/workflows/build.yml`). A green tick next to a commit means it builds; a red cross means something broke. Click it to see what.
+
+## Changelog
+
+**Next update**
+- Shared items (dragon pickaxe, godsword shards, Virtus, onyx...) now count: each is judged on all its bosses' kills together, under **Shared items** in the account overview. With a hint for which log page to open next, and an option to count bosses you never killed as 0 kills.
+- God Wars bodyguards count towards their general's uniques.
+- Nex, Yama, the Hueycoatl and Corp count your team size at each kill.
+- A **\*** marks bosses whose numbers are an estimate.
+- New: Maggot King and demonic gorillas (Glough's Experiments).
+- Rate fixes: Grotesque Guardians (two rolls per kill), Araxxor (1/600 per halberd piece), Alchemical Hydra (thrownaxes and knives drop in stacks, hydra heads), Tombs of Amascut item mix at high raid levels, Mad Angel teleports. Rates checked against the wiki: see [docs/RATES.md](docs/RATES.md).
+- Old settings from earlier versions are cleaned up.
+- The account overview works each boss out once per refresh.
+
+**1.0.0**
+- First release: expected vs received uniques for every boss and raid, luck percentile and verdict, account overview with GE value luck, raid points, collection log sync, five luck views and optional extras.
 
 ## Licence
 
