@@ -14,7 +14,7 @@
 
 ## Features
 
-- **Expected vs received drops for 60 bosses and all three raids**, including Doom of Mokhaiotl with its per-delve-level rates.
+- **Expected vs received drops for 59 bosses and all three raids**, including Doom of Mokhaiotl with its per-delve-level rates.
 - **Works out of the box.** Your kill count updates after every kill, and new drops are picked up automatically.
 - **Imports your history** from your collection log, so you don't start from zero.
 - **Luck percentile:** see how your drops compare with every other player at the same kill count.
@@ -86,9 +86,11 @@ Hover any item to see its **dry streak**: how many kills since your last copy, a
 
 ## Supported bosses
 
-Abyssal Sire, Alchemical Hydra, Amoxliatl, Araxxor, Barrows, Brutus, Bryophyta, Callisto and Artio, Cerberus, Chambers of Xeric, Chaos Elemental, Chaos Fanatic, Commander Zilyana, Corporeal Beast, Crazy Archaeologist, Dagannoth Kings, Deranged Archaeologist, Doom of Mokhaiotl, Duke Sucellus, General Graardor, Giant Mole, Grotesque Guardians, Hespori, Hueycoatl, K'ril Tsutsaroth, Kalphite Queen, King Black Dragon, Kraken, Kree'arra, Moons of Peril, Nex, Obor, Phantom Muspah, Phosani's Nightmare, Royal Titans, Sarachnis, Scorpia, Scurrius, Shellbane Gryphon, Skotizo, The Gauntlet, The Leviathan, The Mad Angel, The Whisperer, Theatre of Blood, Thermonuclear Smoke Devil, Tombs of Amascut, Tormented Demons, TzKal-Zuk, TzTok-Jad, Vardorvis, Venenatis and Spindel, Vet'ion and Calvar'ion, Vorkath, Yama, Zalcano and Zulrah.
+Abyssal Sire, Alchemical Hydra, Amoxliatl, Araxxor, Barrows, Brutus, Bryophyta, Callisto and Artio, Cerberus, Chambers of Xeric, Chaos Fanatic, Commander Zilyana, Corporeal Beast, Crazy Archaeologist, Dagannoth Kings, Deranged Archaeologist, Doom of Mokhaiotl, Duke Sucellus, General Graardor, Giant Mole, Grotesque Guardians, Hespori, Hueycoatl, K'ril Tsutsaroth, Kalphite Queen, King Black Dragon, Kraken, Kree'arra, Moons of Peril, Nex, Obor, Phantom Muspah, Phosani's Nightmare, Royal Titans, Sarachnis, Scorpia, Scurrius, Shellbane Gryphon, Skotizo, The Gauntlet, The Leviathan, The Mad Angel, The Whisperer, Theatre of Blood, Thermonuclear Smoke Devil, Tombs of Amascut, Tormented Demons, TzKal-Zuk, TzTok-Jad, Vardorvis, Venenatis and Spindel, Vet'ion and Calvar'ion, Vorkath, Yama, Zalcano and Zulrah.
 
 Bosses that share a collection log page are shown together, just like in the log: **Dagannoth Kings**, **Callisto and Artio**, **Vet'ion and Calvar'ion**, **Venenatis and Spindel**, and **The Gauntlet** (normal and Corrupted). Each boss on the page keeps its own kill count and drop rates.
+
+**Chaos Elemental** isn't tracked: its only uniques are the dragon pickaxe and a pet it shares with Chaos Fanatic, which are both left out (see [Good to know](#good-to-know)).
 
 **Barrows** assumes you kill all six brothers before every chest, and **Moons of Peril** assumes you defeat all three moons before opening the Lunar Chest.
 
@@ -105,20 +107,21 @@ Open the settings with the cog next to **On Rate** in the Configuration panel.
 - **Use raid points:** at the end of each raid, On Rate saves your points with the completion and works out that raid's purple chance from them. On by default. How it gets the points:
   - **Chambers of Xeric:** read straight from the game when "Congratulations - your raid is complete!" appears: your points, the team's points and the team size.
   - **Tombs of Amascut:** the game never shows your points, so On Rate estimates them the way [Raid Data Tracker](https://github.com/Raitab/raid-data-tracker) and the Tombs of Amascut plugin do: your own hits times a points factor per monster, rooms capped at 20,000 (Crondis 10,000), 64,000 in total, Wardens phase 2 stops counting once it has been downed more than three times, fixed points for puzzle rooms, 300 per player for MVP items, and minus 20% (at least 1,000) per death. The raid level is read from the game. In a team On Rate only knows your own points; if you have the **Tombs of Amascut** plugin installed, its party total is used instead. On Rate needs to see the raid start, so a raid you were already in when you turned it on uses the setting.
-  - **Theatre of Blood:** there are no points to read. On Rate saves the team size, your deaths and whether you were MVP from the board at the end, but the purple chance stays the setting.
+  - **Theatre of Blood:** there are no points to read. On Rate saves the team size, your deaths and whether you were MVP from the board at the end, and splits the team purple chance from the settings over that raid's real team size.
 
   The chance is worked out with the OSRS Wiki's formulas. **CoX:** every 8,676 team points is 1% for a unique, one roll is capped at 570,000 points (65.7%) and more points roll for another unique; you get a unique with your share of the points. **ToA:** 1% per 10,500 - 20 x raid level team points (the raid level counts fully up to 310, a third from 310 to 430 and a sixth above that), capped at 55%; below raid level 50 (Osmumten's fang, Lightbearer) or 150 (the other uniques) a rolled unique is only kept 1 time in 50.
 
-  Raids done before this update, raids synced from the collection log and ToB raids use the percentages below. The raid's page says how many raids used your points. Over time, more and more of your raids use their own points.
+  Raids done before this update and raids synced from the collection log use the percentages below (ToB with the ToB team size setting). The raid's page says how many raids used your points. Over time, more and more of your raids use their own points.
+- **ToB team size:** how many players you usually do Theatre of Blood with (4 by default). Your share of the team's purples is 1 / team size. Raids where On Rate read the end-of-raid board use their real team size.
 - **Raid purple chances:** your chance of a unique per raid depends on your points, team and mode, so every mode has its own setting. The panel counts each mode's completions separately.
 
   | Raid | Mode | Default | How to work it out |
   |---|---|---|---|
   | Chambers of Xeric | Normal | 3.5% | Every 8,676 of your personal points is 1% (30,000 points is about 3.5%) |
-  | Chambers of Xeric | Challenge Mode | 3.5% | Same formula; Challenge Mode uses its own unique table (prayer scrolls are rarer) |
-  | Theatre of Blood | Normal | 2.7% | A team gets a purple about 1 in 9.1 raids (11%); divide by your team size |
-  | Theatre of Blood | Hard Mode | 3.2% | About 1 in 7.7 raids (13%) for the team; divide by your team size |
-  | Theatre of Blood | Entry Mode | none | Entry Mode has no uniques |
+  | Chambers of Xeric | Challenge Mode | 6.6% | Same formula; a Challenge Mode raid is usually 6.3 to 6.9%. It uses its own unique table (prayer scrolls are rarer) |
+  | Theatre of Blood | Normal | 11% for the team | A team gets a purple about 1 in 9.1 raids. On Rate splits it over the **ToB team size** setting (4 by default), or over the real team size when it read the end-of-raid board |
+  | Theatre of Blood | Hard Mode | 13% for the team | About 1 in 7.7 raids, split the same way |
+  | Theatre of Blood | Entry Mode | 0% | Entry Mode has no uniques |
   | Tombs of Amascut | Entry Mode | 0.75% | At low raid levels most rolled uniques turn into other loot |
   | Tombs of Amascut | Normal | 2.5% | Depends on raid level and points; the OSRS Wiki has a calculator |
   | Tombs of Amascut | Expert Mode | 5% | Same as above |
@@ -126,20 +129,13 @@ Open the settings with the cog next to **On Rate** in the Configuration panel.
 ## Good to know
 
 - **Rates are solo / full-contribution base rates**, without diary or Combat Achievement boosts. In team content (Nex, Hueycoatl, Yama duos, Corporeal Beast with others), your real chance is lower than shown. Royal Titans has its own solo/duo setting.
-- **Items several bosses drop** have one collection log total for all of them, so On Rate can't tell which boss each copy came from. On a boss page they only count drops On Rate saw itself; the account overview's total uses your full collection log total. This covers the dragon pickaxe, godsword shards, Virtus, chromium ingots, draconic visage, uncut onyx and dragon chainbody.
+- **Items several bosses drop are left out completely**: the dragon pickaxe, godsword shards, Virtus, chromium ingots, draconic visage, uncut onyx, dragon chainbody, dragon 2h sword and the Chaos Elemental pet. The collection log has one total for all their bosses, so On Rate can't tell which boss each copy came from; counting them would add expected drops without the matching received ones and make accounts look drier than they are.
 - **Gauntlet loot** goes to a chest the Loot Tracker doesn't see. On Rate notices new items through the collection log message; open The Gauntlet's collection log page after a session to update repeat seeds.
 - **Pets** are counted from the "funny feeling" message right after a kill. Like the collection log, On Rate counts a pet once: for luck, what matters is whether you have it by now, not how many duplicates you might have rolled. Royal Titans prayer scrolls work the same way, because they stop dropping once read.
 - **Not covered yet:** Fortis Colosseum (its rates depend on the wave) and the team version of The Nightmare.
 - **Chest bosses:** Obor's and Bryophyta's uniques come from their chests, which the Loot Tracker doesn't see. New items show up through the collection log message; open their collection log pages to update repeat drops.
+- **No files:** On Rate only uses the rates built into the plugin and saves your progress in RuneLite's own settings, so it doesn't read or write any files on your computer.
 - **Made a mistake?** The **Reset this boss** button clears that boss. Open its collection log page again to re-sync.
-
-### Using your own rates
-
-All rates live in one file, [`bosses.json`](src/main/resources/com/expecteddrops/bosses.json). To change them without rebuilding the plugin:
-
-1. Copy the file to `.runelite/on-rate/bosses.json` in your user folder.
-2. Edit the copy.
-3. Turn the plugin off and on again.
 
 ## Credits
 
