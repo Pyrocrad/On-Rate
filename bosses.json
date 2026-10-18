@@ -1,0 +1,605 @@
+{
+  "_readme": "'once': true marks items you can only get once (pets count as once automatically). Items that drop from more than one boss (or have clogShared) are only counted from loot, because the collection log total covers every source. Rates are per kill/completion, solo or full contribution, base rates (no diary or CA boosts). 'rate' is a fraction string. Delve items use 'levelRates' per delve level (9 = 8+). Combined pages (Dagannoth Kings, Callisto and Artio...) list 'parts', each with its own kill-count names, and drops use 'partRates' per part. Raid modes are parts with a 'raid' key for their purple chance; 'partWeights' overrides an item's weight in one mode. Raid items use 'weight' (share of the purple, chance set in the plugin settings). 'match' lists extra item names that count for that row. 'any': false keeps a row out of the 'Any' total. 'kc' = chat kill-count names, 'loot' = loot tracker names, 'clog' = collection log page titles.",
+  "bosses": [
+    {
+      "name": "Abyssal Sire", "kc": ["Abyssal Sire"], "loot": ["Abyssal Sire"], "clog": ["Abyssal Sire"], "note": "Bludgeon pieces and the abyssal dagger come from Unsired, not from the kill itself.",
+      "drops": [
+        {"name": "Unsired", "rate": "1/100"},
+        {"name": "Jar of miasma", "rate": "1/1000"},
+        {"name": "Abyssal orphan", "rate": "1/2560", "pet": true}
+      ]
+    },
+    {
+      "name": "Alchemical Hydra", "kc": ["Alchemical Hydra"], "loot": ["Alchemical Hydra"], "clog": ["Alchemical Hydra"],
+      "note": "Dragon thrownaxes and knives drop in stacks of 500 to 1,000. The collection log counts items, so On Rate turns your total into an estimated number of drops.",
+      "drops": [
+        {"name": "Hydra's eye", "rate": "1/181"},
+        {"name": "Hydra's fang", "rate": "1/181"},
+        {"name": "Hydra's heart", "rate": "1/181"},
+        {"name": "Hydra tail", "rate": "1/513"},
+        {"name": "Hydra leather", "rate": "1/514"},
+        {"name": "Hydra's claw", "rate": "1/1001"},
+        {"name": "Dragon thrownaxe", "rate": "1/2000", "stack": 750},
+        {"name": "Dragon knife", "rate": "1/2000", "stack": 750},
+        {"name": "Alchemical hydra heads", "rate": "1/256"},
+        {"name": "Jar of chemicals", "rate": "1/2000"},
+        {"name": "Ikkle hydra", "rate": "1/3000", "pet": true}
+      ]
+    },
+    {
+      "name": "Amoxliatl", "kc": ["Amoxliatl"], "loot": ["Amoxliatl"], "clog": ["Amoxliatl"],
+      "drops": [
+        {"name": "Pendant of ates (inert)", "rate": "1/25"},
+        {"name": "Glacial temotli", "rate": "1/100"},
+        {"name": "Moxi", "rate": "1/3000", "pet": true}
+      ]
+    },
+    {
+      "name": "Araxxor", "kc": ["Araxxor"], "loot": ["Araxxor"], "clog": ["Araxxor"], "note": "Assumes you harvest every kill (destroying gives no uniques but doubles the pet rate). Any halberd piece is 1/200 per kill, so 1/600 for each piece.",
+      "drops": [
+        {"name": "Noxious point", "rate": "1/600"},
+        {"name": "Noxious blade", "rate": "1/600"},
+        {"name": "Noxious pommel", "rate": "1/600"},
+        {"name": "Araxyte head", "rate": "1/250"},
+        {"name": "Araxyte fang", "rate": "1/600"},
+        {"name": "Jar of venom", "rate": "1/1500"},
+        {"name": "Nid", "rate": "1/3000", "pet": true}
+      ]
+    },
+    {
+      "name": "Barrows", "estimate": true, "kc": ["Barrows chest", "Barrows Chests"], "loot": ["Barrows"], "clog": ["Barrows Chests"], "note": "Assumes you kill all six brothers before every chest. That gives 7 rolls per chest, each with a 1/2,448 chance for every item, so about 1/350 per item per chest. Fewer brothers means fewer rolls and lower chances.",
+      "drops": [
+        {"name": "Ahrim's hood", "rate": "7/2448"},
+        {"name": "Ahrim's robetop", "rate": "7/2448"},
+        {"name": "Ahrim's robeskirt", "rate": "7/2448"},
+        {"name": "Ahrim's staff", "rate": "7/2448"},
+        {"name": "Dharok's helm", "rate": "7/2448"},
+        {"name": "Dharok's platebody", "rate": "7/2448"},
+        {"name": "Dharok's platelegs", "rate": "7/2448"},
+        {"name": "Dharok's greataxe", "rate": "7/2448"},
+        {"name": "Guthan's helm", "rate": "7/2448"},
+        {"name": "Guthan's platebody", "rate": "7/2448"},
+        {"name": "Guthan's chainskirt", "rate": "7/2448"},
+        {"name": "Guthan's warspear", "rate": "7/2448"},
+        {"name": "Karil's coif", "rate": "7/2448"},
+        {"name": "Karil's leathertop", "rate": "7/2448"},
+        {"name": "Karil's leatherskirt", "rate": "7/2448"},
+        {"name": "Karil's crossbow", "rate": "7/2448"},
+        {"name": "Torag's helm", "rate": "7/2448"},
+        {"name": "Torag's platebody", "rate": "7/2448"},
+        {"name": "Torag's platelegs", "rate": "7/2448"},
+        {"name": "Torag's hammers", "rate": "7/2448"},
+        {"name": "Verac's helm", "rate": "7/2448"},
+        {"name": "Verac's brassard", "rate": "7/2448"},
+        {"name": "Verac's plateskirt", "rate": "7/2448"},
+        {"name": "Verac's flail", "rate": "7/2448"}
+      ]
+    },
+    {
+      "name": "Brutus", "kc": ["Brutus"], "loot": ["Brutus"], "clog": ["Brutus"], "note": "Brutus's rates are estimates from the OSRS Wiki's drop data, not official numbers.",
+      "drops": [
+        {"name": "Mooleta", "rate": "5/150"},
+        {"name": "Bottomless milk bucket (empty)", "rate": "4/150"},
+        {"name": "Cow slippers", "rate": "1/150"},
+        {"name": "Beef", "pet": true, "rate": "1/1000"}
+      ]
+    },
+    {
+      "name": "Bryophyta", "kc": ["Bryophyta"], "loot": [], "clog": ["Bryophyta"], "note": "The essence comes from Bryophyta's chest, which you open once per kill. The loot tracker doesn't see chest loot, so open the collection log page after a session to update repeat drops.",
+      "drops": [
+        {"name": "Bryophyta's essence", "rate": "1/118"}
+      ]
+    },
+    {
+      "name": "Callisto and Artio", "clog": ["Callisto and Artio"], "parts": [{"name": "Callisto", "kc": ["Callisto"], "loot": ["Callisto"]}, {"name": "Artio", "kc": ["Artio"], "loot": ["Artio"]}], "note": "Callisto and Artio share one collection log page, but each has its own kill count and drop rates. Hover a row to see both.",
+      "drops": [
+        {"name": "Dragon pickaxe", "partRates": {"Callisto": "1/256", "Artio": "1/358"}},
+        {"name": "Claws of callisto", "partRates": {"Callisto": "1/196", "Artio": "1/618"}},
+        {"name": "Voidwaker hilt", "partRates": {"Callisto": "1/360", "Artio": "1/912"}},
+        {"name": "Tyrannical ring", "partRates": {"Callisto": "1/512", "Artio": "1/716"}},
+        {"name": "Callisto cub", "pet": true, "partRates": {"Callisto": "1/1500", "Artio": "1/2800"}}
+      ]
+    },
+    {
+      "name": "Cerberus", "kc": ["Cerberus"], "loot": ["Cerberus"], "clog": ["Cerberus"],
+      "drops": [
+        {"name": "Primordial crystal", "rate": "1/520"},
+        {"name": "Pegasian crystal", "rate": "1/520"},
+        {"name": "Eternal crystal", "rate": "1/520"},
+        {"name": "Smouldering stone", "rate": "1/520"},
+        {"name": "Jar of souls", "rate": "1/2000"},
+        {"name": "Hellpuppy", "rate": "1/3000", "pet": true}
+      ]
+    },
+    {
+      "name": "Chambers of Xeric", "loot": ["Chambers of Xeric"], "clog": ["Chambers of Xeric"], "raid": "cox", "parts": [{"name": "Normal", "kc": ["Chambers of Xeric"], "raid": "cox"}, {"name": "Challenge Mode", "kc": ["Chambers of Xeric Challenge Mode", "Chambers of Xeric (CM)", "Chambers of Xeric CM"], "raid": "coxCm", "keywords": ["challenge", "(cm)"]}], "note": "Unique weights from the OSRS Wiki: out of 60 in normal mode, out of 56 in Challenge Mode (the prayer scrolls are rarer there).",
+      "drops": [
+        {"name": "Dexterous prayer scroll", "weight": 14, "partWeights": {"Challenge Mode": 12}},
+        {"name": "Arcane prayer scroll", "weight": 14, "partWeights": {"Challenge Mode": 12}},
+        {"name": "Twisted buckler", "weight": 4},
+        {"name": "Dragon hunter crossbow", "weight": 4},
+        {"name": "Dinh's bulwark", "weight": 3},
+        {"name": "Ancestral hat", "weight": 4},
+        {"name": "Ancestral robe top", "weight": 4},
+        {"name": "Ancestral robe bottom", "weight": 4},
+        {"name": "Dragon claws", "weight": 3},
+        {"name": "Elder maul", "weight": 2},
+        {"name": "Kodai insignia", "weight": 2},
+        {"name": "Twisted bow", "weight": 2},
+        {"name": "Olmlet", "perUnique": "1/53", "pet": true}
+      ]
+    },
+    {
+      "name": "Chaos Elemental", "kc": ["Chaos Elemental"], "loot": ["Chaos Elemental"], "clog": ["Chaos Elemental"],
+      "drops": [
+        {"name": "Dragon pickaxe", "rate": "1/256"},
+        {"name": "Pet chaos elemental", "rate": "1/300", "pet": true}
+      ]
+    },
+    {
+      "name": "Chaos Fanatic", "kc": ["Chaos Fanatic"], "loot": ["Chaos Fanatic"], "clog": ["Chaos Fanatic"],
+      "drops": [
+        {"name": "Odium shard 1", "rate": "1/256"},
+        {"name": "Malediction shard 1", "rate": "1/256"},
+        {"name": "Pet chaos elemental", "rate": "1/1000", "pet": true}
+      ]
+    },
+    {
+      "name": "Commander Zilyana", "kc": ["Commander Zilyana"], "loot": ["Commander Zilyana"], "clog": ["Commander Zilyana"], "minionLoot": ["Starlight", "Growler", "Bree"], "minions": 3, "estimate": true, "note": "Assumes you kill all three bodyguards each kill: they roll some of the general's uniques too, and the collection log counts those under the general.",
+      "drops": [
+        {"name": "Saradomin sword", "rate": "1/127", "minionRate": "3/16129"},
+        {"name": "Saradomin's light", "rate": "1/254"},
+        {"name": "Armadyl crossbow", "rate": "1/508"},
+        {"name": "Saradomin hilt", "rate": "1/508"},
+        {"name": "Godsword shard 1", "rate": "1/762", "minionRate": "1/1524"},
+        {"name": "Godsword shard 2", "rate": "1/762", "minionRate": "1/1524"},
+        {"name": "Godsword shard 3", "rate": "1/762", "minionRate": "1/1524"},
+        {"name": "Pet zilyana", "rate": "1/5000", "pet": true}
+      ]
+    },
+    {
+      "name": "Corporeal Beast", "estimate": true, "detectTeam": true, "kc": ["Corporeal Beast"], "loot": ["Corporeal Beast"], "clog": ["Corporeal Beast"], "note": "Only the player who deals the most damage gets the drop, so in a team your share is about one kill in the team size.",
+      "drops": [
+        {"name": "Spirit shield", "rate": "1/64"},
+        {"name": "Holy elixir", "rate": "3/512"},
+        {"name": "Spectral sigil", "rate": "1/1365"},
+        {"name": "Arcane sigil", "rate": "1/1365"},
+        {"name": "Elysian sigil", "rate": "1/4095"},
+        {"name": "Jar of spirits", "rate": "1/1000"},
+        {"name": "Pet dark core", "rate": "1/5000", "pet": true}
+      ]
+    },
+    {
+      "name": "Crazy Archaeologist", "kc": ["Crazy Archaeologist"], "loot": ["Crazy archaeologist", "Crazy Archaeologist"], "clog": ["Crazy Archaeologist"],
+      "drops": [
+        {"name": "Odium shard 2", "rate": "1/256"},
+        {"name": "Malediction shard 2", "rate": "1/256"},
+        {"name": "Fedora", "rate": "1/128", "any": false}
+      ]
+    },
+    {
+      "name": "Dagannoth Kings", "clog": ["Dagannoth Kings"], "parts": [{"name": "Dagannoth Rex", "kc": ["Dagannoth Rex"], "loot": ["Dagannoth Rex"]}, {"name": "Dagannoth Prime", "kc": ["Dagannoth Prime"], "loot": ["Dagannoth Prime"]}, {"name": "Dagannoth Supreme", "kc": ["Dagannoth Supreme"], "loot": ["Dagannoth Supreme"]}], "note": "Each king has its own kill count and drops; the dragon axe drops from all three.",
+      "drops": [
+        {"name": "Berserker ring", "partRates": {"Dagannoth Rex": "1/128"}},
+        {"name": "Warrior ring", "partRates": {"Dagannoth Rex": "1/128"}},
+        {"name": "Seers ring", "partRates": {"Dagannoth Prime": "1/128"}},
+        {"name": "Mud battlestaff", "partRates": {"Dagannoth Prime": "1/128"}},
+        {"name": "Archers ring", "partRates": {"Dagannoth Supreme": "1/128"}},
+        {"name": "Seercull", "partRates": {"Dagannoth Supreme": "1/128"}},
+        {"name": "Dragon axe", "partRates": {"Dagannoth Rex": "1/128", "Dagannoth Prime": "1/128", "Dagannoth Supreme": "1/128"}},
+        {"name": "Pet dagannoth rex", "pet": true, "partRates": {"Dagannoth Rex": "1/5000"}},
+        {"name": "Pet dagannoth prime", "pet": true, "partRates": {"Dagannoth Prime": "1/5000"}},
+        {"name": "Pet dagannoth supreme", "pet": true, "partRates": {"Dagannoth Supreme": "1/5000"}}
+      ]
+    },
+    {
+      "name": "Deranged Archaeologist", "kc": ["Deranged Archaeologist", "Deranged archaeologist"], "loot": ["Deranged archaeologist", "Deranged Archaeologist"], "clog": ["Deranged Archaeologist"],
+      "drops": [
+        {"name": "Steel ring", "rate": "3/131"}
+      ]
+    },
+    {
+      "name": "Doom of Mokhaiotl", "kc": [], "loot": ["Doom of Mokhaiotl"], "clog": ["Doom of Mokhaiotl"], "delve": true, "note": "Rates depend on the delve level (8+ = each deep delve wave). Level completions are counted from the chat message; open the Doom scoreboard once to load your full history. Per-level rates from the Delve Calculator plugin by Speaax.",
+      "drops": [
+        {"name": "Mokhaiotl cloth", "levelRates": {"2": "1/2500", "3": "1/2000", "4": "1/1350", "5": "1/810", "6": "1/765", "7": "1/720", "8": "1/630", "9": "1/540"}},
+        {"name": "Eye of ayak (uncharged)", "levelRates": {"3": "1/2000", "4": "1/1350", "5": "1/810", "6": "1/765", "7": "1/720", "8": "1/630", "9": "1/540"}},
+        {"name": "Avernic treads", "levelRates": {"4": "1/1350", "5": "1/810", "6": "1/765", "7": "1/720", "8": "1/630", "9": "1/540"}},
+        {"name": "Dom", "pet": true, "levelRates": {"6": "1/1000", "7": "1/750", "8": "1/500", "9": "1/250"}}
+      ]
+    },
+    {
+      "name": "Duke Sucellus", "kc": ["Duke Sucellus"], "loot": ["Duke Sucellus"], "clog": ["Duke Sucellus"], "note": "Normal mode rates. Awakened kills are not modelled separately.",
+      "drops": [
+        {"name": "Magus vestige", "rate": "1/720"},
+        {"name": "Eye of the duke", "rate": "1/720"},
+        {"name": "Chromium ingot", "rate": "3/720"},
+        {"name": "Virtus mask", "rate": "1/2160"},
+        {"name": "Virtus robe top", "rate": "1/2160"},
+        {"name": "Virtus robe bottom", "rate": "1/2160"},
+        {"name": "Baron", "rate": "1/2500", "pet": true}
+      ]
+    },
+    {
+      "name": "General Graardor", "kc": ["General Graardor"], "loot": ["General Graardor"], "clog": ["General Graardor"], "minionLoot": ["Sergeant Strongstack", "Sergeant Steelwill", "Sergeant Grimspike"], "minions": 3, "estimate": true, "note": "Assumes you kill all three bodyguards each kill: they roll some of the general's uniques too, and the collection log counts those under the general.",
+      "drops": [
+        {"name": "Bandos chestplate", "rate": "1/381", "minionRate": "1/16256"},
+        {"name": "Bandos tassets", "rate": "1/381", "minionRate": "1/16256"},
+        {"name": "Bandos boots", "rate": "1/381", "minionRate": "1/16256"},
+        {"name": "Bandos hilt", "rate": "1/508"},
+        {"name": "Godsword shard 1", "rate": "1/762", "minionRate": "1/1524"},
+        {"name": "Godsword shard 2", "rate": "1/762", "minionRate": "1/1524"},
+        {"name": "Godsword shard 3", "rate": "1/762", "minionRate": "1/1524"},
+        {"name": "Pet general graardor", "rate": "1/5000", "pet": true}
+      ]
+    },
+    {
+      "name": "Maggot King", "kc": ["Maggot King", "The Maggot King"], "loot": ["Maggot King", "The Maggot King"], "clog": ["Maggot King"], "estimate": true, "note": "The pet can also come from taking eggs, which On Rate can't count, so the pet row is a low estimate.",
+      "drops": [
+        {"name": "Elder venator fang", "rate": "1/340"},
+        {"name": "Crimson kisten", "rate": "1/520"},
+        {"name": "Maggot marquess", "rate": "1/3500", "pet": true}
+      ]
+    },
+    {
+      "name": "Giant Mole", "kc": ["Giant Mole"], "loot": ["Giant Mole"], "clog": ["Giant Mole"], "note": "Mole claws and skins drop on every kill, so they aren't counted as uniques.",
+      "drops": [
+        {"name": "Immaculate mole skin", "rate": "1/50"},
+        {"name": "Baby mole", "pet": true, "rate": "1/3000"}
+      ]
+    },
+    {
+      "name": "Grotesque Guardians", "kc": ["Grotesque Guardians"], "loot": ["Dusk", "Grotesque Guardians"], "clog": ["Grotesque Guardians"], "note": "The Guardians roll their drop table twice per kill, so these are per-kill rates (twice the per-roll rates). The granite maul isn't tracked: gargoyles drop it too.",
+      "drops": [
+        {"name": "Granite gloves", "rate": "1/250"},
+        {"name": "Granite ring", "rate": "1/250"},
+        {"name": "Granite hammer", "rate": "1/375"},
+        {"name": "Black tourmaline core", "rate": "1/500"},
+        {"name": "Noon", "rate": "1/3000", "pet": true},
+        {"name": "Jar of stone", "rate": "1/5000"}
+      ]
+    },
+    {
+      "name": "Hespori", "kc": ["Hespori"], "loot": ["Hespori"], "clog": ["Hespori"],
+      "drops": [
+        {"name": "Bottomless compost bucket", "rate": "1/35"}
+      ]
+    },
+    {
+      "name": "Hueycoatl", "estimate": true, "detectTeam": true, "kc": ["Hueycoatl", "The Hueycoatl"], "loot": ["The Hueycoatl", "Hueycoatl"], "clog": ["The Hueycoatl"], "note": "Each player rolls for uniques, scaled by their share of the damage. The pet chance doesn't scale.",
+      "drops": [
+        {"name": "Tome of earth (empty)", "rate": "1/90"},
+        {"name": "Dragon hunter wand", "rate": "1/105"},
+        {"name": "Huberte", "rate": "1/400", "pet": true, "noShare": true},
+        {"name": "Hueycoatl hide", "rate": "11/315", "any": false}
+      ]
+    },
+    {
+      "name": "K'ril Tsutsaroth", "kc": ["K'ril Tsutsaroth"], "loot": ["K'ril Tsutsaroth"], "clog": ["K'ril Tsutsaroth"], "minionLoot": ["Tstanon Karlak", "Zakl'n Gritch", "Balfrug Kreeyath"], "minions": 3, "estimate": true, "note": "Assumes you kill all three bodyguards each kill: they roll some of the general's uniques too, and the collection log counts those under the general.",
+      "drops": [
+        {"name": "Steam battlestaff", "rate": "1/127"},
+        {"name": "Zamorakian spear", "rate": "1/127", "minionRate": "3/16129"},
+        {"name": "Staff of the dead", "rate": "1/508"},
+        {"name": "Zamorak hilt", "rate": "1/508"},
+        {"name": "Godsword shard 1", "rate": "1/762", "minionRate": "1/1524"},
+        {"name": "Godsword shard 2", "rate": "1/762", "minionRate": "1/1524"},
+        {"name": "Godsword shard 3", "rate": "1/762", "minionRate": "1/1524"},
+        {"name": "Pet k'ril tsutsaroth", "rate": "1/5000", "pet": true}
+      ]
+    },
+    {
+      "name": "Kalphite Queen", "kc": ["Kalphite Queen"], "loot": ["Kalphite Queen"], "clog": ["Kalphite Queen"],
+      "drops": [
+        {"name": "Kq head", "rate": "1/128"},
+        {"name": "Dragon chainbody", "rate": "1/128"},
+        {"name": "Dragon 2h sword", "rate": "1/256", "clogShared": true},
+        {"name": "Dragon pickaxe", "rate": "1/400"},
+        {"name": "Jar of sand", "rate": "1/2000"},
+        {"name": "Kalphite princess", "rate": "1/3000", "pet": true}
+      ]
+    },
+    {
+      "name": "King Black Dragon", "kc": ["King Black Dragon"], "loot": ["King Black Dragon"], "clog": ["King Black Dragon"],
+      "drops": [
+        {"name": "Kbd heads", "rate": "1/128"},
+        {"name": "Dragon pickaxe", "rate": "1/1000"},
+        {"name": "Prince black dragon", "rate": "1/3000", "pet": true},
+        {"name": "Draconic visage", "rate": "1/5000"}
+      ]
+    },
+    {
+      "name": "Kraken", "kc": ["Kraken"], "loot": ["Kraken"], "clog": ["Kraken"],
+      "drops": [
+        {"name": "Kraken tentacle", "rate": "1/400"},
+        {"name": "Trident of the seas (full)", "rate": "1/512"},
+        {"name": "Jar of dirt", "rate": "1/1000"},
+        {"name": "Pet kraken", "rate": "1/3000", "pet": true}
+      ]
+    },
+    {
+      "name": "Kree'arra", "kc": ["Kree'arra"], "loot": ["Kree'arra"], "clog": ["Kree'arra"], "minionLoot": ["Flight Kilisa", "Wingman Skree", "Flockleader Geerin"], "minions": 3, "estimate": true, "note": "Assumes you kill all three bodyguards each kill: they roll some of the general's uniques too, and the collection log counts those under the general.",
+      "drops": [
+        {"name": "Armadyl helmet", "rate": "1/381", "minionRate": "1/16129"},
+        {"name": "Armadyl chestplate", "rate": "1/381", "minionRate": "1/16129"},
+        {"name": "Armadyl chainskirt", "rate": "1/381", "minionRate": "1/16129"},
+        {"name": "Armadyl hilt", "rate": "1/508"},
+        {"name": "Godsword shard 1", "rate": "1/762", "minionRate": "1/1524"},
+        {"name": "Godsword shard 2", "rate": "1/762", "minionRate": "1/1524"},
+        {"name": "Godsword shard 3", "rate": "1/762", "minionRate": "1/1524"},
+        {"name": "Pet kree'arra", "rate": "1/5000", "pet": true}
+      ]
+    },
+    {
+      "name": "Moons of Peril", "estimate": true, "kc": ["Lunar Chest", "Lunar Chests"], "loot": ["Lunar Chest"], "clog": ["Moons of Peril"], "note": "Assumes you defeat all three moons before opening the Lunar Chest. Each moon gives a 1/56 roll for one piece of its own set, so 1/224 per item per chest. Duplicate protection isn't modelled.",
+      "drops": [
+        {"name": "Dual macuahuitl", "rate": "1/224"},
+        {"name": "Blood moon helm", "rate": "1/224"},
+        {"name": "Blood moon chestplate", "rate": "1/224"},
+        {"name": "Blood moon tassets", "rate": "1/224"},
+        {"name": "Blue moon spear", "rate": "1/224"},
+        {"name": "Blue moon helm", "rate": "1/224"},
+        {"name": "Blue moon chestplate", "rate": "1/224"},
+        {"name": "Blue moon tassets", "rate": "1/224"},
+        {"name": "Eclipse atlatl", "rate": "1/224"},
+        {"name": "Eclipse moon helm", "rate": "1/224"},
+        {"name": "Eclipse moon chestplate", "rate": "1/224"},
+        {"name": "Eclipse moon tassets", "rate": "1/224"}
+      ]
+    },
+    {
+      "name": "Nex", "estimate": true, "detectTeam": true, "kc": ["Nex"], "loot": ["Nex"], "clog": ["Nex"], "note": "These are the rates for the whole team; your own chance scales with your share of the damage. The pet chance doesn't scale.",
+      "drops": [
+        {"name": "Zaryte vambraces", "rate": "1/172"},
+        {"name": "Nihil horn", "rate": "1/258"},
+        {"name": "Torva full helm (damaged)", "rate": "1/258"},
+        {"name": "Torva platebody (damaged)", "rate": "1/258"},
+        {"name": "Torva platelegs (damaged)", "rate": "1/258"},
+        {"name": "Ancient hilt", "rate": "1/516"},
+        {"name": "Nexling", "rate": "1/500", "pet": true, "noShare": true}
+      ]
+    },
+    {
+      "name": "Obor", "kc": ["Obor"], "loot": [], "clog": ["Obor"], "note": "The club comes from Obor's chest, which you open once per kill. The loot tracker doesn't see chest loot, so open the collection log page after a session to update repeat drops.",
+      "drops": [
+        {"name": "Hill giant club", "rate": "1/118"}
+      ]
+    },
+    {
+      "name": "Phantom Muspah", "kc": ["Phantom Muspah"], "loot": ["Phantom Muspah"], "clog": ["Phantom Muspah"],
+      "drops": [
+        {"name": "Frozen cache", "rate": "1/25", "any": false},
+        {"name": "Ancient icon", "rate": "1/50"},
+        {"name": "Venator shard", "rate": "1/100"},
+        {"name": "Muphin", "rate": "1/2500", "pet": true}
+      ]
+    },
+    {
+      "name": "Phosani's Nightmare", "kc": ["Phosani's Nightmare"], "loot": ["Phosani's Nightmare"], "clog": ["The Nightmare"],
+      "drops": [
+        {"name": "Parasitic egg", "rate": "1/200"},
+        {"name": "Nightmare staff", "rate": "69/35000"},
+        {"name": "Inquisitor's great helm", "rate": "1/700"},
+        {"name": "Inquisitor's hauberk", "rate": "1/700"},
+        {"name": "Inquisitor's plateskirt", "rate": "1/700"},
+        {"name": "Inquisitor's mace", "rate": "31/35000"},
+        {"name": "Eldritch orb", "rate": "1/1600"},
+        {"name": "Harmonised orb", "rate": "1/1600"},
+        {"name": "Volatile orb", "rate": "1/1600"},
+        {"name": "Little nightmare", "rate": "1/1400", "pet": true},
+        {"name": "Jar of dreams", "rate": "1/4000"}
+      ]
+    },
+    {
+      "name": "Royal Titans", "kc": ["Royal Titan", "Royal Titans"], "loot": ["Royal Titans", "Branda the Fire Queen", "Eldric the Ice King"], "clog": ["Royal Titans"], "kcMode": "max", "team": "royalTitans", "note": "You loot one titan per kill, so the crown row counts either crown, and each prayer scroll is 1/150 per kill if you loot both titans equally. A scroll stops dropping once you've read it.",
+      "drops": [
+        {"name": "Giantsoul amulet (uncharged)", "rate": "1/16", "any": false},
+        {"name": "Fire element staff crown", "label": "Element staff crowns", "rate": "1/75", "match": ["Ice element staff crown"]},
+        {"name": "Mystic vigour prayer scroll", "rate": "1/150", "once": true},
+        {"name": "Deadeye prayer scroll", "rate": "1/150", "once": true},
+        {"name": "Bran", "rate": "1/3000", "pet": true, "noShare": true}
+      ]
+    },
+    {
+      "name": "Sarachnis", "kc": ["Sarachnis"], "loot": ["Sarachnis"], "clog": ["Sarachnis"],
+      "drops": [
+        {"name": "Sarachnis cudgel", "rate": "1/384"},
+        {"name": "Jar of eyes", "rate": "1/2000"},
+        {"name": "Sraracha", "rate": "1/3000", "pet": true}
+      ]
+    },
+    {
+      "name": "Scorpia", "kc": ["Scorpia"], "loot": ["Scorpia"], "clog": ["Scorpia"],
+      "drops": [
+        {"name": "Odium shard 3", "rate": "1/256"},
+        {"name": "Malediction shard 3", "rate": "1/256"},
+        {"name": "Scorpia's offspring", "rate": "1/2016", "pet": true}
+      ]
+    },
+    {
+      "name": "Scurrius", "kc": ["Scurrius"], "loot": ["Scurrius"], "clog": ["Scurrius"],
+      "drops": [
+        {"name": "Scurrius' spine", "rate": "1/33"},
+        {"name": "Scurry", "rate": "1/3000", "pet": true}
+      ]
+    },
+    {
+      "name": "Shellbane Gryphon", "kc": ["Shellbane Gryphon"], "loot": ["Shellbane Gryphon"], "clog": ["Shellbane Gryphon"],
+      "drops": [
+        {"name": "Belle's folly (tarnished)", "rate": "1/75"},
+        {"name": "Jar of feathers", "rate": "1/2000"},
+        {"name": "Gull", "rate": "1/3000", "pet": true}
+      ]
+    },
+    {
+      "name": "Skotizo", "kc": ["Skotizo"], "loot": ["Skotizo"], "clog": ["Skotizo"],
+      "drops": [
+        {"name": "Dark claw", "rate": "1/25", "any": false},
+        {"name": "Skotos", "rate": "1/65", "pet": true},
+        {"name": "Jar of darkness", "rate": "1/200"},
+        {"name": "Uncut onyx", "rate": "1/1000"}
+      ]
+    },
+    {
+      "name": "The Gauntlet", "clog": ["The Gauntlet"], "parts": [{"name": "Gauntlet", "kc": ["Gauntlet"], "loot": []}, {"name": "Corrupted Gauntlet", "kc": ["Corrupted Gauntlet"], "loot": []}], "note": "Gauntlet loot goes to a chest the loot tracker doesn't see. New items show up from the collection log message; open this collection log page after a session to update repeat seeds.",
+      "drops": [
+        {"name": "Crystal armour seed", "partRates": {"Gauntlet": "1/120", "Corrupted Gauntlet": "1/50"}},
+        {"name": "Crystal weapon seed", "partRates": {"Gauntlet": "1/120", "Corrupted Gauntlet": "1/50"}},
+        {"name": "Enhanced crystal weapon seed", "partRates": {"Gauntlet": "1/2000", "Corrupted Gauntlet": "1/400"}},
+        {"name": "Youngllef", "pet": true, "partRates": {"Gauntlet": "1/2000", "Corrupted Gauntlet": "1/800"}}
+      ]
+    },
+    {
+      "name": "The Leviathan", "kc": ["The Leviathan", "Leviathan"], "loot": ["The Leviathan", "Leviathan"], "clog": ["The Leviathan"], "note": "Normal mode rates.",
+      "drops": [
+        {"name": "Venator vestige", "rate": "1/768"},
+        {"name": "Leviathan's lure", "rate": "1/768"},
+        {"name": "Chromium ingot", "rate": "3/768"},
+        {"name": "Virtus mask", "rate": "1/2304"},
+        {"name": "Virtus robe top", "rate": "1/2304"},
+        {"name": "Virtus robe bottom", "rate": "1/2304"},
+        {"name": "Lil'viathan", "rate": "1/2500", "pet": true}
+      ]
+    },
+    {
+      "name": "The Mad Angel", "kc": ["The Mad Angel", "Mad Angel"], "loot": ["The Mad Angel", "Mad Angel"], "clog": ["The Mad Angel"], "note": "Ardeaglais teleports drop 2 at a time (1/25) and don't count towards Any. Granite dust drops every kill, so it isn't tracked.",
+      "drops": [
+        {"name": "Hallowfell", "rate": "1/127"},
+        {"name": "Jar of Light", "rate": "1/1000"},
+        {"name": "Aggy", "rate": "1/2000", "pet": true},
+        {"name": "Ardeaglais teleport", "rate": "1/25", "stack": 2, "any": false}
+      ]
+    },
+    {
+      "name": "The Whisperer", "kc": ["The Whisperer", "Whisperer"], "loot": ["The Whisperer", "Whisperer"], "clog": ["The Whisperer"], "note": "Normal mode rates.",
+      "drops": [
+        {"name": "Bellator vestige", "rate": "1/512"},
+        {"name": "Siren's staff", "rate": "1/512"},
+        {"name": "Chromium ingot", "rate": "3/512"},
+        {"name": "Virtus mask", "rate": "1/1536"},
+        {"name": "Virtus robe top", "rate": "1/1536"},
+        {"name": "Virtus robe bottom", "rate": "1/1536"},
+        {"name": "Wisp", "rate": "1/2000", "pet": true}
+      ]
+    },
+    {
+      "name": "Theatre of Blood", "loot": ["Theatre of Blood"], "clog": ["Theatre of Blood"], "raid": "tob", "parts": [{"name": "Normal", "kc": ["Theatre of Blood"], "raid": "tob"}, {"name": "Hard Mode", "kc": ["Theatre of Blood: Hard Mode", "Theatre of Blood Hard Mode"], "raid": "tobHm", "keywords": ["hard mode", "(hm)", "(hard"]}, {"name": "Entry Mode", "kc": ["Theatre of Blood: Entry Mode", "Theatre of Blood: Story Mode", "Theatre of Blood Entry Mode"], "raid": "none", "keywords": ["entry", "story"]}], "note": "Entry Mode has no uniques, so those completions count for nothing here. A team gets a purple about 1 in 9.1 raids in normal mode and 1 in 7.7 in Hard Mode; the settings hold your own share.",
+      "drops": [
+        {"name": "Avernic defender hilt", "weight": 8},
+        {"name": "Ghrazi rapier", "weight": 2},
+        {"name": "Sanguinesti staff (uncharged)", "weight": 2},
+        {"name": "Justiciar faceguard", "weight": 2},
+        {"name": "Justiciar chestguard", "weight": 2},
+        {"name": "Justiciar legguards", "weight": 2},
+        {"name": "Scythe of vitur (uncharged)", "weight": 1},
+        {"name": "Lil' zik", "rate": "1/650", "pet": true, "partRates": {"Normal": "1/650", "Hard Mode": "1/650"}}
+      ]
+    },
+    {
+      "name": "Thermonuclear Smoke Devil", "kc": ["Thermonuclear Smoke Devil", "Thermonuclear smoke devil"], "loot": ["Thermonuclear smoke devil"], "clog": ["Thermonuclear Smoke Devil"],
+      "drops": [
+        {"name": "Occult necklace", "rate": "1/350"},
+        {"name": "Smoke battlestaff", "rate": "1/512"},
+        {"name": "Dragon chainbody", "rate": "1/2000"},
+        {"name": "Jar of smoke", "rate": "1/2000"},
+        {"name": "Pet smoke devil", "rate": "1/3000", "pet": true}
+      ]
+    },
+    {
+      "name": "Tombs of Amascut", "loot": ["Tombs of Amascut"], "clog": ["Tombs of Amascut"], "raid": "toa", "parts": [{"name": "Entry Mode", "kc": ["Tombs of Amascut: Entry Mode", "Tombs of Amascut Entry Mode"], "raid": "toaEntry", "keywords": ["entry"]}, {"name": "Normal", "kc": ["Tombs of Amascut"], "raid": "toa"}, {"name": "Expert Mode", "kc": ["Tombs of Amascut: Expert Mode", "Tombs of Amascut Expert Mode"], "raid": "toaExpert", "keywords": ["expert"]}], "note": "Raids done with On Rate use your estimated points and raid level. Older raids use each mode's purple chance from the settings. At low raid levels some uniques are rare: below raid level 50 you almost never get a fang or Lightbearer, and below 150 almost never a shadow, ward or Masori piece. When the chest picks one of those, you only get it 1 time in 50; otherwise you get normal loot instead.",
+      "drops": [
+        {"name": "Osmumten's fang", "weight": 7, "minRaidLevel": 50, "levelWeights": {"350": 6, "400": 4, "450": 4, "500": 3}},
+        {"name": "Lightbearer", "weight": 7, "minRaidLevel": 50, "levelWeights": {"350": 6, "400": 5, "450": 4, "500": 3.5}},
+        {"name": "Elidinis' ward", "weight": 3, "minRaidLevel": 150},
+        {"name": "Masori mask", "weight": 2, "minRaidLevel": 150},
+        {"name": "Masori body", "weight": 2, "minRaidLevel": 150},
+        {"name": "Masori chaps", "weight": 2, "minRaidLevel": 150},
+        {"name": "Tumeken's shadow (uncharged)", "weight": 1, "minRaidLevel": 150}
+      ]
+    },
+    {
+      "name": "TzKal-Zuk", "kc": ["TzKal-Zuk"], "loot": [], "clog": ["The Inferno"], "note": "Off-task rate. On a TzHaar Slayer task it's 1/75, and trading in an infernal cape gives an extra roll, which On Rate can't see.",
+      "drops": [
+        {"name": "Jal-nib-rek", "rate": "1/100", "pet": true}
+      ]
+    },
+    {
+      "name": "TzTok-Jad", "kc": ["TzTok-Jad"], "loot": [], "clog": ["The Fight Caves"], "note": "Off-task rate. On a TzHaar Slayer task it's 1/100, which On Rate can't see.",
+      "drops": [
+        {"name": "Tzrek-jad", "rate": "1/200", "pet": true}
+      ]
+    },
+    {
+      "name": "Vardorvis", "kc": ["Vardorvis"], "loot": ["Vardorvis"], "clog": ["Vardorvis"], "note": "Normal mode rates.",
+      "drops": [
+        {"name": "Ultor vestige", "rate": "1/1088"},
+        {"name": "Executioner's axe head", "rate": "1/1088"},
+        {"name": "Chromium ingot", "rate": "3/1088"},
+        {"name": "Virtus mask", "rate": "1/3264"},
+        {"name": "Virtus robe top", "rate": "1/3264"},
+        {"name": "Virtus robe bottom", "rate": "1/3264"},
+        {"name": "Butch", "rate": "1/3000", "pet": true}
+      ]
+    },
+    {
+      "name": "Venenatis and Spindel", "clog": ["Venenatis and Spindel"], "parts": [{"name": "Venenatis", "kc": ["Venenatis"], "loot": ["Venenatis"]}, {"name": "Spindel", "kc": ["Spindel"], "loot": ["Spindel"]}], "note": "Venenatis and Spindel share one collection log page, but each has its own kill count and drop rates. Hover a row to see both.",
+      "drops": [
+        {"name": "Dragon pickaxe", "partRates": {"Venenatis": "1/256", "Spindel": "1/358"}},
+        {"name": "Fangs of venenatis", "partRates": {"Venenatis": "1/196", "Spindel": "1/618"}},
+        {"name": "Voidwaker gem", "partRates": {"Venenatis": "1/360", "Spindel": "1/912"}},
+        {"name": "Treasonous ring", "partRates": {"Venenatis": "1/512", "Spindel": "1/716"}},
+        {"name": "Venenatis spiderling", "pet": true, "partRates": {"Venenatis": "1/1500", "Spindel": "1/2800"}}
+      ]
+    },
+    {
+      "name": "Vet'ion and Calvar'ion", "clog": ["Vet'ion and Calvar'ion"], "parts": [{"name": "Vet'ion", "kc": ["Vet'ion"], "loot": ["Vet'ion"]}, {"name": "Calvar'ion", "kc": ["Calvar'ion"], "loot": ["Calvar'ion"]}], "note": "Vet'ion and Calvar'ion share one collection log page, but each has its own kill count and drop rates. Hover a row to see both.",
+      "drops": [
+        {"name": "Dragon pickaxe", "partRates": {"Vet'ion": "1/256", "Calvar'ion": "1/358"}},
+        {"name": "Skull of vet'ion", "partRates": {"Vet'ion": "1/196", "Calvar'ion": "1/618"}},
+        {"name": "Voidwaker blade", "partRates": {"Vet'ion": "1/360", "Calvar'ion": "1/912"}},
+        {"name": "Ring of the gods", "partRates": {"Vet'ion": "1/512", "Calvar'ion": "1/716"}},
+        {"name": "Vet'ion jr.", "pet": true, "partRates": {"Vet'ion": "1/1500", "Calvar'ion": "1/2800"}}
+      ]
+    },
+    {
+      "name": "Vorkath", "kc": ["Vorkath"], "loot": ["Vorkath"], "clog": ["Vorkath"],
+      "drops": [
+        {"name": "Vorkath's head", "rate": "1/50"},
+        {"name": "Dragonbone necklace", "rate": "1/1000"},
+        {"name": "Jar of decay", "rate": "1/3000"},
+        {"name": "Vorki", "rate": "1/3000", "pet": true},
+        {"name": "Draconic visage", "rate": "1/5000"},
+        {"name": "Skeletal visage", "rate": "1/5000"}
+      ]
+    },
+    {
+      "name": "Yama", "estimate": true, "detectTeam": true, "team": "yama", "kc": ["Yama"], "loot": ["Yama"], "clog": ["Yama"], "note": "In a duo each player rolls separately, scaled by their share of the damage, so a duo kill gives you about half the uniques of a solo kill. The pet chance doesn't scale.",
+      "drops": [
+        {"name": "Soulflame horn", "rate": "2/600"},
+        {"name": "Oathplate helm", "rate": "1/600"},
+        {"name": "Oathplate chest", "rate": "1/600"},
+        {"name": "Oathplate legs", "rate": "1/600"},
+        {"name": "Yami", "rate": "1/2500", "pet": true, "noShare": true}
+      ]
+    },
+    {
+      "name": "Zalcano", "estimate": true, "kc": ["Zalcano"], "loot": ["Zalcano"], "clog": ["Zalcano"],
+      "drops": [
+        {"name": "Crystal tool seed", "rate": "39/8000"},
+        {"name": "Zalcano shard", "rate": "1/750"},
+        {"name": "Smolcano", "rate": "1/2250", "pet": true}
+      ]
+    },
+    {
+      "name": "Zulrah", "kc": ["Zulrah"], "loot": ["Zulrah"], "clog": ["Zulrah"], "note": "Zulrah rolls its unique table twice per kill; rates below are per kill.",
+      "drops": [
+        {"name": "Tanzanite fang", "rate": "1/512"},
+        {"name": "Magic fang", "rate": "1/512"},
+        {"name": "Serpentine visage", "rate": "1/512"},
+        {"name": "Uncut onyx", "rate": "1/512"},
+        {"name": "Tanzanite mutagen", "rate": "1/6554"},
+        {"name": "Magma mutagen", "rate": "1/6554"},
+        {"name": "Jar of swamp", "rate": "1/3000"},
+        {"name": "Pet snakeling", "rate": "1/4000", "pet": true}
+      ]
+    }
+  ]
+}
