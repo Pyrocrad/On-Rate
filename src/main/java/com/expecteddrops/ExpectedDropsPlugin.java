@@ -5,7 +5,13 @@ import com.expecteddrops.raids.RaidPointsReader;
 import com.expecteddrops.stats.RaidSettings;
 import com.expecteddrops.tracking.Tracker;
 import com.expecteddrops.tracking.TrackerState;
+import com.expecteddrops.stats.BossStats;
+import com.expecteddrops.stats.DropMath;
+import com.expecteddrops.stats.RowStats;
+import com.expecteddrops.tracking.TripStats;
 import com.expecteddrops.ui.ExpectedDropsPanel;
+import com.expecteddrops.ui.Palette;
+import com.expecteddrops.ui.ViewOptions;
 import com.google.gson.Gson;
 import com.google.inject.Provides;
 import java.awt.image.BufferedImage;
@@ -53,6 +59,7 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.loottracker.LootReceived;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
+import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.Text;
 
@@ -98,6 +105,13 @@ public class ExpectedDropsPlugin extends Plugin
 	@Inject
 	private EventBus eventBus;
 
+	@Inject
+	private OverlayManager overlayManager;
+
+	private OnRateOverlay overlay;
+	/** What the overlay shows; worked out after each kill on the client thread. */
+	private volatile OverlayInfo overlayInfo;
+
 	/** Reads raid points at the end of each raid (see RaidPointsReader for the credits). */
 	private RaidPointsReader raidPoints;
 
@@ -127,7 +141,7 @@ public class ExpectedDropsPlugin extends Plugin
 		tracker = new Tracker(loadCatalog());
 		tracker.setSettings(raidSettings());
 		panel = new ExpectedDropsPanel(tracker, itemManager, this::raidSettings, this::itemIdFor, this::save,
-			config::showWelcome, this::dismissWelcome, this::priceOf);
+			config::showWelcome, this::dismissWelcome, this::priceOf, this::viewOptions);
 
 		BufferedImage icon = ImageUtil.loadImageResource(getClass(), "panel_icon.png");
 		navButton = NavigationButton.builder()
@@ -137,6 +151,9 @@ public class ExpectedDropsPlugin extends Plugin
 			.panel(panel)
 			.build();
 		clientToolbar.addNavigation(navButton);
+
+		overlay = new OnRateOverlay(this, config, () -> overlayInfo);
+		overlayManager.add(overlay);
 
 		raidPoints = new RaidPointsReader(client, clientThread, tracker, boss -> changed(boss, false), config::readRaidPoints);
 		eventBus.register(raidPoints);
@@ -160,6 +177,12 @@ public class ExpectedDropsPlugin extends Plugin
 			eventBus.unregister(raidPoints);
 			raidPoints = null;
 		}
+		if (overlay != null)
+		{
+			overlayManager.remove(overlay);
+			overlay = null;
+		}
+		overlayInfo = null;
 		clientToolbar.removeNavigation(navButton);
 		navButton = null;
 		panel = null;
@@ -179,6 +202,65 @@ public class ExpectedDropsPlugin extends Plugin
 		{
 			return BossCatalog.load(gson, reader);
 		}
+	}
+
+	ViewOptions viewOptions()
+	{
+		return new ViewOptions(config.itemView(), config.showGeValue(), config.showLuckGraph(), config.showDropHistory(),
+			config.showTrip(), config.colourBlind());
+	}
+
+	/** Verdict, driest item and trip of the boss you are killing, for the overlay. */
+	private void updateOverlayInfo()
+	{
+		TripStats trip = tracker.tripStats();
+		if (trip == null)
+		{
+			overlayInfo = null;
+			return;
+		}
+		BossStats stats = tracker.stats(trip.getBoss(), raidSettings());
+		if (stats == null)
+		{
+			overlayInfo = null;
+			return;
+		}
+		Palette.setColourBlind(config.colourBlind());
+		RowStats any = stats.getAnyRow();
+		double luck = any.getLuck();
+		String verdict = Double.isNaN(luck) ? "-" : DropMath.verdict(luck);
+		RowStats driest = null;
+		for (RowStats row : stats.getRows())
+		{
+			if (row.getStreak() == null || row.getRate() <= 0 || (row.isOnce() && row.getReceived() > 0))
+			{
+				continue;
+			}
+			if (driest == null || row.getStreakMultiple() > driest.getStreakMultiple())
+			{
+				driest = row;
+			}
+		}
+		String driestText = null;
+		String driestLabel = null;
+		java.awt.Color driestColor = java.awt.Color.WHITE;
+		if (driest != null)
+		{
+			double m = driest.getStreakMultiple();
+			driestLabel = shortName(driest.getLabel()) + " dry";
+			driestText = String.format("%s%,d (%.1fx)", driest.isStreakExact() ? "" : "\u2265", driest.getStreak(), m);
+			driestColor = Palette.luck(Math.exp(-m)).brighter();
+		}
+		String tripText = String.format("%,d kill%s \u00b7 %d drop%s", trip.getKills(), trip.getKills() == 1 ? "" : "s",
+			trip.getReceived(), trip.getReceived() == 1 ? "" : "s");
+		overlayInfo = new OverlayInfo(trip.getBoss(), verdict, Palette.luck(luck).brighter(),
+			String.format("%,d / %.1f", any.getReceived(), any.getExpected()), driestLabel, driestText, driestColor,
+			tripText, trip.getLastMillis());
+	}
+
+	private static String shortName(String label)
+	{
+		return label.length() <= 14 ? label : label.substring(0, 13) + "\u2026";
 	}
 
 	RaidSettings raidSettings()
@@ -453,6 +535,10 @@ public class ExpectedDropsPlugin extends Plugin
 	{
 		// one point per day for the luck graph
 		tracker.recordHistory(java.time.LocalDate.now().toEpochDay(), raidSettings());
+		if (fromKill)
+		{
+			updateOverlayInfo();
+		}
 		save();
 		refreshPrices(false);
 		if (fromKill)

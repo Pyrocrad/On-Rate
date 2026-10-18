@@ -50,9 +50,6 @@ import net.runelite.client.util.ImageUtil;
 public class ExpectedDropsPanel extends PluginPanel
 {
 	private static final Color ANY_COLOR = new Color(255, 200, 0);
-	private static final Color GOOD = new Color(46, 160, 67);
-	private static final Color MID = new Color(170, 150, 20);
-	private static final Color BAD = new Color(170, 40, 30);
 
 	/** First entry in the boss list: the whole account added up. */
 	public static final String ACCOUNT = "Account overview";
@@ -93,6 +90,9 @@ public class ExpectedDropsPanel extends PluginPanel
 	private final BooleanSupplier showWelcome;
 	private final Runnable dismissWelcome;
 	private final ToLongFunction<String> priceOf;
+	private final Supplier<ViewOptions> options;
+	private final JLabel helpLabel = new JLabel("?");
+	private JPanel tabsRow;
 
 	private final JPanel welcomePanel = new JPanel();
 	private final JLabel setupHeader = new JLabel();
@@ -127,7 +127,15 @@ public class ExpectedDropsPanel extends PluginPanel
 		ToIntFunction<String> itemIdFor, Runnable save, BooleanSupplier showWelcome, Runnable dismissWelcome,
 		ToLongFunction<String> priceOf)
 	{
+		this(tracker, itemManager, raidSettings, itemIdFor, save, showWelcome, dismissWelcome, priceOf, () -> ViewOptions.DEFAULT);
+	}
+
+	public ExpectedDropsPanel(Tracker tracker, ItemManager itemManager, Supplier<RaidSettings> raidSettings,
+		ToIntFunction<String> itemIdFor, Runnable save, BooleanSupplier showWelcome, Runnable dismissWelcome,
+		ToLongFunction<String> priceOf, Supplier<ViewOptions> options)
+	{
 		super();
+		this.options = options;
 		this.priceOf = priceOf;
 		this.showWelcome = showWelcome;
 		this.dismissWelcome = dismissWelcome;
@@ -148,8 +156,16 @@ public class ExpectedDropsPanel extends PluginPanel
 		JLabel title = new JLabel("On Rate");
 		title.setFont(FontManager.getRunescapeBoldFont());
 		title.setForeground(Color.WHITE);
-		title.setAlignmentX(LEFT_ALIGNMENT);
-		top.add(title);
+		helpLabel.setFont(FontManager.getRunescapeBoldFont());
+		helpLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		helpLabel.setCursor(Cursor.getDefaultCursor());
+		JPanel titleRow = new JPanel(new BorderLayout());
+		titleRow.setOpaque(false);
+		titleRow.setAlignmentX(LEFT_ALIGNMENT);
+		titleRow.add(title, BorderLayout.WEST);
+		titleRow.add(helpLabel, BorderLayout.EAST);
+		titleRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 18));
+		top.add(titleRow);
 		top.add(spacer(6));
 
 		buildWelcome();
@@ -289,6 +305,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		top.add(graphPanel);
 
 		JPanel tabs = new JPanel(new GridLayout(1, 2, 2, 0));
+		tabsRow = tabs;
 		tabs.setOpaque(false);
 		tabs.setAlignmentX(LEFT_ALIGNMENT);
 		tabs.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
@@ -480,18 +497,21 @@ public class ExpectedDropsPanel extends PluginPanel
 		refreshSetup();
 
 		String bossName = (String) bossSelect.getSelectedItem();
+		ViewOptions o = options.get();
+		Palette.setColourBlind(o.isColourBlind());
 		rowsPanel.removeAll();
 		styleTabs();
 		boolean account = ACCOUNT.equals(bossName);
 		accountButton.setEnabled(!account);
-		graphPanel.setVisible(account);
+		graphPanel.setVisible(account && o.isLuckGraph());
 		sortRow.setVisible(account);
+		tabsRow.setVisible(o.getItemView() == ItemView.DELVE_BARS);
 		syncLabel.setVisible(!account);
 		headerIcon.setIcon(null);
 		headerIcon.setText(null);
 		if (account)
 		{
-			refreshAccount();
+			refreshAccount(o);
 			revalidate();
 			repaint();
 			return;
@@ -526,8 +546,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		else
 		{
 			kcLabel.setText(stats.isKillCountKnown()
-				? String.format("Kill count: %,d", stats.getKillCount())
-				: String.format("Kills tracked: %,d", stats.getKillCount()));
+				? String.format("%,d kills", stats.getKillCount())
+				: String.format("%,d kills tracked", stats.getKillCount()));
 			levelsLabel.setVisible(false);
 		}
 		String reminder = tracker.syncReminder(stats.getBoss().getName());
@@ -538,8 +558,9 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		else if (stats.isClogSynced())
 		{
-			syncLabel.setText("History loaded");
-			syncLabel.setForeground(GOOD.brighter());
+			// all good: nothing to say
+			syncLabel.setText("");
+			syncLabel.setVisible(false);
 		}
 		else
 		{
@@ -548,12 +569,16 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		RowStats any = stats.getAnyRow();
 		showVerdict(any);
+		helpLabel.setToolTipText(bossHelp(o.getItemView()));
 
-		rowsPanel.add(row(any, stats, unit));
-		for (RowStats row : stats.getRows())
+		if (o.isTripCard())
 		{
-			rowsPanel.add(spacer(2));
-			rowsPanel.add(row(row, stats, unit));
+			addTripCard(stats.getBoss().getName());
+		}
+		renderBossItems(stats, unit, o.getItemView());
+		if (o.isDropHistory())
+		{
+			addDropHistory(stats, unit);
 		}
 
 		StringBuilder note = new StringBuilder();
@@ -675,8 +700,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		verdictLabel.setForeground(luckColor(luck).brighter());
 		verdictLabel.setToolTipText(String.format("Luckier than %.0f%% of players with the same kills. "
 			+ "Very dry under 10%%, dry under 35%%, on rate up to 65%%, spooned up to 90%%, very spooned above.", luck * 100));
-		summaryLabel.setText(String.format("<html>Luckier than %.0f%% of players<br>%,d received, %s expected</html>",
-			luck * 100, any.getReceived(), formatExpected(any.getExpected())));
+		summaryLabel.setText(String.format("<html>%,d unique%s \u00b7 %s expected<br>Luckier than %.0f%% of players</html>",
+			any.getReceived(), any.getReceived() == 1 ? "" : "s", formatExpected(any.getExpected()), luck * 100));
 	}
 
 	/** The boss's pet as its picture (every boss has one), else its first unique. */
@@ -709,20 +734,20 @@ public class ExpectedDropsPanel extends PluginPanel
 	}
 
 	/** The account overview: every boss with kills added up, plus one row per boss. */
-	private void refreshAccount()
+	private void refreshAccount(ViewOptions o)
 	{
-		AccountStats account = tracker.accountStats(raidSettings.get(), priceOf);
+		AccountStats account = tracker.accountStats(raidSettings.get(), o.isGeValue() ? priceOf : null);
 		RowStats total = account.getTotal();
 		resetButton.setVisible(false);
-		levelsLabel.setText(valueText(account));
-		levelsLabel.setVisible(!account.getRows().isEmpty());
+		levelsLabel.setText(o.isGeValue() ? valueText(account) : "");
+		levelsLabel.setVisible(o.isGeValue() && !account.getRows().isEmpty());
 		headerName.setText("Your account");
 		java.awt.image.BufferedImage logo = ImageUtil.loadImageResource(ExpectedDropsPanel.class, "/com/expecteddrops/panel_icon.png");
 		if (logo != null)
 		{
 			headerIcon.setIcon(new javax.swing.ImageIcon(logo.getScaledInstance(32, 32, java.awt.Image.SCALE_FAST)));
 		}
-		kcLabel.setText("Bosses with kills: " + account.getRows().size());
+		kcLabel.setText(account.getRows().size() + (account.getRows().size() == 1 ? " boss" : " bosses") + " with kills");
 		showVerdict(total);
 
 		List<com.expecteddrops.tracking.HistoryPoint> history = tracker.history();
@@ -732,15 +757,9 @@ public class ExpectedDropsPanel extends PluginPanel
 			: "<html><body style='width: 190px'>On Rate saves one point a day. Your line starts to show from tomorrow.</body></html>");
 		graphHint.setVisible(history.size() < 2);
 
-		rowsPanel.add(buildRow(total, accountTooltip(total, account), null));
 		List<RowStats> rows = new ArrayList<>(account.getRows());
 		rows.sort(comparator((Sort) sortSelect.getSelectedItem(), account));
-		for (RowStats row : rows)
-		{
-			rowsPanel.add(spacer(2));
-			JPanel bossRow = buildRow(row, accountTooltip(row, account), () -> showBoss(row.getLabel()));
-			rowsPanel.add(bossRow);
-		}
+		renderAccountItems(account, total, rows, o.getItemView());
 
 		String note = account.getRows().isEmpty()
 			? "No kills yet. Open your collection log pages to load your history, or go kill a boss."
@@ -750,7 +769,8 @@ public class ExpectedDropsPanel extends PluginPanel
 			+ "Items that several bosses drop (dragon pickaxe, godsword shards, Virtus, onyx...) are left out: "
 			+ "the collection log can't say which boss they came from. Pets count once, like in the log. "
 			+ "Raids without points use your purple chance settings, and team bosses assume you do all the damage.";
-		noteLabel.setText("<html><body style='width: 165px'>" + note + "</body></html>");
+		helpLabel.setToolTipText("<html><body style='width: 220px'>" + note + "</body></html>");
+		noteLabel.setText(account.getRows().isEmpty() ? "<html><body style='width: 165px'>" + note + "</body></html>" : "");
 	}
 
 	private static Comparator<RowStats> comparator(Sort sort, AccountStats account)
@@ -827,6 +847,587 @@ public class ExpectedDropsPanel extends PluginPanel
 		return sb.append("</html>").toString();
 	}
 
+	// ---------------------------------------------------------------- item views
+
+	private static final int SMALL_ICON = 18;
+
+	/** "?" help for a boss page: how to read the chosen view. */
+	private static String bossHelp(ItemView view)
+	{
+		String how;
+		switch (view)
+		{
+			case DELVE_BARS:
+				how = "<b>Expected</b>: the number is how many you should have by now, the bar your progress to the next one."
+					+ "<br><b>Received</b>: the number is how many you got, the bar how lucky that is.";
+				break;
+			case COMPACT:
+				how = "Each item shows how many you got / should have by now, and how lucky that is "
+					+ "(luckier than that % of players with the same kills).";
+				break;
+			case RINGS:
+				how = "Each ring fills up as your chance of having the item grows. Once you have it, the ring shows "
+					+ "your chance of the next one by now.";
+				break;
+			case GAUGE:
+				how = "The needle shows your luck from dry to spooned; each item is a dot on the same scale.";
+				break;
+			default:
+				how = "The fill is how many you got; the white line is how many you should have by now.";
+		}
+		return "<html><body style='width: 220px'>" + how + "<br><br>Hover an item for its drop rate, your chances "
+			+ "and your dry streak. You can pick another view in the plugin settings (Display).</body></html>";
+	}
+
+	private void renderBossItems(BossStats stats, String unit, ItemView view)
+	{
+		List<RowStats> all = new ArrayList<>();
+		all.add(stats.getAnyRow());
+		all.addAll(stats.getRows());
+		switch (view)
+		{
+			case DELVE_BARS:
+				for (int i = 0; i < all.size(); i++)
+				{
+					if (i > 0)
+					{
+						rowsPanel.add(spacer(2));
+					}
+					rowsPanel.add(row(all.get(i), stats, unit));
+				}
+				break;
+			case COMPACT:
+				rowsPanel.add(compactHeader("Item"));
+				for (RowStats r : all)
+				{
+					rowsPanel.add(compactRow(r, tooltip(r, stats, unit), null));
+				}
+				break;
+			case RINGS:
+				JPanel grid = new JPanel(new GridLayout(0, 3, 4, 8));
+				grid.setOpaque(false);
+				grid.setAlignmentX(LEFT_ALIGNMENT);
+				for (RowStats r : all)
+				{
+					grid.add(itemRing(r, tooltip(r, stats, unit)));
+				}
+				grid.setMaximumSize(new Dimension(Integer.MAX_VALUE, grid.getPreferredSize().height));
+				rowsPanel.add(grid);
+				break;
+			case GAUGE:
+				LuckGauge gauge = new LuckGauge();
+				gauge.setLuck(stats.getAnyRow().getLuck());
+				rowsPanel.add(gauge);
+				for (RowStats r : all)
+				{
+					rowsPanel.add(spacer(2));
+					rowsPanel.add(stripRow(r.isAny() ? null : r.getIconItem(), r.isAny() ? "Any unique" : r.getLabel(),
+						r.isAny(), r.isOnce() && r.getReceived() > 0 ? 1.0 : r.getLuck(), tooltip(r, stats, unit), null));
+				}
+				break;
+			default:
+				for (int i = 0; i < all.size(); i++)
+				{
+					if (i > 0)
+					{
+						rowsPanel.add(spacer(2));
+					}
+					rowsPanel.add(targetRow(all.get(i), tooltip(all.get(i), stats, unit)));
+				}
+		}
+	}
+
+	private void renderAccountItems(AccountStats account, RowStats total, List<RowStats> rows, ItemView view)
+	{
+		switch (view)
+		{
+			case DELVE_BARS:
+				rowsPanel.add(buildRow(total, accountTooltip(total, account), null));
+				for (RowStats row : rows)
+				{
+					rowsPanel.add(spacer(2));
+					rowsPanel.add(buildRow(row, accountTooltip(row, account), () -> showBoss(row.getLabel())));
+				}
+				break;
+			case COMPACT:
+				rowsPanel.add(compactHeader("Boss"));
+				for (RowStats row : rows)
+				{
+					rowsPanel.add(compactRow(row, accountTooltip(row, account), () -> showBoss(row.getLabel())));
+				}
+				break;
+			case RINGS:
+				JPanel grid = new JPanel(new GridLayout(0, 3, 4, 8));
+				grid.setOpaque(false);
+				grid.setAlignmentX(LEFT_ALIGNMENT);
+				for (RowStats row : rows)
+				{
+					grid.add(bossRing(row, accountTooltip(row, account)));
+				}
+				grid.setMaximumSize(new Dimension(Integer.MAX_VALUE, grid.getPreferredSize().height));
+				rowsPanel.add(grid);
+				break;
+			case GAUGE:
+				LuckGauge gauge = new LuckGauge();
+				gauge.setLuck(total.getLuck());
+				rowsPanel.add(gauge);
+				for (RowStats row : rows)
+				{
+					rowsPanel.add(spacer(2));
+					rowsPanel.add(stripRow(row.getIconItem(), row.getLabel(), false, row.getLuck(),
+						accountTooltip(row, account), () -> showBoss(row.getLabel())));
+				}
+				break;
+			default:
+				for (int i = 0; i < rows.size(); i++)
+				{
+					RowStats row = rows.get(i);
+					if (i > 0)
+					{
+						rowsPanel.add(spacer(2));
+					}
+					rowsPanel.add(luckRow(row, accountTooltip(row, account), () -> showBoss(row.getLabel())));
+				}
+		}
+	}
+
+	/** An item picture scaled to {@code size} pixels high, or its initials. */
+	private JLabel itemIcon(String item, String label, int size)
+	{
+		JLabel icon = new JLabel();
+		icon.setPreferredSize(new Dimension(size * 36 / 32 + 2, size));
+		icon.setHorizontalAlignment(SwingConstants.CENTER);
+		int id = item == null ? -1 : itemIdFor.applyAsInt(item);
+		if (id > 0 && itemManager != null)
+		{
+			net.runelite.client.util.AsyncBufferedImage image = itemManager.getImage(id);
+			if (size >= 32)
+			{
+				image.addTo(icon);
+			}
+			else
+			{
+				Runnable scale = () -> icon.setIcon(new javax.swing.ImageIcon(
+					image.getScaledInstance(size * 36 / 32, size, java.awt.Image.SCALE_SMOOTH)));
+				image.onLoaded(scale);
+				scale.run();
+			}
+		}
+		else
+		{
+			String text = initials(label);
+			icon.setText(size < 32 && text.length() > 2 ? text.substring(0, 2) : text);
+			icon.setFont(FontManager.getRunescapeSmallFont());
+			icon.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		}
+		return icon;
+	}
+
+	private static JLabel smallLabel(String text, Color color)
+	{
+		JLabel l = new JLabel(text);
+		l.setFont(FontManager.getRunescapeSmallFont());
+		l.setForeground(color);
+		return l;
+	}
+
+	private static String gotOfExpected(RowStats r)
+	{
+		return String.format("%,d / %s", r.getReceived(), formatExpected(r.getExpected()));
+	}
+
+	/** Item row: name and "got / expected" on top, a bar with the expected marker below. */
+	private JPanel targetRow(RowStats r, String tip)
+	{
+		JPanel panel = new JPanel(new BorderLayout(0, 2));
+		panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		panel.setBorder(new EmptyBorder(3, 4, 3, 4));
+		panel.setAlignmentX(LEFT_ALIGNMENT);
+
+		JPanel line = new JPanel(new BorderLayout(4, 0));
+		line.setOpaque(false);
+		JLabel name;
+		if (r.isAny())
+		{
+			name = smallLabel("Any unique", ANY_COLOR);
+		}
+		else
+		{
+			line.add(itemIcon(r.getIconItem(), r.getLabel(), SMALL_ICON), BorderLayout.WEST);
+			name = smallLabel(r.getLabel(), Color.WHITE);
+		}
+		line.add(name, BorderLayout.CENTER);
+		boolean have = r.isOnce() && r.getReceived() > 0;
+		line.add(smallLabel(have ? "obtained" : gotOfExpected(r), Color.WHITE), BorderLayout.EAST);
+		panel.add(line, BorderLayout.CENTER);
+
+		TargetBar bar = new TargetBar();
+		if (have)
+		{
+			bar.set(1, -1, Palette.good());
+		}
+		else
+		{
+			double scale = Math.max(1, Math.max(r.getExpected(), r.getReceived())) * 1.25;
+			bar.set(r.getReceived() / scale, r.getExpected() / scale, luckColor(r.getLuck()));
+		}
+		panel.add(bar, BorderLayout.SOUTH);
+		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, panel.getPreferredSize().height));
+		setTip(panel, tip, null);
+		return panel;
+	}
+
+	/** Account row: boss picture, then a luck bar with the boss name and its verdict. */
+	private JPanel luckRow(RowStats r, String tip, Runnable onClick)
+	{
+		JPanel panel = new JPanel(new BorderLayout(4, 0));
+		panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		panel.setBorder(new EmptyBorder(2, 2, 2, 4));
+		panel.setAlignmentX(LEFT_ALIGNMENT);
+		panel.add(itemIcon(r.getIconItem(), r.getLabel(), SMALL_ICON), BorderLayout.WEST);
+		DropBar bar = new DropBar();
+		double luck = r.getLuck();
+		bar.set(Double.isNaN(luck) ? 0 : luck, luckColor(luck), r.getLabel(), Double.isNaN(luck) ? "-" : DropMath.verdict(luck));
+		bar.setPreferredSize(new Dimension(100, 22));
+		panel.add(bar, BorderLayout.CENTER);
+		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+		setTip(panel, tip, onClick);
+		return panel;
+	}
+
+	private JPanel compactHeader(String first)
+	{
+		JPanel panel = new JPanel(new BorderLayout());
+		panel.setOpaque(false);
+		panel.setBorder(new EmptyBorder(0, 4, 2, 4));
+		panel.setAlignmentX(LEFT_ALIGNMENT);
+		panel.add(smallLabel(first, ColorScheme.LIGHT_GRAY_COLOR), BorderLayout.WEST);
+		JPanel right = new JPanel(new BorderLayout(6, 0));
+		right.setOpaque(false);
+		right.add(smallLabel("Got / Exp", ColorScheme.LIGHT_GRAY_COLOR), BorderLayout.CENTER);
+		JLabel luck = smallLabel("Luck", ColorScheme.LIGHT_GRAY_COLOR);
+		luck.setHorizontalAlignment(SwingConstants.CENTER);
+		luck.setPreferredSize(new Dimension(38, 14));
+		right.add(luck, BorderLayout.EAST);
+		panel.add(right, BorderLayout.EAST);
+		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 18));
+		return panel;
+	}
+
+	/** One line: picture, name, "got / expected" and a luck chip. */
+	private JPanel compactRow(RowStats r, String tip, Runnable onClick)
+	{
+		JPanel panel = new JPanel(new BorderLayout(4, 0));
+		panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		panel.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createMatteBorder(0, 0, 1, 0, ColorScheme.DARK_GRAY_COLOR), new EmptyBorder(2, 4, 2, 4)));
+		panel.setAlignmentX(LEFT_ALIGNMENT);
+		if (r.isAny())
+		{
+			panel.add(smallLabel("Any unique", ANY_COLOR), BorderLayout.CENTER);
+		}
+		else
+		{
+			panel.add(itemIcon(r.getIconItem(), r.getLabel(), 16), BorderLayout.WEST);
+			panel.add(smallLabel(r.getLabel(), Color.WHITE), BorderLayout.CENTER);
+		}
+		JPanel right = new JPanel(new BorderLayout(6, 0));
+		right.setOpaque(false);
+		boolean have = r.isOnce() && r.getReceived() > 0;
+		right.add(smallLabel(have ? "have it" : gotOfExpected(r), Color.WHITE), BorderLayout.CENTER);
+		double luck = r.getLuck();
+		right.add(new Chip(Double.isNaN(luck) ? "-" : String.format("%.0f%%", luck * 100), luckColor(luck)), BorderLayout.EAST);
+		panel.add(right, BorderLayout.EAST);
+		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
+		setTip(panel, tip, onClick);
+		return panel;
+	}
+
+	/** Name on the left, the dry-to-spooned scale with your dot on the right. */
+	private JPanel stripRow(String item, String label, boolean any, double luck, String tip, Runnable onClick)
+	{
+		JPanel panel = new JPanel(new BorderLayout(4, 0));
+		panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		panel.setBorder(new EmptyBorder(3, 4, 3, 4));
+		panel.setAlignmentX(LEFT_ALIGNMENT);
+		JPanel left = new JPanel(new BorderLayout(4, 0));
+		left.setOpaque(false);
+		if (!any)
+		{
+			left.add(itemIcon(item, label, 16), BorderLayout.WEST);
+		}
+		left.add(smallLabel(label, any ? ANY_COLOR : Color.WHITE), BorderLayout.CENTER);
+		left.setPreferredSize(new Dimension(110, 18));
+		panel.add(left, BorderLayout.WEST);
+		LuckStrip strip = new LuckStrip();
+		strip.setLuck(luck);
+		panel.add(strip, BorderLayout.CENTER);
+		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+		setTip(panel, tip, onClick);
+		return panel;
+	}
+
+	/** Item ring: chance of having it by now, or of the next one once you have it. */
+	private JPanel itemRing(RowStats r, String tip)
+	{
+		LuckRing ring = new LuckRing();
+		String sub;
+		boolean have = r.isOnce() && r.getReceived() > 0;
+		if (have)
+		{
+			ring.set(1, Palette.good());
+			sub = "obtained";
+		}
+		else if (r.getReceived() > 0 && r.getStreak() != null && r.getRate() > 0)
+		{
+			double m = r.getStreakMultiple();
+			double p = -Math.expm1(-m);
+			ring.set(p, luckColor(Math.exp(-m)));
+			sub = String.format("next: %.0f%%", p * 100);
+		}
+		else
+		{
+			double p = r.getChanceAtLeastOne();
+			ring.set(p, luckColor(r.getLuck()));
+			sub = String.format("%.0f%% by now", p * 100);
+		}
+		if (r.isAny())
+		{
+			ring.setText("Any");
+			ring.setFont(FontManager.getRunescapeBoldFont());
+			ring.setForeground(ANY_COLOR);
+		}
+		else
+		{
+			ringPicture(ring, r.getIconItem(), r.getLabel());
+		}
+		return ringCell(ring, r.isAny() ? "Any unique" : r.getLabel(), sub, tip, null);
+	}
+
+	/** Boss ring in the account overview: filled to your luck percentile. */
+	private JPanel bossRing(RowStats r, String tip)
+	{
+		LuckRing ring = new LuckRing();
+		double luck = r.getLuck();
+		ring.set(Double.isNaN(luck) ? 0 : luck, luckColor(luck));
+		ringPicture(ring, r.getIconItem(), r.getLabel());
+		return ringCell(ring, r.getLabel(), Double.isNaN(luck) ? "-" : DropMath.verdict(luck), tip, () -> showBoss(r.getLabel()));
+	}
+
+	private void ringPicture(LuckRing ring, String item, String label)
+	{
+		int id = item == null ? -1 : itemIdFor.applyAsInt(item);
+		if (id > 0 && itemManager != null)
+		{
+			itemManager.getImage(id).addTo(ring);
+		}
+		else
+		{
+			ring.setText(initials(label));
+			ring.setFont(FontManager.getRunescapeSmallFont());
+			ring.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		}
+	}
+
+	private JPanel ringCell(LuckRing ring, String name, String sub, String tip, Runnable onClick)
+	{
+		JPanel cell = new JPanel(new BorderLayout(0, 1));
+		cell.setOpaque(false);
+		cell.add(ring, BorderLayout.CENTER);
+		JPanel labels = new JPanel(new GridLayout(2, 1));
+		labels.setOpaque(false);
+		JLabel n = smallLabel(name, Color.WHITE);
+		n.setHorizontalAlignment(SwingConstants.CENTER);
+		JLabel s2 = smallLabel(sub, ColorScheme.LIGHT_GRAY_COLOR);
+		s2.setHorizontalAlignment(SwingConstants.CENTER);
+		labels.add(n);
+		labels.add(s2);
+		cell.add(labels, BorderLayout.SOUTH);
+		setTip(cell, tip, onClick);
+		return cell;
+	}
+
+	/** Tooltip (and click) on a row and everything in it. */
+	private static void setTip(JPanel panel, String tip, Runnable onClick)
+	{
+		MouseAdapter click = onClick == null ? null : new MouseAdapter()
+		{
+			@Override
+			public void mouseClicked(MouseEvent e)
+			{
+				onClick.run();
+			}
+		};
+		applyTip(panel, tip, click);
+	}
+
+	private static void applyTip(java.awt.Component c, String tip, MouseAdapter click)
+	{
+		if (c instanceof javax.swing.JComponent)
+		{
+			((javax.swing.JComponent) c).setToolTipText(tip);
+		}
+		if (click != null)
+		{
+			c.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+			c.addMouseListener(click);
+		}
+		if (c instanceof java.awt.Container)
+		{
+			for (java.awt.Component child : ((java.awt.Container) c).getComponents())
+			{
+				applyTip(child, tip, click);
+			}
+		}
+	}
+
+	// ---------------------------------------------------------------- extras
+
+	/** "This trip" card: kills, uniques and expected since the trip started. */
+	private void addTripCard(String bossName)
+	{
+		com.expecteddrops.tracking.TripStats trip = tracker.tripStats();
+		if (trip == null || !trip.getBoss().equals(bossName))
+		{
+			return;
+		}
+		JPanel card = new JPanel();
+		card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+		card.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		card.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createLineBorder(ColorScheme.BRAND_ORANGE), new EmptyBorder(4, 6, 6, 6)));
+		card.setAlignmentX(LEFT_ALIGNMENT);
+
+		long minutes = Math.max(0, (trip.getLastMillis() - trip.getStartMillis()) / 60_000);
+		JPanel head = new JPanel(new BorderLayout());
+		head.setOpaque(false);
+		head.setAlignmentX(LEFT_ALIGNMENT);
+		head.add(smallLabel("THIS TRIP", ColorScheme.BRAND_ORANGE), BorderLayout.WEST);
+		head.add(smallLabel(minutes >= 60 ? String.format("%dh %02dm", minutes / 60, minutes % 60) : minutes + " min",
+			ColorScheme.LIGHT_GRAY_COLOR), BorderLayout.EAST);
+		card.add(head);
+		card.add(spacer(4));
+
+		JPanel tiles = new JPanel(new GridLayout(1, 3, 4, 0));
+		tiles.setOpaque(false);
+		tiles.setAlignmentX(LEFT_ALIGNMENT);
+		tiles.add(tile("Kills", String.format("%,d", trip.getKills())));
+		tiles.add(tile("Uniques", String.valueOf(trip.getReceived())));
+		tiles.add(tile("Expected", formatExpected(trip.getExpected())));
+		card.add(tiles);
+		card.add(spacer(4));
+
+		double perHour = trip.getKillsPerHour();
+		if (!Double.isNaN(perHour))
+		{
+			JLabel rate = smallLabel(String.format("%.1f kills per hour", perHour), Color.WHITE);
+			rate.setAlignmentX(LEFT_ALIGNMENT);
+			card.add(rate);
+		}
+		double luck = trip.getLuck();
+		if (!Double.isNaN(luck))
+		{
+			JLabel v = smallLabel(String.format("%s this trip (luckier than %.0f%%)", DropMath.verdict(luck), luck * 100),
+				luckColor(luck).brighter());
+			v.setAlignmentX(LEFT_ALIGNMENT);
+			card.add(v);
+		}
+		if (!trip.getDrops().isEmpty())
+		{
+			JLabel d = smallLabel("<html><body style='width: 180px'>Drops: " + String.join(", ", trip.getDrops())
+				+ "</body></html>", Color.WHITE);
+			d.setAlignmentX(LEFT_ALIGNMENT);
+			card.add(d);
+		}
+		card.add(spacer(4));
+		JButton reset = new JButton("Start a new trip");
+		reset.setFont(FontManager.getRunescapeSmallFont());
+		reset.setFocusPainted(false);
+		reset.setAlignmentX(LEFT_ALIGNMENT);
+		reset.setToolTipText("The next kill starts a new trip. A trip also ends after 30 minutes without a kill.");
+		reset.addActionListener(e ->
+		{
+			tracker.resetTrip();
+			refresh();
+		});
+		card.add(reset);
+		card.setMaximumSize(new Dimension(Integer.MAX_VALUE, card.getPreferredSize().height));
+		rowsPanel.add(card);
+		rowsPanel.add(spacer(6));
+	}
+
+	private static JPanel tile(String title, String value)
+	{
+		JPanel t = new JPanel(new BorderLayout());
+		t.setBackground(new Color(45, 45, 45));
+		t.setBorder(new EmptyBorder(2, 2, 3, 2));
+		JLabel a = smallLabel(title, ColorScheme.LIGHT_GRAY_COLOR);
+		a.setHorizontalAlignment(SwingConstants.CENTER);
+		JLabel b = new JLabel(value);
+		b.setFont(FontManager.getRunescapeBoldFont());
+		b.setForeground(Color.WHITE);
+		b.setHorizontalAlignment(SwingConstants.CENTER);
+		t.add(a, BorderLayout.NORTH);
+		t.add(b, BorderLayout.CENTER);
+		return t;
+	}
+
+	/** Drop history: a timeline per item of the kills its drops came at. */
+	private void addDropHistory(BossStats stats, String unit)
+	{
+		com.expecteddrops.tracking.DropHistory history = tracker.dropHistory(stats.getBoss().getName());
+		rowsPanel.add(spacer(8));
+		JLabel title = new JLabel("Drop history");
+		title.setFont(FontManager.getRunescapeBoldFont());
+		title.setForeground(Color.WHITE);
+		title.setAlignmentX(LEFT_ALIGNMENT);
+		title.setToolTipText("<html><body style='width: 220px'>Yellow marks are the " + unit + "s your drops came at, grey ticks "
+			+ "the average spacing and the coloured line your current dry streak. The darker part at the start is "
+			+ "from before On Rate was tracking: drops there aren't known.</body></html>");
+		rowsPanel.add(title);
+		rowsPanel.add(spacer(2));
+		int start = history.getTrackingStartKc() == null ? 0 : history.getTrackingStartKc();
+		for (RowStats r : stats.getRows())
+		{
+			List<Integer> drops = history.getDrops().get(r.getLabel());
+			JPanel panel = new JPanel(new BorderLayout(0, 2));
+			panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+			panel.setBorder(new EmptyBorder(3, 4, 3, 4));
+			panel.setAlignmentX(LEFT_ALIGNMENT);
+			JPanel line = new JPanel(new BorderLayout(4, 0));
+			line.setOpaque(false);
+			line.add(itemIcon(r.getIconItem(), r.getLabel(), 14), BorderLayout.WEST);
+			line.add(smallLabel(r.getLabel(), Color.WHITE), BorderLayout.CENTER);
+			String right;
+			Color streakColor;
+			if (r.isOnce() && r.getReceived() > 0)
+			{
+				right = "obtained";
+				streakColor = Palette.good();
+			}
+			else if (r.getStreak() != null)
+			{
+				double m = r.getStreakMultiple();
+				right = String.format("%s%,d dry", r.isStreakExact() ? "" : "\u2265", r.getStreak());
+				streakColor = Double.isNaN(m) ? ColorScheme.MEDIUM_GRAY_COLOR : luckColor(Math.exp(-m));
+			}
+			else
+			{
+				right = "";
+				streakColor = ColorScheme.MEDIUM_GRAY_COLOR;
+			}
+			line.add(smallLabel(right, streakColor.brighter()), BorderLayout.EAST);
+			panel.add(line, BorderLayout.CENTER);
+			DropTimeline timeline = new DropTimeline();
+			timeline.set(stats.getKillCount(), start, r.getRate(), drops == null ? java.util.Collections.emptyList() : drops,
+				streakColor);
+			panel.add(timeline, BorderLayout.SOUTH);
+			panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, panel.getPreferredSize().height));
+			rowsPanel.add(panel);
+			rowsPanel.add(spacer(2));
+		}
+	}
+
 	private void buildWelcome()
 	{
 		welcomePanel.setLayout(new BorderLayout(0, 6));
@@ -884,7 +1485,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		if (missing.isEmpty())
 		{
 			setupHeader.setText("\u2714 All history loaded (" + done + " pages)");
-			setupHeader.setForeground(GOOD.brighter());
+			setupHeader.setForeground(Palette.good().brighter());
 			setupHeader.setCursor(Cursor.getDefaultCursor());
 			setupList.setVisible(false);
 			return;
@@ -1201,27 +1802,10 @@ public class ExpectedDropsPanel extends PluginPanel
 		return String.format("%.1f%%", p * 100);
 	}
 
-	/** Red when dry, yellow around average, green when lucky. */
+	/** Red when dry, yellow around average, green when lucky (or the colour-blind palette). */
 	static Color luckColor(double luck)
 	{
-		if (Double.isNaN(luck))
-		{
-			return ColorScheme.MEDIUM_GRAY_COLOR;
-		}
-		if (luck < 0.5)
-		{
-			return blend(BAD, MID, luck / 0.5);
-		}
-		return blend(MID, GOOD, (luck - 0.5) / 0.5);
-	}
-
-	private static Color blend(Color a, Color b, double t)
-	{
-		t = Math.max(0, Math.min(1, t));
-		return new Color(
-			(int) Math.round(a.getRed() + (b.getRed() - a.getRed()) * t),
-			(int) Math.round(a.getGreen() + (b.getGreen() - a.getGreen()) * t),
-			(int) Math.round(a.getBlue() + (b.getBlue() - a.getBlue()) * t));
+		return Palette.luck(luck);
 	}
 
 	private static String initials(String name)

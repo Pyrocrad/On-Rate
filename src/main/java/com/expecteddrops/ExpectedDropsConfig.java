@@ -4,6 +4,7 @@ import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
+import com.expecteddrops.ui.ItemView;
 import net.runelite.client.config.Range;
 
 @ConfigGroup(ExpectedDropsConfig.GROUP)
@@ -67,9 +68,101 @@ public interface ExpectedDropsConfig extends Config
 	}
 
 	@ConfigSection(
+		name = "Display",
+		description = "How the panel looks, and extras you can turn on",
+		position = 6
+	)
+	String displaySection = "display";
+
+	@ConfigItem(
+		keyName = "itemView",
+		name = "Luck view",
+		description = "How your luck per item (and per boss in the account overview) is shown: target bars, "
+			+ "the Delve Calculator's bars with Expected/Received tabs, a compact table, chance rings or a luck gauge",
+		position = 7,
+		section = displaySection
+	)
+	default ItemView itemView()
+	{
+		return ItemView.TARGET_BARS;
+	}
+
+	@ConfigItem(
+		keyName = "showGeValue",
+		name = "GE value",
+		description = "Show the GE value of your uniques, received vs expected, in the account overview",
+		position = 8,
+		section = displaySection
+	)
+	default boolean showGeValue()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "showLuckGraph",
+		name = "Luck graph",
+		description = "Show a graph of your account's luck over time in the account overview",
+		position = 9,
+		section = displaySection
+	)
+	default boolean showLuckGraph()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "showTrip",
+		name = "This trip card",
+		description = "Show kills, uniques and expected for your current trip on the boss page",
+		position = 10,
+		section = displaySection
+	)
+	default boolean showTrip()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "showDropHistory",
+		name = "Drop history",
+		description = "Show a timeline per item on the boss page with the kills your drops came at",
+		position = 11,
+		section = displaySection
+	)
+	default boolean showDropHistory()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "showOverlay",
+		name = "In-game overlay",
+		description = "Show a small box on the game screen with your verdict, driest item and trip while you kill a boss",
+		position = 12,
+		section = displaySection
+	)
+	default boolean showOverlay()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "colourBlind",
+		name = "Colour-blind colours",
+		description = "Use orange to blue instead of red to green for dry to spooned",
+		position = 13,
+		section = displaySection
+	)
+	default boolean colourBlind()
+	{
+		return false;
+	}
+
+	@ConfigSection(
 		name = "Team bosses",
 		description = "At team bosses your chance of a unique scales with your share of the damage",
-		position = 20
+		position = 50
 	)
 	String teamSection = "team";
 
@@ -77,7 +170,7 @@ public interface ExpectedDropsConfig extends Config
 		keyName = "royalTitansMode",
 		name = "Royal Titans",
 		description = "How you kill the Royal Titans. In a duo you get about half the uniques of a solo kill; the pet chance stays the same.",
-		position = 21,
+		position = 51,
 		section = teamSection
 	)
 	default RoyalTitansMode royalTitansMode()
@@ -89,7 +182,7 @@ public interface ExpectedDropsConfig extends Config
 		keyName = "royalTitansDuoKills",
 		name = "Royal Titans duo kills",
 		description = "Only used with 'Some of each': how many of your Royal Titans kills were in a duo. The rest count as solo.",
-		position = 22,
+		position = 52,
 		section = teamSection
 	)
 	@Range(min = 0)
@@ -101,7 +194,7 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigSection(
 		name = "Raids",
 		description = "Raid unique chances depend on your points and team, so set them here",
-		position = 10
+		position = 30
 	)
 	String raidsSection = "raids";
 
@@ -109,7 +202,7 @@ public interface ExpectedDropsConfig extends Config
 		keyName = "readRaidPoints",
 		name = "Use raid points",
 		description = "At the end of each raid, use your points for that raid's purple chance: read from the game in Chambers of Xeric, estimated from your damage in Tombs of Amascut (like Raid Data Tracker does). Raids without points (older ones, synced from the collection log, Theatre of Blood) use the percentages below.",
-		position = 11,
+		position = 31,
 		section = raidsSection
 	)
 	default boolean readRaidPoints()
@@ -121,7 +214,7 @@ public interface ExpectedDropsConfig extends Config
 		keyName = "coxUniqueChance",
 		name = "CoX purple chance (%)",
 		description = "Your chance of a unique per normal Chambers raid, in percent, for raids without points. Every 8,676 of your personal points is 1%, so 30,000 points is about 3.5%.",
-		position = 12,
+		position = 32,
 		section = raidsSection
 	)
 	default double coxUniqueChance()
@@ -133,7 +226,7 @@ public interface ExpectedDropsConfig extends Config
 		keyName = "coxCmUniqueChance",
 		name = "CoX Challenge Mode (%)",
 		description = "Your chance of a unique per Challenge Mode raid, in percent, for raids without points. Same formula as normal mode (every 8,676 of your personal points is 1%); a Challenge Mode raid is usually 6.3 to 6.9%.",
-		position = 13,
+		position = 33,
 		section = raidsSection
 	)
 	default double coxCmUniqueChance()
@@ -145,7 +238,7 @@ public interface ExpectedDropsConfig extends Config
 		keyName = "tobTeamChance",
 		name = "ToB team purple chance (%)",
 		description = "The team's chance of a unique per normal Theatre raid, in percent: about 1 in 9.1 raids (11%) with no deaths. On Rate divides it by the team size. Entry Mode has no uniques.",
-		position = 14,
+		position = 34,
 		section = raidsSection
 	)
 	default double tobTeamChance()
@@ -157,7 +250,7 @@ public interface ExpectedDropsConfig extends Config
 		keyName = "tobHmTeamChance",
 		name = "ToB Hard Mode team (%)",
 		description = "The team's chance of a unique per Hard Mode raid, in percent: about 1 in 7.7 raids (13%). On Rate divides it by the team size.",
-		position = 15,
+		position = 35,
 		section = raidsSection
 	)
 	default double tobHmTeamChance()
@@ -169,7 +262,7 @@ public interface ExpectedDropsConfig extends Config
 		keyName = "tobTeamSize",
 		name = "ToB team size",
 		description = "How many players you usually raid Theatre of Blood with. Your share of the team's purples is 1 / team size. Raids where On Rate read the end-of-raid board use that raid's real team size.",
-		position = 16,
+		position = 36,
 		section = raidsSection
 	)
 	@Range(min = 1, max = 5)
@@ -182,7 +275,7 @@ public interface ExpectedDropsConfig extends Config
 		keyName = "toaEntryUniqueChance",
 		name = "ToA Entry Mode (%)",
 		description = "Your chance of a unique per Entry Mode raid without points, in percent. Very low: at low raid levels most rolled uniques are turned into other loot.",
-		position = 17,
+		position = 37,
 		section = raidsSection
 	)
 	default double toaEntryUniqueChance()
@@ -194,7 +287,7 @@ public interface ExpectedDropsConfig extends Config
 		keyName = "toaUniqueChance",
 		name = "ToA Normal (%)",
 		description = "Your chance of a unique per normal Tombs raid without points, in percent. It depends on raid level and your points; the OSRS Wiki's ToA page has a calculator.",
-		position = 18,
+		position = 38,
 		section = raidsSection
 	)
 	default double toaUniqueChance()
@@ -206,7 +299,7 @@ public interface ExpectedDropsConfig extends Config
 		keyName = "toaExpertUniqueChance",
 		name = "ToA Expert Mode (%)",
 		description = "Your chance of a unique per Expert Mode raid without points, in percent. It depends on raid level and your points; the OSRS Wiki's ToA page has a calculator.",
-		position = 19,
+		position = 39,
 		section = raidsSection
 	)
 	default double toaExpertUniqueChance()

@@ -11,7 +11,9 @@ import com.expecteddrops.stats.RaidChance;
 import com.expecteddrops.stats.RaidSettings;
 import com.expecteddrops.stats.RowStats;
 import com.expecteddrops.tracking.Note;
+import com.expecteddrops.tracking.DropHistory;
 import com.expecteddrops.tracking.RaidRecord;
+import com.expecteddrops.tracking.TripStats;
 import com.expecteddrops.tracking.SyncStatus;
 import com.expecteddrops.tracking.Tracker;
 import com.expecteddrops.tracking.TrackerState;
@@ -892,5 +894,53 @@ public class TrackerTest
 	{
 		assertFalse(tracker.recordHistory(20000, RAIDS));
 		assertTrue(tracker.history().isEmpty());
+	}
+
+	@Test
+	public void tripCountsKillsAndDrops()
+	{
+		tracker.setSettings(RAIDS);
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>100</col>.", now);
+		TripStats trip = tracker.tripStats();
+		assertEquals("Vorkath", trip.getBoss());
+		assertEquals(1, trip.getKills());
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>101</col>.", now + 60_000);
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>102</col>.", now + 120_000);
+		tracker.onLoot("Vorkath", 1, Collections.singletonList(new Tracker.LootItem("Vorkath's head", 1)), now + 121_000);
+		trip = tracker.tripStats();
+		assertEquals(3, trip.getKills());
+		assertEquals(1, trip.getReceived());
+		assertEquals(Collections.singletonList("Vorkath's head"), trip.getDrops());
+		double perKill = tracker.stats("Vorkath", RAIDS).getAnyRow().getRate();
+		assertEquals(3 * perKill, trip.getExpected(), 0.01);
+		assertEquals(60.0, trip.getKillsPerHour(), 1e-9);
+
+		// another boss starts a new trip
+		tracker.onChatMessage("Your Zulrah kill count is: <col=ff0000>50</col>.", now + 180_000);
+		assertEquals("Zulrah", tracker.tripStats().getBoss());
+		assertEquals(1, tracker.tripStats().getKills());
+		// and so does a long break
+		tracker.onChatMessage("Your Zulrah kill count is: <col=ff0000>51</col>.", now + 180_000 + 31 * 60_000);
+		assertEquals(1, tracker.tripStats().getKills());
+		tracker.resetTrip();
+		assertNull(tracker.tripStats());
+	}
+
+	@Test
+	public void dropHistoryKeepsTheKillCounts()
+	{
+		tracker.setSettings(RAIDS);
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>10</col>.", now);
+		tracker.onLoot("Vorkath", 1, Collections.singletonList(new Tracker.LootItem("Vorkath's head", 1)), now);
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>47</col>.", now);
+		tracker.onLoot("Vorkath", 1, Collections.singletonList(new Tracker.LootItem("Vorkath's head", 1)), now);
+		DropHistory history = tracker.dropHistory("Vorkath");
+		assertEquals(47, history.getKillCount());
+		assertEquals(Arrays.asList(10, 47), history.getDrops().get("Vorkath's head"));
+		assertTrue(history.getDrops().get("Jar of decay").isEmpty());
+		Gson gson = new Gson();
+		Tracker loaded = new Tracker(catalog);
+		loaded.setState(gson.fromJson(gson.toJson(tracker.getState()), TrackerState.class));
+		assertEquals(Arrays.asList(10, 47), loaded.dropHistory("Vorkath").getDrops().get("Vorkath's head"));
 	}
 }

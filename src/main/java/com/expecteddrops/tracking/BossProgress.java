@@ -34,6 +34,8 @@ public class BossProgress
 	Integer lastCheckedKc;
 	/** Raids only: each raid finished with On Rate, with its points (see RaidRecord). */
 	List<RaidRecord> raids = new ArrayList<>();
+	/** Kill count of every drop On Rate saw, per normalized item name (drop history). */
+	Map<String, List<Integer>> dropKcs = new HashMap<>();
 
 	void ensureMaps()
 	{
@@ -56,6 +58,10 @@ public class BossProgress
 		if (milestone == null)
 		{
 			milestone = new HashMap<>();
+		}
+		if (dropKcs == null)
+		{
+			dropKcs = new HashMap<>();
 		}
 		if (raids == null)
 		{

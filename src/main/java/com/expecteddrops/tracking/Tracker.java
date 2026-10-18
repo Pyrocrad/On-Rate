@@ -117,6 +117,7 @@ public class Tracker
 	{
 		this.state = state == null ? new TrackerState() : state;
 		lastBoss = null;
+		trip = null;
 	}
 
 	public synchronized TrackerState getState()
@@ -158,6 +159,7 @@ public class Tracker
 			int kc = Integer.parseInt(m.group("kc").replace(",", ""));
 			state.get(boss.getName()).chatKc.put(BossCatalog.normalize(counter), kc);
 			markKill(boss, nowMillis);
+			afterKill(boss, nowMillis);
 			lastPart = partForName(boss, counter, true);
 			startTracking(boss);
 			onRaidCompletion(boss, lastPart, kc, nowMillis);
@@ -439,6 +441,7 @@ public class Tracker
 		}
 		state.get(boss.getName()).levelKc.merge(level, 1, Integer::sum);
 		markKill(boss, nowMillis);
+		afterKill(boss, nowMillis);
 		startTracking(boss);
 		checkMilestones(boss);
 		return boss.getName();
@@ -601,6 +604,7 @@ public class Tracker
 			outbox.add(new Note(Note.Kind.DROP, text));
 		}
 		progress.lastDropKc.put(key, kc);
+		addDropKc(progress, key, kc);
 		progress.milestone.remove(key);
 	}
 
@@ -810,6 +814,11 @@ public class Tracker
 		}
 		BossProgress progress = state.get(boss.getName());
 		progress.lootKills += Math.max(1, amount);
+		if (boss.getKcNames().isEmpty())
+		{
+			// no kill count message for this boss: the loot is the kill
+			afterKill(boss, nowMillis);
+		}
 		if (boss.hasParts())
 		{
 			lastPart = partForName(boss, source, false);
@@ -924,6 +933,7 @@ public class Tracker
 						{
 							// a new copy since the last look; the best guess for when is "now"
 							progress.lastDropKc.put(key, currentKc(boss));
+							addDropKc(progress, key, currentKc(boss));
 							progress.milestone.remove(key);
 						}
 						progress.received.put(key, qty);
@@ -1060,6 +1070,115 @@ public class Tracker
 		{
 			state.bosses.remove(bossName);
 		}
+	}
+
+	/** Most drops remembered per item for the drop history. */
+	private static final int MAX_DROP_HISTORY = 500;
+	/** A trip ends after this long without a kill, or when you kill another boss. */
+	static final long TRIP_IDLE_MILLIS = 30 * 60_000;
+
+	private Trip trip;
+
+	private static void addDropKc(BossProgress progress, String key, int kc)
+	{
+		List<Integer> list = progress.dropKcs.computeIfAbsent(key, k -> new ArrayList<>());
+		list.add(kc);
+		while (list.size() > MAX_DROP_HISTORY)
+		{
+			list.remove(0);
+		}
+	}
+
+	/**
+	 * Every drop On Rate saw at this boss, per item label (as in the rows), with the kill
+	 * count it came at. Drops from before On Rate was installed aren't known.
+	 */
+	public synchronized DropHistory dropHistory(String bossName)
+	{
+		BossDefinition boss = catalog.byName(bossName);
+		BossProgress progress = state.peek(bossName);
+		BossStats s = stats(bossName, settings);
+		Map<String, List<Integer>> drops = new LinkedHashMap<>();
+		if (boss != null)
+		{
+			for (DropDefinition drop : boss.getDrops())
+			{
+				List<Integer> kcs = new ArrayList<>();
+				if (progress != null)
+				{
+					for (String name : drop.getAllNames())
+					{
+						List<Integer> list = progress.dropKcs.get(BossCatalog.normalize(name));
+						if (list != null)
+						{
+							kcs.addAll(list);
+						}
+					}
+				}
+				Collections.sort(kcs);
+				drops.put(drop.getDisplayName(), kcs);
+			}
+		}
+		return new DropHistory(s == null ? 0 : s.getKillCount(), progress == null ? null : progress.trackingStartKc, drops);
+	}
+
+	/**
+	 * Called after each kill: continues the current trip, or starts a new one when this is
+	 * another boss or the last kill was a while ago. The new trip includes this kill.
+	 */
+	private void afterKill(BossDefinition boss, long nowMillis)
+	{
+		if (trip != null && trip.boss.equals(boss.getName()) && nowMillis - trip.lastMillis <= TRIP_IDLE_MILLIS)
+		{
+			trip.lastMillis = nowMillis;
+			return;
+		}
+		BossStats s = stats(boss.getName(), settings);
+		if (s == null)
+		{
+			return;
+		}
+		Map<String, Integer> received = new HashMap<>();
+		for (RowStats row : s.getRows())
+		{
+			received.put(row.getLabel(), row.getReceived());
+		}
+		RowStats any = s.getAnyRow();
+		trip = new Trip(boss.getName(), nowMillis, s.getKillCount() - 1,
+			any.getExpected() - any.getRate(), any.getReceived(), received);
+	}
+
+	/** Forget the current trip; the next kill starts a new one. */
+	public synchronized void resetTrip()
+	{
+		trip = null;
+	}
+
+	/** The current trip's numbers, or null when there is no trip. */
+	public synchronized TripStats tripStats()
+	{
+		if (trip == null)
+		{
+			return null;
+		}
+		BossStats s = stats(trip.boss, settings);
+		if (s == null)
+		{
+			return null;
+		}
+		List<String> drops = new ArrayList<>();
+		for (RowStats row : s.getRows())
+		{
+			Integer before = trip.receivedPerRow.get(row.getLabel());
+			int got = row.getReceived() - (before == null ? 0 : before);
+			for (int i = 0; i < got; i++)
+			{
+				drops.add(row.getLabel());
+			}
+		}
+		RowStats any = s.getAnyRow();
+		return new TripStats(trip.boss, trip.startMillis, trip.lastMillis, Math.max(0, s.getKillCount() - trip.startKc),
+			Math.max(0, any.getReceived() - trip.startReceived), Math.max(0, any.getExpected() - trip.startExpected), drops);
 	}
 
 	private void markKill(BossDefinition boss, long nowMillis)
