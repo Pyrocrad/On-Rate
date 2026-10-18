@@ -167,26 +167,26 @@ public interface ExpectedDropsConfig extends Config
 	String teamSection = "team";
 
 	@ConfigItem(
-		keyName = "royalTitansMode",
+		keyName = "royalTitansTeam",
 		name = "Royal Titans",
-		description = "How you kill the Royal Titans. In a duo you get about half the uniques of a solo kill; the pet chance stays the same.",
+		description = "How you kill the Royal Titans. Counted as duo kills unless you change it. In a duo you get about half the uniques of a solo kill; the pet chance stays the same.",
 		position = 51,
 		section = teamSection
 	)
 	default RoyalTitansMode royalTitansMode()
 	{
-		return RoyalTitansMode.SOLO;
+		return RoyalTitansMode.DUO;
 	}
 
 	@ConfigItem(
-		keyName = "royalTitansDuoKills",
-		name = "Royal Titans duo kills",
-		description = "Only used with 'Some of each': how many of your Royal Titans kills were in a duo. The rest count as solo.",
+		keyName = "royalTitansSoloKills",
+		name = "Royal Titans solo kills",
+		description = "Only used with 'Some of each': how many of your Royal Titans kills were solo. The rest count as duo.",
 		position = 52,
 		section = teamSection
 	)
 	@Range(min = 0)
-	default int royalTitansDuoKills()
+	default int royalTitansSoloKills()
 	{
 		return 0;
 	}
@@ -223,7 +223,7 @@ public interface ExpectedDropsConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "coxCmUniqueChance",
+		keyName = "coxCmPurpleChance",
 		name = "CoX Challenge Mode (%)",
 		description = "Your chance of a unique per Challenge Mode raid, in percent, for raids without points. Same formula as normal mode (every 8,676 of your personal points is 1%); a Challenge Mode raid is usually 6.3 to 6.9%.",
 		position = 33,
@@ -284,7 +284,7 @@ public interface ExpectedDropsConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "toaUniqueChance",
+		keyName = "toaNormalUniqueChance",
 		name = "ToA Normal (%)",
 		description = "Your chance of a unique per normal Tombs raid without points, in percent. It depends on raid level and your points; the OSRS Wiki's ToA page has a calculator.",
 		position = 38,

@@ -494,7 +494,7 @@
       ]
     },
     {
-      "name": "Tombs of Amascut", "loot": ["Tombs of Amascut"], "clog": ["Tombs of Amascut"], "raid": "toa", "parts": [{"name": "Entry Mode", "kc": ["Tombs of Amascut: Entry Mode", "Tombs of Amascut Entry Mode"], "raid": "toaEntry", "keywords": ["entry"]}, {"name": "Normal", "kc": ["Tombs of Amascut"], "raid": "toa"}, {"name": "Expert Mode", "kc": ["Tombs of Amascut: Expert Mode", "Tombs of Amascut Expert Mode"], "raid": "toaExpert", "keywords": ["expert"]}], "note": "Raids done with On Rate use your estimated points and raid level. Older raids use each mode's purple chance from the settings. Below raid level 50 (fang, Lightbearer) or 150 (the rest), a rolled unique is only kept 1 time in 50.",
+      "name": "Tombs of Amascut", "loot": ["Tombs of Amascut"], "clog": ["Tombs of Amascut"], "raid": "toa", "parts": [{"name": "Entry Mode", "kc": ["Tombs of Amascut: Entry Mode", "Tombs of Amascut Entry Mode"], "raid": "toaEntry", "keywords": ["entry"]}, {"name": "Normal", "kc": ["Tombs of Amascut"], "raid": "toa"}, {"name": "Expert Mode", "kc": ["Tombs of Amascut: Expert Mode", "Tombs of Amascut Expert Mode"], "raid": "toaExpert", "keywords": ["expert"]}], "note": "Raids done with On Rate use your estimated points and raid level. Older raids use each mode's purple chance from the settings. At low raid levels some uniques are rare: below raid level 50 you almost never get a fang or Lightbearer, and below 150 almost never a shadow, ward or Masori piece. When the chest picks one of those, you only get it 1 time in 50; otherwise you get normal loot instead.",
       "drops": [
         {"name": "Osmumten's fang", "weight": 7, "minRaidLevel": 50},
         {"name": "Lightbearer", "weight": 7, "minRaidLevel": 50},

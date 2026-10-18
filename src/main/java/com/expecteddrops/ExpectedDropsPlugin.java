@@ -300,11 +300,12 @@ public class ExpectedDropsPlugin extends Plugin
 				int duo = duoKills(kills);
 				if (duo == 0)
 				{
-					return "Counted as solo kills. If you duo, change 'Royal Titans' in the plugin settings.";
+					return "Counted as solo kills.";
 				}
 				if (duo >= kills)
 				{
-					return "Counted as duo kills: about half the uniques of a solo kill (the pet chance stays the same).";
+					return "Counted as duo kills: about half the uniques of a solo kill (the pet chance stays the same). "
+						+ "If you solo, change 'Royal Titans' in the plugin settings.";
 				}
 				return String.format("Counted as %,d solo and %,d duo kills (a duo gives about half the uniques).",
 					kills - duo, duo);
@@ -323,10 +324,12 @@ public class ExpectedDropsPlugin extends Plugin
 		{
 			case DUO:
 				return kills;
-			case MIXED:
-				return Math.max(0, Math.min(kills, config.royalTitansDuoKills()));
-			default:
+			case SOLO:
 				return 0;
+			case MIXED:
+				return kills - Math.max(0, Math.min(kills, config.royalTitansSoloKills()));
+			default:
+				return kills;
 		}
 	}
 
