@@ -16,6 +16,7 @@ public class AccountStats
 	private long receivedValue;
 	private double valueLuck = Double.NaN;
 	private List<SharedPool> sharedPools = Collections.emptyList();
+	private List<ItemHighlight> items = Collections.emptyList();
 
 	public AccountStats(RowStats total, List<RowStats> rows, Map<String, Integer> killCounts)
 	{
@@ -70,6 +71,17 @@ public class AccountStats
 	public void setSharedPools(List<SharedPool> sharedPools)
 	{
 		this.sharedPools = Collections.unmodifiableList(sharedPools);
+	}
+
+	/** Every item of every boss with kills (and complete shared items), for the top 5. */
+	public List<ItemHighlight> getItems()
+	{
+		return items;
+	}
+
+	public void setItems(List<ItemHighlight> items)
+	{
+		this.items = Collections.unmodifiableList(items);
 	}
 
 	public int getKillCount(String boss)

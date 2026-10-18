@@ -589,6 +589,45 @@ public class TrackerTest
 	}
 
 	@Test
+	public void yamaKillsBeforeCountingUseTheSoloDuoSetting()
+	{
+		// all earlier kills as duo: half a kill each
+		RaidSettings duo = new RaidSettings()
+		{
+			public double uniqueChance(String raid)
+			{
+				return 0;
+			}
+
+			public double contribution(String team, int kills)
+			{
+				return "yama".equals(team) ? 0.5 : 1.0;
+			}
+		};
+		int[] around = {0};
+		tracker.setTeamSizeDetector(() -> around[0]);
+		tracker.onChatMessage("Your Yama kill count is: <col=ff0000>100</col>.", now);
+		BossStats before = tracker.stats("Yama", duo);
+		assertEquals(100 * 0.5 / 600.0, row(before, "Oathplate helm").getExpected(), 1e-9);
+		// from now on the team is counted: 10 solo kills
+		around[0] = 1;
+		for (int kc = 101; kc <= 110; kc++)
+		{
+			tracker.onChatMessage("Your Yama kill count is: <col=ff0000>" + kc + "</col>.", now);
+		}
+		BossStats after = tracker.stats("Yama", duo);
+		assertEquals((100 * 0.5 + 10) / 600.0, row(after, "Oathplate helm").getExpected(), 1e-9);
+		// the pet doesn't scale
+		assertEquals(110 / 2500.0, row(after, "Yami").getExpected(), 1e-9);
+	}
+
+	@Test
+	public void averagePurpleChanceOfMeasuredRaids()
+	{
+		assertTrue(Double.isNaN(tracker.averagePurpleChance("Chambers of Xeric", "Normal")));
+	}
+
+	@Test
 	public void unknownBossesCanCountAsZeroForSharedItems()
 	{
 		Map<String, Integer> skotizo = new LinkedHashMap<>();

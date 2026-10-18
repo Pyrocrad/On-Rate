@@ -100,10 +100,22 @@ public interface ExpectedDropsConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "showTopItems",
+		name = "Top 5 items",
+		description = "On the account overview, your 5 driest and 5 luckiest items across every boss",
+		position = 9,
+		section = displaySection
+	)
+	default boolean showTopItems()
+	{
+		return true;
+	}
+
+	@ConfigItem(
 		keyName = "showLuckGraph",
 		name = "Luck graph",
 		description = "Show a graph of your account's luck over time in the account overview",
-		position = 9,
+		position = 10,
 		section = displaySection
 	)
 	default boolean showLuckGraph()
@@ -115,7 +127,7 @@ public interface ExpectedDropsConfig extends Config
 		keyName = "showTrip",
 		name = "This trip card",
 		description = "Show kills, uniques and expected for your current trip on the boss page",
-		position = 10,
+		position = 11,
 		section = displaySection
 	)
 	default boolean showTrip()
@@ -127,7 +139,7 @@ public interface ExpectedDropsConfig extends Config
 		keyName = "showDropHistory",
 		name = "Drop history",
 		description = "Show a timeline per item on the boss page with the kills your drops came at",
-		position = 11,
+		position = 12,
 		section = displaySection
 	)
 	default boolean showDropHistory()
@@ -139,7 +151,7 @@ public interface ExpectedDropsConfig extends Config
 		keyName = "showOverlay",
 		name = "In-game overlay",
 		description = "Show a small box on the game screen with your verdict, driest item and trip while you kill a boss",
-		position = 12,
+		position = 13,
 		section = displaySection
 	)
 	default boolean showOverlay()
@@ -151,7 +163,7 @@ public interface ExpectedDropsConfig extends Config
 		keyName = "colourBlind",
 		name = "Colour-blind colours",
 		description = "Use orange to blue instead of red to green for dry to spooned",
-		position = 13,
+		position = 14,
 		section = displaySection
 	)
 	default boolean colourBlind()
@@ -164,7 +176,7 @@ public interface ExpectedDropsConfig extends Config
 		name = "Shared items: unopened bosses = 0 kills",
 		description = "Count bosses whose kill count On Rate doesn't know as 0 kills, so shared items (dragon pickaxe, "
 			+ "Virtus...) count without opening every boss's log page. Wrong if you did kill them before installing On Rate.",
-		position = 14,
+		position = 15,
 		section = displaySection
 	)
 	default boolean sharedUnknownAsZero()
@@ -186,9 +198,9 @@ public interface ExpectedDropsConfig extends Config
 		position = 51,
 		section = teamSection
 	)
-	default RoyalTitansMode royalTitansMode()
+	default DuoMode royalTitansMode()
 	{
-		return RoyalTitansMode.DUO;
+		return DuoMode.DUO;
 	}
 
 	@ConfigItem(
@@ -205,11 +217,38 @@ public interface ExpectedDropsConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "yamaTeam",
+		name = "Yama",
+		description = "How you killed Yama before On Rate could count your team (it counts it from now on). "
+			+ "Counted as duo kills unless you change it. In a duo you get about half the uniques of a solo kill; the pet chance stays the same.",
+		position = 53,
+		section = teamSection
+	)
+	default DuoMode yamaMode()
+	{
+		return DuoMode.DUO;
+	}
+
+	@ConfigItem(
+		keyName = "yamaSoloKills",
+		name = "Yama solo kills",
+		description = "Only used with 'Some of each': how many of those earlier Yama kills were solo. The rest count as duo.",
+		position = 54,
+		section = teamSection
+	)
+	@Range(min = 0)
+	default int yamaSoloKills()
+	{
+		return 0;
+	}
+
+	@ConfigItem(
 		keyName = "detectTeamSize",
 		name = "Count your team",
 		description = "At Nex, Yama, the Hueycoatl and the Corporeal Beast, count the players around you at each kill "
-			+ "and give you that share of the kill (a quarter with four players). Kills from before count as solo.",
-		position = 53,
+			+ "and give you that share of the kill (a quarter with four players). Earlier kills count as solo "
+			+ "(Yama: as set above).",
+		position = 55,
 		section = teamSection
 	)
 	default boolean detectTeamSize()

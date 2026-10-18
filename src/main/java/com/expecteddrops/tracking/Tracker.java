@@ -8,6 +8,7 @@ import com.expecteddrops.stats.AccountStats;
 import com.expecteddrops.stats.SharedPool;
 import com.expecteddrops.stats.BossStats;
 import com.expecteddrops.stats.DropMath;
+import com.expecteddrops.stats.ItemHighlight;
 import com.expecteddrops.stats.RaidChance;
 import com.expecteddrops.stats.RaidSettings;
 import com.expecteddrops.stats.RowStats;
@@ -126,9 +127,10 @@ public class Tracker
 
 	/**
 	 * Your share of the kills at a group boss: a kill with 4 players counts as a quarter.
-	 * Kills On Rate didn't see (before it was installed) count as solo.
+	 * Kills On Rate didn't see (before it counted teams) count as solo, or as the boss's
+	 * solo/duo setting says (Yama).
 	 */
-	private static double sharedKills(BossProgress p, int kc)
+	private static double sharedKills(BossDefinition boss, BossProgress p, int kc, RaidSettings raids)
 	{
 		int seen = 0;
 		double share = 0;
@@ -137,7 +139,29 @@ public class Tracker
 			seen += e.getValue();
 			share += e.getValue() / (double) Math.max(1, e.getKey());
 		}
-		return Math.max(0, kc - seen) + share;
+		int older = Math.max(0, kc - seen);
+		double olderShare = boss.getTeam() == null ? 1.0 : raids.contribution(boss.getTeam(), older);
+		return older * olderShare + share;
+	}
+
+	/**
+	 * Average purple chance of the raids in this mode where On Rate had your points, or NaN.
+	 * A good value for the setting that raids without points use.
+	 */
+	public synchronized double averagePurpleChance(String bossName, String part)
+	{
+		double sum = 0;
+		int n = 0;
+		for (RaidRecord r : raidRecords(bossName))
+		{
+			double chance = purpleChance(r);
+			if ((part == null ? bossName : part).equals(r.part) && !Double.isNaN(chance))
+			{
+				sum += chance;
+				n++;
+			}
+		}
+		return n == 0 ? Double.NaN : sum / n;
 	}
 
 	/** Settings used for streaks and milestone messages (raid chances, team shares). */
@@ -1477,19 +1501,19 @@ public class Tracker
 			else
 			{
 				rate = effectiveRate(boss, drop, raids);
-				if (boss.getTeam() != null && !drop.isNoShare())
-				{
-					// team boss: your chance scales with your share of the damage
-					rate *= raids.contribution(boss.getTeam(), kc);
-				}
 				if (boss.isDetectTeam() && !drop.isNoShare() && progress != null && !progress.teamKills.isEmpty())
 				{
 					// group boss: each kill counts for your share of the team you had then
-					expected = rate * sharedKills(progress, kc);
+					expected = rate * sharedKills(boss, progress, kc, raids);
 					rate = kc > 0 ? expected / kc : rate;
 				}
 				else
 				{
+					if (boss.getTeam() != null && !drop.isNoShare())
+					{
+						// team boss: your chance scales with your share of the damage
+						rate *= raids.contribution(boss.getTeam(), kc);
+					}
 					expected = rate * kc;
 				}
 			}
@@ -1612,6 +1636,7 @@ public class Tracker
 		long receivedValue = 0;
 
 		List<RowStats> rows = new ArrayList<>();
+		List<ItemHighlight> items = new ArrayList<>();
 		Map<String, Integer> killCounts = new LinkedHashMap<>();
 		double expected = 0;
 		int received = 0;
@@ -1639,6 +1664,13 @@ public class Tracker
 				}
 			}
 			rows.add(bossRow.withDriest(driest, driestItem));
+			for (int i = 0; i < boss.getDrops().size(); i++)
+			{
+				if (boss.getDrops().get(i).countsTowardAny())
+				{
+					items.add(new ItemHighlight(boss.getName(), s.getRows().get(i)));
+				}
+			}
 			if (prices != null)
 			{
 				for (int i = 0; i < boss.getDrops().size(); i++)
@@ -1674,6 +1706,7 @@ public class Tracker
 			}
 			expected += pool.getExpected();
 			received += pool.getReceived();
+			items.add(new ItemHighlight(null, pool.toRow()));
 			if (prices != null)
 			{
 				long price = Math.max(0, prices.applyAsLong(pool.getItemName()));
@@ -1690,6 +1723,7 @@ public class Tracker
 		RowStats total = new RowStats("All", null, 0, expected, received, true);
 		AccountStats account = new AccountStats(total, rows, killCounts);
 		account.setSharedPools(pools);
+		account.setItems(items);
 		if (prices != null)
 		{
 			double[] lambdas = new double[valueExpected.size()];

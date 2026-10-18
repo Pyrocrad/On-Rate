@@ -24,7 +24,7 @@
 - **Uses your raid points:** read from the game in Chambers of Xeric and estimated from your damage in Tombs of Amascut, so each raid gets its own purple chance. Based on [Raid Data Tracker](https://github.com/Raitab/raid-data-tracker) (see [Credits](#credits)).
 - **Shared items counted together:** the dragon pickaxe, godsword shards, Virtus, uncut onyx and other items several bosses drop are judged on all those bosses' kills at once, against the one collection log total.
 - **God Wars bodyguards** count too: their share of the general's uniques is included in the rates.
-- **A "\*" marks estimates:** bosses whose numbers depend on your team, points or an assumed setup.
+- **A "\*" marks estimates:** on the page of a boss whose numbers depend on your team, points or an assumed setup.
 - **Search box:** type "vork", "cox" or "kril" to jump to a boss.
 - **Dry streaks:** hover any item to see how many kills since your last copy, and how many times the drop rate that is.
 - **Chat messages:** a short line when a unique drops ("Vorkath's head after 312 kills (2.4x the rate).") and when you pass 1x, 2x, 3x, 5x or 10x the drop rate dry. Both can be turned off.
@@ -67,7 +67,6 @@ What the panel opens on. It adds up every boss you have kills at:
 - **GE value** compares the Grand Exchange value of what you got with what you should have had, and gives its own verdict. An account that's dry on the number of drops but hit two twisted bows shows up as spooned here. Prices come from RuneLite's own price list, so On Rate makes no web requests. Untradeable items like pets and jars count for the number of uniques but as 0 GP for value. You can hide it in the settings.
 - One row per boss with its verdict. Bosses with almost nothing expected yet (under 0.05 uniques, so a handful of kills) aren't listed, because they say nothing about luck; a line at the bottom says how many, and they still count in your account total. Use **Sort** to put the most expected, driest, luckiest, most killed or alphabetical first. Click a boss to open it, or hover it to see its driest item.
 - **Shared items** below the bosses: items that several bosses drop (see [Good to know](#good-to-know)), each judged on all its bosses together. Hover one to see which bosses drop it. An item only shows up, and counts in your total, once On Rate knows the kill count of every boss that drops it; a line at the bottom says how many are still waiting and which collection log page to open next (hover it for the full list).
-- A **\*** after a boss name means its numbers are an estimate: raids, team bosses and bosses where On Rate assumes a setup (all six Barrows brothers, all three God Wars bodyguards). Hover the boss name for more.
 
 ### Other views
 
@@ -115,9 +114,11 @@ Open the settings with the cog next to **On Rate** in the Configuration panel.
 - **Drop messages:** a chat line when you get a unique, saying how many kills it took. On by default.
 - **Dry milestone messages:** a chat line when you pass 1x, 2x, 3x, 5x or 10x the drop rate dry on an item. On by default.
 - **Luck view:** how your luck is shown (see [Other views](#other-views)).
+- **Top 5 items:** the driest or luckiest items across every boss, on the account overview. On by default.
 - **GE value**, **Luck graph**, **This trip card**, **Drop history**, **In-game overlay** and **Colour-blind colours**: see [Extras](#extras). Only GE value is on by default.
 - **Shared items: unopened bosses = 0 kills:** count bosses whose kill count On Rate doesn't know as 0 kills, so shared items count without opening every boss's log page. Off by default, because it's wrong if you killed those bosses before installing On Rate.
 - **Royal Titans:** kills count as **duo** kills unless you change it to **Solo** or **Some of each**. With *Some of each*, also enter how many of your kills were solo; the rest count as duo. In a duo you get about half the uniques of a solo kill, while the pet chance stays the same.
+- **Yama:** how you killed Yama before On Rate could count your team: **duo** by default, or **Solo** or **Some of each** (with your number of solo kills). Kills from then on use the counted team size.
 - **Count your team:** at Nex, Yama, the Hueycoatl and the Corporeal Beast, On Rate counts the players within 15 tiles of you at each kill and gives you that share of the kill: a quarter with four players, a half in a duo. The boss's page says how many kills it saw and the average team size. Kills from before count as solo, and the pet chance doesn't scale (except at Corp, where only the top damager gets loot). On by default.
 - **Use raid points:** at the end of each raid, On Rate saves your points with the completion and works out that raid's purple chance from them. On by default. How it gets the points:
   - **Chambers of Xeric:** read straight from the game when "Congratulations - your raid is complete!" appears: your points, the team's points and the team size.
@@ -185,6 +186,12 @@ To log in with a Jagex account in that window, start RuneLite once through the J
 Every upload to GitHub is built against the latest RuneLite and tested automatically (`.github/workflows/build.yml`). A green tick next to a commit means it builds; a red cross means something broke. Click it to see what.
 
 ## Changelog
+
+**After 1.0 is on the Plugin Hub**
+- The "\*" for estimates now only shows on boss pages, not in the account overview.
+- Boss pages explain themselves better: a **GE value** line with its own verdict (the big verdict counts uniques, so a twisted bow counts the same as a prayer scroll), and on raids a **tip** when most raids use the purple chance from the settings, with what your raids with points averaged.
+- **Yama** has a solo/duo setting like the Royal Titans, used for kills from before On Rate counted your team. Counted as duo unless you change it.
+- **Top 5 items** on the account overview: your 5 driest items (with at least 1 expected) or your 5 luckiest, across every boss. Click one to open its boss. Can be turned off in the settings (Display).
 
 **Next update**
 - Shared items (dragon pickaxe, godsword shards, Virtus, onyx...) now count: each is judged on all its bosses' kills together, under **Shared items** in the account overview. With a hint for which log page to open next, and an option to count bosses you never killed as 0 kills.

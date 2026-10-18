@@ -12,10 +12,18 @@ public class ViewOptions
 	private final boolean dropHistory;
 	private final boolean tripCard;
 	private final boolean colourBlind;
+	private final boolean topItems;
 
 	public ViewOptions(ItemView itemView, boolean geValue, boolean luckGraph, boolean dropHistory, boolean tripCard,
 		boolean colourBlind)
 	{
+		this(itemView, geValue, luckGraph, dropHistory, tripCard, colourBlind, false);
+	}
+
+	public ViewOptions(ItemView itemView, boolean geValue, boolean luckGraph, boolean dropHistory, boolean tripCard,
+		boolean colourBlind, boolean topItems)
+	{
+		this.topItems = topItems;
 		this.itemView = itemView == null ? ItemView.TARGET_BARS : itemView;
 		this.geValue = geValue;
 		this.luckGraph = luckGraph;
@@ -47,6 +55,12 @@ public class ViewOptions
 	public boolean isTripCard()
 	{
 		return tripCard;
+	}
+
+	/** The account overview's top 5 driest / luckiest items. */
+	public boolean isTopItems()
+	{
+		return topItems;
 	}
 
 	public boolean isColourBlind()

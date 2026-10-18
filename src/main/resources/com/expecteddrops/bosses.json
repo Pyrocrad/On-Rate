@@ -589,7 +589,7 @@
       ]
     },
     {
-      "name": "Yama", "estimate": true, "detectTeam": true, "kc": ["Yama"], "loot": ["Yama"], "clog": ["Yama"], "note": "In a duo each player rolls separately, scaled by their share of the damage. The pet chance doesn't scale.",
+      "name": "Yama", "estimate": true, "detectTeam": true, "team": "yama", "kc": ["Yama"], "loot": ["Yama"], "clog": ["Yama"], "note": "In a duo each player rolls separately, scaled by their share of the damage, so a duo kill gives you about half the uniques of a solo kill. The pet chance doesn't scale.",
       "drops": [
         {"name": "Soulflame horn", "rate": "2/600"},
         {"name": "Oathplate helm", "rate": "1/600"},

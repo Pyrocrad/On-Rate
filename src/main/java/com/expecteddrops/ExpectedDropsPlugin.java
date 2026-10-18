@@ -260,7 +260,7 @@ public class ExpectedDropsPlugin extends Plugin
 	ViewOptions viewOptions()
 	{
 		return new ViewOptions(config.itemView(), config.showGeValue(), config.showLuckGraph(), config.showDropHistory(),
-			config.showTrip(), config.colourBlind());
+			config.showTrip(), config.colourBlind(), config.showTopItems());
 	}
 
 	/** Verdict, driest item and trip of the boss you are killing, for the overlay. */
@@ -335,30 +335,31 @@ public class ExpectedDropsPlugin extends Plugin
 			@Override
 			public double contribution(String team, int kills)
 			{
-				if (!"royalTitans".equals(team) || kills <= 0)
+				if (!isDuoTeam(team) || kills <= 0)
 				{
 					return 1.0;
 				}
-				int duo = duoKills(kills);
+				int duo = duoKills(team, kills);
 				return (kills - duo + 0.5 * duo) / kills;
 			}
 
 			@Override
 			public String contributionNote(String team, int kills)
 			{
-				if (!"royalTitans".equals(team))
+				if (!isDuoTeam(team))
 				{
 					return null;
 				}
-				int duo = duoKills(kills);
+				String setting = "yama".equals(team) ? "Yama" : "Royal Titans";
+				int duo = duoKills(team, kills);
 				if (duo == 0)
 				{
-					return "Counted as solo kills.";
+					return "Counted as solo kills. If you duo, change '" + setting + "' in the plugin settings.";
 				}
 				if (duo >= kills)
 				{
 					return "Counted as duo kills: about half the uniques of a solo kill (the pet chance stays the same). "
-						+ "If you solo, change 'Royal Titans' in the plugin settings.";
+						+ "If you solo, change '" + setting + "' in the plugin settings.";
 				}
 				return String.format("Counted as %,d solo and %,d duo kills (a duo gives about half the uniques).",
 					kills - duo, duo);
@@ -371,16 +372,25 @@ public class ExpectedDropsPlugin extends Plugin
 		return Math.max(1, Math.min(5, config.tobTeamSize()));
 	}
 
-	private int duoKills(int kills)
+	private static boolean isDuoTeam(String team)
 	{
-		switch (config.royalTitansMode())
+		return "royalTitans".equals(team) || "yama".equals(team);
+	}
+
+	/** How many of these kills count as duo kills, from the boss's solo/duo setting. */
+	private int duoKills(String team, int kills)
+	{
+		boolean yama = "yama".equals(team);
+		DuoMode mode = yama ? config.yamaMode() : config.royalTitansMode();
+		int solo = yama ? config.yamaSoloKills() : config.royalTitansSoloKills();
+		switch (mode)
 		{
 			case DUO:
 				return kills;
 			case SOLO:
 				return 0;
 			case MIXED:
-				return kills - Math.max(0, Math.min(kills, config.royalTitansSoloKills()));
+				return kills - Math.max(0, Math.min(kills, solo));
 			default:
 				return kills;
 		}
