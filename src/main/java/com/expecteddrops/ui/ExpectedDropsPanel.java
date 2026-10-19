@@ -108,7 +108,23 @@ public class ExpectedDropsPanel extends PluginPanel
 	private final JPanel graphPanel = new JPanel();
 	/** Account overview: the 5 driest or luckiest items across every boss. */
 	private final JPanel topItemsPanel = new JPanel();
-	private boolean topLuckiest;
+	/** Items tab list: driest, luckiest or pets. */
+	private int topMode = TOP_DRIEST;
+	public static final int TOP_DRIEST = 0;
+	public static final int TOP_LUCKIEST = 1;
+	public static final int TOP_PETS = 2;
+	/** Pets shown per group in the Items tab: the luckiest ones you have, the driest ones you don't. */
+	static final int TOP_PETS_SHOWN = 5;
+	/** Account overview: showing the Items tab (top 10) instead of the bosses. */
+	private int accountTab = TAB_BOSSES;
+	/** False while the panel is closed in the sidebar (see {@link #onActivate()}). */
+	private boolean shown = true;
+	private boolean outOfDate;
+	private static final int TAB_BOSSES = 0;
+	private static final int TAB_ITEMS = 1;
+	private static final int TAB_RECENT = 2;
+	/** Whether the History section on boss pages is open (it starts folded). */
+	private boolean historyOpen;
 	private final LuckGraph graph = new LuckGraph();
 	private final JLabel graphHint = new JLabel();
 	private final JComboBox<Sort> sortSelect = new JComboBox<>(Sort.values());
@@ -125,7 +141,7 @@ public class ExpectedDropsPanel extends PluginPanel
 	private final JButton receivedTab = new JButton("Received");
 	private final JPanel rowsPanel = new JPanel();
 	private final JLabel noteLabel = new JLabel();
-	private final JButton resetButton = new JButton("Reset this boss");
+	private final JLabel resetButton = new JLabel("<html><u>Reset this boss\u2026</u></html>");
 
 	private Tab tab = Tab.EXPECTED;
 	private boolean updatingSelection;
@@ -352,10 +368,20 @@ public class ExpectedDropsPanel extends PluginPanel
 		bottom.add(spacer(8));
 
 		resetButton.setFont(FontManager.getRunescapeSmallFont());
-		resetButton.setFocusPainted(false);
+		resetButton.setForeground(ColorScheme.LIGHT_GRAY_COLOR.darker());
 		resetButton.setAlignmentX(LEFT_ALIGNMENT);
-		resetButton.setToolTipText("Forget the kill count and drops tracked for this boss");
-		resetButton.addActionListener(e -> resetSelected());
+		resetButton.setToolTipText("Forget the kill count and drops tracked for this boss (asks first)");
+		resetButton.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
+		resetButton.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mouseClicked(MouseEvent e)
+			{
+				resetSelected();
+			}
+		});
+		bottom.add(feedbackLink());
+		bottom.add(spacer(4));
 		bottom.add(resetButton);
 
 		add(top, BorderLayout.NORTH);
@@ -507,8 +533,34 @@ public class ExpectedDropsPanel extends PluginPanel
 	}
 
 	/** Recomputes and redraws the selected boss. Call on the Swing thread. */
+	/**
+	 * RuneLite tells the panel when it is opened or closed in the sidebar. While it's closed a
+	 * kill only marks it out of date, and it is rebuilt once when it is opened again.
+	 */
+	@Override
+	public void onActivate()
+	{
+		shown = true;
+		if (outOfDate)
+		{
+			refresh();
+		}
+	}
+
+	@Override
+	public void onDeactivate()
+	{
+		shown = false;
+	}
+
 	public void refresh()
 	{
+		if (!shown)
+		{
+			outOfDate = true;
+			return;
+		}
+		outOfDate = false;
 		welcomePanel.setVisible(showWelcome.getAsBoolean());
 		refreshSetup();
 
@@ -574,7 +626,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		String reminder = tracker.syncReminder(stats.getBoss().getName());
 		if (reminder != null)
 		{
-			syncLabel.setText("<html><body style='width: 160px'>Not synced yet. " + reminder + "</body></html>");
+			syncLabel.setText("<html><body style='width: 160px'>" + reminder + "</body></html>");
 			syncLabel.setForeground(ColorScheme.PROGRESS_INPROGRESS_COLOR);
 		}
 		else if (stats.isClogSynced())
@@ -589,20 +641,45 @@ public class ExpectedDropsPanel extends PluginPanel
 			syncLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		}
 		RowStats any = stats.getAnyRow();
-		showVerdict(any);
-		String verdictTip = verdictLabel.getToolTipText();
+		boolean unsynced = reminder != null && stats.getKillCount() > 0;
+		if (unsynced)
+		{
+			// The kill count is known but not the drops from before On Rate: any verdict would be
+			// "very dry" for the wrong reason. Wait for the log page.
+			verdictLabel.setText("Not synced");
+			verdictLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+			verdictLabel.setToolTipText("<html><body style='width: 220px'>On Rate knows your kill count, but not the drops "
+				+ "you got before you installed it. Open the page below once and your verdict shows up.</body></html>");
+			summaryLabel.setText(any.getExpected() < 0.005 ? "" : String.format("%s %s expected by now",
+				formatExpected(any.getExpected()), raid ? "purples" : "uniques"));
+		}
+		else
+		{
+			showVerdict(any);
+		}
+		String verdictTip = unsynced ? null : verdictLabel.getToolTipText();
 		if (verdictTip != null)
 		{
 			verdictLabel.setToolTipText("<html><body style='width: 220px'>" + verdictTip + "<br><br>This counts <b>how many</b> "
 				+ (raid ? "purples" : "uniques") + " you got, not what they're worth: a twisted bow counts the same as a prayer "
 				+ "scroll. The GE value line weighs them by price.</body></html>");
 		}
-		String value = o.isGeValue() ? bossValueText(stats) : null;
+		String value = o.isGeValue() && !unsynced ? bossValueText(stats) : null;
 		valueLabel.setText(value == null ? "" : value);
+		valueLabel.setToolTipText(value == null ? null : lastValueTip);
 		valueLabel.setVisible(value != null);
-		String hint = settingsHint(stats);
+		lastHintTip = null;
+		String hint = unsynced ? null : settingsHint(stats);
+		Color hintColor = ColorScheme.LIGHT_GRAY_COLOR;
+		if (hint == null && !unsynced)
+		{
+			// Royal Titans and Yama count as duo unless changed: say so where it matters
+			hint = duoLine(stats);
+			hintColor = ColorScheme.LIGHT_GRAY_COLOR;
+		}
 		hintLabel.setText(hint == null ? "" : "<html><body style='width: 165px'>" + hint + "</body></html>");
-		hintLabel.setForeground(ColorScheme.PROGRESS_INPROGRESS_COLOR);
+		hintLabel.setForeground(hintColor);
+		hintLabel.setToolTipText(lastHintTip);
 		hintLabel.setVisible(hint != null);
 		helpLabel.setToolTipText(bossHelp(o.getItemView()));
 
@@ -612,10 +689,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		renderBossItems(stats, unit, o.getItemView());
 		renderBossPools(stats, o.getItemView());
-		if (o.isDropHistory())
-		{
-			addDropHistory(stats, unit);
-		}
+		renderHistory(stats, unit);
 
 		StringBuilder note = new StringBuilder();
 		if (raid && combined)
@@ -641,12 +715,12 @@ public class ExpectedDropsPanel extends PluginPanel
 					modes.append(" for the team of ").append(team);
 				}
 			}
-			note.append("Purple chance for raids without points: ").append(modes).append(". Change these in the plugin settings.");
+			note.append("Purple chance for raids without points: ").append(modes).append(". Change these under <i>Raid purple chances</i> in the settings.");
 			note.append(raidPointsNote(stats.getBoss()));
 		}
 		else if (raid)
 		{
-			note.append(String.format("Assumes a %.1f%% chance of a purple per raid (change it in the plugin settings).",
+			note.append(String.format("Assumes a %.1f%% chance of a purple per raid (change it under Raid purple chances in the settings).",
 				stats.getRaidUniqueChance() * 100));
 		}
 		String teamNote = stats.getBoss().getTeam() == null || stats.getBoss().isDetectTeam() ? null
@@ -750,7 +824,9 @@ public class ExpectedDropsPanel extends PluginPanel
 			verdictLabel.setToolTipText(null);
 			verdictLabel.setText("No kills yet");
 			verdictLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-			summaryLabel.setText(String.format("Uniques: %d received, %.2f expected", any.getReceived(), any.getExpected()));
+			summaryLabel.setText(any.getReceived() == 0 && any.getExpected() <= 0 ? ""
+				: String.format("%,d unique%s \u00b7 %s expected", any.getReceived(), any.getReceived() == 1 ? "" : "s",
+				formatExpected(any.getExpected())));
 			return;
 		}
 		verdictLabel.setText(verdict);
@@ -797,6 +873,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		RowStats total = account.getTotal();
 		resetButton.setVisible(false);
 		levelsLabel.setText(o.isGeValue() ? valueText(account) : "");
+		levelsLabel.setToolTipText(o.isGeValue() ? valueTooltip(account) : null);
 		levelsLabel.setVisible(o.isGeValue() && !account.getRows().isEmpty());
 		headerName.setText("Your account");
 		headerName.setToolTipText(null);
@@ -806,7 +883,17 @@ public class ExpectedDropsPanel extends PluginPanel
 			headerIcon.setIcon(new javax.swing.ImageIcon(logo.getScaledInstance(32, 32, java.awt.Image.SCALE_FAST)));
 		}
 		kcLabel.setText(account.getRows().size() + (account.getRows().size() == 1 ? " boss" : " bosses") + " with kills");
+		List<String> unsynced = account.getUnsynced();
+		if (account.getRows().isEmpty() && !unsynced.isEmpty())
+		{
+			kcLabel.setText(unsynced.size() + (unsynced.size() == 1 ? " boss" : " bosses") + " to load");
+		}
+		sortRow.setVisible(!account.getRows().isEmpty());
 		showVerdict(total);
+		if (account.getRows().isEmpty() && !unsynced.isEmpty())
+		{
+			verdictLabel.setText("Not synced");
+		}
 
 		List<com.expecteddrops.tracking.HistoryPoint> history = tracker.history();
 		graph.setPoints(history);
@@ -831,34 +918,47 @@ public class ExpectedDropsPanel extends PluginPanel
 			}
 		}
 		rows.sort(comparator((Sort) sortSelect.getSelectedItem(), account));
-		if (o.isTopItems() && !account.getRows().isEmpty())
+		boolean tabs = !account.getRows().isEmpty();
+		if (accountTab == TAB_ITEMS && !o.isTopItems())
 		{
-			renderTopItems(account);
+			accountTab = TAB_BOSSES;
 		}
-		renderAccountItems(account, total, rows, o.getItemView());
-		renderSharedPools(account);
-		if (!hidden.isEmpty())
+		if (tabs)
 		{
-			java.util.Collections.sort(hidden);
-			rowsPanel.add(spacer(4));
-			JLabel more = smallLabel(String.format("+ %d boss%s with too few kills to judge", hidden.size(),
-				hidden.size() == 1 ? "" : "es"), ColorScheme.LIGHT_GRAY_COLOR);
-			more.setAlignmentX(LEFT_ALIGNMENT);
-			more.setToolTipText("<html><body style='width: 200px'>Less than 0.05 uniques expected so far, so not shown: "
-				+ String.join(", ", hidden) + ". They still count in your account total.</body></html>");
-			rowsPanel.add(more);
+			renderAccountTabs(o.isTopItems());
+		}
+		if (tabs && accountTab == TAB_ITEMS)
+		{
+			sortRow.setVisible(false);
+			renderItemsTab(account, o.getItemView());
+		}
+		else if (tabs && accountTab == TAB_RECENT)
+		{
+			sortRow.setVisible(false);
+			renderRecentTab();
+		}
+		else
+		{
+			renderAccountItems(account, total, rows, o.getItemView());
+			addAccountFootnote(account, hidden, account.getRows().isEmpty() ? java.util.Collections.emptyList() : unsynced);
 		}
 
-		String note = account.getRows().isEmpty()
-			? "No kills yet. Open your collection log pages to load your history, or go kill a boss."
+		String note = account.getRows().isEmpty() && !unsynced.isEmpty()
+			? "Open the collection log page" + (unsynced.size() == 1 ? "" : "s") + " of " + joinAnd(unsynced) + " to load your past drops. "
+			+ "Your account shows up here once a boss is loaded."
+			: account.getRows().isEmpty()
+			? "Open your collection log and click the pages of the bosses you do, or go kill one. "
+			+ "Your account shows up here."
 			: "Every boss you have kills at, added up. Click a boss to open it.<br><br>"
 			+ "GE value uses RuneLite's own price list. Untradeable items (pets, jars...) count for the number of "
 			+ "uniques but as 0 GP for value, so a twisted bow outweighs a pile of cheap drops.<br><br>"
-			+ "Items that several bosses drop (dragon pickaxe, godsword shards, Virtus, onyx...) are counted together under "
-			+ "Shared items: every boss's expected added up against the one collection log total. They count once "
-			+ "you've opened the log page of every boss that drops them. Pets count once, like in the log. "
+			+ "The <b>Items</b> tab shows your 10 driest or luckiest items across every boss, and your pets. "
+			+ "<b>Recent</b> shows your latest uniques.<br><br>"
+			+ "Items that several bosses drop (dragon pickaxe, godsword shards, Virtus, onyx...) have no row here: "
+			+ "you find them on the page of each boss that drops them. They do count in the verdict and GE value above, "
+			+ "once On Rate knows the kills of every boss that drops them. Pets count once, like in the log. "
 			+ "Raids without points use your purple chance settings, and team bosses assume you do all the damage.";
-		helpLabel.setToolTipText("<html><body style='width: 220px'>" + note + "</body></html>");
+		helpLabel.setToolTipText("<html><body style='width: 220px'>" + note + FEEDBACK_LINE + "</body></html>");
 		noteLabel.setText(account.getRows().isEmpty() ? "<html><body style='width: 165px'>" + note + "</body></html>" : "");
 	}
 
@@ -895,61 +995,511 @@ public class ExpectedDropsPanel extends PluginPanel
 		return text;
 	}
 
+	/** On Rate's Discord: bugs, wrong rates and ideas. Opened in the browser, never contacted by the plugin. */
+	public static final String DISCORD = "https://discord.gg/gh9fx6T9zn";
+	private static final String FEEDBACK_LINE = "<br><br>Feedback, bugs or ideas? Join the On Rate Discord (link at the bottom of the panel).";
+
+	/** A quiet link at the bottom of the panel that opens the Discord in your browser. */
+	private JLabel feedbackLink()
+	{
+		JLabel link = new JLabel("<html><u>Feedback or ideas? Join the Discord</u></html>");
+		link.setFont(FontManager.getRunescapeSmallFont());
+		link.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		link.setAlignmentX(LEFT_ALIGNMENT);
+		link.setToolTipText("Report a bug or a wrong drop rate, or share an idea. Opens " + DISCORD + " in your browser.");
+		link.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
+		link.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mouseClicked(MouseEvent e)
+			{
+				net.runelite.client.util.LinkBrowser.browse(DISCORD);
+			}
+
+			@Override
+			public void mouseEntered(MouseEvent e)
+			{
+				link.setForeground(Color.WHITE);
+			}
+
+			@Override
+			public void mouseExited(MouseEvent e)
+			{
+				link.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+			}
+		});
+		return link;
+	}
+
 	private static final String ESTIMATE_NOTE = "* estimate: depends on your team, points or settings";
 	private static final String ESTIMATE_TIP = "<html><body style='width: 200px'>The rates here depend on things On Rate "
 		+ "can't always see: your team size or damage, raid points, or an assumed setup (all bodyguards killed at God Wars). "
 		+ "Treat the numbers as an estimate.</body></html>";
 
-	/**
-	 * Account overview: one quiet line about shared items. They count in the total once every
-	 * boss that drops them is known; the rest say which log page to open next.
-	 */
-	private void renderSharedPools(AccountStats account)
+	/** One quiet line under the bosses: bosses with too few kills to list (hover for which). */
+	private void addAccountFootnote(AccountStats account, List<String> hidden, List<String> unsynced)
 	{
-		int counted = 0;
-		List<com.expecteddrops.stats.SharedPool> waiting = new ArrayList<>();
-		for (com.expecteddrops.stats.SharedPool pool : account.getSharedPools())
+		List<String> parts = new ArrayList<>();
+		StringBuilder tip = new StringBuilder("<html><body style='width: 220px'>");
+		if (!unsynced.isEmpty())
 		{
-			if (pool.isComplete())
-			{
-				counted++;
-				continue;
-			}
-			for (String boss : pool.getBosses())
-			{
-				if (account.getKillCount(boss) > 0)
-				{
-					waiting.add(pool);
-					break;
-				}
-			}
+			parts.add(String.format("%d boss%s not loaded yet", unsynced.size(), unsynced.size() == 1 ? "" : "es"));
+			tip.append("<b>Not loaded yet</b>, so not counted: ").append(String.join(", ", unsynced))
+				.append(". On Rate knows the kill count but not your drops from before; open their collection log page once.<br><br>");
 		}
-		if (counted == 0 && waiting.isEmpty())
+		if (!hidden.isEmpty())
+		{
+			java.util.Collections.sort(hidden);
+			parts.add(String.format("+ %d more boss%s", hidden.size(), hidden.size() == 1 ? "" : "es"));
+			tip.append("<b>Too few kills to judge</b> (under 0.05 uniques expected), so not listed: ")
+				.append(String.join(", ", hidden)).append(". They still count in your account total.");
+		}
+		if (parts.isEmpty())
 		{
 			return;
 		}
-		StringBuilder tip = new StringBuilder("<html><body style='width: 220px'>Items several bosses drop (dragon pickaxe, "
-			+ "godsword shards, Virtus, onyx...) have one collection log total for all of them, so they're judged on all those "
-			+ "bosses together. You find them on each boss's page. They count in your account total once On Rate knows the "
-			+ "kill count of every boss that drops them.");
-		if (!waiting.isEmpty())
+		rowsPanel.add(spacer(4));
+		JLabel line = smallLabel("<html><body style='width: 165px'>" + String.join(" \u00b7 ", parts) + "</body></html>",
+			ColorScheme.LIGHT_GRAY_COLOR);
+		line.setAlignmentX(LEFT_ALIGNMENT);
+		line.setToolTipText(tip.append("</body></html>").toString());
+		rowsPanel.add(line);
+	}
+
+	/** "today", "yesterday", "3 days ago" for a time in milliseconds. */
+	static String daysAgo(long time, long now)
+	{
+		long days = java.time.temporal.ChronoUnit.DAYS.between(
+			java.time.Instant.ofEpochMilli(time).atZone(java.time.ZoneId.systemDefault()).toLocalDate(),
+			java.time.Instant.ofEpochMilli(now).atZone(java.time.ZoneId.systemDefault()).toLocalDate());
+		return days <= 0 ? "today" : days == 1 ? "yesterday" : String.format("%,d days ago", days);
+	}
+
+	/** "after 7 kills (0.1x)", "1st one", or "" when the gap is unknown. */
+	private static String afterText(com.expecteddrops.tracking.KillEntry.DropEntry d, String unit)
+	{
+		if (d.isFirst())
 		{
-			tip.append("<br><br>Still needed:");
-			for (com.expecteddrops.stats.SharedPool pool : waiting)
+			return "1st one";
+		}
+		if (d.getSince() == null)
+		{
+			return "";
+		}
+		if (d.isAtLeast())
+		{
+			return String.format("after %,d+ %ss", d.getSince(), unit);
+		}
+		return String.format("after %,d %s%s", d.getSince(), unit, d.getSince() == 1 ? "" : "s")
+			+ (d.getMultiple() == null ? "" : " (" + formatMultiple(d.getMultiple()) + ")");
+	}
+
+	/** A gap in drop rates as a colour: well under the rate is lucky, well over it is dry. */
+	private static Color multipleColor(com.expecteddrops.tracking.KillEntry.DropEntry d)
+	{
+		Double m = d.getMultiple();
+		return d.isFirst() || m == null ? ColorScheme.LIGHT_GRAY_COLOR : luckColor(Math.exp(-m)).brighter();
+	}
+
+	/** The account's Recent tab: the latest uniques across every boss. */
+	private void renderRecentTab()
+	{
+		List<com.expecteddrops.tracking.RecentDrop> recent = tracker.recentDrops(10);
+		if (recent.isEmpty())
+		{
+			JLabel none = smallLabel("<html><body style='width: 165px'>No uniques seen yet. Drops show up here from now on.</body></html>",
+				ColorScheme.LIGHT_GRAY_COLOR);
+			none.setAlignmentX(LEFT_ALIGNMENT);
+			none.setBorder(new EmptyBorder(4, 0, 0, 0));
+			rowsPanel.add(none);
+			return;
+		}
+		long now = System.currentTimeMillis();
+		for (com.expecteddrops.tracking.RecentDrop r : recent)
+		{
+			com.expecteddrops.tracking.KillEntry.DropEntry d = r.getDrop();
+			BossDefinition boss = tracker.getCatalog().byName(r.getBoss());
+			String unit = boss != null && boss.getRaid() != null ? "raid" : "kill";
+			JPanel panel = new JPanel(new BorderLayout(6, 0));
+			panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+			panel.setBorder(new EmptyBorder(3, 4, 3, 4));
+			panel.setAlignmentX(LEFT_ALIGNMENT);
+			JPanel text = new JPanel(new GridLayout(2, 1, 0, 0));
+			text.setOpaque(false);
+			text.add(smallLabel(d.getName() + "  \u00b7 " + r.getBoss() + " " + String.format("%,d", r.getKill().getKc()), Color.WHITE));
+			String after = afterText(d, unit);
+			JLabel second = smallLabel(daysAgo(r.getKill().getTime(), now) + (after.isEmpty() ? "" : " \u00b7 " + after),
+				multipleColor(d));
+			text.add(second);
+			panel.add(text, BorderLayout.CENTER);
+			panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+			setTip(panel, "<html><b>" + d.getName() + "</b><br>" + r.getBoss() + ", kill " + String.format("%,d", r.getKill().getKc())
+				+ "<br>Click to open " + r.getBoss() + "</html>", () -> showBoss(r.getBoss()));
+			rowsPanel.add(spacer(2));
+			rowsPanel.add(panel);
+		}
+	}
+
+	/**
+	 * The folded History section at the bottom of a boss page: the kills On Rate saw, newest
+	 * first. Normal bosses list their drops; raids add points and purple chance, group bosses
+	 * the team size, Doom the delve level, Royal Titans the titan you looted.
+	 */
+	private void renderHistory(BossStats stats, String unit)
+	{
+		BossDefinition boss = stats.getBoss();
+		List<com.expecteddrops.tracking.HistoryRow> history = tracker.history(boss.getName());
+		rowsPanel.add(spacer(8));
+		JLabel title = smallLabel((historyOpen ? "\u25be" : "\u25b8") + " History", Color.WHITE);
+		title.setFont(FontManager.getRunescapeBoldFont());
+		title.setAlignmentX(LEFT_ALIGNMENT);
+		title.setToolTipText("The kills and drops On Rate saw since you installed it. Click to "
+			+ (historyOpen ? "fold it away." : "open."));
+		title.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
+		title.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mouseClicked(MouseEvent e)
 			{
-				tip.append("<br><b>").append(pool.getLabel()).append("</b>: ").append(String.join(", ", pool.getMissingPages()));
+				historyOpen = !historyOpen;
+				refresh();
+			}
+		});
+		rowsPanel.add(title);
+		if (!historyOpen)
+		{
+			return;
+		}
+		if (history.isEmpty())
+		{
+			addHistoryNote("No kills seen yet. History starts from your next kill.");
+			return;
+		}
+		boolean raid = boss.getRaid() != null;
+		boolean team = boss.isDetectTeam();
+		boolean delve = boss.isDelve();
+		boolean titans = "Royal Titans".equals(boss.getName());
+		boolean dropsOnly = !raid && !team && !delve && !titans;
+		long now = System.currentTimeMillis();
+		int shown = 0;
+		int drops = 0;
+		for (com.expecteddrops.tracking.HistoryRow h : history)
+		{
+			com.expecteddrops.tracking.KillEntry k = h.getKill();
+			drops += k.getDrops().size();
+			if (shown >= 10 || (dropsOnly && k.getDrops().isEmpty()))
+			{
+				continue;
+			}
+			shown++;
+			String first;
+			String middle;
+			if (delve)
+			{
+				first = "Lvl " + (k.getLevel() == null ? "?" : BossDefinition.delveLevelLabel(k.getLevel()));
+				middle = daysAgo(k.getTime(), now);
+			}
+			else
+			{
+				first = String.format("%,d", k.getPartKc() != null && raid ? k.getPartKc() : k.getKc());
+				if (raid)
+				{
+					com.expecteddrops.tracking.RaidRecord r = h.getRaid();
+					String mode = k.getPart() != null && !"Normal".equals(k.getPart()) ? shortMode(k.getPart()) + " " : "";
+					if (r == null)
+					{
+						middle = mode + "no points";
+					}
+					else if (r.getPersonalPoints() > 0)
+					{
+						middle = mode + formatPoints(r.getPersonalPoints()) + " pts"
+							+ (Double.isNaN(h.getPurpleChance()) ? "" : String.format(" \u00b7 %.1f%%", h.getPurpleChance() * 100));
+					}
+					else
+					{
+						middle = mode + "team " + r.getTeamSize() + (r.getDeaths() > 0 ? " \u00b7 " + r.getDeaths() + " death" + (r.getDeaths() == 1 ? "" : "s") : "");
+					}
+				}
+				else if (team)
+				{
+					middle = k.getTeam() == null ? "team ?" : k.getTeam() == 1 ? "solo" : "team " + k.getTeam() + " (1/" + k.getTeam() + ")";
+				}
+				else if (titans)
+				{
+					middle = k.getTitan() == null ? "titan ?" : k.getTitan();
+				}
+				else
+				{
+					middle = null;
+				}
+			}
+			if (dropsOnly)
+			{
+				for (com.expecteddrops.tracking.KillEntry.DropEntry d : k.getDrops())
+				{
+					String after = afterText(d, unit);
+					rowsPanel.add(historyLine(first, d.getName(), after.replace("after ", ""), Color.WHITE, multipleColor(d)));
+				}
+			}
+			else
+			{
+				StringBuilder loot = new StringBuilder();
+				for (com.expecteddrops.tracking.KillEntry.DropEntry d : k.getDrops())
+				{
+					loot.append(loot.length() > 0 ? ", " : "").append(d.getName());
+				}
+				rowsPanel.add(loot.length() == 0
+					? historyLine(first, middle, "\u2013", ColorScheme.LIGHT_GRAY_COLOR, ColorScheme.LIGHT_GRAY_COLOR)
+					: historyLootLine(first, middle, loot.toString()));
 			}
 		}
-		tip.append("</body></html>");
-		String next = waiting.isEmpty() ? null : nextPageToOpen(waiting);
-		String text = String.format("Shared items: %d counted", counted)
-			+ (waiting.isEmpty() ? "" : String.format(", %d need%s a log page. Next: open <b>%s</b>",
-			waiting.size(), waiting.size() == 1 ? "s" : "", next));
-		rowsPanel.add(spacer(4));
-		JLabel line = smallLabel("<html><body style='width: 165px'>" + text + "</body></html>", ColorScheme.LIGHT_GRAY_COLOR);
+		if (dropsOnly && shown == 0)
+		{
+			addHistoryNote("No uniques since you installed On Rate yet.");
+		}
+		int seen = tracker.killsSeen(boss.getName());
+		StringBuilder note = new StringBuilder();
+		if (raid)
+		{
+			for (com.expecteddrops.data.BossPart part : boss.getParts())
+			{
+				double a = tracker.averagePurpleChance(boss.getName(), part.getName());
+				if (!Double.isNaN(a))
+				{
+					note.append(String.format("%s%s raids with points: %.1f%% purple chance on average", note.length() > 0 ? "<br>" : "", part.getName(), a * 100));
+				}
+			}
+		}
+		else if (!delve)
+		{
+			note.append(String.format("Last %,d %s%s seen: %,d unique%s (%s expected)", seen, unit, seen == 1 ? "" : "s",
+				drops, drops == 1 ? "" : "s", formatExpected(stats.getAnyRow().getRate() * seen)));
+		}
+		if (seen >= com.expecteddrops.tracking.Tracker.MAX_KILLS)
+		{
+			note.append(note.length() > 0 ? "<br>" : "").append("On Rate keeps your last ")
+				.append(com.expecteddrops.tracking.Tracker.MAX_KILLS).append(" ").append(unit).append("s here.");
+		}
+		if (note.length() > 0)
+		{
+			addHistoryNote(note.toString());
+		}
+	}
+
+	private static String shortMode(String part)
+	{
+		switch (part)
+		{
+			case "Challenge Mode":
+				return "CM";
+			case "Hard Mode":
+				return "HM";
+			case "Entry Mode":
+				return "Entry";
+			case "Expert Mode":
+				return "Expert";
+			default:
+				return part;
+		}
+	}
+
+	private static String formatPoints(int points)
+	{
+		return points >= 10_000 ? String.format("%.1fk", points / 1000.0) : String.format("%,d", points);
+	}
+
+	private void addHistoryNote(String text)
+	{
+		JLabel note = smallLabel("<html><body style='width: 165px'>" + text + "</body></html>", ColorScheme.LIGHT_GRAY_COLOR);
+		note.setAlignmentX(LEFT_ALIGNMENT);
+		note.setBorder(new EmptyBorder(3, 0, 0, 0));
+		rowsPanel.add(note);
+	}
+
+	/** A History line with loot: what happened on top, the loot in purple underneath. */
+	private JPanel historyLootLine(String first, String middle, String loot)
+	{
+		JPanel line = new JPanel(new BorderLayout(6, 0));
+		line.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		line.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createMatteBorder(0, 0, 1, 0, ColorScheme.DARK_GRAY_COLOR), new EmptyBorder(2, 4, 2, 4)));
 		line.setAlignmentX(LEFT_ALIGNMENT);
-		line.setToolTipText(tip.toString());
-		rowsPanel.add(line);
+		JLabel kc = smallLabel(first, Color.WHITE);
+		kc.setPreferredSize(new Dimension(38, 14));
+		kc.setVerticalAlignment(SwingConstants.TOP);
+		line.add(kc, BorderLayout.WEST);
+		JPanel text = new JPanel(new GridLayout(2, 1, 0, 0));
+		text.setOpaque(false);
+		text.add(smallLabel(middle, ColorScheme.LIGHT_GRAY_COLOR));
+		text.add(smallLabel(loot, new Color(192, 112, 255)));
+		line.add(text, BorderLayout.CENTER);
+		line.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+		line.setToolTipText("<html>" + first + " \u00b7 " + middle + "<br>" + loot + "</html>");
+		return line;
+	}
+
+	/** One History line: kill count on the left, then what happened, then the loot or gap. */
+	private JPanel historyLine(String first, String middle, String last, Color middleColor, Color lastColor)
+	{
+		JPanel line = new JPanel(new BorderLayout(6, 0));
+		line.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		line.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createMatteBorder(0, 0, 1, 0, ColorScheme.DARK_GRAY_COLOR), new EmptyBorder(2, 4, 2, 4)));
+		line.setAlignmentX(LEFT_ALIGNMENT);
+		JLabel kc = smallLabel(first, Color.WHITE);
+		kc.setPreferredSize(new Dimension(38, 14));
+		line.add(kc, BorderLayout.WEST);
+		if (middle != null)
+		{
+			line.add(smallLabel(middle, middleColor), BorderLayout.CENTER);
+		}
+		JLabel right = smallLabel(last, lastColor);
+		line.add(right, middle == null ? BorderLayout.CENTER : BorderLayout.EAST);
+		line.setMaximumSize(new Dimension(Integer.MAX_VALUE, 20));
+		line.setToolTipText(middle == null ? "<html>" + first + ": " + last + "</html>" : "<html>" + first + " \u00b7 " + middle + "<br>" + last + "</html>");
+		return line;
+	}
+
+	/** Bosses | Items tabs above the account list. */
+	private void renderAccountTabs(boolean withItems)
+	{
+		JPanel tabs = new JPanel(new GridLayout(1, withItems ? 3 : 2, 2, 0));
+		tabs.setOpaque(false);
+		tabs.setAlignmentX(LEFT_ALIGNMENT);
+		tabs.setBorder(new EmptyBorder(6, 0, 2, 0));
+		tabs.add(accountTab("Bosses", TAB_BOSSES));
+		if (withItems)
+		{
+			tabs.add(accountTab("Items", TAB_ITEMS));
+		}
+		tabs.add(accountTab("Recent", TAB_RECENT));
+		tabs.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
+		topItemsPanel.add(tabs);
+	}
+
+	private JLabel accountTab(String text, int tab)
+	{
+		boolean selected = accountTab == tab;
+		JLabel label = smallLabel(text, selected ? Color.WHITE : ColorScheme.LIGHT_GRAY_COLOR);
+		label.setFont(FontManager.getRunescapeBoldFont());
+		label.setHorizontalAlignment(SwingConstants.CENTER);
+		label.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createMatteBorder(0, 0, 2, 0, selected ? ANY_COLOR : ColorScheme.DARK_GRAY_COLOR),
+			new EmptyBorder(2, 4, 3, 4)));
+		label.setToolTipText(tab == TAB_ITEMS ? "Your 10 driest and 10 luckiest items across every boss, and your pets"
+			: tab == TAB_RECENT ? "Your latest uniques across every boss" : "Every boss you have kills at");
+		if (!selected)
+		{
+			label.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
+			label.addMouseListener(new MouseAdapter()
+			{
+				@Override
+				public void mouseClicked(MouseEvent e)
+				{
+					accountTab = tab;
+					refresh();
+				}
+			});
+		}
+		return label;
+	}
+
+	/** The Items tab: the 10 driest (or luckiest) items across every boss, in the chosen luck view. */
+	private void renderItemsTab(AccountStats account, ItemView view)
+	{
+		JPanel switcher = new JPanel(new GridLayout(1, 3, 2, 0));
+		switcher.setOpaque(false);
+		switcher.setAlignmentX(LEFT_ALIGNMENT);
+		switcher.setBorder(new EmptyBorder(4, 0, 4, 0));
+		switcher.add(topSwitch("Driest", topMode == TOP_DRIEST, TOP_DRIEST));
+		switcher.add(topSwitch("Luckiest", topMode == TOP_LUCKIEST, TOP_LUCKIEST));
+		switcher.add(topSwitch("Pets", topMode == TOP_PETS, TOP_PETS));
+		switcher.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+		rowsPanel.add(switcher);
+
+		List<com.expecteddrops.stats.ItemHighlight> top = topItems(account, topMode);
+		if (top.isEmpty())
+		{
+			JLabel none = smallLabel(topMode == TOP_PETS ? "No pets at the bosses you've killed."
+				: topMode == TOP_LUCKIEST ? "Nothing above average yet." : "Nothing dry right now!",
+				ColorScheme.LIGHT_GRAY_COLOR);
+			none.setAlignmentX(LEFT_ALIGNMENT);
+			rowsPanel.add(none);
+			return;
+		}
+		if (topMode == TOP_PETS)
+		{
+			int have = 0;
+			int all = 0;
+			for (com.expecteddrops.stats.ItemHighlight h : account.getItems())
+			{
+				if (h.isPet() && h.getRow().getExpected() > 0)
+				{
+					all++;
+					have += h.getRow().isComplete() ? 1 : 0;
+				}
+			}
+			JLabel count = smallLabel(String.format("You have %d of the %d pets at your bosses", have, all), ColorScheme.LIGHT_GRAY_COLOR);
+			count.setAlignmentX(LEFT_ALIGNMENT);
+			rowsPanel.add(count);
+		}
+		if (view == ItemView.COMPACT && topMode != TOP_PETS)
+		{
+			rowsPanel.add(compactHeader("Item"));
+		}
+		Boolean group = null;
+		for (com.expecteddrops.stats.ItemHighlight h : top)
+		{
+			RowStats r = h.getRow();
+			if (topMode == TOP_PETS && (group == null || group != r.isComplete()))
+			{
+				group = r.isComplete();
+				JLabel title = smallLabel(group ? "Luckiest pets you have" : "Driest pets you don't have", Color.WHITE);
+				title.setFont(FontManager.getRunescapeBoldFont());
+				title.setAlignmentX(LEFT_ALIGNMENT);
+				title.setBorder(new EmptyBorder(6, 0, 0, 0));
+				title.setToolTipText(group ? "The pets you got with the fewest kills expected: the earliest ones"
+					: "The pets you'd most likely have by now, but don't");
+				rowsPanel.add(title);
+				if (view == ItemView.COMPACT)
+				{
+					rowsPanel.add(compactHeader("Pet"));
+				}
+			}
+			String where = h.getBoss() == null ? "shared by several bosses" : h.getBoss();
+			double luck = r.getLuck();
+			StringBuilder tb = new StringBuilder(String.format("<html><b>%s</b> (%s)<br>Got %d, expected %s<br>",
+				r.getLabel(), where, r.getReceived(), formatExpected(r.getExpected())));
+			if (h.isPet() && !r.isComplete())
+			{
+				tb.append("Chance you'd have it by now: ").append(formatPercent(r.getChanceAtLeastOne())).append("<br>");
+			}
+			if (!Double.isNaN(luck))
+			{
+				tb.append(String.format("%s: luckier than %.0f%% of players<br>", DropMath.verdict(luck), luck * 100))
+					.append(plainLuck(luck)).append("<br>");
+			}
+			String next = nextLine(r, "kill");
+			if (next != null)
+			{
+				tb.append(next).append("<br>");
+			}
+			if (h.getBoss() != null)
+			{
+				tb.append("Click to open ").append(h.getBoss());
+			}
+			String tip = tb.append("</html>").toString();
+			Runnable open = h.getBoss() == null ? null : () -> showBoss(h.getBoss());
+			if (view == ItemView.COMPACT)
+			{
+				rowsPanel.add(compactRow(r, tip, open));
+			}
+			else
+			{
+				rowsPanel.add(spacer(2));
+				rowsPanel.add(luckRow(r, tip, open));
+			}
+		}
 	}
 
 	/**
@@ -971,12 +1521,10 @@ public class ExpectedDropsPanel extends PluginPanel
 			+ "one total for all of them. So each is judged on all those bosses' kills together: the same numbers show on "
 			+ "every boss that drops it. Hover one to see which bosses.</body></html>");
 		rowsPanel.add(title);
-		if (view == ItemView.COMPACT)
-		{
-			rowsPanel.add(compactHeader("Item"));
-		}
-		java.util.Set<String> missing = new java.util.TreeSet<>();
+		String page = stats.getBoss().getClogPages().isEmpty() ? stats.getBoss().getName() : stats.getBoss().getClogPages().get(0);
+		boolean headerAdded = false;
 		List<String> unknown = new ArrayList<>();
+		List<String> missingLines = new ArrayList<>();
 		for (com.expecteddrops.stats.SharedPool pool : pools)
 		{
 			if (!pool.isLogKnown())
@@ -989,6 +1537,12 @@ public class ExpectedDropsPanel extends PluginPanel
 			String tip = poolTooltip(pool, row);
 			if (view == ItemView.COMPACT)
 			{
+				if (!headerAdded)
+				{
+					// column titles only when there's a row under them
+					rowsPanel.add(compactHeader("Item"));
+					headerAdded = true;
+				}
 				rowsPanel.add(compactRow(row, tip, null));
 			}
 			else
@@ -996,24 +1550,28 @@ public class ExpectedDropsPanel extends PluginPanel
 				rowsPanel.add(spacer(2));
 				rowsPanel.add(targetRow(row, tip));
 			}
-			missing.addAll(pool.getMissingPages());
+			List<String> missing = new ArrayList<>(new java.util.TreeSet<>(pool.getMissingPages()));
+			missing.remove(page);
+			if (!missing.isEmpty())
+			{
+				missingLines.add(String.format("%s also drops from %s. If you've killed %s, open %s log page%s so those kills count too.",
+					pool.getLabel(), joinAnd(missing), missing.size() == 1 ? "it" : "them",
+					missing.size() == 1 ? "its" : "their", missing.size() == 1 ? "" : "s"));
+			}
 		}
-		missing.remove(stats.getBoss().getClogPages().isEmpty() ? stats.getBoss().getName() : stats.getBoss().getClogPages().get(0));
 		StringBuilder text = new StringBuilder();
 		if (!unknown.isEmpty())
 		{
-			String page = stats.getBoss().getClogPages().isEmpty() ? stats.getBoss().getName() : stats.getBoss().getClogPages().get(0);
-			text.append(String.join(", ", unknown)).append(": open the ").append(page)
-				.append(" page in your collection log to load how many you have.");
+			text.append(joinAnd(unknown)).append(unknown.size() == 1 ? " shows" : " show").append(" up once you open the ").append(page)
+				.append(" page in your collection log.");
 		}
-		if (!missing.isEmpty())
+		for (String line : missingLines)
 		{
 			if (text.length() > 0)
 			{
 				text.append("<br><br>");
 			}
-			text.append("Not counted yet: kills at ").append(String.join(", ", missing))
-				.append(". Open their log pages if you've killed them.");
+			text.append(line);
 		}
 		if (text.length() > 0)
 		{
@@ -1024,10 +1582,23 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 	}
 
+	/** "Vorkath", "Vorkath and Zulrah", "Vorkath, Zulrah and Cerberus". */
+	public static String joinAnd(List<String> names)
+	{
+		if (names.size() <= 1)
+		{
+			return String.join("", names);
+		}
+		return String.join(", ", names.subList(0, names.size() - 1)) + " and " + names.get(names.size() - 1);
+	}
+
 	private static String lowerFirst(String text)
 	{
 		return text.isEmpty() ? text : Character.toLowerCase(text.charAt(0)) + text.substring(1);
 	}
+
+	/** Hover text for the boss page's GE value line, set by {@link #bossValueText}. */
+	private String lastValueTip;
 
 	/** GE value of this boss's uniques, received vs expected, with its own verdict; null without prices. */
 	private String bossValueText(BossStats stats)
@@ -1067,9 +1638,46 @@ public class ExpectedDropsPanel extends PluginPanel
 			return null;
 		}
 		String color = String.format("#%06x", luckColor(luck).brighter().getRGB() & 0xFFFFFF);
-		return String.format("<html><body style='width: 165px'>GE value: %s received, %s expected<br>"
-			+ "<font color='%s'>Value: %s (luckier than %.0f%%)</font></body></html>",
-			DropMath.formatGp(received), DropMath.formatGp((long) expected), color, DropMath.verdict(luck), luck * 100);
+		lastValueTip = String.format("<html><body style='width: 200px'>GE value of the uniques you got here: %s<br>"
+			+ "What you should have had by now: %s<br>Luckier than %.0f%% of players by value.<br><br>"
+			+ "The big verdict counts how many uniques you got; this weighs them by price. "
+			+ "Untradeable items (pets, jars...) count as 0 GP.</body></html>",
+			DropMath.formatGp(received), DropMath.formatGp((long) expected), luck * 100);
+		return String.format("<html>GE value: %s / %s \u00b7 <font color='%s'>%s</font></html>",
+			DropMath.formatGp(received), DropMath.formatGp((long) expected), color, DropMath.verdict(luck));
+	}
+
+	/**
+	 * One grey line under the verdict at Royal Titans and Yama when kills count as duo, so a
+	 * solo player sees why their expected is half and where to change it. Null otherwise.
+	 */
+	private String duoLine(BossStats stats)
+	{
+		BossDefinition boss = stats.getBoss();
+		if (boss.getTeam() == null || stats.getKillCount() <= 0)
+		{
+			return null;
+		}
+		int kills = stats.getKillCount();
+		String which = "kills";
+		if (boss.isDetectTeam())
+		{
+			// counted kills use the real team size; only the older ones use the setting
+			int seen = tracker.teamKills(boss.getName()).values().stream().mapToInt(Integer::intValue).sum();
+			kills = Math.max(0, kills - seen);
+			which = "kills from before On Rate";
+		}
+		if (kills <= 0)
+		{
+			return null;
+		}
+		double share = raidSettings.get().contribution(boss.getTeam(), kills);
+		if (share >= 1)
+		{
+			return null;
+		}
+		return String.format("Your %s count as %s. Change it under <i>Team bosses</i> in the settings.",
+			which, share <= 0.5 + 1e-9 ? "duo kills" : "partly duo");
 	}
 
 	/**
@@ -1113,80 +1721,81 @@ public class ExpectedDropsPanel extends PluginPanel
 		switch (boss.getRaid())
 		{
 			case "cox":
-				advice = "Big teams or fewer points? Lower it in the settings (8,676 of your points is about 1%).";
+				advice = "Big teams or fewer points? Lower it under <i>Raid purple chances</i> in the settings (8,676 of your points is about 1%).";
 				break;
 			case "tob":
 				advice = "Check <i>ToB team size</i> in the settings.";
 				break;
 			default:
-				advice = "Set your usual chance in the settings.";
+				advice = "Set your usual chance under <i>Raid purple chances</i> in the settings.";
 		}
-		return String.format("Tip: %,d of %,d raids use the purple chance from the settings, not your points.%s %s",
+		lastHintTip = String.format("<html><body style='width: 220px'>%,d of your %,d raids have no points On Rate could read "
+			+ "(raids from before you installed it, for example), so they use an average purple chance from the settings. "
+			+ "Raids from now on use your own points.%s<br><br>%s</body></html>",
 			fromSettings, stats.getKillCount(), averages, advice);
+		return String.format("%,d of %,d raids use an average purple chance, not your points. Hover for more.",
+			fromSettings, stats.getKillCount());
 	}
+
+	/** Hover text for the line {@link #settingsHint} returns. */
+	private String lastHintTip;
 
 	/** Items need at least this many expected to count as dry: 0 of 0.2 says nothing yet. */
 	private static final double MIN_EXPECTED_DRY = 1.0;
-	private static final int TOP_ITEMS = 5;
+	private static final int TOP_ITEMS = 10;
 
 	/**
 	 * The driest (or luckiest) items across every boss: driest have at least one expected,
 	 * luckiest are ones you have. Ranked by luck percentile.
 	 */
-	public static List<com.expecteddrops.stats.ItemHighlight> topItems(AccountStats account, boolean luckiest)
+	public static List<com.expecteddrops.stats.ItemHighlight> topItems(AccountStats account, int mode)
 	{
 		List<com.expecteddrops.stats.ItemHighlight> list = new ArrayList<>();
 		for (com.expecteddrops.stats.ItemHighlight h : account.getItems())
 		{
 			RowStats r = h.getRow();
+			if (mode == TOP_PETS)
+			{
+				if (h.isPet() && r.getExpected() > 0)
+				{
+					list.add(h);
+				}
+				continue;
+			}
 			if (Double.isNaN(r.getLuck()))
 			{
 				continue;
 			}
-			if (luckiest ? r.getReceived() > 0 : r.getExpected() >= MIN_EXPECTED_DRY && !(r.isOnce() && r.getReceived() > 0))
+			// driest: below average with at least one expected; luckiest: above average and you have it
+			if (mode == TOP_LUCKIEST ? r.getReceived() > 0 && r.getLuck() > 0.5
+				: r.getExpected() >= MIN_EXPECTED_DRY && !r.isComplete() && r.getLuck() < 0.5)
 			{
 				list.add(h);
 			}
 		}
+		if (mode == TOP_PETS)
+		{
+			// the 5 luckiest pets you have, then the 5 you'd most likely have by now but don't
+			List<com.expecteddrops.stats.ItemHighlight> lucky = new ArrayList<>();
+			List<com.expecteddrops.stats.ItemHighlight> dry = new ArrayList<>();
+			for (com.expecteddrops.stats.ItemHighlight h : list)
+			{
+				(h.getRow().isComplete() ? lucky : dry).add(h);
+			}
+			lucky.sort(Comparator.comparingDouble((com.expecteddrops.stats.ItemHighlight h) -> h.getRow().getExpected())
+				.thenComparing(h -> h.getRow().getLabel()));
+			dry.sort(Comparator.comparingDouble((com.expecteddrops.stats.ItemHighlight h) -> -h.getRow().getChanceAtLeastOne())
+				.thenComparing(h -> h.getRow().getLabel()));
+			List<com.expecteddrops.stats.ItemHighlight> result = new ArrayList<>(lucky.subList(0, Math.min(TOP_PETS_SHOWN, lucky.size())));
+			result.addAll(dry.subList(0, Math.min(TOP_PETS_SHOWN, dry.size())));
+			return result;
+		}
 		Comparator<com.expecteddrops.stats.ItemHighlight> byLuck = Comparator.comparingDouble(h -> h.getRow().getLuck());
-		list.sort(luckiest ? byLuck.reversed() : byLuck);
+		list.sort(mode == TOP_LUCKIEST ? byLuck.reversed() : byLuck);
 		return list.size() > TOP_ITEMS ? new ArrayList<>(list.subList(0, TOP_ITEMS)) : list;
 	}
 
-	private void renderTopItems(AccountStats account)
-	{
-		JPanel head = new JPanel(new BorderLayout(4, 0));
-		head.setOpaque(false);
-		head.setAlignmentX(LEFT_ALIGNMENT);
-		head.setBorder(new EmptyBorder(6, 0, 2, 0));
-		JLabel title = smallLabel("Top 5 items", Color.WHITE);
-		title.setFont(FontManager.getRunescapeBoldFont());
-		head.add(title, BorderLayout.WEST);
-		JPanel switcher = new JPanel(new GridLayout(1, 2, 2, 0));
-		switcher.setOpaque(false);
-		switcher.add(topSwitch("Driest", !topLuckiest, false));
-		switcher.add(topSwitch("Luckiest", topLuckiest, true));
-		head.add(switcher, BorderLayout.EAST);
-		head.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
-		topItemsPanel.add(head);
-
-		List<com.expecteddrops.stats.ItemHighlight> top = topItems(account, topLuckiest);
-		if (top.isEmpty())
-		{
-			JLabel none = smallLabel(topLuckiest ? "No uniques yet." : "Nothing with at least 1 expected yet.",
-				ColorScheme.LIGHT_GRAY_COLOR);
-			none.setAlignmentX(LEFT_ALIGNMENT);
-			topItemsPanel.add(none);
-		}
-		for (com.expecteddrops.stats.ItemHighlight h : top)
-		{
-			topItemsPanel.add(spacer(2));
-			topItemsPanel.add(highlightRow(h));
-		}
-		topItemsPanel.add(spacer(6));
-	}
-
-	private JLabel topSwitch(String text, boolean selected, boolean luckiest)
+	private JLabel topSwitch(String text, boolean selected, int mode)
 	{
 		JLabel label = smallLabel(text, selected ? Color.WHITE : ColorScheme.LIGHT_GRAY_COLOR);
 		label.setHorizontalAlignment(SwingConstants.CENTER);
@@ -1201,64 +1810,12 @@ public class ExpectedDropsPanel extends PluginPanel
 				@Override
 				public void mouseClicked(MouseEvent e)
 				{
-					topLuckiest = luckiest;
+					topMode = mode;
 					refresh();
 				}
 			});
 		}
 		return label;
-	}
-
-	/** One top 5 row: the item, where it drops and how far off you are, with its luck. */
-	private JPanel highlightRow(com.expecteddrops.stats.ItemHighlight h)
-	{
-		RowStats r = h.getRow();
-		JPanel panel = new JPanel(new BorderLayout(6, 0));
-		panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		panel.setBorder(new EmptyBorder(3, 4, 3, 4));
-		panel.setAlignmentX(LEFT_ALIGNMENT);
-		panel.add(itemIcon(r.getIconItem(), r.getLabel(), SMALL_ICON), BorderLayout.WEST);
-		String where = h.getBoss() == null ? "Shared" : h.getBoss();
-		boolean have = r.isOnce() && r.getReceived() > 0;
-		// two plain labels, so long names end in "..." instead of pushing the numbers away
-		JPanel text = new JPanel(new GridLayout(2, 1, 0, 0));
-		text.setOpaque(false);
-		text.add(smallLabel(r.getLabel(), Color.WHITE));
-		text.add(smallLabel((have ? "have it" : gotOfExpected(r)) + " \u00b7 " + where, ColorScheme.LIGHT_GRAY_COLOR));
-		panel.add(text, BorderLayout.CENTER);
-		double luck = r.getLuck();
-		JPanel chipBox = new JPanel(new java.awt.GridBagLayout());
-		chipBox.setOpaque(false);
-		chipBox.add(new Chip(String.format("%.0f%%", luck * 100), luckColor(luck)));
-		panel.add(chipBox, BorderLayout.EAST);
-		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
-		String tip = String.format("<html><b>%s</b> (%s)<br>Got %d, expected %s<br>%s: luckier than %.0f%% of players with the same kills%s</html>",
-			r.getLabel(), where, r.getReceived(), formatExpected(r.getExpected()), DropMath.verdict(luck), luck * 100,
-			h.getBoss() == null ? "" : "<br>Click to open " + h.getBoss());
-		setTip(panel, tip, h.getBoss() == null ? null : () -> showBoss(h.getBoss()));
-		return panel;
-	}
-
-	/** The log page that most waiting shared items need, so one page opens up the most. */
-	public static String nextPageToOpen(List<com.expecteddrops.stats.SharedPool> waiting)
-	{
-		java.util.Map<String, Integer> need = new java.util.TreeMap<>();
-		for (com.expecteddrops.stats.SharedPool pool : waiting)
-		{
-			for (String page : pool.getMissingPages())
-			{
-				need.merge(page, 1, Integer::sum);
-			}
-		}
-		String best = null;
-		for (java.util.Map.Entry<String, Integer> e : need.entrySet())
-		{
-			if (best == null || e.getValue() > need.get(best))
-			{
-				best = e.getKey();
-			}
-		}
-		return best;
 	}
 
 	private static String poolTooltip(com.expecteddrops.stats.SharedPool pool, RowStats row)
@@ -1301,7 +1858,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 	}
 
-	/** Two lines for the overview: GE value received vs expected, and how lucky that is. */
+	/** One line for the overview: GE value received / expected and its verdict (details on hover). */
 	private static String valueText(AccountStats account)
 	{
 		double luck = account.getValueLuck();
@@ -1310,10 +1867,22 @@ public class ExpectedDropsPanel extends PluginPanel
 			return "GE value: prices not loaded yet";
 		}
 		String color = String.format("#%06x", luckColor(luck).brighter().getRGB() & 0xFFFFFF);
-		return String.format("<html><body style='width: 165px'>GE value: %s received, %s expected<br>"
-			+ "<font color='%s'>Value luck: %s (luckier than %.0f%%)</font></body></html>",
+		return String.format("<html>GE value: %s / %s \u00b7 <font color='%s'>%s</font></html>",
 			DropMath.formatGp(account.getReceivedValue()), DropMath.formatGp(account.getExpectedValue()),
-			color, DropMath.verdict(luck), luck * 100);
+			color, DropMath.verdict(luck));
+	}
+
+	private static String valueTooltip(AccountStats account)
+	{
+		double luck = account.getValueLuck();
+		if (account.getExpectedValue() <= 0 || Double.isNaN(luck))
+		{
+			return null;
+		}
+		return String.format("<html><body style='width: 200px'>GE value of the uniques you got: %s<br>"
+			+ "What you should have had by now: %s<br>Luckier than %.0f%% of players by value.<br><br>"
+			+ "Uses RuneLite's own price list. Untradeable items (pets, jars...) count as 0 GP here.</body></html>",
+			DropMath.formatGp(account.getReceivedValue()), DropMath.formatGp(account.getExpectedValue()), luck * 100);
 	}
 
 	private static String accountTooltip(RowStats row, AccountStats account)
@@ -1333,6 +1902,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		if (!Double.isNaN(luck))
 		{
 			sb.append(String.format("Luckier than %.0f%% of players: %s", luck * 100, DropMath.verdict(luck)));
+			sb.append("<br>").append(plainLuck(luck));
 		}
 		if (row.isAny() && account.getExpectedValue() > 0 && !Double.isNaN(account.getValueLuck()))
 		{
@@ -1384,7 +1954,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				how = "The fill is how many you got; the white line is how many you should have by now.";
 		}
 		return "<html><body style='width: 220px'>" + how + "<br><br>Hover an item for its drop rate, your chances "
-			+ "and your dry streak. You can pick another view in the plugin settings (Display).</body></html>";
+			+ "and your dry streak. You can pick another view in the plugin settings (Display)." + FEEDBACK_LINE + "</body></html>";
 	}
 
 	private void renderBossItems(BossStats stats, String unit, ItemView view)
@@ -1430,7 +2000,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				{
 					rowsPanel.add(spacer(2));
 					rowsPanel.add(stripRow(r.isAny() ? null : r.getIconItem(), r.isAny() ? "Any unique" : r.getLabel(),
-						r.isAny(), r.isOnce() && r.getReceived() > 0 ? 1.0 : r.getLuck(), tooltip(r, stats, unit), null));
+						r.isAny(), r.isComplete() ? 1.0 : r.getLuck(), tooltip(r, stats, unit), null));
 				}
 				break;
 			default:
@@ -1447,6 +2017,11 @@ public class ExpectedDropsPanel extends PluginPanel
 
 	private void renderAccountItems(AccountStats account, RowStats total, List<RowStats> rows, ItemView view)
 	{
+		if (rows.isEmpty())
+		{
+			// nothing to list yet: no empty table headers
+			return;
+		}
 		switch (view)
 		{
 			case DELVE_BARS:
@@ -1565,7 +2140,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			name = smallLabel(r.getShownLabel(), Color.WHITE);
 		}
 		line.add(name, BorderLayout.CENTER);
-		boolean have = r.isOnce() && r.getReceived() > 0;
+		boolean have = r.isComplete();
 		line.add(smallLabel(have ? "obtained" : gotOfExpected(r), Color.WHITE), BorderLayout.EAST);
 		panel.add(line, BorderLayout.CENTER);
 
@@ -1641,8 +2216,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		JPanel right = new JPanel(new BorderLayout(6, 0));
 		right.setOpaque(false);
-		boolean have = r.isOnce() && r.getReceived() > 0;
-		right.add(smallLabel(have ? "have it" : gotOfExpected(r), Color.WHITE), BorderLayout.CENTER);
+		boolean have = r.isComplete();
+		right.add(smallLabel(have ? (r.getCap() > 1 ? "have both" : "have it") : gotOfExpected(r), Color.WHITE), BorderLayout.CENTER);
 		double luck = r.getLuck();
 		right.add(new Chip(Double.isNaN(luck) ? "-" : String.format("%.0f%%", luck * 100), luckColor(luck)), BorderLayout.EAST);
 		panel.add(right, BorderLayout.EAST);
@@ -1680,7 +2255,7 @@ public class ExpectedDropsPanel extends PluginPanel
 	{
 		LuckRing ring = new LuckRing();
 		String sub;
-		boolean have = r.isOnce() && r.getReceived() > 0;
+		boolean have = r.isComplete();
 		if (have)
 		{
 			ring.set(1, Palette.good());
@@ -1880,62 +2455,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		return t;
 	}
 
-	/** Drop history: a timeline per item of the kills its drops came at. */
-	private void addDropHistory(BossStats stats, String unit)
-	{
-		com.expecteddrops.tracking.DropHistory history = tracker.dropHistory(stats.getBoss().getName());
-		rowsPanel.add(spacer(8));
-		JLabel title = new JLabel("Drop history");
-		title.setFont(FontManager.getRunescapeBoldFont());
-		title.setForeground(Color.WHITE);
-		title.setAlignmentX(LEFT_ALIGNMENT);
-		title.setToolTipText("<html><body style='width: 220px'>Yellow marks are the " + unit + "s your drops came at, grey ticks "
-			+ "the average spacing and the coloured line your current dry streak. The darker part at the start is "
-			+ "from before On Rate was tracking: drops there aren't known.</body></html>");
-		rowsPanel.add(title);
-		rowsPanel.add(spacer(2));
-		int start = history.getTrackingStartKc() == null ? 0 : history.getTrackingStartKc();
-		for (RowStats r : stats.getRows())
-		{
-			List<Integer> drops = history.getDrops().get(r.getLabel());
-			JPanel panel = new JPanel(new BorderLayout(0, 2));
-			panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-			panel.setBorder(new EmptyBorder(3, 4, 3, 4));
-			panel.setAlignmentX(LEFT_ALIGNMENT);
-			JPanel line = new JPanel(new BorderLayout(4, 0));
-			line.setOpaque(false);
-			line.add(itemIcon(r.getIconItem(), r.getLabel(), 14), BorderLayout.WEST);
-			line.add(smallLabel(r.getLabel(), Color.WHITE), BorderLayout.CENTER);
-			String right;
-			Color streakColor;
-			if (r.isOnce() && r.getReceived() > 0)
-			{
-				right = "obtained";
-				streakColor = Palette.good();
-			}
-			else if (r.getStreak() != null)
-			{
-				double m = r.getStreakMultiple();
-				right = String.format("%s%,d dry", r.isStreakExact() ? "" : "\u2265", r.getStreak());
-				streakColor = Double.isNaN(m) ? ColorScheme.MEDIUM_GRAY_COLOR : luckColor(Math.exp(-m));
-			}
-			else
-			{
-				right = "";
-				streakColor = ColorScheme.MEDIUM_GRAY_COLOR;
-			}
-			line.add(smallLabel(right, streakColor.brighter()), BorderLayout.EAST);
-			panel.add(line, BorderLayout.CENTER);
-			DropTimeline timeline = new DropTimeline();
-			timeline.set(stats.getKillCount(), start, r.getRate(), drops == null ? java.util.Collections.emptyList() : drops,
-				streakColor);
-			panel.add(timeline, BorderLayout.SOUTH);
-			panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, panel.getPreferredSize().height));
-			rowsPanel.add(panel);
-			rowsPanel.add(spacer(2));
-		}
-	}
-
 	private void buildWelcome()
 	{
 		welcomePanel.setLayout(new BorderLayout(0, 6));
@@ -1947,11 +2466,11 @@ public class ExpectedDropsPanel extends PluginPanel
 
 		JLabel text = new JLabel("<html><body style='width: 140px'>"
 			+ "<b>Welcome to On Rate!</b><br><br>"
-			+ "<b>1.</b> Keep the <b>Loot Tracker</b> plugin on. New drops are read from it.<br><br>"
-			+ "<b>2.</b> Open your <b>collection log</b> and click the page of each boss you care about. "
-			+ "That loads your kill count and past drops. The list below shows which pages are left.<br><br>"
-			+ "<b>3.</b> Doing Doom of Mokhaiotl? Open the <b>Doom scoreboard</b> once.<br><br>"
-			+ "Then just go kill things: the panel follows your last kill."
+			+ "<b>1.</b> Open your <b>collection log</b> and click the pages of the bosses you do. "
+			+ "That loads your past drops.<br><br>"
+			+ "<b>2.</b> Go kill something. The panel follows your kills (keep the <b>Loot Tracker</b> plugin on).<br><br>"
+			+ "<b>3.</b> <i>Got it</i> opens the settings: pick a <i>Luck view</i> you like, and check <i>Team bosses</i> if you solo Royal Titans or Yama.<br><br>"
+			+ "Hover the <b>?</b> for help."
 			+ "</body></html>");
 		text.setFont(FontManager.getRunescapeSmallFont());
 		text.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
@@ -1960,7 +2479,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		JButton gotIt = new JButton("Got it");
 		gotIt.setFont(FontManager.getRunescapeSmallFont());
 		gotIt.setFocusPainted(false);
-		gotIt.setToolTipText("Hide this guide. Turn it back on with 'Show welcome guide' in the settings.");
+		gotIt.setToolTipText("Hide this guide and open On Rate's settings. Turn the guide back on with 'Show welcome guide' there.");
 		gotIt.addActionListener(e ->
 		{
 			dismissWelcome.run();
@@ -1999,18 +2518,58 @@ public class ExpectedDropsPanel extends PluginPanel
 			return;
 		}
 
-		setupHeader.setText((setupExpanded ? "\u25be " : "\u25b8 ") + "Collection log: " + done + " / " + checklist.size()
-			+ " synced" + (setupExpanded ? "" : " (show)"));
-		setupHeader.setForeground(ColorScheme.PROGRESS_INPROGRESS_COLOR);
+		// Pages of bosses you killed come first; the rest only matter for bosses you do.
+		missing.sort((a, b) -> Boolean.compare(b.isKilled(), a.isKilled()));
+		// a boss can need two pages (Doom: its log page and the scoreboard): count bosses, not pages
+		long killed = missing.stream().filter(SyncStatus::isKilled).flatMap(st -> st.getBosses().stream()).distinct().count();
+		String status;
+		Color statusColor = ColorScheme.PROGRESS_INPROGRESS_COLOR;
+		if (killed > 0)
+		{
+			status = String.format("Load %d boss%s you killed", killed, killed == 1 ? "" : "es");
+		}
+		else if (done == 0)
+		{
+			status = "Load your bosses from the log";
+		}
+		else
+		{
+			status = String.format("Collection log: %d page%s loaded", done, done == 1 ? "" : "s");
+			statusColor = ColorScheme.LIGHT_GRAY_COLOR;
+		}
+		setupHeader.setText((setupExpanded ? "\u25be " : "\u25b8 ") + status + (setupExpanded ? "" : " (show)"));
+		setupHeader.setForeground(statusColor);
+		setupHeader.setToolTipText("<html><body style='width: 200px'>Open these pages in your collection log to load your "
+			+ "kill count and past drops. Only the bosses you do matter; you don't need all " + checklist.size() + ".</body></html>");
 		setupHeader.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 		setupList.setVisible(setupExpanded);
 		if (!setupExpanded)
 		{
 			return;
 		}
+		JLabel intro = new JLabel("<html><body style='width: 160px'>Open these in your collection log. "
+			+ "Only the bosses you do matter.</body></html>");
+		intro.setFont(FontManager.getRunescapeSmallFont());
+		intro.setForeground(ColorScheme.MEDIUM_GRAY_COLOR);
+		setupList.add(intro);
+		boolean othersTitle = false;
 		for (SyncStatus s : missing)
 		{
-			setupList.add(checklistItem(s));
+			if (killed > 0 && !s.isKilled() && !othersTitle)
+			{
+				JLabel others = new JLabel("Other bosses:");
+				others.setFont(FontManager.getRunescapeSmallFont());
+				others.setForeground(ColorScheme.MEDIUM_GRAY_COLOR);
+				others.setBorder(new EmptyBorder(4, 0, 0, 0));
+				setupList.add(others);
+				othersTitle = true;
+			}
+			JLabel item = checklistItem(s);
+			if (s.isKilled())
+			{
+				item.setForeground(Color.WHITE);
+			}
+			setupList.add(item);
 		}
 		setupList.setMaximumSize(new Dimension(Integer.MAX_VALUE, setupList.getPreferredSize().height));
 	}
@@ -2196,15 +2755,61 @@ public class ExpectedDropsPanel extends PluginPanel
 		if (!Double.isNaN(luck))
 		{
 			sb.append(String.format("Luckier than %.0f%% of players at %,d %ss<br>", luck * 100, stats.getKillCount(), unit));
+			sb.append("<b>").append(plainLuck(luck)).append("</b><br>");
 		}
 		if (!row.isAny() && row.getRate() > 0 && (drop == null || (!drop.hasLevelRates() && !drop.hasPartRates())))
 		{
 			sb.append(String.format("50%% / 90%% chance by %,d / %,d %ss<br>",
 				DropMath.killsForChance(row.getRate(), 0.5), DropMath.killsForChance(row.getRate(), 0.9), unit));
 		}
+		String next = nextLine(row, unit);
+		if (next != null)
+		{
+			sb.append(next).append("<br>");
+		}
 		appendStreak(sb, row, unit);
 		sb.append("</html>");
 		return sb.toString();
+	}
+
+	/**
+	 * Luck in plain words: "About 1 in 6 players is this dry (or drier)". Around the middle it
+	 * just says you're about average.
+	 */
+	public static String plainLuck(double luck)
+	{
+		if (Double.isNaN(luck))
+		{
+			return null;
+		}
+		if (luck >= 0.4 && luck <= 0.6)
+		{
+			return "About half of players have fewer by now: right in the middle";
+		}
+		if (luck < 0.5)
+		{
+			long n = Math.max(2, Math.round(1 / Math.max(luck, 0.0001)));
+			return String.format("About 1 in %,d players is this dry (or drier)", n);
+		}
+		long n = Math.max(2, Math.round(1 / Math.max(1 - luck, 0.0001)));
+		return String.format("About 1 in %,d players is this lucky (or luckier)", n);
+	}
+
+	/** Chance of at least one more in the next {@code kills}, at {@code rate} per kill. */
+	public static double nextChance(double rate, int kills)
+	{
+		return rate <= 0 ? 0 : -Math.expm1(-rate * kills);
+	}
+
+	/** "Next 100 kills: 87% chance of another" for a row, or null when it can't drop (more). */
+	private static String nextLine(RowStats row, String unit)
+	{
+		if (row.getRate() <= 0 || row.isComplete())
+		{
+			return null;
+		}
+		return String.format("Next 100 %ss: %s chance of %s", unit, formatPercent(nextChance(row.getRate(), 100)),
+			row.getReceived() > 0 ? (row.isAny() ? "another unique" : "another") : (row.isAny() ? "a unique" : "one"));
 	}
 
 	private static void appendStreak(StringBuilder sb, RowStats row, String unit)
@@ -2214,6 +2819,11 @@ public class ExpectedDropsPanel extends PluginPanel
 			return;
 		}
 		sb.append("<br><b>Dry streak</b><br>");
+		if (!row.isStreakExact() && row.getStreak() == 0)
+		{
+			sb.append("Your last one came before On Rate,<br>so it counts your streak from your next ").append(unit).append(".<br>");
+			return;
+		}
 		String since = row.getReceived() > 0 || !row.isStreakExact()
 			? (row.isAny() ? "since your last unique" : "since your last one")
 			: (row.isAny() ? "without a unique so far" : "without one so far");

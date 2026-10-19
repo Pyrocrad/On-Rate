@@ -35,7 +35,7 @@ Unless a line says otherwise, rates come from the boss's page on the [Old School
 | Nex | [Nex](https://oldschool.runescape.wiki/w/Nex) | |
 | Phantom Muspah | [Phantom Muspah](https://oldschool.runescape.wiki/w/Phantom_Muspah) | |
 | Phosani's Nightmare | [Phosani's Nightmare](https://oldschool.runescape.wiki/w/Phosani%27s_Nightmare) | |
-| Royal Titans | [Royal Titans](https://oldschool.runescape.wiki/w/Royal_Titans) | 1/75 per scroll from the titan you loot, so 1/150 each when you loot both titans equally. |
+| Royal Titans | [Royal Titans](https://oldschool.runescape.wiki/w/Royal_Titans) | You loot one titan per kill and each titan has its own scroll at 1/75 (Deadeye from Eldric, Mystic vigour from Branda). On Rate assumes you loot both equally: 1/150 per scroll per kill. Duo kills halve that. |
 | Sarachnis | [Sarachnis](https://oldschool.runescape.wiki/w/Sarachnis) | |
 | Scorpia | [Scorpia](https://oldschool.runescape.wiki/w/Scorpia) | |
 | Scurrius | [Scurrius](https://oldschool.runescape.wiki/w/Scurrius) | |

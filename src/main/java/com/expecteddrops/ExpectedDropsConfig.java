@@ -84,7 +84,7 @@ public interface ExpectedDropsConfig extends Config
 	)
 	default ItemView itemView()
 	{
-		return ItemView.COMPACT;
+		return ItemView.TARGET_BARS;
 	}
 
 	@ConfigItem(
@@ -101,8 +101,8 @@ public interface ExpectedDropsConfig extends Config
 
 	@ConfigItem(
 		keyName = "showTopItems",
-		name = "Top 5 items",
-		description = "On the account overview, your 5 driest and 5 luckiest items across every boss",
+		name = "Items tab",
+		description = "On the account overview, an Items tab next to Bosses with your 10 driest and 10 luckiest items across every boss",
 		position = 9,
 		section = displaySection
 	)
@@ -124,7 +124,7 @@ public interface ExpectedDropsConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "showTrip",
+		keyName = "showTripCard",
 		name = "This trip card",
 		description = "Show kills, uniques and expected for your current trip on the boss page",
 		position = 11,
@@ -132,19 +132,7 @@ public interface ExpectedDropsConfig extends Config
 	)
 	default boolean showTrip()
 	{
-		return false;
-	}
-
-	@ConfigItem(
-		keyName = "showDropHistory",
-		name = "Drop history",
-		description = "Show a timeline per item on the boss page with the kills your drops came at",
-		position = 12,
-		section = displaySection
-	)
-	default boolean showDropHistory()
-	{
-		return false;
+		return true;
 	}
 
 	@ConfigItem(
@@ -174,7 +162,7 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigSection(
 		name = "Team bosses",
 		description = "At team bosses your chance of a unique scales with your share of the damage",
-		position = 50
+		position = 20
 	)
 	String teamSection = "team";
 
@@ -250,6 +238,15 @@ public interface ExpectedDropsConfig extends Config
 	)
 	String raidsSection = "raids";
 
+	@ConfigSection(
+		name = "Raid purple chances",
+		description = "Only used for raids where On Rate has no points: everything from before you installed it, "
+			+ "and Theatre of Blood. Most players can leave these alone.",
+		position = 40,
+		closedByDefault = true
+	)
+	String raidChancesSection = "raidChances";
+
 	@ConfigItem(
 		keyName = "readRaidPoints",
 		name = "Use raid points",
@@ -267,7 +264,7 @@ public interface ExpectedDropsConfig extends Config
 		name = "CoX purple chance (%)",
 		description = "Your chance of a unique per normal Chambers raid, in percent, for raids without points. Every 8,676 of your personal points is 1%, so 30,000 points is about 3.5%.",
 		position = 32,
-		section = raidsSection
+		section = raidChancesSection
 	)
 	default double coxUniqueChance()
 	{
@@ -279,7 +276,7 @@ public interface ExpectedDropsConfig extends Config
 		name = "CoX Challenge Mode (%)",
 		description = "Your chance of a unique per Challenge Mode raid, in percent, for raids without points. Same formula as normal mode (every 8,676 of your personal points is 1%); a Challenge Mode raid is usually 6.3 to 6.9%.",
 		position = 33,
-		section = raidsSection
+		section = raidChancesSection
 	)
 	default double coxCmUniqueChance()
 	{
@@ -291,7 +288,7 @@ public interface ExpectedDropsConfig extends Config
 		name = "ToB team purple chance (%)",
 		description = "The team's chance of a unique per normal Theatre raid, in percent: about 1 in 9.1 raids (11%) with no deaths. On Rate divides it by the team size. Entry Mode has no uniques.",
 		position = 34,
-		section = raidsSection
+		section = raidChancesSection
 	)
 	default double tobTeamChance()
 	{
@@ -303,7 +300,7 @@ public interface ExpectedDropsConfig extends Config
 		name = "ToB Hard Mode team (%)",
 		description = "The team's chance of a unique per Hard Mode raid, in percent: about 1 in 7.7 raids (13%). On Rate divides it by the team size.",
 		position = 35,
-		section = raidsSection
+		section = raidChancesSection
 	)
 	default double tobHmTeamChance()
 	{
@@ -328,7 +325,7 @@ public interface ExpectedDropsConfig extends Config
 		name = "ToA Entry Mode (%)",
 		description = "Your chance of a unique per Entry Mode raid without points, in percent. Very low: at low raid levels most rolled uniques are turned into other loot.",
 		position = 37,
-		section = raidsSection
+		section = raidChancesSection
 	)
 	default double toaEntryUniqueChance()
 	{
@@ -340,7 +337,7 @@ public interface ExpectedDropsConfig extends Config
 		name = "ToA Normal (%)",
 		description = "Your chance of a unique per normal Tombs raid without points, in percent. It depends on raid level and your points; the OSRS Wiki's ToA page has a calculator.",
 		position = 38,
-		section = raidsSection
+		section = raidChancesSection
 	)
 	default double toaUniqueChance()
 	{
@@ -352,7 +349,7 @@ public interface ExpectedDropsConfig extends Config
 		name = "ToA Expert Mode (%)",
 		description = "Your chance of a unique per Expert Mode raid without points, in percent. It depends on raid level and your points; the OSRS Wiki's ToA page has a calculator.",
 		position = 39,
-		section = raidsSection
+		section = raidChancesSection
 	)
 	default double toaExpertUniqueChance()
 	{

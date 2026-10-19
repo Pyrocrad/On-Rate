@@ -36,6 +36,7 @@ import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.ItemComposition;
+import net.runelite.api.MenuAction;
 import net.runelite.api.Player;
 import net.runelite.api.WorldView;
 import net.runelite.api.coords.LocalPoint;
@@ -54,6 +55,7 @@ import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
+import net.runelite.client.events.OverlayMenuClicked;
 import net.runelite.client.events.RuneScapeProfileChanged;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.ItemStack;
@@ -63,6 +65,7 @@ import net.runelite.client.plugins.loottracker.LootReceived;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.overlay.OverlayManager;
+import net.runelite.client.ui.overlay.OverlayMenuEntry;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.Text;
 
@@ -75,6 +78,12 @@ public class ExpectedDropsPlugin extends Plugin
 {
 	private static final Logger log = LoggerFactory.getLogger(ExpectedDropsPlugin.class);
 	static final String DATA_KEY = "progress";
+	/** Each boss's History is saved under its own key: "kills." plus the boss name. */
+	static final String KILLS_KEY = "kills.";
+	private static final java.lang.reflect.Type KILLS_TYPE =
+		new com.google.gson.reflect.TypeToken<List<com.expecteddrops.tracking.KillEntry>>()
+		{
+		}.getType();
 	/** Script that draws a collection log page. */
 	private static final int COLLECTION_DRAW_LIST = 2731;
 	/** Doom of Mokhaiotl scoreboard: completions per delve level in children 46, 49, ... 70 (the last is "8+"). */
@@ -144,7 +153,7 @@ public class ExpectedDropsPlugin extends Plugin
 	 */
 	static final String[] OLD_SETTINGS = {
 		"toaUniqueChance", "tobUniqueChance", "tobHmUniqueChance", "coxCmUniqueChance",
-		"royalTitansMode", "royalTitansDuoKills", "sharedUnknownAsZero",
+		"royalTitansMode", "royalTitansDuoKills", "sharedUnknownAsZero", "showDropHistory", "showTrip",
 	};
 
 	@Override
@@ -174,6 +183,8 @@ public class ExpectedDropsPlugin extends Plugin
 
 		overlay = new OnRateOverlay(this, config, () -> overlayInfo);
 		overlayManager.add(overlay);
+
+		openPanelOnce();
 
 		raidPoints = new RaidPointsReader(client, clientThread, tracker, boss -> changed(boss, false), config::readRaidPoints);
 		eventBus.register(raidPoints);
@@ -212,6 +223,40 @@ public class ExpectedDropsPlugin extends Plugin
 		itemIdsResolved = false;
 		prices.clear();
 		pricesRefreshedAt = 0;
+	}
+
+	/** Saved once On Rate has opened its panel for a new player. */
+	private static final String FIRST_RUN_KEY = "firstRunDone";
+
+	/**
+	 * The very first time On Rate starts for a player, open its panel so they see the
+	 * welcome guide. Never again after that.
+	 */
+	private void openPanelOnce()
+	{
+		if (configManager.getConfiguration(ExpectedDropsConfig.GROUP, FIRST_RUN_KEY) != null || !config.showWelcome())
+		{
+			return;
+		}
+		configManager.setConfiguration(ExpectedDropsConfig.GROUP, FIRST_RUN_KEY, "true");
+		NavigationButton button = navButton;
+		SwingUtilities.invokeLater(() -> clientToolbar.openPanel(button));
+	}
+
+	/**
+	 * Opens On Rate's settings, so a new player sees the choices that change their numbers
+	 * (luck view, duo bosses, raid chances) right after the welcome guide. RuneLite's own
+	 * config plugin opens the panel for this event, just like "Configure" on an overlay.
+	 */
+	private void openSettings()
+	{
+		OnRateOverlay forPlugin = overlay;
+		if (forPlugin == null)
+		{
+			return;
+		}
+		SwingUtilities.invokeLater(() -> eventBus.post(new OverlayMenuClicked(
+			new OverlayMenuEntry(MenuAction.RUNELITE_OVERLAY_CONFIG, "Configure", "On Rate"), forPlugin)));
 	}
 
 	/** Players within this many tiles of you at a group boss kill count as your team. */
@@ -258,7 +303,7 @@ public class ExpectedDropsPlugin extends Plugin
 
 	ViewOptions viewOptions()
 	{
-		return new ViewOptions(config.itemView(), config.showGeValue(), config.showLuckGraph(), config.showDropHistory(),
+		return new ViewOptions(config.itemView(), config.showGeValue(), config.showLuckGraph(),
 			config.showTrip(), config.colourBlind(), config.showTopItems());
 	}
 
@@ -284,7 +329,7 @@ public class ExpectedDropsPlugin extends Plugin
 		RowStats driest = null;
 		for (RowStats row : stats.getRows())
 		{
-			if (row.getStreak() == null || row.getRate() <= 0 || (row.isOnce() && row.getReceived() > 0))
+			if (row.getStreak() == null || row.getRate() <= 0 || row.isComplete())
 			{
 				continue;
 			}
@@ -294,25 +339,33 @@ public class ExpectedDropsPlugin extends Plugin
 			}
 		}
 		String driestText = null;
-		String driestLabel = null;
+		String driestItem = null;
 		java.awt.Color driestColor = java.awt.Color.WHITE;
 		if (driest != null)
 		{
 			double m = driest.getStreakMultiple();
-			driestLabel = shortName(driest.getLabel()) + " dry";
-			driestText = String.format("%s%,d (%.1fx)", driest.isStreakExact() ? "" : "\u2265", driest.getStreak(), m);
+			driestItem = shortName(driest.getLabel());
+			driestText = String.format("%s%,d kill%s (%.1fx)", driest.isStreakExact() ? "" : "at least ", driest.getStreak(),
+				driest.getStreak() == 1 ? "" : "s", m);
 			driestColor = Palette.luck(Math.exp(-m)).brighter();
 		}
 		String tripText = String.format("%,d kill%s \u00b7 %d drop%s", trip.getKills(), trip.getKills() == 1 ? "" : "s",
 			trip.getReceived(), trip.getReceived() == 1 ? "" : "s");
 		overlayInfo = new OverlayInfo(trip.getBoss(), verdict, Palette.luck(luck).brighter(),
-			String.format("%,d / %.1f", any.getReceived(), any.getExpected()), driestLabel, driestText, driestColor,
+			String.format("%,d / %.1f", any.getReceived(), any.getExpected()), driestItem, driestText, driestColor,
 			tripText, trip.getLastMillis());
 	}
 
-	private static String shortName(String label)
+	/** Item names that fit the overlay: cut at a word, "Deadeye prayer scroll" becomes "Deadeye prayer...". */
+	static String shortName(String label)
 	{
-		return label.length() <= 14 ? label : label.substring(0, 13) + "\u2026";
+		final int max = 18;
+		if (label.length() <= max)
+		{
+			return label;
+		}
+		int cut = label.lastIndexOf(' ', max - 3);
+		return label.substring(0, cut > 0 ? cut : max - 3) + "...";
 	}
 
 	RaidSettings raidSettings()
@@ -446,7 +499,8 @@ public class ExpectedDropsPlugin extends Plugin
 	@Subscribe
 	public void onConfigChanged(ConfigChanged event)
 	{
-		if (ExpectedDropsConfig.GROUP.equals(event.getGroup()) && !DATA_KEY.equals(event.getKey()) && panel != null)
+		if (ExpectedDropsConfig.GROUP.equals(event.getGroup()) && panel != null
+			&& !DATA_KEY.equals(event.getKey()) && !event.getKey().startsWith(KILLS_KEY))
 		{
 			SwingUtilities.invokeLater(panel::refresh);
 		}
@@ -671,9 +725,11 @@ public class ExpectedDropsPlugin extends Plugin
 		postChat(reminder);
 	}
 
+	/** "Got it" on the welcome guide: hide it, then show the settings it talks about. */
 	private void dismissWelcome()
 	{
 		configManager.setConfiguration(ExpectedDropsConfig.GROUP, "showWelcome", "false");
+		openSettings();
 	}
 
 	private void loadProfile()
@@ -699,6 +755,22 @@ public class ExpectedDropsPlugin extends Plugin
 			}
 		}
 		tracker.setState(state);
+		for (com.expecteddrops.data.BossDefinition boss : tracker.getCatalog().getBosses())
+		{
+			String kills = configManager.getRSProfileConfiguration(ExpectedDropsConfig.GROUP, killsKey(boss.getName()));
+			if (kills == null || kills.isEmpty())
+			{
+				continue;
+			}
+			try
+			{
+				tracker.setKills(boss.getName(), gson.fromJson(kills, KILLS_TYPE));
+			}
+			catch (Exception e)
+			{
+				log.warn("Could not read the saved On Rate history of {}", boss.getName(), e);
+			}
+		}
 		if (panel != null)
 		{
 			// Open on the account overview: how dry or spooned the account is overall.
@@ -713,6 +785,23 @@ public class ExpectedDropsPlugin extends Plugin
 			return;
 		}
 		configManager.setRSProfileConfiguration(ExpectedDropsConfig.GROUP, DATA_KEY, gson.toJson(tracker.getState()));
+		// only the History of bosses that changed is written again
+		for (Map.Entry<String, List<com.expecteddrops.tracking.KillEntry>> e : tracker.changedKills().entrySet())
+		{
+			if (e.getValue().isEmpty())
+			{
+				configManager.unsetRSProfileConfiguration(ExpectedDropsConfig.GROUP, killsKey(e.getKey()));
+			}
+			else
+			{
+				configManager.setRSProfileConfiguration(ExpectedDropsConfig.GROUP, killsKey(e.getKey()), gson.toJson(e.getValue()));
+			}
+		}
+	}
+
+	static String killsKey(String bossName)
+	{
+		return KILLS_KEY + bossName.replaceAll("[^A-Za-z0-9]", "");
 	}
 
 	/**

@@ -21,6 +21,8 @@ public class DropDefinition
 	private java.util.Map<String, Double> levelWeights;
 	/** Items that drop in stacks: average stack size. The collection log counts items, not drops. */
 	private Double stack;
+	/** Most copies the collection log can count (2 for the two Royal Titans prayer scrolls). */
+	private Integer max;
 	/** Rate per minion kill (God Wars bodyguards), added for each minion of the boss. */
 	private String minionRate;
 	private List<String> match;
@@ -190,6 +192,19 @@ public class DropDefinition
 	public boolean isOnce()
 	{
 		return isPet() || (once != null && once);
+	}
+
+	/**
+	 * Most copies that count: 1 for pets and once-only items, the "max" from the data for a
+	 * row of several once-only items (the two Royal Titans scrolls), 0 for no limit.
+	 */
+	public int getMax()
+	{
+		if (isOnce())
+		{
+			return 1;
+		}
+		return max == null ? 0 : max;
 	}
 
 	public boolean isNoShare()

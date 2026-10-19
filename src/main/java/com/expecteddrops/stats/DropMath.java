@@ -57,6 +57,47 @@ public final class DropMath
 		return -Math.expm1(-expected);
 	}
 
+	/** Expected number of copies that count when at most {@code cap} can: E[min(X, cap)], X Poisson. */
+	public static double expectedCapped(double expected, int cap)
+	{
+		if (expected <= 0 || cap <= 0)
+		{
+			return 0;
+		}
+		double sum = 0;
+		double p = Math.exp(-expected);
+		double cdf = 0;
+		for (int k = 0; k < cap; k++)
+		{
+			cdf += p;
+			sum += 1 - cdf;
+			p *= expected / (k + 1);
+		}
+		return sum;
+	}
+
+	/**
+	 * Luck when at most {@code cap} copies count: you can't do better than having them all,
+	 * so everyone with {@code cap} or more is level with you. Mid-p like {@link #luckPercentile}.
+	 */
+	public static double luckCapped(int received, double expected, int cap)
+	{
+		if (expected <= 0)
+		{
+			return Double.NaN;
+		}
+		int r = Math.min(received, cap);
+		double p = Math.exp(-expected);
+		double below = 0;
+		for (int k = 0; k < r; k++)
+		{
+			below += p;
+			p *= expected / (k + 1);
+		}
+		double same = r < cap ? p : 1 - below;
+		return below + same / 2;
+	}
+
 	/**
 	 * How lucky a result is: the share of players who would have fewer drops than you,
 	 * counting half of those with exactly as many (the "mid-p" percentile). 50% means
@@ -148,29 +189,56 @@ public final class DropMath
 	 */
 	public static double valueLuck(double[] expected, long[] prices, long received, int samples, long seed)
 	{
+		// Only items with a price and a chance take part; keeping them in the same order means
+		// the random numbers, and so the result, are the same as drawing for every item.
+		int n = 0;
 		double total = 0;
 		for (int i = 0; i < expected.length; i++)
 		{
 			if (prices[i] > 0)
 			{
 				total += expected[i] * prices[i];
+				if (expected[i] > 0)
+				{
+					n++;
+				}
 			}
 		}
 		if (total <= 0)
 		{
 			return Double.NaN;
 		}
+		double[] means = new double[n];
+		double[] limits = new double[n];
+		long[] values = new long[n];
+		int j = 0;
+		for (int i = 0; i < expected.length; i++)
+		{
+			if (prices[i] > 0 && expected[i] > 0)
+			{
+				means[j] = expected[i];
+				limits[j] = Math.exp(-expected[i]);
+				values[j] = prices[i];
+				j++;
+			}
+		}
+		ValueKey key = new ValueKey(means, values, received, samples, seed);
+		synchronized (VALUE_CACHE)
+		{
+			Double cached = VALUE_CACHE.get(key);
+			if (cached != null)
+			{
+				return cached;
+			}
+		}
 		java.util.Random random = new java.util.Random(seed);
 		double below = 0;
 		for (int s = 0; s < samples; s++)
 		{
 			long value = 0;
-			for (int i = 0; i < expected.length; i++)
+			for (int i = 0; i < n; i++)
 			{
-				if (prices[i] > 0 && expected[i] > 0)
-				{
-					value += poisson(random, expected[i]) * prices[i];
-				}
+				value += poisson(random, means[i], limits[i]) * values[i];
 			}
 			if (value < received)
 			{
@@ -181,18 +249,79 @@ public final class DropMath
 				below += 0.5;
 			}
 		}
-		return below / samples;
+		double luck = below / samples;
+		synchronized (VALUE_CACHE)
+		{
+			VALUE_CACHE.put(key, luck);
+		}
+		return luck;
+	}
+
+	/**
+	 * The last few GE value results. Switching tabs, sorting or opening the same boss again
+	 * asks for the same numbers, and the simulation is the slowest part of a refresh.
+	 */
+	private static final java.util.Map<ValueKey, Double> VALUE_CACHE = new java.util.LinkedHashMap<ValueKey, Double>(16, 0.75f, true)
+	{
+		@Override
+		protected boolean removeEldestEntry(java.util.Map.Entry<ValueKey, Double> eldest)
+		{
+			return size() > 32;
+		}
+	};
+
+	private static final class ValueKey
+	{
+		private final double[] means;
+		private final long[] values;
+		private final long received;
+		private final int samples;
+		private final long seed;
+		private final int hash;
+
+		ValueKey(double[] means, long[] values, long received, int samples, long seed)
+		{
+			this.means = means;
+			this.values = values;
+			this.received = received;
+			this.samples = samples;
+			this.seed = seed;
+			this.hash = java.util.Objects.hash(java.util.Arrays.hashCode(means), java.util.Arrays.hashCode(values), received, samples, seed);
+		}
+
+		@Override
+		public boolean equals(Object o)
+		{
+			if (!(o instanceof ValueKey))
+			{
+				return false;
+			}
+			ValueKey k = (ValueKey) o;
+			return hash == k.hash && received == k.received && samples == k.samples && seed == k.seed
+				&& java.util.Arrays.equals(means, k.means) && java.util.Arrays.equals(values, k.values);
+		}
+
+		@Override
+		public int hashCode()
+		{
+			return hash;
+		}
 	}
 
 	/** A random number of drops when {@code mean} are expected. */
 	static long poisson(java.util.Random random, double mean)
+	{
+		return poisson(random, mean, Math.exp(-mean));
+	}
+
+	/** Same, with {@code limit = Math.exp(-mean)} worked out beforehand. */
+	private static long poisson(java.util.Random random, double mean, double limit)
 	{
 		if (mean > 30)
 		{
 			// normal approximation is accurate here and much faster
 			return Math.max(0, Math.round(mean + Math.sqrt(mean) * random.nextGaussian()));
 		}
-		double limit = Math.exp(-mean);
 		double product = random.nextDouble();
 		long count = 0;
 		while (product > limit)

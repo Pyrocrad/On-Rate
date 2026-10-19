@@ -389,7 +389,7 @@
       ]
     },
     {
-      "name": "Royal Titans", "kc": ["Royal Titan", "Royal Titans"], "loot": ["Royal Titans", "Branda the Fire Queen", "Eldric the Ice King"], "clog": ["Royal Titans"], "kcMode": "max", "team": "royalTitans", "note": "You loot one titan per kill, so the crown row counts either crown, and each prayer scroll is 1/150 per kill if you loot both titans equally. A scroll stops dropping once you've read it.",
+      "name": "Royal Titans", "kc": ["Royal Titan", "Royal Titans"], "loot": ["Royal Titans", "Branda the Fire Queen", "Eldric the Ice King"], "clog": ["Royal Titans"], "kcMode": "max", "team": "royalTitans", "note": "You loot one titan per kill, and each titan has its own prayer scroll at 1/75 (Deadeye from Eldric, Mystic vigour from Branda). On Rate assumes you loot both titans equally, so each scroll is 1/150 per kill (1/300 in a duo). A scroll stops dropping once you've read it. The crown row counts either crown.",
       "drops": [
         {"name": "Giantsoul amulet (uncharged)", "rate": "1/16", "any": false},
         {"name": "Fire element staff crown", "label": "Element staff crowns", "rate": "1/75", "match": ["Ice element staff crown"]},

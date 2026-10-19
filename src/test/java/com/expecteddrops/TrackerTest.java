@@ -12,8 +12,11 @@ import com.expecteddrops.stats.RaidSettings;
 import com.expecteddrops.stats.RowStats;
 import com.expecteddrops.stats.SharedPool;
 import com.expecteddrops.tracking.Note;
-import com.expecteddrops.tracking.DropHistory;
 import com.expecteddrops.tracking.RaidRecord;
+import com.expecteddrops.ui.ExpectedDropsPanel;
+import com.expecteddrops.tracking.HistoryRow;
+import com.expecteddrops.tracking.KillEntry;
+import com.expecteddrops.tracking.RecentDrop;
 import com.expecteddrops.tracking.TripStats;
 import com.expecteddrops.tracking.SyncStatus;
 import com.expecteddrops.tracking.Tracker;
@@ -415,7 +418,14 @@ public class TrackerTest
 		tracker.onClogPage("Vorkath", Collections.singletonList("Vorkath kills: 412"), vorkath);
 		tracker.onChatMessage("Your Zulrah kill count is: <col=ff0000>120</col>.", now);
 
+		// Zulrah's log page isn't loaded: its drops from before are unknown, so it waits
+		AccountStats waiting = tracker.accountStats(RAIDS);
+		assertEquals(1, waiting.getRows().size());
+		assertEquals(Collections.singletonList("Zulrah"), waiting.getUnsynced());
+
+		tracker.onClogPage("Zulrah", Collections.singletonList("Zulrah kills: 120"), Collections.singletonMap("Tanzanite fang", 0));
 		AccountStats account = tracker.accountStats(RAIDS);
+		assertTrue(account.getUnsynced().isEmpty());
 		assertEquals(2, account.getRows().size());
 		double expected = tracker.stats("Vorkath", RAIDS).getAnyRow().getExpected()
 			+ tracker.stats("Zulrah", RAIDS).getAnyRow().getExpected();
@@ -480,13 +490,13 @@ public class TrackerTest
 	}
 
 	@Test
-	public void sharedItemsArePooledOnceEveryBossIsKnown()
+	public void sharedItemsArePooledButStayOutOfTheAccount()
 	{
 		Map<String, Integer> skotizo = new LinkedHashMap<>();
 		skotizo.put("Uncut onyx", 2);
 		tracker.onClogPage("Skotizo", Collections.singletonList("Skotizo kills: 100"), skotizo);
 		AccountStats before = tracker.accountStats(RAIDS);
-		SharedPool onyx = pool(before, "Uncut onyx");
+		SharedPool onyx = pool("Uncut onyx");
 		assertFalse(onyx.isComplete());
 		assertEquals(Collections.singletonList("Zulrah"), onyx.getMissingPages());
 		int receivedBefore = before.getTotal().getReceived();
@@ -496,7 +506,7 @@ public class TrackerTest
 		zulrah.put("Tanzanite fang", 1);
 		tracker.onClogPage("Zulrah", Collections.singletonList("Zulrah kills: 1000"), zulrah);
 		AccountStats after = tracker.accountStats(RAIDS);
-		onyx = pool(after, "Uncut onyx");
+		onyx = pool("Uncut onyx");
 		assertTrue(onyx.isComplete());
 		assertEquals(2, onyx.getReceived());
 		double expected = 0;
@@ -506,12 +516,16 @@ public class TrackerTest
 			expected += kc * Tracker.effectiveRate(src.getBoss(), src.getDrop(), RAIDS);
 		}
 		assertEquals(expected, onyx.getExpected(), 1e-9);
-		// the onyx counts in the account total now, along with the fang
+		// no row of their own, but they count in the account verdict: the fang plus the 2 onyx
 		assertEquals(receivedBefore + 1 + 2, after.getTotal().getReceived());
+		// ...but their GE value counts once every boss that drops them is known
+		AccountStats withPrices = tracker.accountStats(RAIDS, item -> item.equals("Uncut onyx") ? 2_500_000L : 0L);
+		assertEquals(2 * 2_500_000L, withPrices.getReceivedValue());
+		assertEquals(expected * 2_500_000L, withPrices.getExpectedValue(), 1);
 
 		// a new onyx from the loot tracker keeps the log total up to date
 		tracker.onLoot("Zulrah", 1, Collections.singletonList(new Tracker.LootItem("Uncut onyx", 1)), now);
-		assertEquals(3, pool(tracker.accountStats(RAIDS), "Uncut onyx").getReceived());
+		assertEquals(3, pool("Uncut onyx").getReceived());
 	}
 
 	@Test
@@ -686,9 +700,9 @@ public class TrackerTest
 		assertEquals(1 / 250.0, Tracker.effectiveRate(gg, findDrop(gg, "Granite gloves"), RAIDS), 1e-12);
 	}
 
-	private static SharedPool pool(AccountStats account, String label)
+	private SharedPool pool(String label)
 	{
-		for (SharedPool p : account.getSharedPools())
+		for (SharedPool p : tracker.sharedPools(RAIDS))
 		{
 			if (p.getLabel().equals(label))
 			{
@@ -727,6 +741,31 @@ public class TrackerTest
 		tracker.onChatMessage("Your Royal Titan kill count is: <col=ff0000>600</col>.", now);
 		BossStats titans = tracker.stats("Royal Titans", RAIDS);
 		assertEquals(1 - Math.exp(-4.0), DropMath.chanceAtLeastOne(row(titans, "Deadeye prayer scroll").getExpected()), 1e-9);
+	}
+
+	@Test
+	public void titanScrollsAreSeparateAtHalfTheTitanRate()
+	{
+		tracker.onChatMessage("Your Royal Titan kill count is: <col=ff0000>150</col>.", now);
+		BossStats s = tracker.stats("Royal Titans", RAIDS);
+		// 1/75 from its own titan, looting both titans equally: 1/150 per kill each
+		assertEquals(150 / 150.0, row(s, "Deadeye prayer scroll").getExpected(), 1e-9);
+		assertEquals(150 / 150.0, row(s, "Mystic vigour prayer scroll").getExpected(), 1e-9);
+		assertTrue(row(s, "Deadeye prayer scroll").isOnce());
+	}
+
+	@Test
+	public void cappedLuckMatchesOnceItems()
+	{
+		// a cap of 1 is the same as "have it or not"
+		assertEquals(DropMath.chanceAtLeastOne(2.0), DropMath.expectedCapped(2.0, 1), 1e-12);
+		double chance = DropMath.chanceAtLeastOne(2.0);
+		assertEquals((1 - chance) + chance / 2, DropMath.luckCapped(1, 2.0, 1), 1e-12);
+		assertEquals((1 - chance) / 2, DropMath.luckCapped(0, 2.0, 1), 1e-12);
+		// E[min(X, 2)] = P(X >= 1) + P(X >= 2)
+		double p0 = Math.exp(-2.0);
+		double p1 = 2.0 * p0;
+		assertEquals((1 - p0) + (1 - p0 - p1), DropMath.expectedCapped(2.0, 2), 1e-12);
 	}
 
 	@Test
@@ -792,6 +831,91 @@ public class TrackerTest
 		assertEquals(350 / 75.0, row(split, "Element staff crowns").getExpected(), 1e-12);
 		// the pet doesn't scale with damage
 		assertEquals(400 / 3000.0, row(split, "Bran").getExpected(), 1e-12);
+	}
+
+	@Test
+	public void historyKeepsKillsAndDrops()
+	{
+		Map<String, Integer> items = new LinkedHashMap<>();
+		items.put("Vorkath's head", 2);
+		items.put("Dragonbone necklace", 0);
+		tracker.onClogPage("Vorkath", Collections.singletonList("Vorkath kills: 100"), items);
+		vorkathKc(101);
+		// kills before On Rate aren't in the history
+		assertEquals(1, tracker.killsSeen("Vorkath"));
+		for (int kc = 102; kc <= 140; kc++)
+		{
+			tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>" + kc + "</col>.", now + kc);
+		}
+		tracker.onLoot("Vorkath", 1, Collections.singletonList(new Tracker.LootItem("Dragonbone necklace", 1)), now + 140);
+		assertEquals(40, tracker.killsSeen("Vorkath"));
+		// heads came before On Rate too: only a minimum gap is known
+		tracker.onLoot("Vorkath", 1, Collections.singletonList(new Tracker.LootItem("Vorkath's head", 1)), now + 140);
+		KillEntry.DropEntry head = tracker.history("Vorkath").get(0).getKill().getDrops().get(1);
+		assertTrue(head.isAtLeast());
+		assertFalse(head.isFirst());
+		assertNull(head.getMultiple());
+
+		List<HistoryRow> history = tracker.history("Vorkath");
+		assertEquals(140, history.get(0).getKill().getKc());
+		assertEquals(101, history.get(history.size() - 1).getKill().getKc());
+		KillEntry.DropEntry necklace = history.get(0).getKill().getDrops().get(0);
+		assertEquals("Dragonbone necklace", necklace.getName());
+		// never had one before: the whole kill count, and it's the first
+		assertTrue(necklace.isFirst());
+		assertEquals(140, (int) necklace.getSince());
+		assertEquals(140 / 1000.0, necklace.getMultiple(), 1e-9);
+		assertTrue(history.get(1).getKill().getDrops().isEmpty());
+	}
+
+	@Test
+	public void recentDropsAreNewestFirstAcrossBosses()
+	{
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>50</col>.", now);
+		tracker.onLoot("Vorkath", 1, Collections.singletonList(new Tracker.LootItem("Vorkath's head", 1)), now);
+		tracker.onChatMessage("Your Zulrah kill count is: <col=ff0000>500</col>.", now + 60_000);
+		tracker.onLoot("Zulrah", 1, Collections.singletonList(new Tracker.LootItem("Tanzanite fang", 1)), now + 60_000);
+
+		List<RecentDrop> recent = tracker.recentDrops(10);
+		assertEquals(2, recent.size());
+		assertEquals("Zulrah", recent.get(0).getBoss());
+		assertEquals("Tanzanite fang", recent.get(0).getDrop().getName());
+		assertEquals(500, recent.get(0).getKill().getKc());
+		assertEquals("Vorkath", recent.get(1).getBoss());
+		assertEquals(1, tracker.recentDrops(1).size());
+	}
+
+	@Test
+	public void historyKeepsTheLastKills()
+	{
+		for (int kc = 1; kc <= Tracker.MAX_KILLS + 50; kc++)
+		{
+			vorkathKc(kc);
+		}
+		assertEquals(Tracker.MAX_KILLS, tracker.killsSeen("Vorkath"));
+		List<HistoryRow> history = tracker.history("Vorkath");
+		assertEquals(Tracker.MAX_KILLS + 50, history.get(0).getKill().getKc());
+		assertEquals(51, history.get(history.size() - 1).getKill().getKc());
+	}
+
+	@Test
+	public void raidHistoryHasPointsAndChance()
+	{
+		tracker.setSettings(RAIDS);
+		tracker.onChatMessage("Your completed Chambers of Xeric count is: <col=ff0000>100</col>.", now - 1_800_000);
+		tracker.onRaidRecord(RaidRecord.cox(43_380, 43_380, 1), now + 1000);
+		tracker.onChatMessage("Your completed Chambers of Xeric count is: <col=ff0000>101</col>.", now + 2000);
+		tracker.onChatMessage("Your completed Chambers of Xeric Challenge Mode count is: <col=ff0000>5</col>.", now + 900_000);
+
+		List<HistoryRow> history = tracker.history("Chambers of Xeric");
+		HistoryRow cm = history.get(0);
+		assertEquals("Challenge Mode", cm.getKill().getPart());
+		assertEquals(5, (int) cm.getKill().getPartKc());
+		assertNull(cm.getRaid());
+		HistoryRow normal = history.get(1);
+		assertEquals(101, (int) normal.getKill().getPartKc());
+		assertEquals(43_380, normal.getRaid().getPersonalPoints());
+		assertEquals(0.05, normal.getPurpleChance(), 1e-9);
 	}
 
 	private void vorkathKc(int kc)
@@ -1122,6 +1246,7 @@ public class TrackerTest
 	@Test
 	public void historyKeepsOnePointPerDay()
 	{
+		tracker.onClogPage("Vorkath", Collections.singletonList("Vorkath kills: 99"), Collections.singletonMap("Vorkath's head", 2));
 		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>100</col>.", now);
 		assertTrue(tracker.recordHistory(20000, RAIDS));
 		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>101</col>.", now);
@@ -1175,21 +1300,88 @@ public class TrackerTest
 	}
 
 	@Test
-	public void dropHistoryKeepsTheKillCounts()
+	public void checklistKnowsWhichBossesYouKilled()
+	{
+		tracker.onChatMessage("Your Zulrah kill count is: <col=ff0000>120</col>.", now);
+		boolean zulrah = false;
+		for (com.expecteddrops.tracking.SyncStatus status : tracker.syncChecklist())
+		{
+			if (status.getBosses().contains("Zulrah"))
+			{
+				assertTrue(status.isKilled());
+				assertFalse(status.isSynced());
+				zulrah = true;
+			}
+			else if (status.getBosses().contains("Vorkath"))
+			{
+				assertFalse(status.isKilled());
+			}
+		}
+		assertTrue(zulrah);
+	}
+
+	@Test
+	public void petsShowTheLuckiestAndDriestFive()
+	{
+		// eight bosses with their pet, eight without
+		String[][] bosses = {{"Vorkath", "Vorki"}, {"Zulrah", "Pet snakeling"}, {"Cerberus", "Hellpuppy"}, {"Kraken", "Pet kraken"},
+			{"Scorpia", "Scorpia's offspring"}, {"Sarachnis", "Sraracha"}, {"Kalphite Queen", "Kalphite princess"}, {"Skotizo", "Skotos"},
+			{"Giant Mole", "Baby mole"}, {"King Black Dragon", "Prince black dragon"}, {"Chaos Fanatic", "Pet chaos elemental"},
+			{"Abyssal Sire", "Abyssal orphan"}, {"Alchemical Hydra", "Ikkle hydra"}, {"Phantom Muspah", "Muphin"},
+			{"Scurrius", "Scurry"}, {"Amoxliatl", "Moxi"}};
+		for (int i = 0; i < bosses.length; i++)
+		{
+			tracker.onClogPage(bosses[i][0], Collections.singletonList(bosses[i][0] + " kills: " + (100 + i * 50)),
+				Collections.singletonMap(bosses[i][1], i < 8 ? 1 : 0));
+		}
+		List<com.expecteddrops.stats.ItemHighlight> pets = ExpectedDropsPanel.topItems(tracker.accountStats(RAIDS), ExpectedDropsPanel.TOP_PETS);
+		assertEquals(10, pets.size());
+		for (int i = 0; i < 10; i++)
+		{
+			// first the pets you have, then the ones you don't
+			assertEquals(i < 5, pets.get(i).getRow().isComplete());
+		}
+		// luckiest first: got it with the fewest expected
+		assertTrue(pets.get(0).getRow().getExpected() <= pets.get(4).getRow().getExpected());
+		// driest first: the one you'd most likely have by now
+		assertTrue(pets.get(5).getRow().getChanceAtLeastOne() >= pets.get(9).getRow().getChanceAtLeastOne());
+	}
+
+	@Test
+	public void historyIsSavedPerBoss()
 	{
 		tracker.setSettings(RAIDS);
 		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>10</col>.", now);
 		tracker.onLoot("Vorkath", 1, Collections.singletonList(new Tracker.LootItem("Vorkath's head", 1)), now);
-		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>47</col>.", now);
-		tracker.onLoot("Vorkath", 1, Collections.singletonList(new Tracker.LootItem("Vorkath's head", 1)), now);
-		DropHistory history = tracker.dropHistory("Vorkath");
-		assertEquals(47, history.getKillCount());
-		assertEquals(Arrays.asList(10, 47), history.getDrops().get("Vorkath's head"));
-		assertTrue(history.getDrops().get("Jar of decay").isEmpty());
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>11</col>.", now + 60_000);
+		tracker.onChatMessage("Your Zulrah kill count is: <col=ff0000>5</col>.", now + 120_000);
+
 		Gson gson = new Gson();
+		Map<String, List<KillEntry>> changed = tracker.changedKills();
+		assertEquals(new HashSet<>(Arrays.asList("Vorkath", "Zulrah")), changed.keySet());
+		// nothing new since: nothing to save
+		assertTrue(tracker.changedKills().isEmpty());
+		// the main data doesn't carry the history
+		String main = gson.toJson(tracker.getState());
+		assertFalse(main.contains("Vorkath's head\""));
+		String vorkath = gson.toJson(changed.get("Vorkath"));
+		// a kill without uniques is just its kill count and time
+		assertTrue(vorkath, vorkath.contains("{\"k\":11,\"t\":"));
+
 		Tracker loaded = new Tracker(catalog);
-		loaded.setState(gson.fromJson(gson.toJson(tracker.getState()), TrackerState.class));
-		assertEquals(Arrays.asList(10, 47), loaded.dropHistory("Vorkath").getDrops().get("Vorkath's head"));
+		loaded.setState(gson.fromJson(main, TrackerState.class));
+		loaded.setKills("Vorkath", gson.fromJson(vorkath, new com.google.gson.reflect.TypeToken<List<KillEntry>>()
+		{
+		}.getType()));
+		List<HistoryRow> history = loaded.history("Vorkath");
+		assertEquals(2, history.size());
+		assertEquals(11, history.get(0).getKill().getKc());
+		assertEquals("Vorkath's head", history.get(1).getKill().getDrops().get(0).getName());
+		assertTrue(loaded.changedKills().isEmpty());
+
+		// a reset clears the saved history too
+		loaded.reset("Vorkath");
+		assertTrue(loaded.changedKills().get("Vorkath").isEmpty());
 	}
 
 	@Test

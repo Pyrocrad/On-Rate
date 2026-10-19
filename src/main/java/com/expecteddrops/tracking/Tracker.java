@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -110,6 +111,142 @@ public class Tracker
 		this.teamSize = teamSize == null ? () -> 0 : teamSize;
 	}
 
+	/** Bosses whose History changed since the last save (it is saved per boss, see {@link #changedKills()}). */
+	private final Set<String> killsChanged = new HashSet<>();
+
+	/**
+	 * The History of every boss whose kills changed since the last call, to save. History is
+	 * saved apart from the rest, one boss at a time, so a kill only rewrites that boss's
+	 * history instead of all of them. An empty list means the boss was reset.
+	 */
+	public synchronized Map<String, List<KillEntry>> changedKills()
+	{
+		Map<String, List<KillEntry>> changed = new HashMap<>();
+		for (String name : killsChanged)
+		{
+			BossProgress p = state.peek(name);
+			changed.put(name, p == null ? new ArrayList<>() : new ArrayList<>(p.kills));
+		}
+		killsChanged.clear();
+		return changed;
+	}
+
+	/** Puts back a boss's saved History when an account is loaded. */
+	public synchronized void setKills(String bossName, List<KillEntry> kills)
+	{
+		if (kills != null && !kills.isEmpty() && catalog.byName(bossName) != null)
+		{
+			List<KillEntry> list = state.get(bossName).kills;
+			list.clear();
+			list.addAll(kills.subList(Math.max(0, kills.size() - MAX_KILLS), kills.size()));
+		}
+	}
+
+	/** Kills kept per boss for the History section. */
+	public static final int MAX_KILLS = 200;
+
+	/** Saves a kill for the History section (the oldest ones go once there are too many). */
+	private KillEntry addKill(BossDefinition boss, BossProgress progress, long nowMillis)
+	{
+		KillEntry entry = new KillEntry();
+		entry.kc = currentKc(boss);
+		entry.time = nowMillis;
+		progress.kills.add(entry);
+		killsChanged.add(boss.getName());
+		while (progress.kills.size() > MAX_KILLS)
+		{
+			progress.kills.remove(0);
+		}
+		return entry;
+	}
+
+	/** Adds a unique to the kill it came from (the latest kill at that kill count). */
+	private void addDropToHistory(BossDefinition boss, BossProgress progress, int kc, KillEntry.DropEntry drop)
+	{
+		KillEntry latest = progress.kills.isEmpty() ? null : progress.kills.get(progress.kills.size() - 1);
+		if (latest == null || latest.kc != kc)
+		{
+			latest = addKill(boss, progress, lastKillMillis > 0 ? lastKillMillis : System.currentTimeMillis());
+			latest.kc = kc;
+		}
+		if (latest.drops == null)
+		{
+			latest.drops = new ArrayList<>();
+		}
+		latest.drops.add(drop);
+		killsChanged.add(boss.getName());
+	}
+
+	/** This boss's saved kills, newest first, with each raid's points and purple chance. */
+	public synchronized List<HistoryRow> history(String bossName)
+	{
+		BossDefinition boss = catalog.byName(bossName);
+		BossProgress p = state.peek(bossName);
+		List<HistoryRow> rows = new ArrayList<>();
+		if (boss == null || p == null)
+		{
+			return rows;
+		}
+		for (int i = p.kills.size() - 1; i >= 0; i--)
+		{
+			KillEntry k = p.kills.get(i);
+			RaidRecord match = null;
+			double chance = Double.NaN;
+			if (boss.getRaid() != null && k.partKc != null)
+			{
+				for (RaidRecord r : p.raids)
+				{
+					if (r.kc == k.partKc && (k.part == null || k.part.equals(r.part)))
+					{
+						match = r;
+					}
+				}
+				if (match != null)
+				{
+					for (BossPart part : boss.getParts())
+					{
+						if (part.getName().equals(match.part))
+						{
+							chance = recordChance(match, part, settings);
+						}
+					}
+				}
+			}
+			rows.add(new HistoryRow(k, match, chance));
+		}
+		return rows;
+	}
+
+	/** Kills saved for this boss (at most {@link #MAX_KILLS}). */
+	public synchronized int killsSeen(String bossName)
+	{
+		BossProgress p = state.peek(bossName);
+		return p == null ? 0 : p.kills.size();
+	}
+
+	/** The latest uniques across every boss, newest first. */
+	public synchronized List<RecentDrop> recentDrops(int limit)
+	{
+		List<RecentDrop> all = new ArrayList<>();
+		for (BossDefinition boss : catalog.getBosses())
+		{
+			BossProgress p = state.peek(boss.getName());
+			if (p == null)
+			{
+				continue;
+			}
+			for (KillEntry k : p.kills)
+			{
+				for (KillEntry.DropEntry d : k.getDrops())
+				{
+					all.add(new RecentDrop(boss.getName(), k, d));
+				}
+			}
+		}
+		all.sort((a, b) -> Long.compare(b.getKill().getTime(), a.getKill().getTime()));
+		return all.size() > limit ? new ArrayList<>(all.subList(0, limit)) : all;
+	}
+
 	/** Group bosses: how many kills On Rate saw per team size. Empty for other bosses. */
 	public synchronized Map<Integer, Integer> teamKills(String bossName)
 	{
@@ -173,6 +310,7 @@ public class Tracker
 	public synchronized void setState(TrackerState state)
 	{
 		this.state = state == null ? new TrackerState() : state;
+		killsChanged.clear();
 		lastBoss = null;
 		trip = null;
 	}
@@ -216,13 +354,26 @@ public class Tracker
 			int kc = Integer.parseInt(m.group("kc").replace(",", ""));
 			BossProgress progress = state.get(boss.getName());
 			Integer previous = progress.chatKc.put(BossCatalog.normalize(counter), kc);
+			Integer team = null;
 			if (boss.isDetectTeam() && (previous == null || kc > previous))
 			{
 				int size = teamSize.getAsInt();
 				if (size > 0)
 				{
 					progress.teamKills.merge(size, 1, Integer::sum);
+					team = size;
 				}
+			}
+			if (previous == null || kc > previous)
+			{
+				KillEntry entry = addKill(boss, progress, nowMillis);
+				if (boss.hasParts())
+				{
+					// on a combined page each mode or boss has its own count
+					entry.partKc = kc;
+					entry.part = partForName(boss, counter, true);
+				}
+				entry.team = team;
 			}
 			markKill(boss, nowMillis);
 			afterKill(boss, nowMillis);
@@ -530,7 +681,9 @@ public class Tracker
 		{
 			return null;
 		}
-		state.get(boss.getName()).levelKc.merge(level, 1, Integer::sum);
+		BossProgress progress = state.get(boss.getName());
+		progress.levelKc.merge(level, 1, Integer::sum);
+		addKill(boss, progress, nowMillis).level = level;
 		markKill(boss, nowMillis);
 		afterKill(boss, nowMillis);
 		startTracking(boss);
@@ -694,8 +847,31 @@ public class Tracker
 		{
 			outbox.add(new Note(Note.Kind.DROP, text));
 		}
+		KillEntry.DropEntry entry = new KillEntry.DropEntry();
+		entry.name = drop.getDisplayName().equals(drop.getName()) ? itemName : drop.getDisplayName();
+		entry.pet = drop.isPet() ? Boolean.TRUE : null;
+		if (previous != null && kc > previous)
+		{
+			entry.since = kc - previous;
+		}
+		else if (historyKnown && (before == null || before == 0) && kc > 0)
+		{
+			entry.since = kc;
+			entry.first = Boolean.TRUE;
+		}
+		else if (progress.trackingStartKc != null && kc > progress.trackingStartKc)
+		{
+			// an earlier one came before On Rate: only a minimum is known
+			entry.since = kc - progress.trackingStartKc;
+			entry.atLeast = Boolean.TRUE;
+		}
+		if (entry.since != null && !entry.isAtLeast() && rate > 0)
+		{
+			// two decimals is all the panel shows, and it keeps the saved history short
+			entry.multiple = Math.round(entry.since * rate * 100) / 100.0;
+		}
+		addDropToHistory(boss, progress, kc, entry);
 		progress.lastDropKc.put(key, kc);
-		addDropKc(progress, key, kc);
 		progress.milestone.remove(key);
 	}
 
@@ -905,6 +1081,14 @@ public class Tracker
 		}
 		BossProgress progress = state.get(boss.getName());
 		boolean minion = catalog.isMinionLoot(source);
+		String titan = BossCatalog.normalize(source).contains("branda") ? "Branda"
+			: BossCatalog.normalize(source).contains("eldric") ? "Eldric" : null;
+		KillEntry latest = progress.kills.isEmpty() ? null : progress.kills.get(progress.kills.size() - 1);
+		if (titan != null && latest != null && latest.kc == currentKc(boss))
+		{
+			latest.titan = titan;
+			killsChanged.add(boss.getName());
+		}
 		if (!minion)
 		{
 			// a bodyguard's loot counts for its general, but it isn't a kill of the general
@@ -1057,9 +1241,12 @@ public class Tracker
 						Integer before = progress.received.get(key);
 						if (before != null && qty > before && progress.trackingStartKc != null)
 						{
+							KillEntry.DropEntry entry = new KillEntry.DropEntry();
+							entry.name = drop.getDisplayName();
+							entry.pet = drop.isPet() ? Boolean.TRUE : null;
+							addDropToHistory(boss, progress, currentKc(boss), entry);
 							// a new copy since the last look; the best guess for when is "now"
 							progress.lastDropKc.put(key, currentKc(boss));
-							addDropKc(progress, key, currentKc(boss));
 							progress.milestone.remove(key);
 						}
 						progress.received.put(key, qty);
@@ -1141,6 +1328,7 @@ public class Tracker
 	{
 		Map<String, List<String>> bossesByPage = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 		Map<String, Boolean> syncedByPage = new LinkedHashMap<>();
+		Set<String> killedPages = new HashSet<>();
 		List<SyncStatus> result = new ArrayList<>();
 		for (BossDefinition boss : catalog.getBosses())
 		{
@@ -1150,18 +1338,23 @@ public class Tracker
 				bossesByPage.computeIfAbsent(page, k -> new ArrayList<>()).add(boss.getName());
 				boolean synced = p != null && p.clogSynced;
 				syncedByPage.merge(page.toLowerCase(Locale.ROOT), synced, Boolean::logicalAnd);
+				if (p != null && currentKc(boss) > 0)
+				{
+					killedPages.add(page.toLowerCase(Locale.ROOT));
+				}
 			}
 			if (boss.isDelve())
 			{
 				result.add(new SyncStatus(DELVE_SCOREBOARD, Collections.singletonList(boss.getName()),
-					p != null && p.levelsSynced));
+					p != null && p.levelsSynced, p != null && currentKc(boss) > 0));
 			}
 		}
 		List<SyncStatus> pages = new ArrayList<>();
 		for (Map.Entry<String, List<String>> e : bossesByPage.entrySet())
 		{
 			pages.add(new SyncStatus(e.getKey(), e.getValue(),
-				syncedByPage.getOrDefault(e.getKey().toLowerCase(Locale.ROOT), false)));
+				syncedByPage.getOrDefault(e.getKey().toLowerCase(Locale.ROOT), false),
+				killedPages.contains(e.getKey().toLowerCase(Locale.ROOT))));
 		}
 		pages.addAll(result);
 		return pages;
@@ -1192,61 +1385,16 @@ public class Tracker
 
 	public synchronized void reset(String bossName)
 	{
-		if (state.bosses != null)
+		if (state.bosses != null && state.bosses.remove(bossName) != null)
 		{
-			state.bosses.remove(bossName);
+			killsChanged.add(bossName);
 		}
 	}
 
-	/** Most drops remembered per item for the drop history. */
-	private static final int MAX_DROP_HISTORY = 500;
 	/** A trip ends after this long without a kill, or when you kill another boss. */
 	static final long TRIP_IDLE_MILLIS = 30 * 60_000;
 
 	private Trip trip;
-
-	private static void addDropKc(BossProgress progress, String key, int kc)
-	{
-		List<Integer> list = progress.dropKcs.computeIfAbsent(key, k -> new ArrayList<>());
-		list.add(kc);
-		while (list.size() > MAX_DROP_HISTORY)
-		{
-			list.remove(0);
-		}
-	}
-
-	/**
-	 * Every drop On Rate saw at this boss, per item label (as in the rows), with the kill
-	 * count it came at. Drops from before On Rate was installed aren't known.
-	 */
-	public synchronized DropHistory dropHistory(String bossName)
-	{
-		BossDefinition boss = catalog.byName(bossName);
-		BossProgress progress = state.peek(bossName);
-		BossStats s = stats(bossName, settings);
-		Map<String, List<Integer>> drops = new LinkedHashMap<>();
-		if (boss != null)
-		{
-			for (DropDefinition drop : boss.getDrops())
-			{
-				List<Integer> kcs = new ArrayList<>();
-				if (progress != null)
-				{
-					for (String name : drop.getAllNames())
-					{
-						List<Integer> list = progress.dropKcs.get(BossCatalog.normalize(name));
-						if (list != null)
-						{
-							kcs.addAll(list);
-						}
-					}
-				}
-				Collections.sort(kcs);
-				drops.put(drop.getDisplayName(), kcs);
-			}
-		}
-		return new DropHistory(s == null ? 0 : s.getKillCount(), progress == null ? null : progress.trackingStartKc, drops);
-	}
 
 	/**
 	 * Called after each kill: continues the current trip, or starts a new one when this is
@@ -1524,7 +1672,7 @@ public class Tracker
 				}
 			}
 			RowStats row = new RowStats(drop.getDisplayName(), drop.getName(), rate, expected, received, false);
-			if (!(drop.isOnce() && received > 0))
+			if (!(drop.getMax() > 0 && received >= drop.getMax()))
 			{
 				Integer last = null;
 				if (progress != null)
@@ -1552,17 +1700,18 @@ public class Tracker
 					row.withStreak(Math.max(0, kc - progress.trackingStartKc), false);
 				}
 			}
-			if (drop.isOnce())
+			if (drop.getMax() > 0)
 			{
-				// The collection log counts these at most once, so for luck it's "have it or not".
-				received = Math.min(received, 1);
-				row = row.once(received);
+				// The collection log counts these at most once (or twice for the two titan
+				// scrolls), so for luck it's "have it or not".
+				received = Math.min(received, drop.getMax());
+				row = row.capped(drop.getMax(), received);
 			}
 			rows.add(row);
 			if (drop.countsTowardAny())
 			{
 				// For once-only items the total counts the chance of having one by now.
-				anyExpected += drop.isOnce() ? DropMath.chanceAtLeastOne(expected) : expected;
+				anyExpected += drop.getMax() > 0 ? DropMath.expectedCapped(expected, drop.getMax()) : expected;
 				anyReceived += received;
 			}
 		}
@@ -1636,12 +1785,20 @@ public class Tracker
 		int received = 0;
 		// every boss's numbers worked out once, then shared with the shared-items pass
 		Map<String, BossStats> cache = new HashMap<>();
+		List<String> unsynced = new ArrayList<>();
 		for (BossDefinition boss : catalog.getBosses())
 		{
 			BossStats s = cachedStats(boss.getName(), raids, cache);
 			RowStats any = s.getAnyRow();
 			if (boss.getDrops().isEmpty() || s.getKillCount() <= 0)
 			{
+				continue;
+			}
+			if (syncReminder(boss.getName()) != null)
+			{
+				// kills known, drops from before On Rate not: it would only drag the account
+				// towards dry, so it waits until its log page is opened
+				unsynced.add(boss.getName());
 				continue;
 			}
 			RowStats bossRow = new RowStats(boss.getName(), iconFor(boss), 0, any.getExpected(), any.getReceived(), false);
@@ -1662,7 +1819,7 @@ public class Tracker
 			{
 				if (boss.getDrops().get(i).countsTowardAny())
 				{
-					items.add(new ItemHighlight(boss.getName(), s.getRows().get(i)));
+					items.add(new ItemHighlight(boss.getName(), s.getRows().get(i), boss.getDrops().get(i).isPet()));
 				}
 			}
 			if (prices != null)
@@ -1690,9 +1847,10 @@ public class Tracker
 			expected += any.getExpected();
 			received += any.getReceived();
 		}
-		// Items several bosses drop: all those bosses' expected against the one log total.
-		List<SharedPool> pools = sharedPools(raids, cache);
-		for (SharedPool pool : pools)
+		// Items several bosses drop (dragon pickaxe, onyx...) have no row of their own here (they
+		// show on the page of each boss that drops them), but they count in the account verdict
+		// and GE value once On Rate knows the kills of every boss that drops them.
+		for (SharedPool pool : sharedPools(raids, cache))
 		{
 			if (!pool.isComplete())
 			{
@@ -1700,23 +1858,19 @@ public class Tracker
 			}
 			expected += pool.getExpected();
 			received += pool.getReceived();
-			items.add(new ItemHighlight(null, pool.toRow()));
-			if (prices != null)
+			long price = prices == null ? 0 : Math.max(0, prices.applyAsLong(pool.getItemName()));
+			if (price > 0)
 			{
-				long price = Math.max(0, prices.applyAsLong(pool.getItemName()));
-				if (price > 0)
-				{
-					valueExpected.add(pool.getExpected());
-					valuePrices.add(price);
-					expectedValue += pool.getExpected() * price;
-					receivedValue += pool.getReceived() * price;
-				}
+				valueExpected.add(pool.getExpected());
+				valuePrices.add(price);
+				expectedValue += pool.getExpected() * price;
+				receivedValue += pool.getReceived() * price;
 			}
 		}
 		rows.sort((a, b) -> Double.compare(b.getExpected(), a.getExpected()));
 		RowStats total = new RowStats("All", null, 0, expected, received, true);
 		AccountStats account = new AccountStats(total, rows, killCounts);
-		account.setSharedPools(pools);
+		account.setUnsynced(unsynced);
 		account.setItems(items);
 		if (prices != null)
 		{

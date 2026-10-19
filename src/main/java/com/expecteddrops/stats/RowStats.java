@@ -12,6 +12,7 @@ public class RowStats
 	private final int received;
 	private final boolean any;
 	private boolean once;
+	private int cap;
 	private Integer streak;
 	private boolean streakExact;
 	private double driestMultiple = Double.NaN;
@@ -34,8 +35,18 @@ public class RowStats
 	 */
 	public RowStats once(int receivedCapped)
 	{
+		return capped(1, receivedCapped);
+	}
+
+	/**
+	 * Marks this row as counting at most {@code cap} copies (the two Royal Titans prayer
+	 * scrolls in one row). Luck tops out once you have them all.
+	 */
+	public RowStats capped(int cap, int receivedCapped)
+	{
 		RowStats copy = new RowStats(label, iconItem, rate, expected, receivedCapped, any);
-		copy.once = true;
+		copy.once = cap == 1;
+		copy.cap = cap;
 		copy.streak = streak;
 		copy.streakExact = streakExact;
 		return copy;
@@ -110,6 +121,18 @@ public class RowStats
 		return once;
 	}
 
+	/** At most this many copies count, 0 for no limit. */
+	public int getCap()
+	{
+		return cap;
+	}
+
+	/** True when you have every copy that counts (a pet you own, both titan scrolls). */
+	public boolean isComplete()
+	{
+		return cap > 0 && received >= cap;
+	}
+
 	public String getLabel()
 	{
 		return label;
@@ -151,15 +174,9 @@ public class RowStats
 	/** Luck percentile (0..1, 0.5 = average), NaN if nothing expected yet. */
 	public double getLuck()
 	{
-		if (once)
+		if (cap > 0)
 		{
-			if (expected <= 0)
-			{
-				return Double.NaN;
-			}
-			double chance = getChanceAtLeastOne();
-			// share of players without one, plus half of those level with you
-			return received > 0 ? (1 - chance) + chance / 2 : (1 - chance) / 2;
+			return DropMath.luckCapped(received, expected, cap);
 		}
 		return DropMath.luckPercentile(received, expected);
 	}

@@ -15,8 +15,8 @@ public class AccountStats
 	private double expectedValue;
 	private long receivedValue;
 	private double valueLuck = Double.NaN;
-	private List<SharedPool> sharedPools = Collections.emptyList();
 	private List<ItemHighlight> items = Collections.emptyList();
+	private List<String> unsynced = Collections.emptyList();
 
 	public AccountStats(RowStats total, List<RowStats> rows, Map<String, Integer> killCounts)
 	{
@@ -62,18 +62,7 @@ public class AccountStats
 		this.valueLuck = valueLuck;
 	}
 
-	/** Items several bosses drop: complete ones are in the total, the rest still need log pages. */
-	public List<SharedPool> getSharedPools()
-	{
-		return sharedPools;
-	}
-
-	public void setSharedPools(List<SharedPool> sharedPools)
-	{
-		this.sharedPools = Collections.unmodifiableList(sharedPools);
-	}
-
-	/** Every item of every boss with kills (and complete shared items), for the top 5. */
+	/** Every item of every boss with kills, for the Items tab. */
 	public List<ItemHighlight> getItems()
 	{
 		return items;
@@ -88,5 +77,16 @@ public class AccountStats
 	{
 		Integer kc = killCounts.get(boss);
 		return kc == null ? 0 : kc;
+	}
+
+	/** Bosses with kills whose collection log page isn't loaded yet: not in the totals. */
+	public List<String> getUnsynced()
+	{
+		return unsynced;
+	}
+
+	public void setUnsynced(List<String> unsynced)
+	{
+		this.unsynced = Collections.unmodifiableList(unsynced);
 	}
 }

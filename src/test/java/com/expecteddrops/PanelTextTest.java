@@ -1,9 +1,6 @@
 package com.expecteddrops;
 
-import com.expecteddrops.stats.SharedPool;
 import com.expecteddrops.ui.ExpectedDropsPanel;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.Map;
 import java.util.TreeMap;
 import static org.junit.Assert.assertEquals;
@@ -13,15 +10,21 @@ import org.junit.Test;
 public class PanelTextTest
 {
 	@Test
-	public void nextPageIsTheOneMostItemsNeed()
+	public void luckInPlainWords()
 	{
-		SharedPool mask = new SharedPool("Virtus mask", "Virtus mask", 0, 0,
-			Arrays.asList("Duke Sucellus", "Vardorvis"), Collections.singletonList("Vardorvis"));
-		SharedPool ingot = new SharedPool("Chromium ingot", "Chromium ingot", 0, 0,
-			Arrays.asList("Duke Sucellus", "Vardorvis", "The Whisperer"), Arrays.asList("The Whisperer", "Vardorvis"));
-		SharedPool onyx = new SharedPool("Uncut onyx", "Uncut onyx", 0, 0,
-			Arrays.asList("Zulrah", "Skotizo"), Collections.singletonList("Zulrah"));
-		assertEquals("Vardorvis", ExpectedDropsPanel.nextPageToOpen(Arrays.asList(mask, ingot, onyx)));
+		assertEquals("About 1 in 10 players is this dry (or drier)", ExpectedDropsPanel.plainLuck(0.1));
+		assertEquals("About 1 in 4 players is this lucky (or luckier)", ExpectedDropsPanel.plainLuck(0.75));
+		assertTrue(ExpectedDropsPanel.plainLuck(0.5).contains("middle"));
+		// 1/50 per kill: about 87% chance in the next 100 kills
+		assertEquals(1 - Math.exp(-2.0), ExpectedDropsPanel.nextChance(1 / 50.0, 100), 1e-12);
+	}
+
+	@Test
+	public void overlayNamesFit()
+	{
+		assertEquals("Vorkath's head", ExpectedDropsPlugin.shortName("Vorkath's head"));
+		assertEquals("Deadeye prayer...", ExpectedDropsPlugin.shortName("Deadeye prayer scroll"));
+		assertTrue(ExpectedDropsPlugin.shortName("Sanguinesti staff (uncharged)").length() <= 18);
 	}
 
 	@Test
@@ -33,5 +36,13 @@ public class PanelTextTest
 		seen.put(4, 10);
 		String note = ExpectedDropsPanel.teamSizeNote(seen, 120);
 		assertTrue(note, note.contains("20 of your kills") && note.contains("3.0 players") && note.contains("100 earlier kills"));
+	}
+
+	@Test
+	public void namesAreJoinedWithAnd()
+	{
+		assertEquals("Vorkath", ExpectedDropsPanel.joinAnd(java.util.Collections.singletonList("Vorkath")));
+		assertEquals("Vorkath and Zulrah", ExpectedDropsPanel.joinAnd(java.util.Arrays.asList("Vorkath", "Zulrah")));
+		assertEquals("Vorkath, Zulrah and Cerberus", ExpectedDropsPanel.joinAnd(java.util.Arrays.asList("Vorkath", "Zulrah", "Cerberus")));
 	}
 }

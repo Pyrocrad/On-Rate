@@ -27,6 +27,8 @@ class OnRateOverlay extends OverlayPanel
 		this.config = config;
 		this.info = info;
 		setPosition(OverlayPosition.TOP_LEFT);
+		// wide enough for an item name and its dry streak on one line each
+		panelComponent.setPreferredSize(new Dimension(170, 0));
 	}
 
 	@Override
@@ -45,7 +47,8 @@ class OnRateOverlay extends OverlayPanel
 		panelComponent.getChildren().add(LineComponent.builder().left("Uniques").right(i.uniques).build());
 		if (i.driest != null)
 		{
-			panelComponent.getChildren().add(LineComponent.builder().left(i.driestLabel).right(i.driest)
+			panelComponent.getChildren().add(LineComponent.builder().left("Driest").right(i.driestItem).build());
+			panelComponent.getChildren().add(LineComponent.builder().left("Dry for").right(i.driest)
 				.rightColor(i.driestColor).build());
 		}
 		if (i.trip != null)
