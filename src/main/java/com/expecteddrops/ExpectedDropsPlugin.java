@@ -80,6 +80,16 @@ public class ExpectedDropsPlugin extends Plugin
 	static final String DATA_KEY = "progress";
 	/** Each boss's History is saved under its own key: "kills." plus the boss name. */
 	static final String KILLS_KEY = "kills.";
+	/** Each raid's saved raids (with points) are under their own key too: "raids." plus the name. */
+	static final String RAIDS_KEY = "raids.";
+	private static final java.lang.reflect.Type RAIDS_TYPE =
+		new com.google.gson.reflect.TypeToken<List<com.expecteddrops.tracking.RaidRecord>>()
+		{
+		}.getType();
+	/** The luck graph's point for today is worked out again at most this often (it's the whole account). */
+	private static final long HISTORY_POINT_MILLIS = 10 * 60_000;
+	private long historyPointAt;
+	private long historyPointDay = -1;
 	private static final java.lang.reflect.Type KILLS_TYPE =
 		new com.google.gson.reflect.TypeToken<List<com.expecteddrops.tracking.KillEntry>>()
 		{
@@ -202,6 +212,7 @@ public class ExpectedDropsPlugin extends Plugin
 	@Override
 	protected void shutDown() throws Exception
 	{
+		recordHistoryPoint(true);
 		save();
 		if (raidPoints != null)
 		{
@@ -323,6 +334,8 @@ public class ExpectedDropsPlugin extends Plugin
 			return;
 		}
 		Palette.setColourBlind(config.colourBlind());
+		String units = Tracker.unit(stats.getBoss());
+		String one = Tracker.unitOne(stats.getBoss());
 		RowStats any = stats.getAnyRow();
 		double luck = any.getLuck();
 		String verdict = Double.isNaN(luck) ? "-" : DropMath.verdict(luck);
@@ -345,11 +358,11 @@ public class ExpectedDropsPlugin extends Plugin
 		{
 			double m = driest.getStreakMultiple();
 			driestItem = shortName(driest.getLabel());
-			driestText = String.format("%s%,d kill%s (%.1fx)", driest.isStreakExact() ? "" : "at least ", driest.getStreak(),
-				driest.getStreak() == 1 ? "" : "s", m);
+			driestText = String.format("%s%,d %s (%.1fx)", driest.isStreakExact() ? "" : "at least ", driest.getStreak(),
+				driest.getStreak() == 1 ? one : units, m);
 			driestColor = Palette.luck(Math.exp(-m)).brighter();
 		}
-		String tripText = String.format("%,d kill%s \u00b7 %d drop%s", trip.getKills(), trip.getKills() == 1 ? "" : "s",
+		String tripText = String.format("%,d %s \u00b7 %d drop%s", trip.getKills(), trip.getKills() == 1 ? one : units,
 			trip.getReceived(), trip.getReceived() == 1 ? "" : "s");
 		overlayInfo = new OverlayInfo(trip.getBoss(), verdict, Palette.luck(luck).brighter(),
 			String.format("%,d / %.1f", any.getReceived(), any.getExpected()), driestItem, driestText, driestColor,
@@ -500,7 +513,8 @@ public class ExpectedDropsPlugin extends Plugin
 	public void onConfigChanged(ConfigChanged event)
 	{
 		if (ExpectedDropsConfig.GROUP.equals(event.getGroup()) && panel != null
-			&& !DATA_KEY.equals(event.getKey()) && !event.getKey().startsWith(KILLS_KEY))
+			&& !DATA_KEY.equals(event.getKey()) && !event.getKey().startsWith(KILLS_KEY)
+			&& !event.getKey().startsWith(RAIDS_KEY))
 		{
 			SwingUtilities.invokeLater(panel::refresh);
 		}
@@ -652,12 +666,13 @@ public class ExpectedDropsPlugin extends Plugin
 
 	private void changed(String boss, boolean fromKill)
 	{
-		// one point per day for the luck graph
-		tracker.recordHistory(java.time.LocalDate.now().toEpochDay(), raidSettings());
-		if (fromKill)
+		if (tracker == null)
 		{
-			updateOverlayInfo();
+			return;
 		}
+		recordHistoryPoint(false);
+		// also when raid points come in after the kill, so the overlay shows them
+		updateOverlayInfo();
 		save();
 		refreshPrices(false);
 		if (fromKill)
@@ -771,6 +786,26 @@ public class ExpectedDropsPlugin extends Plugin
 				log.warn("Could not read the saved On Rate history of {}", boss.getName(), e);
 			}
 		}
+		for (com.expecteddrops.data.BossDefinition boss : tracker.getCatalog().getBosses())
+		{
+			if (boss.getRaid() == null)
+			{
+				continue;
+			}
+			String raids = configManager.getRSProfileConfiguration(ExpectedDropsConfig.GROUP, raidsKey(boss.getName()));
+			if (raids == null || raids.isEmpty())
+			{
+				continue;
+			}
+			try
+			{
+				tracker.setRaids(boss.getName(), gson.fromJson(raids, RAIDS_TYPE));
+			}
+			catch (Exception e)
+			{
+				log.warn("Could not read the saved On Rate raids of {}", boss.getName(), e);
+			}
+		}
 		if (panel != null)
 		{
 			// Open on the account overview: how dry or spooned the account is overall.
@@ -778,25 +813,64 @@ public class ExpectedDropsPlugin extends Plugin
 		}
 	}
 
-	void save()
+	/**
+	 * Today's point for the luck graph. It adds up the whole account, so after a kill it's only
+	 * worked out again every few minutes (and on a new day, and when On Rate stops).
+	 */
+	private void recordHistoryPoint(boolean now)
 	{
-		if (tracker == null || loadedProfile == null)
+		Tracker t = tracker;
+		if (t == null)
 		{
 			return;
 		}
-		configManager.setRSProfileConfiguration(ExpectedDropsConfig.GROUP, DATA_KEY, gson.toJson(tracker.getState()));
-		// only the History of bosses that changed is written again
-		for (Map.Entry<String, List<com.expecteddrops.tracking.KillEntry>> e : tracker.changedKills().entrySet())
+		long millis = System.currentTimeMillis();
+		long day = java.time.LocalDate.now().toEpochDay();
+		if (now || day != historyPointDay || millis - historyPointAt >= HISTORY_POINT_MILLIS)
 		{
-			if (e.getValue().isEmpty())
-			{
-				configManager.unsetRSProfileConfiguration(ExpectedDropsConfig.GROUP, killsKey(e.getKey()));
-			}
-			else
-			{
-				configManager.setRSProfileConfiguration(ExpectedDropsConfig.GROUP, killsKey(e.getKey()), gson.toJson(e.getValue()));
-			}
+			t.recordHistory(day, raidSettings());
+			historyPointAt = millis;
+			historyPointDay = day;
 		}
+	}
+
+	void save()
+	{
+		Tracker t = tracker;
+		if (t == null || loadedProfile == null)
+		{
+			return;
+		}
+		// put together under the tracker's lock: safe from any thread (shutDown runs on Swing's)
+		com.expecteddrops.tracking.SaveData data = t.saveData(gson::toJson);
+		// only the History and raids of bosses that changed are written again; they go first,
+		// so raids moved out of the main data by an update are stored before it drops them
+		for (Map.Entry<String, String> e : data.kills.entrySet())
+		{
+			write(killsKey(e.getKey()), e.getValue());
+		}
+		for (Map.Entry<String, String> e : data.raids.entrySet())
+		{
+			write(raidsKey(e.getKey()), e.getValue());
+		}
+		configManager.setRSProfileConfiguration(ExpectedDropsConfig.GROUP, DATA_KEY, data.progress);
+	}
+
+	private void write(String key, String json)
+	{
+		if (json == null)
+		{
+			configManager.unsetRSProfileConfiguration(ExpectedDropsConfig.GROUP, key);
+		}
+		else
+		{
+			configManager.setRSProfileConfiguration(ExpectedDropsConfig.GROUP, key, json);
+		}
+	}
+
+	static String raidsKey(String bossName)
+	{
+		return RAIDS_KEY + bossName.replaceAll("[^A-Za-z0-9]", "");
 	}
 
 	static String killsKey(String bossName)

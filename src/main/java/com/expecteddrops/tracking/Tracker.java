@@ -113,6 +113,42 @@ public class Tracker
 
 	/** Bosses whose History changed since the last save (it is saved per boss, see {@link #changedKills()}). */
 	private final Set<String> killsChanged = new HashSet<>();
+	/** Raids whose saved raids changed since the last save (saved per raid, see {@link #saveData}). */
+	private final Set<String> raidsChanged = new HashSet<>();
+
+	/**
+	 * Everything to save, serialized while holding the lock: the main data, plus the History and
+	 * raids of the bosses that changed since the last save.
+	 */
+	public synchronized SaveData saveData(java.util.function.Function<Object, String> toJson)
+	{
+		SaveData data = new SaveData(toJson.apply(state));
+		for (String name : killsChanged)
+		{
+			BossProgress p = state.peek(name);
+			data.kills.put(name, p == null || p.kills.isEmpty() ? null : toJson.apply(p.kills));
+		}
+		killsChanged.clear();
+		for (String name : raidsChanged)
+		{
+			BossProgress p = state.peek(name);
+			data.raids.put(name, p == null || p.raids.isEmpty() ? null : toJson.apply(p.raids));
+		}
+		raidsChanged.clear();
+		return data;
+	}
+
+	/** Puts back a raid's saved raids when an account is loaded. */
+	public synchronized void setRaids(String bossName, List<RaidRecord> raids)
+	{
+		if (raids != null && !raids.isEmpty() && catalog.byName(bossName) != null)
+		{
+			List<RaidRecord> list = state.get(bossName).raids;
+			list.clear();
+			list.addAll(raids.subList(Math.max(0, raids.size() - MAX_RAID_RECORDS), raids.size()));
+			raidsChanged.remove(bossName);
+		}
+	}
 
 	/**
 	 * The History of every boss whose kills changed since the last call, to save. History is
@@ -134,6 +170,8 @@ public class Tracker
 	/** Puts back a boss's saved History when an account is loaded. */
 	public synchronized void setKills(String bossName, List<KillEntry> kills)
 	{
+		// Recent fills in from History; do that again with the History just loaded
+		daysFilled.remove(bossName);
 		if (kills != null && !kills.isEmpty() && catalog.byName(bossName) != null)
 		{
 			List<KillEntry> list = state.get(bossName).kills;
@@ -143,7 +181,300 @@ public class Tracker
 	}
 
 	/** Kills kept per boss for the History section. */
-	public static final int MAX_KILLS = 200;
+	public static final int MAX_KILLS = 500;
+	/** Days kept for the Recent tab's day counts. */
+	static final int DAYS_KEPT = 14;
+
+	/** The day counter of a boss on the day of this time (local time zone), created when missing. */
+	private DayCount dayCount(String bossName, long millis)
+	{
+		long day = java.time.Instant.ofEpochMilli(millis).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toEpochDay();
+		Map<String, Map<String, DayCount>> days = state.days();
+		if (!days.containsKey(String.valueOf(day)))
+		{
+			// a new day: forget the ones that are too old
+			days.keySet().removeIf(d ->
+			{
+				try
+				{
+					return Long.parseLong(d) <= day - DAYS_KEPT;
+				}
+				catch (NumberFormatException e)
+				{
+					return true;
+				}
+			});
+		}
+		return days.computeIfAbsent(String.valueOf(day), d -> new HashMap<>()).computeIfAbsent(bossName, b ->
+		{
+			DayCount count = new DayCount();
+			count.first = millis;
+			return count;
+		});
+	}
+
+	/** Bosses whose History was already added to the day counts this session. */
+	private final java.util.Set<String> daysFilled = new java.util.HashSet<>();
+
+	/**
+	 * Adds kills from History to the day counts when they're older than what the counts hold, so
+	 * Today and Last 7 days include the kills from before On Rate counted days. Safe to repeat:
+	 * a kill is only added when it's older than the earliest one already counted that day.
+	 */
+	private void fillDaysFromHistory(BossDefinition boss, long nowMillis)
+	{
+		if (!daysFilled.add(boss.getName()))
+		{
+			return;
+		}
+		BossProgress p = state.peek(boss.getName());
+		if (p == null || p.kills.isEmpty())
+		{
+			return;
+		}
+		java.time.ZoneId zone = java.time.ZoneId.systemDefault();
+		long today = java.time.Instant.ofEpochMilli(nowMillis).atZone(zone).toLocalDate().toEpochDay();
+		Map<Long, List<KillEntry>> toAdd = new HashMap<>();
+		for (KillEntry k : p.kills)
+		{
+			if (k.time <= 0)
+			{
+				continue;
+			}
+			long day = java.time.Instant.ofEpochMilli(k.time).atZone(zone).toLocalDate().toEpochDay();
+			if (day > today || day <= today - DAYS_KEPT)
+			{
+				continue;
+			}
+			Map<String, DayCount> forDay = state.days().get(String.valueOf(day));
+			DayCount count = forDay == null ? null : forDay.get(boss.getName());
+			// no count that day yet, or this kill came before the first one it holds
+			if (count == null || count.first != null && k.time < count.first)
+			{
+				toAdd.computeIfAbsent(day, d -> new ArrayList<>()).add(k);
+			}
+		}
+		for (List<KillEntry> kills : toAdd.values())
+		{
+			long earliest = Long.MAX_VALUE;
+			DayCount count = null;
+			for (KillEntry k : kills)
+			{
+				count = dayCount(boss.getName(), k.time);
+				count.kills++;
+				count.expected += expectedFromKill(boss, k);
+				for (KillEntry.DropEntry d : k.getDrops())
+				{
+					DropDefinition drop = dropNamed(boss, d.getName());
+					if (drop != null && drop.countsTowardAny())
+					{
+						count.uniques++;
+					}
+				}
+				earliest = Math.min(earliest, k.time);
+			}
+			count.first = count.first == null ? earliest : Math.min(count.first, earliest);
+		}
+	}
+
+	/** Names of the uniques History has for this boss between these days (local epoch days). */
+	private List<String> uniqueNames(String bossName, long fromDay, long toDay)
+	{
+		List<String> names = new ArrayList<>();
+		BossDefinition boss = catalog.byName(bossName);
+		BossProgress p = state.peek(bossName);
+		if (boss == null || p == null)
+		{
+			return names;
+		}
+		java.time.ZoneId zone = java.time.ZoneId.systemDefault();
+		for (KillEntry k : p.kills)
+		{
+			long day = java.time.Instant.ofEpochMilli(k.time).atZone(zone).toLocalDate().toEpochDay();
+			if (day < fromDay || day > toDay)
+			{
+				continue;
+			}
+			for (KillEntry.DropEntry d : k.getDrops())
+			{
+				DropDefinition drop = dropNamed(boss, d.getName());
+				if (drop != null && drop.countsTowardAny())
+				{
+					names.add(d.getName());
+				}
+			}
+		}
+		return names;
+	}
+
+	/** Tests only: drops the day counts, as a version from before they existed would have. */
+	public synchronized void forgetDaysForTest()
+	{
+		state.days().clear();
+		daysFilled.clear();
+	}
+
+	private static DropDefinition dropNamed(BossDefinition boss, String name)
+	{
+		for (DropDefinition drop : boss.getDrops())
+		{
+			if (drop.getDisplayName().equals(name))
+			{
+				return drop;
+			}
+		}
+		return null;
+	}
+
+	/** Adds a kill to today's count, with the uniques that one kill should give. */
+	private void countKillToday(BossDefinition boss, KillEntry kill)
+	{
+		DayCount day = dayCount(boss.getName(), kill.time);
+		day.kills++;
+		Trip before = beforeThisKill;
+		BossStats s = before != null && before.boss.equals(boss.getName()) ? stats(boss.getName(), settings) : null;
+		// exactly what this kill added to the boss's expected; when the kill count jumped by
+		// more than one (first kill after a break) only this one kill's own rates count
+		day.expected += s != null && s.getKillCount() == before.startKc + 1
+			? Math.max(0, s.getAnyRow().getExpected() - before.startExpected)
+			: expectedFromKill(boss, kill);
+	}
+
+	/** Adds a unique to the count of the day it dropped. */
+	private void countUniqueToday(BossDefinition boss, DropDefinition drop)
+	{
+		if (drop.countsTowardAny())
+		{
+			dayCount(boss.getName(), lastKillMillis > 0 ? lastKillMillis : System.currentTimeMillis()).uniques++;
+		}
+	}
+
+	/**
+	 * The uniques one kill should give: the rates of its raid mode, boss or delve level, and
+	 * your share of a team kill (pets don't scale with the team).
+	 */
+	double expectedFromKill(BossDefinition boss, KillEntry kill)
+	{
+		BossPart part = null;
+		if (kill.part != null)
+		{
+			for (BossPart p : boss.getParts())
+			{
+				if (p.getName().equals(kill.part))
+				{
+					part = p;
+				}
+			}
+		}
+		double share = 1;
+		if (boss.isDetectTeam() && kill.team != null && kill.team > 0)
+		{
+			share = 1.0 / kill.team;
+		}
+		else if (boss.getTeam() != null && kill.kc > 0)
+		{
+			// the share of this one kill under the solo/duo setting
+			share = settings.contribution(boss.getTeam(), kill.kc) * kill.kc
+				- (kill.kc > 1 ? settings.contribution(boss.getTeam(), kill.kc - 1) * (kill.kc - 1) : 0);
+		}
+		// a raid whose points On Rate read uses its own purple chance, like History shows
+		RaidRecord record = null;
+		double chance = Double.NaN;
+		BossProgress progress = state.peek(boss.getName());
+		if (part != null && part.getRaid() != null && kill.partKc != null && progress != null)
+		{
+			for (RaidRecord r : progress.raids)
+			{
+				if (r.kc == kill.partKc && part.getName().equals(r.part))
+				{
+					record = r;
+				}
+			}
+			chance = record == null ? Double.NaN : recordChance(record, part, settings);
+		}
+		double expected = 0;
+		for (DropDefinition drop : boss.getDrops())
+		{
+			if (!drop.countsTowardAny())
+			{
+				continue;
+			}
+			double rate;
+			if (boss.isDelve() && kill.level != null)
+			{
+				rate = DropMath.parseRate(drop.getLevelRate(kill.level));
+			}
+			else if (part != null && !Double.isNaN(chance) && !drop.hasPartRates())
+			{
+				rate = recordDropExpected(boss, part, drop, record, chance);
+			}
+			else if (part != null)
+			{
+				rate = partRate(boss, part, drop, settings);
+			}
+			else
+			{
+				rate = effectiveRate(boss, drop, settings);
+			}
+			if (drop.getGuaranteedAt() != null && drop.getGuaranteedAt() == kill.kc)
+			{
+				// this is the kill where the drop is guaranteed
+				rate = 1;
+			}
+			expected += drop.isPet() ? rate : rate * share;
+		}
+		return expected;
+	}
+
+	/**
+	 * Kills, uniques and expected per boss over the last {@code days} days (1 = today), most
+	 * kills first. The first entry is the total of all bosses (its boss is null).
+	 */
+	public synchronized List<BossDays> recentDays(int days, long nowMillis)
+	{
+		for (BossDefinition boss : catalog.getBosses())
+		{
+			fillDaysFromHistory(boss, nowMillis);
+		}
+		long today = java.time.Instant.ofEpochMilli(nowMillis).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toEpochDay();
+		Map<String, DayCount> perBoss = new HashMap<>();
+		DayCount total = new DayCount();
+		for (Map.Entry<String, Map<String, DayCount>> d : state.days().entrySet())
+		{
+			long day;
+			try
+			{
+				day = Long.parseLong(d.getKey());
+			}
+			catch (NumberFormatException e)
+			{
+				continue;
+			}
+			if (day > today || day <= today - days)
+			{
+				continue;
+			}
+			for (Map.Entry<String, DayCount> b : d.getValue().entrySet())
+			{
+				DayCount sum = perBoss.computeIfAbsent(b.getKey(), k -> new DayCount());
+				sum.kills += b.getValue().kills;
+				sum.uniques += b.getValue().uniques;
+				sum.expected += b.getValue().expected;
+				total.kills += b.getValue().kills;
+				total.uniques += b.getValue().uniques;
+				total.expected += b.getValue().expected;
+			}
+		}
+		List<BossDays> result = new ArrayList<>();
+		result.add(new BossDays(null, total, new ArrayList<>()));
+		perBoss.entrySet().stream()
+			.filter(e -> e.getValue().kills > 0 || e.getValue().uniques > 0)
+			.sorted((a, b) -> a.getValue().kills != b.getValue().kills ? b.getValue().kills - a.getValue().kills
+				: a.getKey().compareTo(b.getKey()))
+			.forEach(e -> result.add(new BossDays(e.getKey(), e.getValue(),
+				uniqueNames(e.getKey(), today - days + 1, today))));
+		return result;
+	}
 
 	/** Saves a kill for the History section (the oldest ones go once there are too many). */
 	private KillEntry addKill(BossDefinition boss, BossProgress progress, long nowMillis)
@@ -311,8 +642,31 @@ public class Tracker
 	{
 		this.state = state == null ? new TrackerState() : state;
 		killsChanged.clear();
+		raidsChanged.clear();
+		// another account: nothing of the last one's session carries over
+		daysFilled.clear();
 		lastBoss = null;
 		trip = null;
+		beforeThisKill = null;
+		pendingRecord = null;
+		lastRaidBoss = null;
+		latestToa = null;
+		pendingParty = null;
+		// raids saved inside the main data by earlier versions move to their own key
+		if (this.state.bosses != null)
+		{
+			for (Map.Entry<String, BossProgress> e : this.state.bosses.entrySet())
+			{
+				BossProgress p = e.getValue();
+				p.ensureMaps();
+				if (p.savedRaids != null && !p.savedRaids.isEmpty())
+				{
+					p.raids.addAll(p.savedRaids);
+					raidsChanged.add(e.getKey());
+				}
+				p.savedRaids = null;
+			}
+		}
 	}
 
 	public synchronized TrackerState getState()
@@ -353,6 +707,11 @@ public class Tracker
 			}
 			int kc = Integer.parseInt(m.group("kc").replace(",", ""));
 			BossProgress progress = state.get(boss.getName());
+			Integer known = progress.chatKc.get(BossCatalog.normalize(counter));
+			if (known == null || kc > known)
+			{
+				beforeKill(boss, nowMillis);
+			}
 			Integer previous = progress.chatKc.put(BossCatalog.normalize(counter), kc);
 			Integer team = null;
 			if (boss.isDetectTeam() && (previous == null || kc > previous))
@@ -374,6 +733,7 @@ public class Tracker
 					entry.part = partForName(boss, counter, true);
 				}
 				entry.team = team;
+				countKillToday(boss, entry);
 			}
 			markKill(boss, nowMillis);
 			afterKill(boss, nowMillis);
@@ -440,6 +800,42 @@ public class Tracker
 	}
 
 	/**
+	 * Your exact points for the latest Tombs of Amascut raid, sent by the game a moment after
+	 * the raid was saved: they replace On Rate's estimate in it. Returns the boss, or null.
+	 */
+	public synchronized String onToaPoints(int personalPoints, long nowMillis)
+	{
+		if (personalPoints <= 0 || latestToa == null || nowMillis - latestToaMillis > PARTY_MATCH_MILLIS)
+		{
+			return null;
+		}
+		String toaBoss = toaBossName();
+		double before = toaBoss == null ? Double.NaN : anyExpected(toaBoss);
+		latestToa.personalPoints = personalPoints;
+		// the estimate's extra points (counted outside a RuneLite party) are part of the exact number
+		latestToa.partyPoints = 0;
+		latestToa.estimated = false;
+		if (toaBoss != null)
+		{
+			raidsChanged.add(toaBoss);
+			shiftToday(toaBoss, anyExpected(toaBoss) - before);
+		}
+		return toaBoss;
+	}
+
+	private String toaBossName()
+	{
+		for (BossDefinition boss : catalog.getBosses())
+		{
+			if ("toa".equals(boss.getRaid()))
+			{
+				return boss.getName();
+			}
+		}
+		return null;
+	}
+
+	/**
 	 * Team and personal points the Tombs of Amascut plugin sends at the end of a raid.
 	 * They replace On Rate's own estimate for the latest ToA raid.
 	 */
@@ -451,17 +847,24 @@ public class Tracker
 		}
 		if (latestToa != null && nowMillis - latestToaMillis <= PARTY_MATCH_MILLIS)
 		{
-			latestToa.personalPoints = personalPoints;
-			latestToa.teamPoints = teamPoints;
-			latestToa = null;
+			String toaBoss = null;
 			for (BossDefinition boss : catalog.getBosses())
 			{
 				if ("toa".equals(boss.getRaid()))
 				{
-					return boss.getName();
+					toaBoss = boss.getName();
 				}
 			}
-			return null;
+			double before = toaBoss == null ? Double.NaN : anyExpected(toaBoss);
+			latestToa.personalPoints = personalPoints;
+			latestToa.teamPoints = teamPoints;
+			latestToa = null;
+			if (toaBoss != null)
+			{
+				raidsChanged.add(toaBoss);
+				shiftToday(toaBoss, anyExpected(toaBoss) - before);
+			}
+			return toaBoss;
 		}
 		pendingParty = new int[]{personalPoints, teamPoints};
 		pendingPartyMillis = nowMillis;
@@ -529,14 +932,40 @@ public class Tracker
 
 	private void saveRecord(String bossName, String part, int kc, RaidRecord record)
 	{
+		double before = anyExpected(bossName);
 		record.part = part == null ? bossName : part;
 		record.kc = kc;
 		List<RaidRecord> raids = state.get(bossName).raids;
 		raids.add(record);
+		raidsChanged.add(bossName);
 		while (raids.size() > MAX_RAID_RECORDS)
 		{
 			raids.remove(0);
 		}
+		shiftToday(bossName, anyExpected(bossName) - before);
+	}
+
+	/** Uniques expected so far at this boss, or NaN when it has no numbers. */
+	private double anyExpected(String bossName)
+	{
+		BossStats s = stats(bossName, settings);
+		return s == null ? Double.NaN : s.getAnyRow().getExpected();
+	}
+
+	/**
+	 * A raid is counted at the purple chance from the settings first; when its points come in a
+	 * moment later, this moves the day's expected along, so Recent uses your points too.
+	 */
+	private void shiftToday(String bossName, double change)
+	{
+		if (Double.isNaN(change) || Math.abs(change) < 1e-12)
+		{
+			return;
+		}
+		BossProgress progress = state.peek(bossName);
+		KillEntry latest = progress == null || progress.kills.isEmpty() ? null : progress.kills.get(progress.kills.size() - 1);
+		DayCount day = dayCount(bossName, latest == null ? System.currentTimeMillis() : latest.time);
+		day.expected = Math.max(0, day.expected + change);
 	}
 
 	/** Most points the luck graph keeps (about three years of daily play). */
@@ -641,6 +1070,26 @@ public class Tracker
 		return Double.NaN;
 	}
 
+	/**
+	 * What one saved raid adds to the expected count of a drop: its purple chance times the
+	 * item's share at that raid level. The Tombs of Amascut pet has its own formula.
+	 */
+	private static double recordDropExpected(BossDefinition boss, BossPart part, DropDefinition drop, RaidRecord r,
+		double chance)
+	{
+		if (drop.isPet() && "toa".equals(r.family))
+		{
+			double pet = RaidChance.toaPet(r.personalPoints, r.partyPoints, r.teamPoints, r.teamSize, r.raidLevel);
+			if (!Double.isNaN(pet))
+			{
+				return pet;
+			}
+		}
+		double share = partRate(boss, part, drop, key -> 1.0);
+		double itemShare = r.raidLevel >= 0 ? levelShare(boss, drop, r.raidLevel, share) : share;
+		return chance * itemShare * RaidChance.toaLevelFactor(r.raidLevel, drop.getMinRaidLevel());
+	}
+
 	/** Completions of this raid mode whose purple chance came from your points. */
 	public synchronized int measuredRaids(String bossName, String part)
 	{
@@ -682,8 +1131,11 @@ public class Tracker
 			return null;
 		}
 		BossProgress progress = state.get(boss.getName());
+		beforeKill(boss, nowMillis);
 		progress.levelKc.merge(level, 1, Integer::sum);
-		addKill(boss, progress, nowMillis).level = level;
+		KillEntry entry = addKill(boss, progress, nowMillis);
+		entry.level = level;
+		countKillToday(boss, entry);
 		markKill(boss, nowMillis);
 		afterKill(boss, nowMillis);
 		startTracking(boss);
@@ -791,7 +1243,8 @@ public class Tracker
 	}
 
 	/** Word for what is counted at this boss: kills, raids, chests or levels. */
-	static String unit(BossDefinition boss)
+	/** "kills", "raids", "delves" (Doom) or "chests" (Barrows, Moons): what one completion is called. */
+	public static String unit(BossDefinition boss)
 	{
 		if (boss.getRaid() != null)
 		{
@@ -799,7 +1252,7 @@ public class Tracker
 		}
 		if (boss.isDelve())
 		{
-			return "levels";
+			return "delves";
 		}
 		for (String kc : boss.getKcNames())
 		{
@@ -809,6 +1262,13 @@ public class Tracker
 			}
 		}
 		return "kills";
+	}
+
+	/** {@link #unit} for one: "kill", "raid", "delve" or "chest". */
+	public static String unitOne(BossDefinition boss)
+	{
+		String units = unit(boss);
+		return units.substring(0, units.length() - 1);
 	}
 
 	/**
@@ -871,6 +1331,7 @@ public class Tracker
 			entry.multiple = Math.round(entry.since * rate * 100) / 100.0;
 		}
 		addDropToHistory(boss, progress, kc, entry);
+		countUniqueToday(boss, drop);
 		progress.lastDropKc.put(key, kc);
 		progress.milestone.remove(key);
 	}
@@ -1091,6 +1552,10 @@ public class Tracker
 		}
 		if (!minion)
 		{
+			if (boss.getKcNames().isEmpty())
+			{
+				beforeKill(boss, nowMillis);
+			}
 			// a bodyguard's loot counts for its general, but it isn't a kill of the general
 			progress.lootKills += Math.max(1, amount);
 			if (boss.getKcNames().isEmpty())
@@ -1245,6 +1710,7 @@ public class Tracker
 							entry.name = drop.getDisplayName();
 							entry.pet = drop.isPet() ? Boolean.TRUE : null;
 							addDropToHistory(boss, progress, currentKc(boss), entry);
+							countUniqueToday(boss, drop);
 							// a new copy since the last look; the best guess for when is "now"
 							progress.lastDropKc.put(key, currentKc(boss));
 							progress.milestone.remove(key);
@@ -1388,6 +1854,7 @@ public class Tracker
 		if (state.bosses != null && state.bosses.remove(bossName) != null)
 		{
 			killsChanged.add(bossName);
+			raidsChanged.add(bossName);
 		}
 	}
 
@@ -1396,13 +1863,45 @@ public class Tracker
 
 	private Trip trip;
 
+	/** This boss's numbers just before the kill being counted (for the trip card and Recent). */
+	private Trip beforeThisKill;
+
+	private boolean continuesTrip(BossDefinition boss, long nowMillis)
+	{
+		return trip != null && trip.boss.equals(boss.getName()) && nowMillis - trip.lastMillis <= TRIP_IDLE_MILLIS;
+	}
+
+	/**
+	 * Called just before a kill is counted: remembers the numbers as they are now, so the trip
+	 * card and Recent get exactly what this kill added (also for raids, whose points come in a
+	 * moment after the kill).
+	 */
+	private void beforeKill(BossDefinition boss, long nowMillis)
+	{
+		beforeThisKill = null;
+		BossStats s = stats(boss.getName(), settings);
+		if (s == null)
+		{
+			return;
+		}
+		Map<String, Integer> received = new HashMap<>();
+		for (RowStats row : s.getRows())
+		{
+			received.put(row.getLabel(), row.getReceived());
+		}
+		RowStats any = s.getAnyRow();
+		beforeThisKill = new Trip(boss.getName(), nowMillis, s.getKillCount(), any.getExpected(), any.getReceived(), received);
+	}
+
 	/**
 	 * Called after each kill: continues the current trip, or starts a new one when this is
 	 * another boss or the last kill was a while ago. The new trip includes this kill.
 	 */
 	private void afterKill(BossDefinition boss, long nowMillis)
 	{
-		if (trip != null && trip.boss.equals(boss.getName()) && nowMillis - trip.lastMillis <= TRIP_IDLE_MILLIS)
+		Trip before = beforeThisKill;
+		beforeThisKill = null;
+		if (continuesTrip(boss, nowMillis))
 		{
 			trip.lastMillis = nowMillis;
 			return;
@@ -1412,6 +1911,13 @@ public class Tracker
 		{
 			return;
 		}
+		if (before != null && before.boss.equals(boss.getName()) && s.getKillCount() == before.startKc + 1)
+		{
+			trip = before;
+			return;
+		}
+		// no snapshot of exactly one kill ago (e.g. the first kill count after a long break
+		// jumped by more than one): start from this kill at the average rate
 		Map<String, Integer> received = new HashMap<>();
 		for (RowStats row : s.getRows())
 		{
@@ -1509,35 +2015,78 @@ public class Tracker
 	 * were read use their own purple chance; older ones use the setting.
 	 */
 	private static double partExpected(BossDefinition boss, BossPart part, DropDefinition drop, RaidSettings raids,
-		int completions, BossProgress progress)
+		int completions, PartRaids known)
 	{
 		double perRaid = partRate(boss, part, drop, raids);
-		if (progress == null || part.getRaid() == null || drop.hasPartRates() || progress.raids.isEmpty())
+		if (known == null || known.count == 0 || part.getRaid() == null || drop.hasPartRates())
 		{
 			return completions * perRaid;
 		}
-		List<RaidRecord> known = new ArrayList<>();
-		for (RaidRecord r : progress.raids)
+		double expected = (completions - known.count) * perRaid;
+		if (drop.isPet() && known.toa)
 		{
-			if (part.getName().equals(r.part) && !Double.isNaN(recordChance(r, part, raids)))
-			{
-				known.add(r);
-			}
+			// the Tombs of Amascut pet has its own formula from the points
+			return expected + known.petSum;
 		}
-		int counted = Math.min(known.size(), completions);
-		if (counted == 0)
-		{
-			return completions * perRaid;
-		}
-		// share of a purple that is this item (the same for every raid of this mode)
 		double share = partRate(boss, part, drop, key -> 1.0);
-		double expected = (completions - counted) * perRaid;
-		for (RaidRecord r : known.subList(known.size() - counted, known.size()))
+		for (Map.Entry<Integer, Double> e : known.chanceByLevel.entrySet())
 		{
-			double itemShare = r.raidLevel >= 0 ? levelShare(boss, drop, r.raidLevel, share) : share;
-			expected += recordChance(r, part, raids) * itemShare * RaidChance.toaLevelFactor(r.raidLevel, drop.getMinRaidLevel());
+			int level = e.getKey();
+			double itemShare = level >= 0 ? levelShare(boss, drop, level, share) : share;
+			expected += e.getValue() * itemShare * RaidChance.toaLevelFactor(level, drop.getMinRaidLevel());
 		}
 		return expected;
+	}
+
+	/**
+	 * A raid mode's saved raids whose chance is known, added up once per calculation: the purple
+	 * chances per raid level (the item shares depend on the level) and the pet chances. Only the
+	 * latest {@code completions} raids count.
+	 */
+	static final class PartRaids
+	{
+		int count;
+		boolean toa;
+		double petSum;
+		final Map<Integer, Double> chanceByLevel = new HashMap<>();
+	}
+
+	private static PartRaids partRaids(BossPart part, RaidSettings raids, int completions, BossProgress progress)
+	{
+		if (progress == null || part.getRaid() == null || progress.raids.isEmpty() || completions <= 0)
+		{
+			return null;
+		}
+		List<RaidRecord> known = new ArrayList<>();
+		List<Double> chances = new ArrayList<>();
+		for (RaidRecord r : progress.raids)
+		{
+			if (!part.getName().equals(r.part))
+			{
+				continue;
+			}
+			double chance = recordChance(r, part, raids);
+			if (!Double.isNaN(chance))
+			{
+				known.add(r);
+				chances.add(chance);
+			}
+		}
+		PartRaids result = new PartRaids();
+		int from = Math.max(0, known.size() - completions);
+		for (int i = from; i < known.size(); i++)
+		{
+			RaidRecord r = known.get(i);
+			result.count++;
+			result.chanceByLevel.merge(r.raidLevel, chances.get(i), Double::sum);
+			if ("toa".equals(r.family))
+			{
+				result.toa = true;
+				double pet = RaidChance.toaPet(r.personalPoints, r.partyPoints, r.teamPoints, r.teamSize, r.raidLevel);
+				result.petSum += Double.isNaN(pet) ? 0 : pet;
+			}
+		}
+		return result;
 	}
 
 	/** Per-kill rate for a drop, taking raid settings into account. */
@@ -1615,6 +2164,15 @@ public class Tracker
 		List<RowStats> rows = new ArrayList<>();
 		double anyExpected = 0;
 		int anyReceived = 0;
+		// each raid mode's saved raids, added up once for all its items
+		Map<String, PartRaids> partRaids = new HashMap<>();
+		if (parts != null)
+		{
+			for (BossPart part : boss.getParts())
+			{
+				partRaids.put(part.getName(), partRaids(part, raids, parts.get(part.getName()), progress));
+			}
+		}
 		for (DropDefinition drop : boss.getDrops())
 		{
 			double expected;
@@ -1624,7 +2182,7 @@ public class Tracker
 				expected = 0;
 				for (BossPart part : boss.getParts())
 				{
-					expected += partExpected(boss, part, drop, raids, parts.get(part.getName()), progress);
+					expected += partExpected(boss, part, drop, raids, parts.get(part.getName()), partRaids.get(part.getName()));
 				}
 				rate = kc > 0 ? expected / kc : 0;
 			}
@@ -1655,6 +2213,12 @@ public class Tracker
 						rate *= raids.contribution(boss.getTeam(), kc);
 					}
 					expected = rate * kc;
+				}
+				Integer sure = drop.getGuaranteedAt();
+				if (sure != null && kc >= sure)
+				{
+					// that kill's roll was a sure drop instead of a chance
+					expected += 1 - effectiveRate(boss, drop, raids);
 				}
 			}
 			int received = 0;
@@ -1801,7 +2365,8 @@ public class Tracker
 				unsynced.add(boss.getName());
 				continue;
 			}
-			RowStats bossRow = new RowStats(boss.getName(), iconFor(boss), 0, any.getExpected(), any.getReceived(), false);
+			RowStats bossRow = new RowStats(boss.getName(), iconFor(boss), 0, any.getExpected(), any.getReceived(), false)
+				.withRate(any.getRate()).withStreak(any.getStreak(), any.isStreakExact());
 			double driest = Double.NaN;
 			String driestItem = null;
 			for (int i = 0; i < boss.getDrops().size(); i++)

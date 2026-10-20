@@ -18,6 +18,18 @@ public class TrackerState
 	 */
 	Map<String, Integer> sharedClog = new HashMap<>();
 
+	/** Kills, uniques and expected per day (epoch day as text) per boss, for the last two weeks. */
+	Map<String, Map<String, DayCount>> days = new HashMap<>();
+
+	Map<String, Map<String, DayCount>> days()
+	{
+		if (days == null)
+		{
+			days = new HashMap<>();
+		}
+		return days;
+	}
+
 	/** Luck graph: the account's luck at the end of each day On Rate was used. */
 	List<HistoryPoint> history = new ArrayList<>();
 

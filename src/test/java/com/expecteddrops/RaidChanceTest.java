@@ -9,6 +9,19 @@ import org.junit.Test;
 public class RaidChanceTest
 {
 	@Test
+	public void toaPetHasItsOwnLevelScaling()
+	{
+		// wiki: 1% per (350,000 - 700 x level); full up to 400, a third above, at most 550
+		assertEquals(140_000, RaidChance.toaPetPointsPerPercent(300), 1e-9);
+		assertEquals(70_000, RaidChance.toaPetPointsPerPercent(400), 1e-9);
+		assertEquals(350_000 - 700 * (400 + 100 / 3.0), RaidChance.toaPetPointsPerPercent(500), 1e-6);
+		assertEquals(RaidChance.toaPetPointsPerPercent(550), RaidChance.toaPetPointsPerPercent(600), 1e-9);
+		// at level 400 the pet is about 1/19 of the purple chance, not 1/30
+		double ratio = RaidChance.toaPet(30_000, 0, 0, 1, 400) / RaidChance.toa(30_000, 0, 0, 1, 400);
+		assertEquals(3_700 / 70_000.0, ratio, 1e-9);
+	}
+
+	@Test
 	public void coxIsOnePercentPer8676Points()
 	{
 		assertEquals(0.01, RaidChance.cox(8_676, 8_676), 1e-12);

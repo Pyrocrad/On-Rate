@@ -512,7 +512,8 @@
         {"name": "Masori mask", "weight": 2, "minRaidLevel": 150},
         {"name": "Masori body", "weight": 2, "minRaidLevel": 150},
         {"name": "Masori chaps", "weight": 2, "minRaidLevel": 150},
-        {"name": "Tumeken's shadow (uncharged)", "weight": 1, "minRaidLevel": 150}
+        {"name": "Tumeken's shadow (uncharged)", "weight": 1, "minRaidLevel": 150},
+        {"name": "Tumeken's guardian", "perUnique": "1/30", "pet": true}
       ]
     },
     {
@@ -561,8 +562,9 @@
     },
     {
       "name": "Vorkath", "kc": ["Vorkath"], "loot": ["Vorkath"], "clog": ["Vorkath"],
+      "note": "Vorkath's head is 1/50, and your 50th kill always drops one, so from then on there's one more head expected.",
       "drops": [
-        {"name": "Vorkath's head", "rate": "1/50"},
+        {"name": "Vorkath's head", "rate": "1/50", "guaranteedAt": 50},
         {"name": "Dragonbone necklace", "rate": "1/1000"},
         {"name": "Jar of decay", "rate": "1/3000"},
         {"name": "Vorki", "rate": "1/3000", "pet": true},
@@ -589,7 +591,7 @@
       ]
     },
     {
-      "name": "Zulrah", "kc": ["Zulrah"], "loot": ["Zulrah"], "clog": ["Zulrah"], "note": "Zulrah rolls its unique table twice per kill; rates below are per kill.",
+      "name": "Zulrah", "kc": ["Zulrah"], "loot": ["Zulrah"], "clog": ["Zulrah"], "note": "Zulrah rolls its unique table twice per kill, so each unique is 1/512 per kill (2 × 1/1,024).",
       "drops": [
         {"name": "Tanzanite fang", "rate": "1/512"},
         {"name": "Magic fang", "rate": "1/512"},

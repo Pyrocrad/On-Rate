@@ -17,6 +17,8 @@ public class DropDefinition
 	private String perUnique;
 	/** Tombs of Amascut: lowest raid level where this unique drops normally (below it, 1 in 50 is kept). */
 	private Integer minRaidLevel;
+	/** A drop that is guaranteed on this kill (Vorkath's head on the 50th): that kill's roll becomes a sure drop. */
+	private Integer guaranteedAt;
 	/** Tombs of Amascut: weight from a raid level on (e.g. {"400": 4}); below the lowest key the normal weight. */
 	private java.util.Map<String, Double> levelWeights;
 	/** Items that drop in stacks: average stack size. The collection log counts items, not drops. */
@@ -119,6 +121,11 @@ public class DropDefinition
 			return quantity;
 		}
 		return Math.max(1, (int) Math.round(quantity / stack));
+	}
+
+	public Integer getGuaranteedAt()
+	{
+		return guaranteedAt;
 	}
 
 	public Integer getMinRaidLevel()

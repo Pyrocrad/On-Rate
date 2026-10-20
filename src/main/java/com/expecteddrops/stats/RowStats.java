@@ -171,13 +171,22 @@ public class RowStats
 		return DropMath.chanceAtLeastOne(expected);
 	}
 
-	/** Luck percentile (0..1, 0.5 = average), NaN if nothing expected yet. */
+	/**
+	 * Luck (0..1, 0.5 = average) behind the verdict, tie-aware (see {@link DropMath#tieAware}).
+	 * NaN if nothing expected yet.
+	 */
 	public double getLuck()
 	{
-		if (cap > 0)
-		{
-			return DropMath.luckCapped(received, expected, cap);
-		}
-		return DropMath.luckPercentile(received, expected);
+		double[] s = getShares();
+		return s == null ? Double.NaN : DropMath.tieAware(s[0], s[1]);
+	}
+
+	/**
+	 * Of players at the same kill count: {share with fewer, share with the same}; the rest have
+	 * more. Null if nothing expected yet.
+	 */
+	public double[] getShares()
+	{
+		return cap > 0 ? DropMath.sharesCapped(received, expected, cap) : DropMath.shares(received, expected);
 	}
 }

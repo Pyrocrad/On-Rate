@@ -13,7 +13,7 @@ public class RaidRecord
 	String part;
 	/** Completion count of that mode at the end of this raid. */
 	int kc;
-	/** Your points (ToA: estimated, without the 5,000 everyone starts with). 0 = unknown. */
+	/** Your points (ToA: without the 5,000 everyone starts with; see {@link #estimated}). 0 = unknown. */
 	int personalPoints;
 	/** Team points. 0 = unknown (a ToA team without the Tombs of Amascut plugin's total). */
 	int teamPoints;
@@ -56,6 +56,14 @@ public class RaidRecord
 		r.teamSize = teamSize;
 		r.raidLevel = raidLevel;
 		r.estimated = true;
+		return r;
+	}
+
+	/** A Tombs of Amascut raid with the exact points the game sent (not On Rate's estimate). */
+	public static RaidRecord toaExact(int personalPoints, int teamSize, int raidLevel)
+	{
+		RaidRecord r = toa(personalPoints, 0, 0, teamSize, raidLevel);
+		r.estimated = false;
 		return r;
 	}
 

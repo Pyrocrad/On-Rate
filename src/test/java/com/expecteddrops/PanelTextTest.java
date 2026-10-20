@@ -14,7 +14,7 @@ public class PanelTextTest
 	{
 		assertEquals("About 1 in 10 players is this dry (or drier)", ExpectedDropsPanel.plainLuck(0.1));
 		assertEquals("About 1 in 4 players is this lucky (or luckier)", ExpectedDropsPanel.plainLuck(0.75));
-		assertTrue(ExpectedDropsPanel.plainLuck(0.5).contains("middle"));
+		assertTrue(ExpectedDropsPanel.plainLuck(0.5).contains("average"));
 		// 1/50 per kill: about 87% chance in the next 100 kills
 		assertEquals(1 - Math.exp(-2.0), ExpectedDropsPanel.nextChance(1 / 50.0, 100), 1e-12);
 	}

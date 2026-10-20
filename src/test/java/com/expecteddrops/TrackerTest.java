@@ -12,7 +12,9 @@ import com.expecteddrops.stats.RaidSettings;
 import com.expecteddrops.stats.RowStats;
 import com.expecteddrops.stats.SharedPool;
 import com.expecteddrops.tracking.Note;
+import com.expecteddrops.tracking.BossDays;
 import com.expecteddrops.tracking.RaidRecord;
+import com.expecteddrops.tracking.SaveData;
 import com.expecteddrops.ui.ExpectedDropsPanel;
 import com.expecteddrops.tracking.HistoryRow;
 import com.expecteddrops.tracking.KillEntry;
@@ -134,7 +136,8 @@ public class TrackerTest
 		assertTrue(stats.isKillCountKnown());
 		RowStats head = stats.getRows().get(0);
 		assertEquals("Vorkath's head", head.getLabel());
-		assertEquals(1234 / 50.0, head.getExpected(), 1e-9);
+		// 1/50 a kill, and the 50th kill always drops one
+		assertEquals(1233 / 50.0 + 1, head.getExpected(), 1e-9);
 	}
 
 	@Test
@@ -736,7 +739,7 @@ public class TrackerTest
 		// ...but having the pet at 9000 kc is roughly average, not dry
 		assertTrue(vorki.getLuck() > 0.45 && vorki.getLuck() < 0.55);
 		double withoutPet = stats.getAnyRow().getExpected() - (1 - Math.exp(-3.0));
-		assertEquals(9000 * (1 / 50.0 + 1 / 1000.0 + 1 / 3000.0 + 1 / 5000.0), withoutPet, 1e-9);
+		assertEquals(9000 * (1 / 50.0 + 1 / 1000.0 + 1 / 3000.0 + 1 / 5000.0) + (1 - 1 / 50.0), withoutPet, 1e-9);
 
 		tracker.onChatMessage("Your Royal Titan kill count is: <col=ff0000>600</col>.", now);
 		BossStats titans = tracker.stats("Royal Titans", RAIDS);
@@ -760,8 +763,10 @@ public class TrackerTest
 		// a cap of 1 is the same as "have it or not"
 		assertEquals(DropMath.chanceAtLeastOne(2.0), DropMath.expectedCapped(2.0, 1), 1e-12);
 		double chance = DropMath.chanceAtLeastOne(2.0);
-		assertEquals((1 - chance) + chance / 2, DropMath.luckCapped(1, 2.0, 1), 1e-12);
-		assertEquals((1 - chance) / 2, DropMath.luckCapped(0, 2.0, 1), 1e-12);
+		// having it when 86% of players do is average, not lucky (tie-aware)
+		assertEquals(0.5, DropMath.luckCapped(1, 2.0, 1), 1e-12);
+		// not having it: only the 14% without one are this dry or drier
+		assertEquals(1 - chance, DropMath.luckCapped(0, 2.0, 1), 1e-12);
 		// E[min(X, 2)] = P(X >= 1) + P(X >= 2)
 		double p0 = Math.exp(-2.0);
 		double p1 = 2.0 * p0;
@@ -1055,9 +1060,12 @@ public class TrackerTest
 		RowStats any = tracker.stats("Vorkath", RAIDS).getAnyRow();
 		// head, necklace, jar and the skeletal visage (the draconic one is shared with KBD),
 		// plus the pet as "have it or not"
-		double lambda = 50 * (1 / 50.0 + 1 / 1000.0 + 1 / 3000.0 + 1 / 5000.0) + (1 - Math.exp(-50 / 3000.0));
+		// (the 50th kill's head roll is a sure one: + 1 - 1/50)
+		double lambda = 50 * (1 / 50.0 + 1 / 1000.0 + 1 / 3000.0 + 1 / 5000.0) + (1 - 1 / 50.0) + (1 - Math.exp(-50 / 3000.0));
 		assertEquals(lambda, any.getExpected(), 1e-9);
-		assertEquals(DropMath.luckPercentile(0, lambda), any.getLuck(), 1e-12);
+		assertEquals(DropMath.luck(0, lambda), any.getLuck(), 1e-12);
+		// with none, the luck is the share of players who have none too
+		assertEquals(Math.exp(-lambda), any.getLuck(), 1e-12);
 	}
 
 	private static RowStats row(BossStats stats, String label)
@@ -1160,6 +1168,67 @@ public class TrackerTest
 	}
 
 	@Test
+	public void tripExpectedIsWhatTheRaidAdded()
+	{
+		tracker.setSettings(RAIDS);
+		tracker.onChatMessage("Your completed Tombs of Amascut count is: <col=ff0000>39</col>.", now);
+		tracker.onChatMessage("Your completed Tombs of Amascut: Expert Mode count is: <col=ff0000>134</col>.", now);
+		long later = now + 2 * 86_400_000L;
+		double before = tracker.stats("Tombs of Amascut", RAIDS).getAnyRow().getExpected();
+		// a new trip: the raid counts at the setting first, then the points come in and change it
+		tracker.onChatMessage("Your completed Tombs of Amascut count is: <col=ff0000>40</col>.", later);
+		tracker.onRaidRecord(RaidRecord.toa(18_000, 500, 0, 1, 400), later + 1000);
+		double after = tracker.stats("Tombs of Amascut", RAIDS).getAnyRow().getExpected();
+		TripStats trip = tracker.tripStats();
+		assertEquals(1, trip.getKills());
+		assertEquals(after - before, trip.getExpected(), 1e-9);
+		// Recent's "Today" uses the points too, not the setting the raid was first counted at
+		assertEquals(after - before, tracker.recentDays(1, later + 2000).get(0).getExpected(), 1e-5);
+	}
+
+	@Test
+	public void recentFillsInKillsFromBeforeDaysWereCounted()
+	{
+		tracker.setSettings(RAIDS);
+		long today = System.currentTimeMillis();
+		long earlier = today - 86_400_000L;
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>100</col>.", earlier);
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>101</col>.", earlier + 60_000);
+		tracker.onLoot("Vorkath", 1, Collections.singletonList(new Tracker.LootItem("Vorkath's head", 1)), earlier + 61_000);
+		double perKill = tracker.stats("Vorkath", RAIDS).getAnyRow().getRate();
+		// as if those kills were saved by a version that didn't count days: only History has them
+		tracker.forgetDaysForTest();
+		List<BossDays> week = tracker.recentDays(7, today);
+		assertEquals(2, week.get(0).getKills());
+		assertEquals(1, week.get(0).getUniques());
+		assertEquals(2 * perKill, week.get(0).getExpected(), 1e-6);
+		// asking again doesn't count them twice, and a new kill adds just itself
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>102</col>.", today);
+		week = tracker.recentDays(7, today);
+		assertEquals(3, week.get(0).getKills());
+		assertEquals(3 * perKill, week.get(0).getExpected(), 1e-4);
+	}
+
+	@Test
+	public void recentFillsInAgainAfterSwitchingAccounts()
+	{
+		tracker.setSettings(RAIDS);
+		long today = System.currentTimeMillis();
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>100</col>.", today - 60_000);
+		Gson gson = new Gson();
+		SaveData data = tracker.saveData(gson::toJson);
+		assertEquals(1, tracker.recentDays(1, today).get(0).getKills());
+		// another account loads (without day counts, as from an earlier version) in the same session
+		com.google.gson.JsonObject json = gson.fromJson(data.progress, com.google.gson.JsonObject.class);
+		json.remove("days");
+		tracker.setState(gson.fromJson(json, TrackerState.class));
+		tracker.setKills("Vorkath", gson.fromJson(data.kills.get("Vorkath"), new com.google.gson.reflect.TypeToken<List<KillEntry>>()
+		{
+		}.getType()));
+		assertEquals(1, tracker.recentDays(1, today).get(0).getKills());
+	}
+
+	@Test
 	public void lowRaidLevelsKeepFewUniques()
 	{
 		tracker.onChatMessage("Your completed Tombs of Amascut: Entry Mode count is: <col=ff0000>1</col>.", now);
@@ -1173,12 +1242,55 @@ public class TrackerTest
 				// level 100 is above the fang's minimum of 50
 				assertEquals(chance * 7 / 24.0, row.getExpected(), 1e-12);
 			}
-			if (row.getLabel().startsWith("Tumeken"))
+			if (row.getLabel().startsWith("Tumeken's shadow"))
 			{
 				// below 150 a rolled shadow is only kept 1 time in 50
 				assertEquals(chance / 24.0 / 50, row.getExpected(), 1e-12);
 			}
+			if (row.getLabel().equals("Tumeken's guardian"))
+			{
+				// the pet has its own formula: 1% per (350,000 - 700 x level) points
+				assertEquals(10_000 / (350_000 - 700 * 100.0) / 100, row.getExpected(), 1e-12);
+			}
 		}
+	}
+
+	@Test
+	public void exactToaPointsReplaceTheEstimate()
+	{
+		tracker.onChatMessage("Your completed Tombs of Amascut count is: <col=ff0000>3</col>.", now);
+		// On Rate's estimate first, then the game's own number a moment later
+		tracker.onRaidRecord(RaidRecord.toa(10_000, 900, 0, 1, 300), now + 1000);
+		assertEquals("Tombs of Amascut", tracker.onToaPoints(15_000, now + 2000));
+		RaidRecord r = tracker.raidRecords("Tombs of Amascut").get(0);
+		assertEquals(15_000, r.getPersonalPoints());
+		assertEquals(0, r.getPartyPoints());
+		assertFalse(r.isEstimated());
+		assertEquals(RaidChance.toa(15_000, 0, 0, 1, 300), Tracker.purpleChance(r), 1e-12);
+		// too late (another raid's points) changes nothing
+		assertNull(tracker.onToaPoints(20_000, now + 10 * 60_000));
+	}
+
+	@Test
+	public void vorkathsHeadIsGuaranteedOnThe50thKill()
+	{
+		tracker.onClogPage("Vorkath", Collections.singletonList("Vorkath kills: 49"), Collections.singletonMap("Vorkath's head", 0));
+		assertEquals(49 / 50.0, headExpected(), 1e-9);
+		tracker.onClogPage("Vorkath", Collections.singletonList("Vorkath kills: 350"), Collections.singletonMap("Vorkath's head", 6));
+		// 349 kills at 1/50 and the 50th kill a sure one
+		assertEquals(349 / 50.0 + 1, headExpected(), 1e-9);
+	}
+
+	private double headExpected()
+	{
+		for (RowStats row : tracker.stats("Vorkath", RAIDS).getRows())
+		{
+			if (row.getLabel().equals("Vorkath's head"))
+			{
+				return row.getExpected();
+			}
+		}
+		throw new AssertionError("no head row");
 	}
 
 	@Test
@@ -1232,15 +1344,43 @@ public class TrackerTest
 	}
 
 	@Test
-	public void raidRecordsAreSaved()
+	public void raidRecordsAreSavedApart()
 	{
 		tracker.onChatMessage("Your completed Chambers of Xeric count is: <col=ff0000>7</col>.", now);
 		tracker.onRaidRecord(RaidRecord.cox(25_000, 50_000, 2), now + 1000);
 		Gson gson = new Gson();
+		SaveData data = tracker.saveData(gson::toJson);
+		// the raids have their own key; the main data doesn't carry them
+		assertTrue(data.raids.containsKey("Chambers of Xeric"));
+		assertFalse(data.progress, data.progress.contains("50000"));
+		// a kill elsewhere doesn't write the raids again
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>10</col>.", now + 60_000);
+		assertTrue(tracker.saveData(gson::toJson).raids.isEmpty());
+
 		Tracker loaded = new Tracker(catalog);
-		loaded.setState(gson.fromJson(gson.toJson(tracker.getState()), TrackerState.class));
+		loaded.setState(gson.fromJson(data.progress, TrackerState.class));
+		loaded.setRaids("Chambers of Xeric", gson.fromJson(data.raids.get("Chambers of Xeric"),
+			new com.google.gson.reflect.TypeToken<List<RaidRecord>>()
+			{
+			}.getType()));
 		assertEquals(1, loaded.measuredRaids("Chambers of Xeric", "Normal"));
 		assertEquals(25_000, loaded.raidRecords("Chambers of Xeric").get(0).getPersonalPoints());
+	}
+
+	@Test
+	public void raidsSavedInTheMainDataMoveOut()
+	{
+		// how earlier versions saved them: inside the main data
+		String old = "{\"bosses\":{\"Chambers of Xeric\":{\"chatKc\":{\"chambers of xeric\":7},"
+			+ "\"raids\":[{\"family\":\"cox\",\"part\":\"Normal\",\"kc\":7,\"personalPoints\":25000,"
+			+ "\"teamPoints\":50000,\"teamSize\":2}]}}}";
+		Gson gson = new Gson();
+		Tracker loaded = new Tracker(catalog);
+		loaded.setState(gson.fromJson(old, TrackerState.class));
+		assertEquals(1, loaded.raidRecords("Chambers of Xeric").size());
+		SaveData data = loaded.saveData(gson::toJson);
+		assertTrue(data.raids.get("Chambers of Xeric").contains("25000"));
+		assertFalse(data.progress, data.progress.contains("25000"));
 	}
 
 	@Test
@@ -1345,6 +1485,89 @@ public class TrackerTest
 		assertTrue(pets.get(0).getRow().getExpected() <= pets.get(4).getRow().getExpected());
 		// driest first: the one you'd most likely have by now
 		assertTrue(pets.get(5).getRow().getChanceAtLeastOne() >= pets.get(9).getRow().getChanceAtLeastOne());
+	}
+
+	@Test
+	public void eachBossCountsInItsOwnUnit()
+	{
+		assertEquals("delves", Tracker.unit(catalog.byName("Doom of Mokhaiotl")));
+		assertEquals("delve", Tracker.unitOne(catalog.byName("Doom of Mokhaiotl")));
+		assertEquals("raids", Tracker.unit(catalog.byName("Chambers of Xeric")));
+		assertEquals("kills", Tracker.unit(catalog.byName("Vorkath")));
+	}
+
+	@Test
+	public void daysCountKillsUniquesAndExpected()
+	{
+		long today = System.currentTimeMillis();
+		long lastWeek = today - 3 * 86_400_000L;
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>10</col>.", lastWeek);
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>11</col>.", today);
+		tracker.onLoot("Vorkath", 1, Collections.singletonList(new Tracker.LootItem("Vorkath's head", 1)), today);
+		tracker.onChatMessage("Your Zulrah kill count is: <col=ff0000>5</col>.", today);
+		tracker.onChatMessage("Your Zulrah kill count is: <col=ff0000>6</col>.", today);
+
+		List<com.expecteddrops.tracking.BossDays> day = tracker.recentDays(1, today);
+		assertNull(day.get(0).getBoss());
+		assertEquals(3, day.get(0).getKills());
+		assertEquals(1, day.get(0).getUniques());
+		// most kills first
+		assertEquals("Zulrah", day.get(1).getBoss());
+		assertEquals(2, day.get(1).getKills());
+		BossStats vorkath = tracker.stats("Vorkath", RAIDS);
+		assertEquals(vorkath.getAnyRow().getExpected() / vorkath.getKillCount(), day.get(2).getExpected(), 1e-5);
+		// the hover says which unique it was
+		assertEquals(Collections.singletonList("Vorkath's head"), day.get(2).getUniqueNames());
+		assertTrue(day.get(1).getUniqueNames().isEmpty());
+
+		List<com.expecteddrops.tracking.BossDays> week = tracker.recentDays(7, today);
+		assertEquals(4, week.get(0).getKills());
+		assertEquals(2, week.get(1).getKills());
+		assertEquals("Vorkath", week.get(1).getBoss());
+
+		// saved and loaded with the rest
+		Gson gson = new Gson();
+		Tracker loaded = new Tracker(catalog);
+		loaded.setState(gson.fromJson(gson.toJson(tracker.getState()), TrackerState.class));
+		assertEquals(4, loaded.recentDays(7, today).get(0).getKills());
+	}
+
+	@Test
+	public void teamKillsCountTheirShareToday()
+	{
+		int[] team = {4};
+		tracker.setTeamSizeDetector(() -> team[0]);
+		long today = System.currentTimeMillis();
+		tracker.onChatMessage("Your Nex kill count is: <col=ff0000>10</col>.", today);
+		BossDefinition nex = catalog.byName("Nex");
+		double solo = 0;
+		double pet = 0;
+		for (DropDefinition d : nex.getDrops())
+		{
+			if (d.countsTowardAny())
+			{
+				double rate = Tracker.effectiveRate(nex, d, RAIDS);
+				if (d.isPet())
+				{
+					pet += rate;
+				}
+				else
+				{
+					solo += rate;
+				}
+			}
+		}
+		tracker.setSettings(RAIDS);
+		assertEquals(solo / 4 + pet, tracker.recentDays(1, today).get(1).getExpected(), 1e-9);
+	}
+
+	@Test
+	public void accountRowsKnowTheirDryStreak()
+	{
+		tracker.onClogPage("Vorkath", Collections.singletonList("Vorkath kills: 100"), Collections.singletonMap("Vorkath's head", 0));
+		RowStats row = tracker.accountStats(RAIDS).getRows().get(0);
+		assertEquals(100, (int) row.getStreak());
+		assertTrue(row.getStreakMultiple() > 1);
 	}
 
 	@Test

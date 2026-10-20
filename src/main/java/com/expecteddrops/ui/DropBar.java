@@ -16,8 +16,8 @@ import net.runelite.client.ui.FontManager;
  */
 class DropBar extends JComponent
 {
-	private static final Color TRACK = new Color(26, 26, 26);
-	private static final Color OUTLINE = new Color(70, 70, 70);
+	private static final Color TRACK = Theme.TRACK_DARK;
+	private static final Color OUTLINE = Theme.OUTLINE;
 
 	private double fraction;
 	private Color fill = ColorScheme.MEDIUM_GRAY_COLOR;

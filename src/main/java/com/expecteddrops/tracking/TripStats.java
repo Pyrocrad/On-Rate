@@ -65,7 +65,13 @@ public class TripStats
 	/** Luck for this trip alone (NaN when nothing was expected yet). */
 	public double getLuck()
 	{
-		return expected <= 0 ? Double.NaN : DropMath.luckPercentile(received, expected);
+		return expected <= 0 ? Double.NaN : DropMath.luck(received, expected);
+	}
+
+	/** Of players doing the same kills: {share with fewer uniques, share with as many}; null when nothing was expected. */
+	public double[] getShares()
+	{
+		return DropMath.shares(received, expected);
 	}
 
 	/** Kills per hour, or NaN for trips shorter than a minute. */

@@ -110,6 +110,33 @@ public final class RaidChance
 		return Math.min(TOA_MAX_CHANCE, personalPoints / toaPointsPerPercent(raidLevel) / 100);
 	}
 
+	/**
+	 * Tombs of Amascut pet (Tumeken's guardian): 1% per (350,000 - 700 x level) points, where the
+	 * level counts in full up to 400 and a third above that, up to 550. Not capped at 55%.
+	 */
+	public static double toaPetPointsPerPercent(int raidLevel)
+	{
+		int level = Math.min(550, Math.max(0, raidLevel));
+		double scaled = level <= 400 ? level : 400 + (level - 400) / 3.0;
+		return 350_000 - 700 * scaled;
+	}
+
+	/** Your chance of the pet in one raid, split over the team like a purple. NaN without points. */
+	public static double toaPet(int personalPoints, int partyPoints, int teamPoints, int teamSize, int raidLevel)
+	{
+		if (personalPoints <= 0 || raidLevel < 0)
+		{
+			return Double.NaN;
+		}
+		double perPercent = toaPetPointsPerPercent(raidLevel);
+		if (teamSize <= 1)
+		{
+			return Math.min(1, (personalPoints + Math.max(0, partyPoints)) / perPercent / 100);
+		}
+		// your share of the team's chance is your own points over the points per percent
+		return Math.min(1, personalPoints / perPercent / 100);
+	}
+
 	/** How much of an item's normal share survives at this raid level (1, or 1/50 below its minimum). */
 	public static double toaLevelFactor(int raidLevel, Integer minRaidLevel)
 	{

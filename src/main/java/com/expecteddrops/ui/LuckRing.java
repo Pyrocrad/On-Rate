@@ -12,7 +12,7 @@ import javax.swing.SwingConstants;
 /** A ring that fills up (clockwise from the top) around an item picture or a short text. */
 class LuckRing extends JLabel
 {
-	private static final Color TRACK = new Color(55, 55, 55);
+	private static final Color TRACK = Theme.TRACK;
 	private double fraction;
 	private Color color = Color.GRAY;
 

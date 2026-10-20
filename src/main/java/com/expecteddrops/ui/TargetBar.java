@@ -12,7 +12,7 @@ import javax.swing.JComponent;
  */
 class TargetBar extends JComponent
 {
-	private static final Color TRACK = new Color(55, 55, 55);
+	private static final Color TRACK = Theme.TRACK;
 	private double fill;
 	private double marker = -1;
 	private Color color = Color.GRAY;

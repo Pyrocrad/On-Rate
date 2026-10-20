@@ -78,15 +78,26 @@ public final class DropMath
 
 	/**
 	 * Luck when at most {@code cap} copies count: you can't do better than having them all,
-	 * so everyone with {@code cap} or more is level with you. Mid-p like {@link #luckPercentile}.
+	 * so everyone with {@code cap} or more is level with you. Tie-aware like {@link #luck}.
 	 */
 	public static double luckCapped(int received, double expected, int cap)
 	{
-		if (expected <= 0)
+		double[] s = sharesCapped(received, expected, cap);
+		return s == null ? Double.NaN : tieAware(s[0], s[1]);
+	}
+
+	/**
+	 * Of all players at the same kill count: {share with fewer than you, share with exactly as
+	 * many}, the rest have more. Null when nothing is expected. With at most {@code cap} counting,
+	 * everyone at the cap is level with you.
+	 */
+	public static double[] sharesCapped(int received, double expected, int cap)
+	{
+		if (expected <= 0 || Double.isNaN(expected))
 		{
-			return Double.NaN;
+			return null;
 		}
-		int r = Math.min(received, cap);
+		int r = Math.min(Math.max(received, 0), cap);
 		double p = Math.exp(-expected);
 		double below = 0;
 		for (int k = 0; k < r; k++)
@@ -95,7 +106,55 @@ public final class DropMath
 			p *= expected / (k + 1);
 		}
 		double same = r < cap ? p : 1 - below;
-		return below + same / 2;
+		return new double[]{below, Math.max(0, same)};
+	}
+
+	/** {share with fewer, share with the same} for a plain (uncapped) count; null when nothing is expected. */
+	public static double[] shares(int received, double expected)
+	{
+		if (expected <= 0 || Double.isNaN(expected))
+		{
+			return null;
+		}
+		if (received < 0)
+		{
+			received = 0;
+		}
+		double logLambda = Math.log(expected);
+		double logFactorial = 0;
+		double below = 0;
+		for (int j = 0; j < received; j++)
+		{
+			if (j > 0)
+			{
+				logFactorial += Math.log(j);
+			}
+			below += Math.exp(-expected + j * logLambda - logFactorial);
+		}
+		if (received > 0)
+		{
+			logFactorial += Math.log(received);
+		}
+		double equal = Math.exp(-expected + received * logLambda - logFactorial);
+		return new double[]{Math.min(1, below), Math.min(1, equal)};
+	}
+
+	/**
+	 * Luck that doesn't call the most common result dry: of the range from "share with fewer"
+	 * to "share with this many or fewer", the point closest to the middle. So you only count as
+	 * dry when few players have this many or fewer, and as spooned when few have this many or
+	 * more. With big counts ties are rare and this is the usual percentile.
+	 */
+	public static double tieAware(double fewer, double same)
+	{
+		return Math.max(0, Math.min(1, Math.min(Math.max(0.5, fewer), fewer + same)));
+	}
+
+	/** The luck behind every verdict: tie-aware, see {@link #tieAware}. NaN when nothing is expected. */
+	public static double luck(int received, double expected)
+	{
+		double[] s = shares(received, expected);
+		return s == null ? Double.NaN : tieAware(s[0], s[1]);
 	}
 
 	/**
@@ -233,6 +292,7 @@ public final class DropMath
 		}
 		java.util.Random random = new java.util.Random(seed);
 		double below = 0;
+		double equal = 0;
 		for (int s = 0; s < samples; s++)
 		{
 			long value = 0;
@@ -246,10 +306,11 @@ public final class DropMath
 			}
 			else if (value == received)
 			{
-				below += 0.5;
+				equal += 1;
 			}
 		}
-		double luck = below / samples;
+		// ties (often: nothing tradeable yet, like most players) handled like the counts
+		double luck = tieAware(below / samples, equal / samples);
 		synchronized (VALUE_CACHE)
 		{
 			VALUE_CACHE.put(key, luck);

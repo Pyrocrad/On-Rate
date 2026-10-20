@@ -56,6 +56,7 @@ import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.HitsplatApplied;
 import net.runelite.api.events.ItemSpawned;
+import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.AnimationID;
 import net.runelite.api.gameval.InterfaceID;
@@ -95,6 +96,11 @@ public class RaidPointsReader
 	/** True once the start of this Tombs raid was seen, so a half-tracked raid isn't saved. */
 	private boolean toaStartSeen;
 	private int toaRaidLevel = -1;
+	/**
+	 * Your exact Tombs of Amascut points, which the game sends at the end of each raid (since
+	 * client revision 232), or 0 before they came. They replace On Rate's own estimate.
+	 */
+	private int toaExactPoints;
 
 	public RaidPointsReader(Client client, ClientThread clientThread, Tracker tracker, Consumer<String> changed,
 		BooleanSupplier enabled)
@@ -170,6 +176,7 @@ public class RaidPointsReader
 			toaPoints.setTeamSize(raidStateTracker.getPlayerCount());
 			toaStartSeen = true;
 			toaRaidLevel = -1;
+			toaExactPoints = 0;
 			return;
 		}
 		if (!raidStateTracker.getCurrentState().isInRaid())
@@ -204,15 +211,42 @@ public class RaidPointsReader
 	{
 		boolean started = toaStartSeen;
 		toaStartSeen = false;
-		if (!enabled.getAsBoolean() || !started)
+		int exact = toaExactPoints;
+		toaExactPoints = 0;
+		if (!enabled.getAsBoolean() || !started && exact <= 0)
 		{
-			// On Rate missed the start of this raid, so its estimate would be too low
+			// On Rate missed the start of this raid and the game hasn't sent the points yet,
+			// so an estimate would be too low; if the points come in a moment, they're used then
 			return;
 		}
 		int level = toaRaidLevel > 0 ? toaRaidLevel : client.getVarbitValue(VarbitID.TOA_CLIENT_RAID_LEVEL);
-		RaidRecord record = RaidRecord.toa(toaPoints.getPersonalTotalPoints(), toaPoints.getNonPartyPoints(), 0,
-			Math.max(1, raidStateTracker.getPlayerCount()), level);
+		// the game's own number when it already came, else the estimate (replaced if it comes later)
+		RaidRecord record = exact > 0
+			? RaidRecord.toaExact(exact, Math.max(1, raidStateTracker.getPlayerCount()), level)
+			: RaidRecord.toa(toaPoints.getPersonalTotalPoints(), toaPoints.getNonPartyPoints(), 0,
+				Math.max(1, raidStateTracker.getPlayerCount()), level);
 		report(tracker.onRaidRecord(record, System.currentTimeMillis()));
+	}
+
+	/**
+	 * The game sends your exact Tombs of Amascut points at the end of the raid (the same value the
+	 * Tombs of Amascut plugin reads). Before the raid is saved they're kept for it; after, they
+	 * replace the estimate in the saved raid.
+	 */
+	@Subscribe
+	public void onVarbitChanged(VarbitChanged e)
+	{
+		if (e.getVarpId() != VarPlayerID.TOA_PERSONAL_CONTRIBUTION || e.getValue() <= 0 || !enabled.getAsBoolean())
+		{
+			return;
+		}
+		if (toaStartSeen)
+		{
+			// the raid isn't saved yet: "Challenge complete" comes after this
+			toaExactPoints = e.getValue();
+			return;
+		}
+		report(tracker.onToaPoints(e.getValue(), System.currentTimeMillis()));
 	}
 
 	@Subscribe

@@ -37,7 +37,14 @@ public class BossProgress
 	/** Kill count at the last milestone check, so a big jump (first sync) stays quiet. */
 	Integer lastCheckedKc;
 	/** Raids only: each raid finished with On Rate, with its points (see RaidRecord). */
-	List<RaidRecord> raids = new ArrayList<>();
+	/**
+	 * Saved raids with their points. Kept out of the main save (it's saved per raid under its own
+	 * key, only when a raid is added), so a kill elsewhere doesn't rewrite all of them.
+	 */
+	transient List<RaidRecord> raids = new ArrayList<>();
+	/** Raids as earlier versions saved them, inside the main data; moved out when loaded. */
+	@com.google.gson.annotations.SerializedName("raids")
+	List<RaidRecord> savedRaids;
 	/**
 	 * The last kills On Rate saw, newest last, for the History section. Saved under its own
 	 * key per boss (see Tracker#changedKills), not with the rest of this.

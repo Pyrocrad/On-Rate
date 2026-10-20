@@ -151,9 +151,9 @@ class LuckGraph extends JComponent
 				nearest = p;
 			}
 		}
-		return String.format("<html><b>%s</b><br>%s: luckier than %.0f%%<br>%d received, %.1f expected</html>",
+		return String.format("<html><b>%s</b><br>%s: %s<br>%d received, %.1f expected</html>",
 			LocalDate.ofEpochDay(nearest.getDay()).format(LONG_DATE), DropMath.verdict(nearest.getLuck()),
-			nearest.getLuck() * 100, nearest.getReceived(), nearest.getExpected());
+			Texts.html(Texts.luckShort(nearest.getLuck())), nearest.getReceived(), nearest.getExpected());
 	}
 
 	private static Color withAlpha(Color c, int alpha)

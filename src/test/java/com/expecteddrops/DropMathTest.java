@@ -51,7 +51,7 @@ public class DropMathTest
 	public void valueLuckMatchesCountLuckForOneItem()
 	{
 		// With a single item, value luck is just count luck in GP.
-		double byCount = DropMath.luckPercentile(2, 1.3);
+		double byCount = DropMath.luck(2, 1.3);
 		double byValue = DropMath.valueLuck(new double[]{1.3}, new long[]{1_000_000}, 2_000_000, 20000, 42);
 		assertEquals(byCount, byValue, 0.02);
 	}
@@ -90,5 +90,36 @@ public class DropMathTest
 		assertEquals("1/50", DropMath.formatRate(1.0 / 50));
 		assertEquals("1/5,000", DropMath.formatRate(1.0 / 5000));
 		assertEquals("1/170.7", DropMath.formatRate(3.0 / 512));
+	}
+
+	@Test
+	public void mostCommonResultIsNotDry()
+	{
+		// 0 of 0.43 expected: 65% of players have none too, so that's on rate, not dry
+		assertEquals("On rate", DropMath.verdict(DropMath.luck(0, 0.43)));
+		assertEquals(0.5, DropMath.luck(0, 0.43), 1e-12);
+		// 0 of 1.65: only 19% have none, so dry (it used to say very dry)
+		assertEquals(Math.exp(-1.65), DropMath.luck(0, 1.65), 1e-12);
+		assertEquals("Dry", DropMath.verdict(DropMath.luck(0, 1.65)));
+		// 4 of 5.67: 33% have this many or fewer
+		double[] s = DropMath.shares(4, 5.67);
+		assertEquals(s[0] + s[1], DropMath.luck(4, 5.67), 1e-12);
+		assertEquals("Dry", DropMath.verdict(DropMath.luck(4, 5.67)));
+		// 1 of 0.16 on a trip: 15% get one or more, so spooned, not very spooned
+		assertEquals(Math.exp(-0.16), DropMath.luck(1, 0.16), 1e-12);
+		assertEquals("Spooned", DropMath.verdict(DropMath.luck(1, 0.16)));
+		// big counts: almost no ties, so close to the usual percentile
+		assertEquals(DropMath.luckPercentile(89, 92.4), DropMath.luck(89, 92.4), 0.03);
+	}
+
+	@Test
+	public void sharesAddUp()
+	{
+		double[] s = DropMath.shares(2, 1.65);
+		double more = 1 - s[0] - s[1];
+		assertEquals(Math.exp(-1.65) * (1 + 1.65), s[0], 1e-12);
+		assertEquals(Math.exp(-1.65) * 1.65 * 1.65 / 2, s[1], 1e-12);
+		assertTrue(more > 0 && more < 1);
+		assertEquals(null, DropMath.shares(1, 0));
 	}
 }
