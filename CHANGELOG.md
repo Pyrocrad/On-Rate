@@ -1,6 +1,46 @@
 # Changelog
 
-**Next update** (waiting for the Plugin Hub)
+**Next update**
+- **Two verdicts** at the top of every boss page and the account overview: **Uniques** (how many you got) and **GP value** (what they're worth), each with its numbers. On the account they stay at the top on every tab.
+- **Recent** starts with **Today** and **Last 7 days**: kills and uniques in total and per boss, green when you got more than expected and orange when fewer (hover for the numbers). Kills from before this update are filled in from History.
+- History says "your first one" for an item you got for the first time (was "1st one"), counts in raids for the raids and in delves for Doom, and hovering the line under it lists which uniques those were.
+- **A fairer verdict:** you're only dry when fewer than 35% of players at your kill count have this many or fewer, and only spooned when fewer than 35% have this many or more. Before, having none of an item at 0.4 to 1 expected said "Dry" even though most players have none either; that's now "On rate". Very small counts change most (one lucky drop on a trip is "Spooned", not "Very spooned"); big counts barely change.
+- **"2.1× the drop rate without one":** hovering something you don't have yet says how far past the drop rate you are, the way players count dry (1× on rate, 2× dry, 3× real pain). The "next 100 kills" line is gone.
+- **Clearer words instead of "luckier than X%":** the tiles say how common your result is ("74% have none", "1 in 3 as dry", "1 in 6 as lucky", "about average"), and hovers give the full split ("18% of players have fewer, 15% as many, 67% more").
+- The collection log line at the top only shows while pages are missing; "All history loaded" is gone.
+- Fixed: the panel could stop responding to clicks until you opened another plugin and came back. It now checks itself whether it's on screen, and one page that fails to draw can't freeze it.
+- Faster for players with many raids: saved raids are stored apart and only written when a raid ends, so a kill no longer rewrites them all, and the luck graph's point is worked out every 10 minutes instead of after every kill.
+- The overlay updates when raid points come in after the kill message.
+- New sort for the bosses list: **Longest dry streak**.
+- The trip card shows what the uniques should be worth per hour at your speed.
+- History keeps the last 500 kills per boss (was 200).
+- The bottom of the panel is one line: "Feedback? Discord" and "Reset this boss…".
+- Doom of Mokhaiotl counts in **delves**: the trip card ("Delves", "delves per hour"), the overlay, hover texts and chat messages. Barrows and Moons count in chests.
+- Fixed: the trip card's **Expected** could be off on the first raid of a trip (for example 0.06 when your points gave 4.4%), because it took off your average raid instead of the raid you just did. The trip card and Recent's **Today** now count each raid at your own points.
+- The Zulrah note explains the 1/512: two rolls of 1/1,024 per kill.
+- **Tumeken's guardian** (the Tombs of Amascut pet) is tracked, with its own formula from your points and raid level (at high levels it's well above 1/30 of the purple chance).
+- **Exact Tombs of Amascut points:** the game sends your points at the end of each raid, and On Rate now uses them instead of its own estimate.
+- **Vorkath's head:** your 50th kill always drops one, and On Rate now counts that (one more head expected from kill 50 on).
+- Pets you don't have show your chance of having one by now next to the verdict ("On rate · 12.5%").
+- The luck graph only shows on the **Bosses** tab, so the Items and Recent lists start higher up.
+- Pages with two bosses (Callisto and Artio, Vet'ion and Calvar'ion, Venenatis and Spindel, Dagannoth Kings, The Gauntlet) say which boss dropped an item and at which of its own kills, in History and Recent.
+- Boss pages are tidier: the notes at the bottom are behind one "About these numbers" line (hover it).
+- Pages with several bosses or raid modes put the counts under the name ("184 raids · 182 Normal · 2 CM", "Rex 300 · Prime 300 · Supreme 300"); hover for the full names.
+
+*A cleaner look*
+- **Colours have one job each:** green to red only means luck; orange is only for headers, tabs and links; "Any unique" is white instead of yellow; purple is only for raid loot.
+- **Lists of bosses and items** show the name with a coloured verdict on the right and a dry-to-spooned scale with a marker underneath, instead of a bar that looked like progress. Rows you can click light up when you hover them.
+- Bigger, bold verdicts in the Uniques and GP value tiles at the top of every page.
+- In Recent, hovering a boss under Today or Last 7 days names its uniques ("Tyrannical ring"); the total line names them all with their boss.
+- Bigger item and boss pictures, and names and numbers in the lists use a bigger font. In Recent, the boss names are bigger too, and clicking a boss in Today or Last 7 days opens its page.
+- Sorted by **Longest dry streak**, the streak is white while it's normal, orange when it's long and red when it's very long.
+- A small **ITEMS** header explains the white line on the item bars ("expected by now").
+- **Easier to read:** the darkest grey text is gone; hints and notes are a lighter grey with an (i) mark.
+- **Driest / Luckiest / Pets** is a switch with the selected one highlighted.
+- The same spacing everywhere, slightly tighter item rows, and every hover text has the same layout: a bold title, the numbers, and a grey footnote.
+- **No more asterisk** on raids and team bosses: "est." next to the expected number says the rates are an estimate, and the hover says why.
+
+**Update of 19 October 2026**
 
 *Easier for new players*
 - A boss whose collection log page isn't loaded yet says **Not synced** instead of "Very dry", and doesn't count in your account until it's loaded. The account overview says which bosses are waiting.

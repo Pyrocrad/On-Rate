@@ -5,16 +5,17 @@
 > Built on the idea of the [Delve Calculator](https://github.com/Speaax/Delve-calculator) by Speaax, which does this for Doom of Mokhaiotl. If you mainly do Doom, install it too. See [Credits](#credits).
 
 <p>
-<img src="docs/boss-page.png" width="240" alt="Boss page: Chambers of Xeric">
-<img src="docs/account-overview.png" width="230" alt="Account overview">
+<img src="docs/boss-page.png" width="239" alt="Boss page: Chambers of Xeric, with the Uniques and GP value verdicts and every item against what you should have by now">
+<img src="docs/account-overview.png" width="229" alt="Account overview: your whole account's verdicts, luck over time and every boss sorted driest first">
+<img src="docs/account-items.png" width="240" alt="Account overview, Items tab: your driest items across every boss">
 </p>
 
 ## Features
 
 - **Every boss and raid** in the Bosses and Raids tabs of the collection log, over 50 in total, including Doom of Mokhaiotl per delve level.
-- **A verdict per boss**, from *Very dry* to *Very spooned*, and how you compare with other players at the same kill count.
-- **Account overview:** all your bosses added up, your driest and luckiest items and pets, your latest drops, and **GE value luck** (a twisted bow counts for more than a pile of cheap drops).
-- **Hover any item** for its drop rate, your dry streak, your chance in the next 100 kills and your luck in plain words.
+- **Two verdicts per boss**, from *Very dry* to *Very spooned*: how many uniques you got, and what they're worth in GP. Plus how you compare with other players at the same kill count.
+- **Account overview:** all your bosses added up, your driest and luckiest items and pets, and what you killed and got today and this week.
+- **Hover any item** for its drop rate, your dry streak, how far past the drop rate you are and how many players have fewer or more.
 - **History** per boss: the kills On Rate saw and what they dropped.
 - **Uses your raid points** for each raid's purple chance, and **counts your team** at Nex, Yama, the Hueycoatl and Corp.
 - **Imports your past drops** from the collection log, then updates by itself after every kill.
