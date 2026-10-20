@@ -5,8 +5,8 @@
 > Built on the idea of the [Delve Calculator](https://github.com/Speaax/Delve-calculator) by Speaax, which does this for Doom of Mokhaiotl. If you mainly do Doom, install it too. See [Credits](#credits).
 
 <p>
-<img src="docs/boss-page.png" width="239" alt="Boss page: Chambers of Xeric, with the Uniques and GP value verdicts and every item against what you should have by now">
-<img src="docs/account-overview.png" width="229" alt="Account overview: your whole account's verdicts, luck over time and every boss sorted driest first">
+<img src="docs/chambers-of-xeric.png" width="239" alt="Boss page: Chambers of Xeric, with the Uniques and GP value verdicts and every item against what you should have by now">
+<img src="docs/account-bosses.png" width="229" alt="Account overview: your whole account's verdicts, luck over time and every boss sorted driest first">
 <img src="docs/account-items.png" width="240" alt="Account overview, Items tab: your driest items across every boss">
 </p>
 
