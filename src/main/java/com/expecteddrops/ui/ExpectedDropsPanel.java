@@ -890,8 +890,18 @@ public class ExpectedDropsPanel extends PluginPanel
 			}
 			java.util.Map<Integer, Integer> seen = tracker.teamKills(stats.getBoss().getName());
 			int older = Math.max(0, stats.getKillCount() - seen.values().stream().mapToInt(Integer::intValue).sum());
-			String olderNote = stats.getBoss().getTeam() == null ? null
-				: raidSettings.get().contributionNote(stats.getBoss().getTeam(), older);
+			String olderNote;
+			if (stats.getBoss().getTeam() != null)
+			{
+				olderNote = raidSettings.get().contributionNote(stats.getBoss().getTeam(), older);
+			}
+			else
+			{
+				// fixed when On Rate started counting: the team it saw first
+				Double share = tracker.olderShare(stats.getBoss().getName());
+				olderNote = share == null || share <= 0 ? null
+					: String.format("Counted at the team On Rate first saw (%.1f players).", 1 / share);
+			}
 			note.append(teamSizeNote(seen, stats.getKillCount(), olderNote));
 		}
 		if (stats.getBoss().getNote() != null)

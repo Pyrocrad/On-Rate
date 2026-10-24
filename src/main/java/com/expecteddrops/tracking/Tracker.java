@@ -680,10 +680,17 @@ public class Tracker
 		return p == null ? Collections.emptyMap() : new TreeMap<>(p.teamKills);
 	}
 
+	/** The share the kills from before team counting use at a group boss, or null while they count as solo. */
+	public synchronized Double olderShare(String bossName)
+	{
+		BossProgress p = state.peek(bossName);
+		return p == null ? null : p.olderShare;
+	}
+
 	/**
 	 * Your share of the kills at a group boss: a kill with 4 players counts as a quarter.
-	 * Kills On Rate didn't see (before it counted teams) count as solo, or as the boss's
-	 * solo/duo setting says (Yama).
+	 * Kills On Rate didn't see (before it counted teams) count at the share it saw when it
+	 * started counting, or as the boss's solo/duo setting says (Yama).
 	 */
 	private static double sharedKills(BossDefinition boss, BossProgress p, int kc, RaidSettings raids)
 	{

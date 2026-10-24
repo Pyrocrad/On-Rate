@@ -635,6 +635,7 @@ public class TrackerTest
 		assertEquals(240, s.getKillCount());
 		// one seed roll per kill for a team of 10, the older kills at the team first seen
 		assertEquals(240 * 39 / 8000.0 / 10, row(s, "Crystal tool seed").getExpected(), 1e-9);
+		assertEquals(0.1, tracker.olderShare("Zalcano"), 1e-9);
 		// the trip is what its own kills add, not the older kills changing share
 		TripStats trip = tracker.tripStats();
 		assertEquals(40, trip.getKills());

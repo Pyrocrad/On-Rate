@@ -36,6 +36,8 @@ public class PanelTextTest
 		seen.put(4, 10);
 		String note = ExpectedDropsPanel.teamSizeNote(seen, 120);
 		assertTrue(note, note.contains("20 of your kills") && note.contains("3.0 players") && note.contains("100 earlier kills"));
+		note = ExpectedDropsPanel.teamSizeNote(seen, 120, "Counted at the team On Rate first saw (3.0 players).");
+		assertTrue(note, note.contains("100 earlier kills: counted at the team On Rate first saw") && !note.contains("solo"));
 	}
 
 	@Test
