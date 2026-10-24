@@ -72,6 +72,7 @@ final class ProfileStore
 			catch (Exception e)
 			{
 				log.warn("Could not read saved On Rate data, starting fresh", e);
+				backup(ExpectedDropsPlugin.DATA_KEY, json);
 			}
 		}
 		tracker.setState(state);
@@ -89,6 +90,7 @@ final class ProfileStore
 			catch (Exception e)
 			{
 				log.warn("Could not read the saved On Rate history of {}", boss.getName(), e);
+				backup(ExpectedDropsPlugin.killsKey(boss.getName()), kills);
 			}
 		}
 		for (com.expecteddrops.data.BossDefinition boss : tracker.getCatalog().getBosses())
@@ -109,6 +111,7 @@ final class ProfileStore
 			catch (Exception e)
 			{
 				log.warn("Could not read the saved On Rate raids of {}", boss.getName(), e);
+				backup(ExpectedDropsPlugin.raidsKey(boss.getName()), raids);
 			}
 		}
 		return true;
