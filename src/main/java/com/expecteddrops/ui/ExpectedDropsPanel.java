@@ -857,7 +857,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				counted.add(stats.getRows().get(i));
 			}
 		}
-		showTiles(unsynced ? null : any, value, lastValueTip, raid ? "purples" : "uniques", counted);
+		showTiles(unsynced ? null : any, value, lastValueTip, raid ? "purples" : "uniques", counted, true);
 		lastHintTip = null;
 		String hint = unsynced ? null : settingsHint(stats);
 		Color hintColor = ColorScheme.LIGHT_GRAY_COLOR;
@@ -1028,12 +1028,16 @@ public class ExpectedDropsPanel extends PluginPanel
 	/** The notable line set by the last {@link #showTiles}, or null. */
 	private String notableText;
 
-	private void showTiles(RowStats any, double[] value, String valueTip, String what, List<RowStats> items)
+	private void showTiles(RowStats any, double[] value, String valueTip, String what, List<RowStats> items,
+		boolean bossPage)
 	{
 		double luck = any == null ? Double.NaN : any.getLuck();
 		boolean tiles = !Double.isNaN(luck) && !DropMath.verdict(luck).isEmpty();
+		// a boss page with next to nothing expected says so instead of a verdict (the account overview
+		// adds up every boss and keeps its verdicts)
+		boolean early = bossPage && tiles && any.getExpected() < Texts.TOO_EARLY_BELOW;
 		// "On rate" says little by itself: one notable fact under it, when there is one
-		String notable = DropMath.VERDICTS.get(3).equals(DropMath.verdict(luck)) ? Texts.notableLine(items) : null;
+		String notable = !early && DropMath.VERDICTS.get(3).equals(DropMath.verdict(luck)) ? Texts.notableLine(items) : null;
 		notableText = notable;
 		notableLabel.setText(notable == null ? "" : "<html><body style='width: 165px'>" + html(notable) + "</body></html>");
 		notableLabel.setVisible(notable != null);
@@ -1046,13 +1050,24 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		verdictTiles.removeAll();
 		verdictTiles.setLayout(new GridLayout(1, value == null ? 1 : 2, 4, 0));
-		uniquesTile.set(DropMath.verdict(luck), luckColor(luck).brighter(),
+		String verdict = early ? "Too early" : DropMath.verdict(luck);
+		Tip uniquesTip = new Tip(String.format("Uniques \u00b7 %s", verdict))
+			.line(String.format("Got %,d %s, expected %s by now", any.getReceived(), what, formatExpected(any.getExpected())));
+		if (early)
+		{
+			uniquesTip.line("Less than half a " + (what.equals("purples") ? "purple" : "unique")
+				+ " expected so far: too early to say if you are dry or lucky.");
+		}
+		else
+		{
+			uniquesTip.line(capital(luckPercent(any.getShares(), any.getReceived())))
+				.line(sharesLine(any.getShares(), any.getReceived()));
+		}
+		uniquesTile.set(verdict,
+			early ? Theme.TEXT_MUTED : (bossPage ? Palette.verdict(luck) : luckColor(luck)).brighter(),
 			String.format("%,d / %s%s", any.getReceived(), formatExpected(any.getExpected()), estimateNote == null ? "" : " est."),
-			luckShort(any.getShares(), any.getReceived()),
-			new Tip(String.format("Uniques \u00b7 %s", DropMath.verdict(luck)))
-				.line(String.format("Got %,d %s, expected %s by now", any.getReceived(), what, formatExpected(any.getExpected())))
-				.line(capital(luckPercent(any.getShares(), any.getReceived())))
-				.line(sharesLine(any.getShares(), any.getReceived()))
+			early ? "Too few " + (what.equals("purples") ? "raids" : "kills") : luckShort(any.getShares(), any.getReceived()),
+			uniquesTip
 				.note("Counts how many " + what + ", not what they're worth: a twisted bow counts the same as a prayer scroll. "
 					+ "Dry when fewer than 35% of players have this many or fewer (very dry: 10%); spooned when fewer than 35% "
 					+ "have this many or more (very spooned: 10%). In between: a bit dry, on rate or a bit spooned.")
@@ -1061,9 +1076,10 @@ public class ExpectedDropsPanel extends PluginPanel
 		verdictTiles.add(uniquesTile);
 		if (value != null)
 		{
-			valueTile.set(DropMath.verdict(value[2]), luckColor(value[2]).brighter(),
+			valueTile.set(early ? "Too early" : DropMath.verdict(value[2]),
+				early ? Theme.TEXT_MUTED : (bossPage ? Palette.verdict(value[2]) : luckColor(value[2])).brighter(),
 				DropMath.formatGp(value[0]) + " / " + DropMath.formatGp(value[1]),
-				luckShort(value[2]), valueTip);
+				early ? "" : luckShort(value[2]), valueTip);
 			verdictTiles.add(valueTile);
 		}
 		verdictTiles.setMaximumSize(new Dimension(Integer.MAX_VALUE, verdictTiles.getPreferredSize().height));
@@ -1157,7 +1173,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			accountItems.add(h.getRow());
 		}
-		showTiles(account.getRows().isEmpty() ? null : total, accountValue, valueTooltip(account), "uniques", accountItems);
+		showTiles(account.getRows().isEmpty() ? null : total, accountValue, valueTooltip(account), "uniques", accountItems, false);
 
 		showLastUnique();
 		if (notableText != null && lastUniqueText != null)

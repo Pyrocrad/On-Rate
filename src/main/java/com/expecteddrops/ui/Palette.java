@@ -45,6 +45,17 @@ public final class Palette
 		return blend(mid, good, (luck - 0.5) / 0.5);
 	}
 
+	/**
+	 * The verdict colour on a boss page: the dry and spooned bands (a third of players each) are
+	 * toned down, so only very dry and very spooned get the full colour.
+	 */
+	static Color verdict(double luck)
+	{
+		Color c = luck(luck);
+		boolean mild = !Double.isNaN(luck) && (luck >= 0.10 && luck < 0.35 || luck > 0.65 && luck <= 0.90);
+		return mild ? blend(c, new Color(170, 170, 170), 0.3) : c;
+	}
+
 	/** The "you have it" colour. */
 	public static Color good()
 	{

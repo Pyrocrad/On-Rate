@@ -357,6 +357,12 @@ final class Texts
 			: String.format("1 in %,d as lucky", Math.max(2, Math.round(1 / (1 - luck))));
 	}
 
+	/**
+	 * Below this many expected uniques a boss page says "Too early" instead of a verdict: a
+	 * handful of kills can't tell dry from lucky.
+	 */
+	static final double TOO_EARLY_BELOW = 0.5;
+
 	/** How far out a dry or lucky item must be to be worth a sentence: 8 in 10 players. */
 	static final double NOTABLE_SHARE = 0.80;
 	/** An item you don't have yet is worth a sentence once this many players would have it. */

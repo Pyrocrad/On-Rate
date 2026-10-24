@@ -3,6 +3,7 @@
 **Next update**
 - **Clearer panel:**
   - **ITEMS legend:** reads "bar = got · line = expected", and its hover says you can right-click an item to leave it out.
+  - **Too early:** a boss page with less than half a unique expected says "Too early" instead of a verdict, because a few kills can't tell dry from lucky. "Dry" and "Spooned" are drawn in a quieter colour than "Very dry" and "Very spooned" on boss pages. The account overview keeps its verdicts as they were.
   - **Expected tab:** the progress bars are one neutral colour. They show how far you are to the next expected unique, not luck.
   - **Account overview:** the **Account** button is now a bold **‹ Account** link next to the **?** on boss pages, and the header is one line. The sort stays right above the bosses, and the notable line and the last unique are one block.
   - **Luck graph:** the axis says *Spooned*, *On rate* and *Dry*, the line is neutral (the bands carry the colour), the day under the mouse is marked, the latest verdict is written beside the last point and a middle date shows when there's room. It needs two days of history before it draws.
