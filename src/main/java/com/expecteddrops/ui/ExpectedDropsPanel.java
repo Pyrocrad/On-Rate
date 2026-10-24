@@ -1913,6 +1913,7 @@ public class ExpectedDropsPanel extends PluginPanel
 	{
 		List<Double> lambdas = new ArrayList<>();
 		List<Long> itemPrices = new ArrayList<>();
+		List<Integer> itemCaps = new ArrayList<>();
 		double expected = 0;
 		long received = 0;
 		for (int i = 0; i < stats.getBoss().getDrops().size(); i++)
@@ -1926,7 +1927,9 @@ public class ExpectedDropsPanel extends PluginPanel
 			}
 			lambdas.add(row.getExpected());
 			itemPrices.add(price);
-			expected += row.getExpected() * price;
+			itemCaps.add(row.getCap());
+			// at most the copies that count (a scroll you can only have once)
+			expected += DropMath.expectedValue(row.getExpected(), row.getCap()) * price;
 			received += row.getReceived() * price;
 		}
 		if (expected <= 0)
@@ -1935,12 +1938,14 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		double[] l = new double[lambdas.size()];
 		long[] p = new long[itemPrices.size()];
+		int[] c = new int[itemCaps.size()];
 		for (int i = 0; i < l.length; i++)
 		{
 			l[i] = lambdas.get(i);
 			p[i] = itemPrices.get(i);
+			c[i] = itemCaps.get(i);
 		}
-		double luck = DropMath.valueLuck(l, p, received, 5000, 1234567L);
+		double luck = DropMath.valueLuck(l, p, c, received, 5000, 1234567L);
 		if (Double.isNaN(luck))
 		{
 			return null;
@@ -3488,8 +3493,16 @@ public class ExpectedDropsPanel extends PluginPanel
 		tip.line(rateMultipleLine(row));
 		if (!row.isAny() && row.getRate() > 0 && (drop == null || (!drop.hasLevelRates() && !drop.hasPartRates())))
 		{
-			tip.line(String.format("50%% / 90%% chance by %,d / %,d %ss",
-				DropMath.killsForChance(row.getRate(), 0.5), DropMath.killsForChance(row.getRate(), 0.9), unit));
+			long half = DropMath.killsForChance(row.getRate(), 0.5);
+			long most = DropMath.killsForChance(row.getRate(), 0.9);
+			Integer sure = drop == null ? null : drop.getGuaranteedAt();
+			if (sure != null)
+			{
+				// the guaranteed kill makes it certain by then (Vorkath's 50th)
+				half = Math.min(half, sure);
+				most = Math.min(most, sure);
+			}
+			tip.line(String.format("50%% / 90%% chance by %,d / %,d %ss", half, most, unit));
 		}
 		tip.note(streakNote(row, unit));
 		if (row.getFastest() != null)

@@ -2599,6 +2599,7 @@ public class Tracker
 		List<RowStats> rows = new ArrayList<>();
 		double anyExpected = 0;
 		int anyReceived = 0;
+		RowStats.Parts anyParts = new RowStats.Parts();
 		// each raid mode's saved raids, added up once for all its items
 		Map<String, PartRaids> partRaids = new HashMap<>();
 		if (parts != null)
@@ -2612,6 +2613,7 @@ public class Tracker
 		{
 			double expected;
 			double rate;
+			boolean sureDropped = false;
 			if (parts != null)
 			{
 				expected = 0;
@@ -2665,6 +2667,7 @@ public class Tracker
 				{
 					// that kill's roll was a sure drop instead of a chance
 					expected += 1 - effectiveRate(boss, drop, raids);
+					sureDropped = true;
 				}
 			}
 			int received = 0;
@@ -2682,6 +2685,11 @@ public class Tracker
 				}
 			}
 			RowStats row = new RowStats(drop.getDisplayName(), drop.getName(), rate, expected, received, false);
+			if (sureDropped)
+			{
+				// one copy is certain, the rest is chance: nobody at this kill count has none
+				row.withParts(new RowStats.Parts().addSure(1).addPlain(Math.max(0, expected - 1)));
+			}
 			if (!(drop.getMax() > 0 && received >= drop.getMax()))
 			{
 				Integer last = null;
@@ -2742,9 +2750,11 @@ public class Tracker
 				// For once-only items the total counts the chance of having one by now.
 				anyExpected += drop.getMax() > 0 ? DropMath.expectedCapped(expected, drop.getMax()) : expected;
 				anyReceived += received;
+				// and its luck adds up each item as it counts, not a Poisson of the total
+				anyParts.add(row);
 			}
 		}
-		RowStats any = new RowStats("Any", null, 0, anyExpected, anyReceived, true);
+		RowStats any = new RowStats("Any", null, 0, anyExpected, anyReceived, true).withParts(anyParts);
 		// "Any" streak: kills since the most recent unique On Rate knows of.
 		double anyRate = 0;
 		Integer lastAny = null;
@@ -2812,6 +2822,8 @@ public class Tracker
 		Map<String, Integer> killCounts = new LinkedHashMap<>();
 		double expected = 0;
 		int received = 0;
+		RowStats.Parts totalParts = new RowStats.Parts();
+		List<Integer> valueCaps = new ArrayList<>();
 		// every boss's numbers worked out once, then shared with the shared-items pass
 		Map<String, BossStats> cache = new HashMap<>();
 		List<String> unsynced = new ArrayList<>();
@@ -2831,7 +2843,7 @@ public class Tracker
 				continue;
 			}
 			RowStats bossRow = new RowStats(boss.getName(), iconFor(boss), 0, any.getExpected(), any.getReceived(), false)
-				.withRate(any.getRate()).withStreak(any.getStreak(), any.isStreakExact());
+				.withRate(any.getRate()).withStreak(any.getStreak(), any.isStreakExact()).withParts(any.getParts());
 			BossProgress progress = state.peek(boss.getName());
 			double driest = Double.NaN;
 			String driestItem = null;
@@ -2870,13 +2882,15 @@ public class Tracker
 					}
 					valueExpected.add(row.getExpected());
 					valuePrices.add(price);
-					expectedValue += row.getExpected() * price;
+					valueCaps.add(row.getCap());
+					expectedValue += DropMath.expectedValue(row.getExpected(), row.getCap()) * price;
 					receivedValue += row.getReceived() * price;
 				}
 			}
 			killCounts.put(boss.getName(), s.getKillCount());
 			expected += any.getExpected();
 			received += any.getReceived();
+			totalParts.add(any);
 		}
 		// Items several bosses drop (dragon pickaxe, onyx...) have no row of their own here (they
 		// show on the page of each boss that drops them), but they count in the account verdict
@@ -2887,28 +2901,28 @@ public class Tracker
 			{
 				// a pet several bosses drop (the Chaos elemental's): one entry in the Items tab's
 				// pets, judged on all those bosses together, "have it or not" like every pet
-				// (the pool keeps a pet as its chance of one by now; the row wants the expected count)
-				double lambda = -Math.log(Math.max(1e-12, 1 - Math.min(pool.getExpected(), 1 - 1e-12)));
-				RowStats row = new RowStats(pool.getLabel(), pool.getItemName(), 0, lambda, Math.min(1, pool.getReceived()), false);
-				items.add(new ItemHighlight(null, row.capped(1, Math.min(1, pool.getReceived())), true));
+				items.add(new ItemHighlight(null, pool.toRow(), true));
 			}
 			if (!pool.isComplete())
 			{
 				continue;
 			}
-			expected += pool.getExpected();
-			received += pool.getReceived();
+			RowStats poolRow = pool.toRow();
+			expected += pool.getCountedExpected();
+			received += poolRow.getReceived();
+			totalParts.add(poolRow);
 			long price = prices == null ? 0 : Math.max(0, prices.applyAsLong(pool.getItemName()));
 			if (price > 0)
 			{
 				valueExpected.add(pool.getExpected());
 				valuePrices.add(price);
-				expectedValue += pool.getExpected() * price;
-				receivedValue += pool.getReceived() * price;
+				valueCaps.add(poolRow.getCap());
+				expectedValue += pool.getCountedExpected() * price;
+				receivedValue += poolRow.getReceived() * price;
 			}
 		}
 		rows.sort((a, b) -> Double.compare(b.getExpected(), a.getExpected()));
-		RowStats total = new RowStats("All", null, 0, expected, received, true);
+		RowStats total = new RowStats("All", null, 0, expected, received, true).withParts(totalParts);
 		AccountStats account = new AccountStats(total, rows, killCounts);
 		account.setUnsynced(unsynced);
 		account.setItems(items);
@@ -2916,12 +2930,14 @@ public class Tracker
 		{
 			double[] lambdas = new double[valueExpected.size()];
 			long[] itemPrices = new long[valuePrices.size()];
+			int[] itemCaps = new int[valueCaps.size()];
 			for (int i = 0; i < lambdas.length; i++)
 			{
 				lambdas[i] = valueExpected.get(i);
 				itemPrices[i] = valuePrices.get(i);
+				itemCaps[i] = valueCaps.get(i);
 			}
-			double luck = DropMath.valueLuck(lambdas, itemPrices, receivedValue, 5000, 1234567L);
+			double luck = DropMath.valueLuck(lambdas, itemPrices, itemCaps, receivedValue, 5000, 1234567L);
 			account.setValue(expectedValue, receivedValue, luck);
 		}
 		return account;
@@ -3010,10 +3026,9 @@ public class Tracker
 			int got = logTotal == null ? 0 : logTotal;
 			if (once)
 			{
-				expected = DropMath.chanceAtLeastOne(expected);
 				got = Math.min(got, 1);
 			}
-			result.add(new SharedPool(label, itemName, expected, got, bosses, missing).withLogKnown(logTotal != null));
+			result.add(new SharedPool(label, itemName, expected, got, bosses, missing).withLogKnown(logTotal != null).withOnce(once));
 		}
 		return result;
 	}

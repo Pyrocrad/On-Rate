@@ -109,6 +109,94 @@ public final class DropMath
 		return new double[]{below, Math.max(0, same)};
 	}
 
+	/**
+	 * {share with fewer, share with the same} for a total made of several items: {@code sure}
+	 * copies that drop for certain (Vorkath's 50th kill), a part with no limit ({@code plain}
+	 * expected) and items of which at most {@code caps[i]} count (pets, titan scrolls), each with
+	 * its uncapped expected {@code cappedMeans[i]}. A capped item's count isn't Poisson, so the
+	 * total isn't either: this adds up the exact distributions. Null when nothing is expected.
+	 */
+	public static double[] sharesSum(int received, int sure, double plain, double[] cappedMeans, int[] caps)
+	{
+		int n = cappedMeans == null ? 0 : cappedMeans.length;
+		if (n == 0 && sure <= 0)
+		{
+			return shares(received, plain);
+		}
+		double total = Math.max(0, sure) + (Double.isNaN(plain) ? 0 : Math.max(0, plain));
+		for (int i = 0; i < n; i++)
+		{
+			total += expectedCapped(cappedMeans[i], caps[i]);
+		}
+		if (!(total > 0))
+		{
+			return null;
+		}
+		int r = Math.max(received, 0) - Math.max(0, sure);
+		if (r < 0)
+		{
+			// fewer than the sure copies: nobody has as few
+			return new double[]{0, 0};
+		}
+		// only counts up to r matter for "fewer" and "the same"
+		double[] pmf = poissonPmf(Double.isNaN(plain) ? 0 : plain, r);
+		for (int i = 0; i < n; i++)
+		{
+			if (!(cappedMeans[i] > 0) || caps[i] <= 0)
+			{
+				continue;
+			}
+			double[] item = poissonPmf(cappedMeans[i], caps[i]);
+			double rest = 1;
+			for (int k = 0; k < caps[i]; k++)
+			{
+				rest -= item[k];
+			}
+			item[caps[i]] = Math.max(0, rest);
+			double[] next = new double[r + 1];
+			for (int a = 0; a <= r; a++)
+			{
+				if (pmf[a] == 0)
+				{
+					continue;
+				}
+				for (int b = 0; b <= caps[i] && a + b <= r; b++)
+				{
+					next[a + b] += pmf[a] * item[b];
+				}
+			}
+			pmf = next;
+		}
+		double below = 0;
+		for (int k = 0; k < r; k++)
+		{
+			below += pmf[k];
+		}
+		return new double[]{Math.min(1, below), Math.min(1, pmf[r])};
+	}
+
+	/** Poisson probabilities of 0..{@code max} with this mean (all of it at 0 for a mean of 0). */
+	private static double[] poissonPmf(double mean, int max)
+	{
+		double[] pmf = new double[max + 1];
+		if (!(mean > 0))
+		{
+			pmf[0] = 1;
+			return pmf;
+		}
+		double logMean = Math.log(mean);
+		double logFactorial = 0;
+		for (int k = 0; k <= max; k++)
+		{
+			if (k > 0)
+			{
+				logFactorial += Math.log(k);
+			}
+			pmf[k] = Math.exp(-mean + k * logMean - logFactorial);
+		}
+		return pmf;
+	}
+
 	/** {share with fewer, share with the same} for a plain (uncapped) count; null when nothing is expected. */
 	public static double[] shares(int received, double expected)
 	{
@@ -276,6 +364,15 @@ public final class DropMath
 	 */
 	public static double valueLuck(double[] expected, long[] prices, long received, int samples, long seed)
 	{
+		return valueLuck(expected, prices, null, received, samples, seed);
+	}
+
+	/**
+	 * Same, where at most {@code caps[i]} copies of an item count (0 for no limit; {@code caps}
+	 * may be null): a capped item never adds more than its cap times its price.
+	 */
+	public static double valueLuck(double[] expected, long[] prices, int[] caps, long received, int samples, long seed)
+	{
 		// Only items with a price and a chance take part; keeping them in the same order means
 		// the random numbers, and so the result, are the same as drawing for every item.
 		int n = 0;
@@ -284,7 +381,7 @@ public final class DropMath
 		{
 			if (prices[i] > 0)
 			{
-				total += expected[i] * prices[i];
+				total += expectedValue(expected[i], caps == null ? 0 : caps[i]) * prices[i];
 				if (expected[i] > 0)
 				{
 					n++;
@@ -298,6 +395,7 @@ public final class DropMath
 		double[] means = new double[n];
 		double[] limits = new double[n];
 		long[] values = new long[n];
+		int[] itemCaps = new int[n];
 		int j = 0;
 		for (int i = 0; i < expected.length; i++)
 		{
@@ -306,10 +404,11 @@ public final class DropMath
 				means[j] = expected[i];
 				limits[j] = Math.exp(-expected[i]);
 				values[j] = prices[i];
+				itemCaps[j] = caps == null ? 0 : Math.max(0, caps[i]);
 				j++;
 			}
 		}
-		ValueKey key = new ValueKey(means, values, received, samples, seed);
+		ValueKey key = new ValueKey(means, values, itemCaps, received, samples, seed);
 		synchronized (VALUE_CACHE)
 		{
 			Double cached = VALUE_CACHE.get(key);
@@ -326,7 +425,12 @@ public final class DropMath
 			long value = 0;
 			for (int i = 0; i < n; i++)
 			{
-				value += poisson(random, means[i], limits[i]) * values[i];
+				long copies = poisson(random, means[i], limits[i]);
+				if (itemCaps[i] > 0)
+				{
+					copies = Math.min(copies, itemCaps[i]);
+				}
+				value += copies * values[i];
 			}
 			if (value < received)
 			{
@@ -359,23 +463,32 @@ public final class DropMath
 		}
 	};
 
+	/** Expected copies that count: the plain expected, or E[min(X, cap)] when at most {@code cap} count. */
+	public static double expectedValue(double expected, int cap)
+	{
+		return cap > 0 ? expectedCapped(expected, cap) : expected;
+	}
+
 	private static final class ValueKey
 	{
 		private final double[] means;
 		private final long[] values;
+		private final int[] caps;
 		private final long received;
 		private final int samples;
 		private final long seed;
 		private final int hash;
 
-		ValueKey(double[] means, long[] values, long received, int samples, long seed)
+		ValueKey(double[] means, long[] values, int[] caps, long received, int samples, long seed)
 		{
 			this.means = means;
 			this.values = values;
+			this.caps = caps;
 			this.received = received;
 			this.samples = samples;
 			this.seed = seed;
-			this.hash = java.util.Objects.hash(java.util.Arrays.hashCode(means), java.util.Arrays.hashCode(values), received, samples, seed);
+			this.hash = java.util.Objects.hash(java.util.Arrays.hashCode(means), java.util.Arrays.hashCode(values),
+				java.util.Arrays.hashCode(caps), received, samples, seed);
 		}
 
 		@Override
@@ -387,7 +500,8 @@ public final class DropMath
 			}
 			ValueKey k = (ValueKey) o;
 			return hash == k.hash && received == k.received && samples == k.samples && seed == k.seed
-				&& java.util.Arrays.equals(means, k.means) && java.util.Arrays.equals(values, k.values);
+				&& java.util.Arrays.equals(means, k.means) && java.util.Arrays.equals(values, k.values)
+				&& java.util.Arrays.equals(caps, k.caps);
 		}
 
 		@Override
