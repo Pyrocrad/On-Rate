@@ -43,8 +43,11 @@ import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.ScriptPostFired;
+import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.VarPlayerID;
+import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.ChatColorType;
@@ -181,6 +184,12 @@ public class ExpectedDropsPlugin extends Plugin
 		tracker.setTeamSizeDetector(() -> config.detectTeamSize() ? playersAround() : 0);
 		panel = new ExpectedDropsPanel(tracker, itemManager, this::raidSettings, this::itemIdFor, this::save,
 			config::showWelcome, this::dismissWelcome, this::priceOf, this::viewOptions);
+		panel.setGraphOpener(open -> configManager.setConfiguration(ExpectedDropsConfig.GROUP, "showLuckGraph", String.valueOf(open)));
+		panel.setItemViewChanger(view -> configManager.setConfiguration(ExpectedDropsConfig.GROUP, "itemView", view.name()));
+		panel.setOverlayOffer(config::showOverlay,
+			() -> "true".equals(configManager.getRSProfileConfiguration(ExpectedDropsConfig.GROUP, OVERLAY_OFFER_KEY)),
+			() -> configManager.setRSProfileConfiguration(ExpectedDropsConfig.GROUP, OVERLAY_OFFER_KEY, "true"),
+			() -> configManager.setConfiguration(ExpectedDropsConfig.GROUP, "showOverlay", "true"));
 
 		BufferedImage icon = ImageUtil.loadImageResource(getClass(), "panel_icon.png");
 		navButton = NavigationButton.builder()
@@ -238,6 +247,8 @@ public class ExpectedDropsPlugin extends Plugin
 
 	/** Saved once On Rate has opened its panel for a new player. */
 	private static final String FIRST_RUN_KEY = "firstRunDone";
+	/** Per account: the one-time offer of the in-game overlay was seen (see ExpectedDropsPanel#setOverlayOffer). */
+	private static final String OVERLAY_OFFER_KEY = "overlayOfferSeen";
 
 	/**
 	 * The very first time On Rate starts for a player, open its panel so they see the
@@ -496,10 +507,64 @@ public class ExpectedDropsPlugin extends Plugin
 	@Subscribe
 	public void onGameStateChanged(GameStateChanged event)
 	{
+		if (event.getGameState() == GameState.LOGIN_SCREEN || event.getGameState() == GameState.HOPPING)
+		{
+			// a new login sends the counters again: that's not collecting rewards
+			lastRewards.clear();
+		}
 		if (event.getGameState() == GameState.LOGGED_IN)
 		{
 			loadProfile();
 			resolveItemIds();
+		}
+	}
+
+	/**
+	 * Content with loot per reward roll: its boss name, the game's counter of rewards not
+	 * collected yet (permits, cart rewards) and its total subdues.
+	 */
+	private static final Object[][] ROLL_COUNTERS = {
+		{"Tempoross", VarbitID.TEMPOROSS_REWARDPERMITS, VarPlayerID.TOTAL_TEMPOROSS_KILLS},
+		{"Wintertodt", VarbitID.WINT_REWARD_POOL, VarPlayerID.TOTAL_WINTERTODT_KILLS},
+	};
+
+	/** Each roll counter's value last seen this login; a drop means rewards were collected. */
+	private final java.util.Map<String, Integer> lastRewards = new java.util.HashMap<>();
+
+	@Subscribe
+	public void onVarbitChanged(VarbitChanged event)
+	{
+		if (tracker == null)
+		{
+			return;
+		}
+		for (Object[] c : ROLL_COUNTERS)
+		{
+			String boss = (String) c[0];
+			int rewardsVarbit = (Integer) c[1];
+			int subduesVarp = (Integer) c[2];
+			if (event.getVarbitId() != rewardsVarbit && event.getVarpId() != subduesVarp)
+			{
+				continue;
+			}
+			int held = client.getVarbitValue(rewardsVarbit);
+			int subdues = client.getVarpValue(subduesVarp);
+			String baseline = tracker.onRollBaseline(boss, subdues, held);
+			if (baseline != null)
+			{
+				changed(baseline, false);
+			}
+			Integer last = lastRewards.get(boss);
+			if (last != null && held < last)
+			{
+				// each reward collected is one reward roll
+				String rolled = tracker.onRewardRolls(boss, last - held, System.currentTimeMillis());
+				if (rolled != null)
+				{
+					changed(rolled, true);
+				}
+			}
+			lastRewards.put(boss, held);
 		}
 	}
 
@@ -702,8 +767,8 @@ public class ExpectedDropsPlugin extends Plugin
 	{
 		for (com.expecteddrops.tracking.Note note : tracker.drainNotes())
 		{
-			boolean wanted = note.getKind() == com.expecteddrops.tracking.Note.Kind.DROP
-				? config.dropMessages() : config.milestoneMessages();
+			boolean wanted = note.getKind() == com.expecteddrops.tracking.Note.Kind.MILESTONE
+				? config.milestoneMessages() : config.dropMessages();
 			if (wanted)
 			{
 				postChat(note.getText());

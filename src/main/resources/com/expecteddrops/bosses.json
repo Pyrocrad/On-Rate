@@ -40,7 +40,7 @@
         {"name": "Noxious point", "rate": "1/600"},
         {"name": "Noxious blade", "rate": "1/600"},
         {"name": "Noxious pommel", "rate": "1/600"},
-        {"name": "Araxyte head", "rate": "1/250"},
+        {"name": "Araxyte head", "rate": "1/250", "alsoFrom": "araxytes"},
         {"name": "Araxyte fang", "rate": "1/600"},
         {"name": "Jar of venom", "rate": "1/1500"},
         {"name": "Nid", "rate": "1/3000", "pet": true}
@@ -106,7 +106,7 @@
         {"name": "Primordial crystal", "rate": "1/520"},
         {"name": "Pegasian crystal", "rate": "1/520"},
         {"name": "Eternal crystal", "rate": "1/520"},
-        {"name": "Smouldering stone", "rate": "1/520"},
+        {"name": "Smouldering stone", "rate": "1/520", "alsoFrom": "hellhounds"},
         {"name": "Jar of souls", "rate": "1/2000"},
         {"name": "Hellpuppy", "rate": "1/3000", "pet": true}
       ]
@@ -217,6 +217,15 @@
         {"name": "Virtus robe top", "rate": "1/2160"},
         {"name": "Virtus robe bottom", "rate": "1/2160"},
         {"name": "Baron", "rate": "1/2500", "pet": true}
+      ]
+    },
+    {
+      "name": "Fortis Colosseum", "estimate": true, "waves": 12, "kc": ["Sol Heredit"], "loot": ["Fortis Colosseum"], "clog": ["Fortis Colosseum"], "note": "Loot piles up wave by wave and is only yours when you claim it, so a run counts every wave up to the one you claimed at (dying loses it all, so those runs count for nothing). Runs from now on use the wave they were claimed at; completions from before On Rate count as wave 12 claims, and earlier claims before On Rate can't be known. Dizana's quiver is guaranteed for beating wave 12, so it isn't counted.",
+      "drops": [
+        {"name": "Echo crystal", "levelRates": {"4": "1/310", "5": "1/275", "6": "1/240", "7": "3/656", "8": "3/544", "9": "1/144", "10": "3/320", "11": "3/208", "12": "1/32"}},
+        {"name": "Sunfire fanatic helm", "label": "Sunfire fanatic armour", "match": ["Sunfire fanatic cuirass", "Sunfire fanatic chausses"], "levelRates": {"4": "3/620", "5": "3/550", "6": "3/480", "7": "9/1312", "8": "9/1088", "9": "3/288", "10": "9/640", "11": "9/416", "12": "3/64"}},
+        {"name": "Tonalztics of ralos (uncharged)", "levelRates": {"7": "1/1312", "8": "1/1088", "9": "1/864", "10": "1/640", "11": "1/416", "12": "1/192"}},
+        {"name": "Smol heredit", "pet": true, "levelRates": {"12": "1/200"}}
       ]
     },
     {
@@ -439,6 +448,17 @@
       ]
     },
     {
+      "name": "Tempoross", "estimate": true, "rollsPerKill": 4, "kc": [], "loot": ["Reward pool (Tempoross)"], "clog": ["Tempoross"], "note": "Loot comes from the reward pool, one roll per reward permit, so On Rate counts reward rolls. From now on they're counted exactly from your reward permits; rolls from before are estimated as 4 per subdue, minus the permits you hadn't spent yet. Spirit angler pieces and soaked pages aren't counted.",
+      "drops": [
+        {"name": "Fish barrel", "rate": "1/400", "max": 1},
+        {"name": "Tackle box", "rate": "1/400", "max": 1},
+        {"name": "Big harpoonfish", "rate": "1/1600"},
+        {"name": "Tome of water (empty)", "rate": "1/1600"},
+        {"name": "Dragon harpoon", "rate": "1/8000"},
+        {"name": "Tiny tempor", "rate": "1/8000", "pet": true}
+      ]
+    },
+    {
       "name": "The Gauntlet", "clog": ["The Gauntlet"], "parts": [{"name": "Gauntlet", "kc": ["Gauntlet"], "loot": []}, {"name": "Corrupted Gauntlet", "kc": ["Corrupted Gauntlet"], "loot": []}], "note": "Gauntlet loot goes to a chest the loot tracker doesn't see. New items show up from the collection log message; open this collection log page after a session to update repeat seeds.",
       "drops": [
         {"name": "Crystal armour seed", "partRates": {"Gauntlet": "1/120", "Corrupted Gauntlet": "1/50"}},
@@ -496,7 +516,7 @@
     {
       "name": "Thermonuclear Smoke Devil", "kc": ["Thermonuclear Smoke Devil", "Thermonuclear smoke devil"], "loot": ["Thermonuclear smoke devil"], "clog": ["Thermonuclear Smoke Devil"],
       "drops": [
-        {"name": "Occult necklace", "rate": "1/350"},
+        {"name": "Occult necklace", "rate": "1/350", "alsoFrom": "regular smoke devils"},
         {"name": "Smoke battlestaff", "rate": "1/512"},
         {"name": "Dragon chainbody", "rate": "1/2000"},
         {"name": "Jar of smoke", "rate": "1/2000"},
@@ -573,6 +593,17 @@
       ]
     },
     {
+      "name": "Wintertodt", "estimate": true, "rollsPerKill": 3, "kc": [], "loot": ["Reward cart (Wintertodt)", "Supply crate (Wintertodt)"], "clog": ["Wintertodt"], "note": "Loot comes from the reward cart, so On Rate counts reward rolls. From now on they're counted exactly as you search the cart; rolls from before are estimated as 3 per subdue (a 1,000-point game), minus the rewards still waiting in the cart. One roll at 1/150 gives the Pyromancer piece you have fewest of, so the outfit is one row. Warm gloves and bruma torches stop at 3 each.",
+      "drops": [
+        {"name": "Tome of fire", "rate": "1/1000", "match": ["Tome of fire (empty)"]},
+        {"name": "Pyromancer garb", "label": "Pyromancer outfit pieces", "rate": "1/150", "match": ["Pyromancer hood", "Pyromancer robe", "Pyromancer boots"]},
+        {"name": "Warm gloves", "rate": "1/150", "max": 3},
+        {"name": "Bruma torch", "rate": "1/150", "max": 3},
+        {"name": "Dragon axe", "rate": "1/10000"},
+        {"name": "Phoenix", "rate": "1/5000", "pet": true}
+      ]
+    },
+    {
       "name": "Yama", "estimate": true, "detectTeam": true, "team": "yama", "kc": ["Yama"], "loot": ["Yama"], "clog": ["Yama"], "note": "In a duo each player rolls separately, scaled by their share of the damage, so a duo kill gives you about half the uniques of a solo kill. The pet chance doesn't scale.",
       "drops": [
         {"name": "Soulflame horn", "rate": "2/600"},
@@ -583,11 +614,11 @@
       ]
     },
     {
-      "name": "Zalcano", "estimate": true, "kc": ["Zalcano"], "loot": ["Zalcano"], "clog": ["Zalcano"],
+      "name": "Zalcano", "estimate": true, "detectTeam": true, "kc": ["Zalcano"], "loot": ["Zalcano"], "clog": ["Zalcano"], "note": "Zalcano drops one crystal tool seed table roll per kill for the whole team, given to one player (more contribution, better odds), so your seed chance is about one kill in the team size. Shards and the pet are rolled for each player.",
       "drops": [
         {"name": "Crystal tool seed", "rate": "39/8000"},
-        {"name": "Zalcano shard", "rate": "1/750"},
-        {"name": "Smolcano", "rate": "1/2250", "pet": true}
+        {"name": "Zalcano shard", "rate": "1/750", "noShare": true},
+        {"name": "Smolcano", "rate": "1/2250", "pet": true, "noShare": true}
       ]
     },
     {

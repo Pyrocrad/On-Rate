@@ -15,6 +15,9 @@ public class RowStats
 	private int cap;
 	private Integer streak;
 	private boolean streakExact;
+	/** Fewest and most kills between two drops On Rate saw, or null. */
+	private Integer fastest;
+	private Integer longest;
 	private double driestMultiple = Double.NaN;
 	private String driestItem;
 	private String mark = "";
@@ -49,6 +52,8 @@ public class RowStats
 		copy.cap = cap;
 		copy.streak = streak;
 		copy.streakExact = streakExact;
+		copy.fastest = fastest;
+		copy.longest = longest;
 		return copy;
 	}
 
@@ -58,6 +63,24 @@ public class RowStats
 		this.streak = kills;
 		this.streakExact = exact;
 		return this;
+	}
+
+	/** Records since On Rate started: fewest and most kills between two drops (null if none). */
+	public RowStats withRecords(Integer fastest, Integer longest)
+	{
+		this.fastest = fastest;
+		this.longest = longest;
+		return this;
+	}
+
+	public Integer getFastest()
+	{
+		return fastest;
+	}
+
+	public Integer getLongest()
+	{
+		return longest;
 	}
 
 	/** For the "Any" row: the summed rate of all its items, so its streak can be expressed in rates. */

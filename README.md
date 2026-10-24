@@ -12,7 +12,7 @@
 
 ## Features
 
-- **Over 50 bosses and raids** from the Bosses and Raids tabs of the collection log, including Doom of Mokhaiotl per delve level (a few are left out: see *Not covered* below).
+- **Every boss and raid** in the Bosses and Raids tabs of the collection log, over 50 in total, including Doom of Mokhaiotl per delve level.
 - **Two verdicts per boss**, from *Very dry* to *Very spooned*: how many uniques you got, and what they're worth in GP. Plus how you compare with other players at the same kill count.
 - **Account overview:** all your bosses added up, your driest and luckiest items and pets, and what you killed and got today and this week.
 - **Hover any item** for its drop rate, your dry streak, how far past the drop rate you are and how many players have fewer or more.
@@ -26,7 +26,7 @@
 1. Install **On Rate** from the Plugin Hub. The panel opens with a short welcome guide.
 2. **Open your collection log** and click the pages of the bosses you do. That loads your kill count and past drops. The orange line at the top of the panel lists the bosses you killed that aren't loaded yet. Until a boss is loaded, its page says *Not synced* instead of a verdict.
 3. **Go kill something.** The panel follows your kills. Keep the Loot Tracker plugin on: On Rate reads new drops from it.
-4. **Check the settings:** pick a **Luck view** you like (bars, a table, rings or a gauge), and change **Team bosses** if you solo Royal Titans or Yama (both count as duo by default).
+4. **Check the settings:** change **Team bosses** if you solo Royal Titans or Yama (both count as duo by default). For another look (bars, a table, rings or a gauge), click **⇄** next to **ITEMS** in the panel.
 
 The **?** at the top of the panel explains what you're looking at.
 

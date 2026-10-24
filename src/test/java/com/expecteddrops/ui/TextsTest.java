@@ -38,6 +38,84 @@ public class TextsTest
 	}
 
 	@Test
+	public void shortLineFollowsTheVerdictBands()
+	{
+		// "On rate" (45% to 55%) is about average
+		assertEquals("about average", Texts.luckShort(0.45));
+		assertEquals("about average", Texts.luckShort(0.50));
+		assertEquals("about average", Texts.luckShort(0.55));
+		// a bit dry and a bit spooned say how common they are
+		assertEquals("1 in 3 as dry", Texts.luckShort(0.35));
+		assertEquals("1 in 3 as dry", Texts.luckShort(0.40));
+		assertEquals("1 in 2 as dry", Texts.luckShort(0.44));
+		assertEquals("1 in 2 as lucky", Texts.luckShort(0.56));
+		assertEquals("1 in 3 as lucky", Texts.luckShort(0.60));
+		assertEquals("1 in 3 as lucky", Texts.luckShort(0.65));
+	}
+
+	private static com.expecteddrops.stats.RowStats item(String name, double expected, int received)
+	{
+		return new com.expecteddrops.stats.RowStats(name, name, expected / 100, expected, received, false);
+	}
+
+	@Test
+	public void onRateGetsOneNotableSentence()
+	{
+		// 1 of 4.0: 91% of players have more
+		assertEquals("Driest: Magic fang, drier than 91% of players.",
+			Texts.notableLine(java.util.Arrays.asList(item("Magic fang", 4.0, 1), item("Jar of swamp", 0.3, 0))));
+		// none at 1.0 expected: 63% would have one
+		assertEquals("6 in 10 players would have a Tumeken's shadow by now.",
+			Texts.notableLine(java.util.Collections.singletonList(item("Tumeken's shadow", 1.0, 0))));
+		assertEquals("7 in 10 players would have an Elder maul by now.",
+			Texts.notableLine(java.util.Collections.singletonList(item("Elder maul", 1.3, 0))));
+		assertEquals("8 in 10 players would have Bandos boots by now.",
+			Texts.notableLine(java.util.Collections.singletonList(item("Bandos boots", 1.7, 0))));
+		// 2 at 0.1: 99.5% have fewer, further out than the dry fang, so it wins
+		assertEquals("Luckiest: Twisted bow, luckier than 99.5% of players.",
+			Texts.notableLine(java.util.Arrays.asList(item("Magic fang", 4.0, 1), item("Twisted bow", 0.1, 2))));
+		// nothing far from average: no sentence at all
+		assertEquals(null, Texts.notableLine(java.util.Arrays.asList(item("Magic fang", 1.0, 1), item("Jar of swamp", 0.3, 0))));
+		assertEquals(null, Texts.notableLine(java.util.Collections.emptyList()));
+	}
+
+	@Test
+	public void valueHoverNamesTheItemMostOfItComesFrom()
+	{
+		java.util.List<String> names = java.util.Arrays.asList("Crystal tool seed", "Zalcano shard", "Smolcano");
+		assertEquals("Most of it is the Crystal tool seed (95%).",
+			Texts.mainValueSource(names, java.util.Arrays.asList(950.0, 50.0, 0.0)));
+		// spread out: nothing to say
+		assertEquals(null, Texts.mainValueSource(names, java.util.Arrays.asList(40.0, 35.0, 25.0)));
+		assertEquals(null, Texts.mainValueSource(names, java.util.Arrays.asList(0.0, 0.0, 0.0)));
+	}
+
+	@Test
+	public void hoversSayItAsAPercentage()
+	{
+		// told from the side that holds most players, so the number is always over half
+		assertEquals("drier than 81%", Texts.luckPercent(DropMath.shares(0, 1.65), 0));
+		assertEquals("74% have none", Texts.luckPercent(DropMath.shares(0, 0.30), 0));
+		// 0 of 10: about 1 in 22,000 has none, past what the drop table can tell apart
+		assertEquals("drier than 99.99% (<1 in 10,000)", Texts.luckPercent(DropMath.shares(0, 10), 0));
+		// 4 of 5.67: 67% have more
+		assertEquals("drier than 67%", Texts.luckPercent(DropMath.shares(4, 5.67), 4));
+		// 1 of 0.16: 85% have none
+		assertEquals("luckier than 85%", Texts.luckPercent(DropMath.shares(1, 0.16), 1));
+		// 3 of 0.2: about 1 in 871 has this many or more
+		assertEquals("luckier than 99.8% (1 in 871)", Texts.luckPercent(DropMath.shares(3, 0.2), 3));
+		// 2 of 1.65: just over half have fewer
+		assertEquals("luckier than 51%", Texts.luckPercent(DropMath.shares(2, 1.65), 2));
+		// 1 of 1.0: 37% fewer, 37% as many, 26% more: no side is a majority
+		assertEquals("about average", Texts.luckPercent(DropMath.shares(1, 1.0), 1));
+		// by value
+		assertEquals("luckier than 83%", Texts.luckPercent(0.83));
+		assertEquals("drier than 70%", Texts.luckPercent(0.30));
+		assertEquals("drier than 99.99% (<1 in 10,000)", Texts.luckPercent(0.00001));
+		assertEquals("drier than 97% (1 in 33)", Texts.luckPercent(0.03));
+	}
+
+	@Test
 	public void howFarPastTheRate()
 	{
 		// none at 2.1 expected: 2.1 times the drop rate, the way players say it

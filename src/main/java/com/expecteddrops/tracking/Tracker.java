@@ -40,6 +40,10 @@ public class Tracker
 	private static final Pattern NEW_CLOG_ITEM = Pattern.compile("New item added to your collection log: (.+)");
 	/** Completion message for a delve level, e.g. "Delve level: 3 duration: 1:52.20" ("8+" for deep delves). */
 	private static final Pattern DELVE_LEVEL = Pattern.compile("Delve level: ?(\\d+\\+?)");
+	/** Fortis Colosseum: "Wave 7 completed!" (the wording still needs checking in game). */
+	private static final Pattern WAVE_DONE = Pattern.compile("^Wave:? (\\d+) completed", Pattern.CASE_INSENSITIVE);
+	/** Guaranteed for beating the last wave, so its loot tells which wave a claim was at. */
+	private static final String LAST_WAVE_REWARD = "dizana's quiver";
 	private static final String[] PET_MESSAGES = {
 		"You have a funny feeling like you're being followed",
 		"You feel something weird sneaking into your backpack",
@@ -314,6 +318,50 @@ public class Tracker
 		daysFilled.clear();
 	}
 
+	/** True when the player left this item out of the calculations for this boss. */
+	public synchronized boolean isLeftOut(String bossName, String itemName)
+	{
+		BossProgress p = state.peek(bossName);
+		return p != null && p.leftOut != null && p.leftOut.contains(BossCatalog.normalize(itemName));
+	}
+
+	/**
+	 * Leaves an item out of this boss's calculations (its verdicts, the account overview, the
+	 * Items tab and dry milestones), or counts it again. The row itself stays visible.
+	 */
+	public synchronized void setLeftOut(String bossName, String itemName, boolean leftOut)
+	{
+		if (catalog.byName(bossName) == null)
+		{
+			return;
+		}
+		BossProgress p = state.get(bossName);
+		if (p.leftOut == null)
+		{
+			p.leftOut = new java.util.TreeSet<>();
+		}
+		if (leftOut)
+		{
+			p.leftOut.add(BossCatalog.normalize(itemName));
+		}
+		else
+		{
+			p.leftOut.remove(BossCatalog.normalize(itemName));
+		}
+	}
+
+	/** Whether a drop counts towards this boss's totals: a unique the player didn't leave out. */
+	private boolean counts(BossDefinition boss, DropDefinition drop, BossProgress p)
+	{
+		return drop.countsTowardAny() && (p == null || p.leftOut == null || !p.leftOut.contains(BossCatalog.normalize(drop.getName())));
+	}
+
+	/** See {@link #counts(BossDefinition, DropDefinition, BossProgress)}, for the panel. */
+	public synchronized boolean counts(BossDefinition boss, DropDefinition drop)
+	{
+		return counts(boss, drop, state.peek(boss.getName()));
+	}
+
 	private static DropDefinition dropNamed(BossDefinition boss, String name)
 	{
 		for (DropDefinition drop : boss.getDrops())
@@ -355,6 +403,15 @@ public class Tracker
 	 */
 	double expectedFromKill(BossDefinition boss, KillEntry kill)
 	{
+		return perKill(boss, kill, drop -> 1);
+	}
+
+	/**
+	 * What one kill should give, each unique weighted (1 to count uniques, its GE price for
+	 * GP): the rates of its raid mode, boss or delve level, and your share of a team kill.
+	 */
+	private double perKill(BossDefinition boss, KillEntry kill, java.util.function.ToDoubleFunction<DropDefinition> weight)
+	{
 		BossPart part = null;
 		if (kill.part != null)
 		{
@@ -395,7 +452,7 @@ public class Tracker
 		double expected = 0;
 		for (DropDefinition drop : boss.getDrops())
 		{
-			if (!drop.countsTowardAny())
+			if (!counts(boss, drop, progress))
 			{
 				continue;
 			}
@@ -403,6 +460,10 @@ public class Tracker
 			if (boss.isDelve() && kill.level != null)
 			{
 				rate = DropMath.parseRate(drop.getLevelRate(kill.level));
+			}
+			else if (boss.getWaves() > 0)
+			{
+				rate = kill.level == null ? 0 : waveRate(drop, kill.level);
 			}
 			else if (part != null && !Double.isNaN(chance) && !drop.hasPartRates())
 			{
@@ -421,9 +482,43 @@ public class Tracker
 				// this is the kill where the drop is guaranteed
 				rate = 1;
 			}
-			expected += drop.isPet() ? rate : rate * share;
+			// like the totals: a team shares a kill's drops, except the ones each player rolls
+			expected += (drop.isNoShare() ? rate : rate * share) * weight.applyAsDouble(drop);
 		}
 		return expected;
+	}
+
+	/**
+	 * GE value the current trip's own kills should give (their delve level, raid points, team),
+	 * or NaN without a trip or when History lacks one of its kills.
+	 */
+	public synchronized double tripValue(java.util.function.ToLongFunction<String> prices)
+	{
+		if (trip == null)
+		{
+			return Double.NaN;
+		}
+		BossDefinition boss = catalog.byName(trip.boss);
+		BossProgress p = boss == null ? null : state.peek(boss.getName());
+		BossStats s = boss == null ? null : stats(boss.getName(), settings);
+		if (p == null || s == null)
+		{
+			return Double.NaN;
+		}
+		int kills = Math.max(0, s.getKillCount() - trip.startKc);
+		double sum = 0;
+		int found = 0;
+		for (int i = p.kills.size() - 1; i >= 0 && found < kills; i--)
+		{
+			KillEntry k = p.kills.get(i);
+			if (k.time < trip.startMillis)
+			{
+				break;
+			}
+			sum += perKill(boss, k, drop -> Math.max(0, prices.applyAsLong(drop.getName())));
+			found++;
+		}
+		return found == kills && kills > 0 ? sum : Double.NaN;
 	}
 
 	/**
@@ -600,8 +695,42 @@ public class Tracker
 			share += e.getValue() / (double) Math.max(1, e.getKey());
 		}
 		int older = Math.max(0, kc - seen);
-		double olderShare = boss.getTeam() == null ? 1.0 : raids.contribution(boss.getTeam(), older);
+		// kills from before On Rate counted teams: a team setting when the boss has one, else
+		// the share On Rate saw when it started counting (a Zalcano or Nex regular wasn't solo)
+		double olderShare = boss.getTeam() != null ? raids.contribution(boss.getTeam(), older)
+			: p.olderShare != null ? p.olderShare : 1.0;
 		return older * olderShare + share;
+	}
+
+	/**
+	 * Group bosses without a team setting: the share to use for the kills from before On Rate
+	 * counted teams, fixed once (the average of the kills it counted, or this kill's team).
+	 * Set before the kill is counted, so the trip card and Recent don't see the older kills'
+	 * share change as something this kill did.
+	 */
+	private void rememberOlderShare(BossDefinition boss, BossProgress p)
+	{
+		if (!boss.isDetectTeam() || boss.getTeam() != null || p.olderShare != null)
+		{
+			return;
+		}
+		if (!p.teamKills.isEmpty())
+		{
+			int seen = 0;
+			double share = 0;
+			for (Map.Entry<Integer, Integer> e : p.teamKills.entrySet())
+			{
+				seen += e.getValue();
+				share += e.getValue() / (double) Math.max(1, e.getKey());
+			}
+			p.olderShare = share / seen;
+			return;
+		}
+		int size = teamSize.getAsInt();
+		if (size > 0)
+		{
+			p.olderShare = 1.0 / size;
+		}
 	}
 
 	/**
@@ -707,9 +836,17 @@ public class Tracker
 			}
 			int kc = Integer.parseInt(m.group("kc").replace(",", ""));
 			BossProgress progress = state.get(boss.getName());
+			if (boss.getWaves() > 0)
+			{
+				// the kill count is the last wave beaten; the run counts when its loot is claimed
+				progress.chatKc.put(BossCatalog.normalize(counter), kc);
+				pendingWave = boss.getWaves();
+				return boss.getName();
+			}
 			Integer known = progress.chatKc.get(BossCatalog.normalize(counter));
 			if (known == null || kc > known)
 			{
+				rememberOlderShare(boss, progress);
 				beforeKill(boss, nowMillis);
 			}
 			Integer previous = progress.chatKc.put(BossCatalog.normalize(counter), kc);
@@ -745,6 +882,13 @@ public class Tracker
 		}
 
 		String plain = message.replaceAll("<[^>]*>", "");
+		Matcher wave = WAVE_DONE.matcher(plain);
+		if (wave.find())
+		{
+			// the wave a claim now would be for
+			pendingWave = Integer.parseInt(wave.group(1));
+			return null;
+		}
 		Matcher delve = DELVE_LEVEL.matcher(plain);
 		if (plain.contains("duration:") && delve.find())
 		{
@@ -1246,6 +1390,14 @@ public class Tracker
 	/** "kills", "raids", "delves" (Doom) or "chests" (Barrows, Moons): what one completion is called. */
 	public static String unit(BossDefinition boss)
 	{
+		if (boss.getRollsPerKill() > 0)
+		{
+			return "rolls";
+		}
+		if (boss.getWaves() > 0)
+		{
+			return "runs";
+		}
 		if (boss.getRaid() != null)
 		{
 			return "raids";
@@ -1306,6 +1458,19 @@ public class Tracker
 		if (text != null && rate > 0)
 		{
 			outbox.add(new Note(Note.Kind.DROP, text));
+		}
+		// records: the kills this drop took, when known exactly
+		Integer took = previous != null && kc > previous ? Integer.valueOf(kc - previous)
+			: historyKnown && (before == null || before == 0) && kc > 0 ? Integer.valueOf(kc) : null;
+		if (took != null)
+		{
+			if (progress.fastestGap == null)
+			{
+				progress.fastestGap = new HashMap<>();
+				progress.longestGap = new HashMap<>();
+			}
+			progress.fastestGap.merge(key, took, Math::min);
+			progress.longestGap.merge(key, took, Math::max);
 		}
 		KillEntry.DropEntry entry = new KillEntry.DropEntry();
 		entry.name = drop.getDisplayName().equals(drop.getName()) ? itemName : drop.getDisplayName();
@@ -1387,7 +1552,7 @@ public class Tracker
 		{
 			RowStats row = s.getRows().get(i);
 			DropDefinition drop = boss.getDrops().get(i);
-			if (!drop.countsTowardAny() || row.getStreak() == null || row.getRate() <= 0)
+			if (!counts(boss, drop, progress) || row.getStreak() == null || row.getRate() <= 0)
 			{
 				continue;
 			}
@@ -1550,8 +1715,13 @@ public class Tracker
 			latest.titan = titan;
 			killsChanged.add(boss.getName());
 		}
-		if (!minion)
+		if (boss.getWaves() > 0)
 		{
+			countWaveClaim(boss, progress, items, nowMillis);
+		}
+		else if (!minion && boss.getRollsPerKill() <= 0)
+		{
+			// (reward rolls are counted from the permits, see onRewardRolls)
 			if (boss.getKcNames().isEmpty())
 			{
 				beforeKill(boss, nowMillis);
@@ -1591,6 +1761,133 @@ public class Tracker
 		}
 		markKill(boss, nowMillis);
 		startTracking(boss);
+		return boss.getName();
+	}
+
+	/** Fortis Colosseum: the wave a claim right now would be for, from the last wave message. */
+	private Integer pendingWave;
+
+	/**
+	 * A drop's chance over a whole run claimed at {@code wave}: its chance on each wave up to
+	 * that one, added up (at most one unique per wave, so this is its expected count).
+	 */
+	public static double waveRate(DropDefinition drop, int wave)
+	{
+		double sum = 0;
+		for (int w = 1; w <= wave; w++)
+		{
+			sum += DropMath.parseRate(drop.getLevelRate(w));
+		}
+		return sum;
+	}
+
+	/** Tests and the plugin: the wave the next claim is for (a wave message was seen). */
+	public synchronized void onWaveCompleted(int wave)
+	{
+		pendingWave = wave;
+	}
+
+	/**
+	 * A claimed run: counted at the wave it reached (the last wave when the guaranteed reward is
+	 * in it, else the last "Wave N completed" message). Without a known wave the run isn't
+	 * counted, only its drops.
+	 */
+	private void countWaveClaim(BossDefinition boss, BossProgress progress, Collection<LootItem> items, long nowMillis)
+	{
+		Integer wave = pendingWave;
+		for (LootItem item : items)
+		{
+			if (BossCatalog.normalize(item.name).startsWith(LAST_WAVE_REWARD))
+			{
+				wave = boss.getWaves();
+			}
+		}
+		pendingWave = null;
+		if (wave == null || wave < 1)
+		{
+			return;
+		}
+		wave = Math.min(wave, boss.getWaves());
+		beforeKill(boss, nowMillis);
+		if (progress.waveClaims == null)
+		{
+			progress.waveClaims = new TreeMap<>();
+		}
+		progress.waveClaims.merge(wave, 1, Integer::sum);
+		KillEntry entry = addKill(boss, progress, nowMillis);
+		entry.level = wave;
+		countKillToday(boss, entry);
+		markKill(boss, nowMillis);
+		afterKill(boss, nowMillis);
+	}
+
+	/** True when this shared item is a pet (shared items live in the pools, not the bosses' drops). */
+	private boolean isPetItem(String itemName)
+	{
+		for (List<BossCatalog.PoolSource> sources : catalog.getPools().values())
+		{
+			for (BossCatalog.PoolSource src : sources)
+			{
+				if (src.getDrop().isPet() && src.getDrop().getName().equals(itemName))
+				{
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	/** This boss when its loot comes per reward roll (Tempoross, Wintertodt), else null. */
+	private BossDefinition rollsBoss(String bossName)
+	{
+		BossDefinition boss = catalog.byName(bossName);
+		return boss != null && boss.getRollsPerKill() > 0 ? boss : null;
+	}
+
+	/**
+	 * Reward permits spent at the reward pool: each is one roll, counted like a kill (trip,
+	 * Recent, History). Returns the boss, or null.
+	 */
+	public synchronized String onRewardRolls(String bossName, int rolls, long nowMillis)
+	{
+		BossDefinition boss = rollsBoss(bossName);
+		if (boss == null || rolls <= 0)
+		{
+			return null;
+		}
+		BossProgress progress = state.get(boss.getName());
+		for (int i = 0; i < rolls; i++)
+		{
+			beforeKill(boss, nowMillis);
+			progress.lootKills++;
+			KillEntry entry = addKill(boss, progress, nowMillis);
+			countKillToday(boss, entry);
+			markKill(boss, nowMillis);
+			afterKill(boss, nowMillis);
+		}
+		startTracking(boss);
+		return boss.getName();
+	}
+
+	/**
+	 * The rolls from before On Rate counted them, worked out once from the game's own numbers:
+	 * your subdues times the rolls per subdue, minus the permits you hadn't spent yet (they
+	 * haven't rolled). Later calls change nothing. Returns the boss when it was set, else null.
+	 */
+	public synchronized String onRollBaseline(String bossName, int subdues, int permitsHeld)
+	{
+		BossDefinition boss = rollsBoss(bossName);
+		if (boss == null || subdues <= 0 || permitsHeld < 0)
+		{
+			return null;
+		}
+		BossProgress progress = state.get(boss.getName());
+		if (progress.rollBase != null)
+		{
+			return null;
+		}
+		// rolls counted before the baseline (none, normally) came from those same subdues
+		progress.rollBase = Math.max(0, subdues * boss.getRollsPerKill() - permitsHeld - progress.lootKills);
 		return boss.getName();
 	}
 
@@ -1661,6 +1958,11 @@ public class Tracker
 					progress.clogKc.put(BossCatalog.normalize(p[0]), Integer.parseInt(p[1]));
 				}
 				progress.lootKillsAtSync = progress.lootKills;
+				if (boss.getWaves() > 0)
+				{
+					progress.lastWaveClaimsAtSync = progress.waveClaims == null ? 0
+						: progress.waveClaims.getOrDefault(boss.getWaves(), 0);
+				}
 			}
 
 			// Items several bosses drop: the log total is the same on every page that shows it.
@@ -1860,6 +2162,19 @@ public class Tracker
 
 	/** A trip ends after this long without a kill, or when you kill another boss. */
 	static final long TRIP_IDLE_MILLIS = 30 * 60_000;
+	/**
+	 * The same for content where one completion takes long: a raid, the Inferno or the Fight
+	 * Caves often takes more than 30 minutes, which would start a new trip every time. Two hours
+	 * leaves room for a slow raid plus a break; another boss or the button still end it sooner.
+	 */
+	static final long LONG_TRIP_IDLE_MILLIS = 120 * 60_000;
+
+	static long tripIdleMillis(BossDefinition boss)
+	{
+		String name = boss.getName();
+		return boss.getRaid() != null || "TzKal-Zuk".equals(name) || "TzTok-Jad".equals(name)
+			? LONG_TRIP_IDLE_MILLIS : TRIP_IDLE_MILLIS;
+	}
 
 	private Trip trip;
 
@@ -1868,7 +2183,7 @@ public class Tracker
 
 	private boolean continuesTrip(BossDefinition boss, long nowMillis)
 	{
-		return trip != null && trip.boss.equals(boss.getName()) && nowMillis - trip.lastMillis <= TRIP_IDLE_MILLIS;
+		return trip != null && trip.boss.equals(boss.getName()) && nowMillis - trip.lastMillis <= tripIdleMillis(boss);
 	}
 
 	/**
@@ -1878,6 +2193,11 @@ public class Tracker
 	 */
 	private void beforeKill(BossDefinition boss, long nowMillis)
 	{
+		if (trip != null && !continuesTrip(boss, nowMillis))
+		{
+			// this kill starts a new trip: the last one is over
+			summarizeTrip();
+		}
 		beforeThisKill = null;
 		BossStats s = stats(boss.getName(), settings);
 		if (s == null)
@@ -1931,7 +2251,84 @@ public class Tracker
 	/** Forget the current trip; the next kill starts a new one. */
 	public synchronized void resetTrip()
 	{
+		summarizeTrip();
 		trip = null;
+	}
+
+	/** Trips shorter than this get no summary line. */
+	static final int TRIP_SUMMARY_KILLS = 3;
+
+	/** One chat line for the trip that just ended: kills, uniques, expected and the verdict. */
+	private void summarizeTrip()
+	{
+		TripStats t = tripStats();
+		if (t == null || t.getKills() < TRIP_SUMMARY_KILLS)
+		{
+			return;
+		}
+		BossDefinition boss = catalog.byName(t.getBoss());
+		String units = boss == null ? "kills" : unit(boss);
+		String uniques = t.getReceived() == 0 ? "no uniques"
+			: t.getReceived() == 1 ? "1 unique (" + String.join(", ", t.getDrops()) + ")"
+			: t.getReceived() + " uniques (" + String.join(", ", t.getDrops()) + ")";
+		double luck = t.getLuck();
+		outbox.add(new Note(Note.Kind.TRIP, String.format("Trip at %s: %,d %s, %s, %s expected%s.", t.getBoss(),
+			t.getKills(), units, uniques, t.getExpected() >= 10 ? String.format("%.1f", t.getExpected()) : String.format("%.2f", t.getExpected()),
+			Double.isNaN(luck) ? "" : " \u00b7 " + DropMath.verdict(luck))));
+	}
+
+	/** The last unique On Rate saw in History (any boss), or null; with when History starts. */
+	public synchronized LastUnique lastUnique()
+	{
+		LastUnique result = null;
+		long earliest = Long.MAX_VALUE;
+		if (state.bosses == null)
+		{
+			return null;
+		}
+		for (String name : state.bosses.keySet())
+		{
+			BossDefinition boss = catalog.byName(name);
+			BossProgress p = state.peek(name);
+			if (boss == null || p == null)
+			{
+				continue;
+			}
+			for (KillEntry k : p.kills)
+			{
+				earliest = Math.min(earliest, k.time);
+				for (KillEntry.DropEntry d : k.getDrops())
+				{
+					DropDefinition drop = dropNamed(boss, d.getName());
+					if (drop != null && counts(boss, drop, p) && (result == null || k.time > result.time))
+					{
+						result = new LastUnique(d.getName(), boss.getName(), k.time, 0);
+					}
+				}
+			}
+		}
+		if (earliest == Long.MAX_VALUE)
+		{
+			return null;
+		}
+		return result == null ? new LastUnique(null, null, 0, earliest) : new LastUnique(result.item, result.boss, result.time, earliest);
+	}
+
+	/** See {@link #lastUnique()}: the item (null when none in History), its boss and time, and History's start. */
+	public static final class LastUnique
+	{
+		public final String item;
+		public final String boss;
+		public final long time;
+		public final long historyStart;
+
+		LastUnique(String item, String boss, long time, long historyStart)
+		{
+			this.item = item;
+			this.boss = boss;
+			this.time = time;
+			this.historyStart = historyStart;
+		}
 	}
 
 	/** The current trip's numbers, or null when there is no trip. */
@@ -2092,6 +2489,11 @@ public class Tracker
 	/** Per-kill rate for a drop, taking raid settings into account. */
 	public static double effectiveRate(BossDefinition boss, DropDefinition drop, RaidSettings raids)
 	{
+		if (boss.getWaves() > 0)
+		{
+			// a whole run, claimed at the last wave
+			return waveRate(drop, boss.getWaves());
+		}
 		double rate = DropMath.parseRate(drop.getRate());
 		if (boss.getRaid() != null)
 		{
@@ -2128,6 +2530,7 @@ public class Tracker
 		boolean synced = false;
 		Map<Integer, Integer> levels = null;
 		Map<String, Integer> parts = null;
+		Map<Integer, Integer> waveRuns = null;
 		if (boss.hasParts())
 		{
 			parts = partKills(boss, progress);
@@ -2146,6 +2549,31 @@ public class Tracker
 			kc = sum(levels.values());
 			known = progress != null && !progress.levelKc.isEmpty();
 			synced = progress != null && progress.clogSynced;
+		}
+		else if (progress != null && boss.getWaves() > 0)
+		{
+			// claimed runs per wave; completions the log page showed that On Rate hadn't counted
+			// as claims yet are from before it: they count as last-wave claims
+			waveRuns = new TreeMap<>(progress.waveClaims == null ? Collections.emptyMap() : progress.waveClaims);
+			int completions = combine(progress.clogKc.values(), boss.combineKcWithMax());
+			int counted = progress.lastWaveClaimsAtSync == null ? 0 : progress.lastWaveClaimsAtSync;
+			int older = Math.max(0, completions - counted);
+			if (older > 0)
+			{
+				waveRuns.merge(boss.getWaves(), older, Integer::sum);
+			}
+			kc = sum(waveRuns.values());
+			known = kc > 0 || !progress.chatKc.isEmpty() || !progress.clogKc.isEmpty();
+			synced = progress.clogSynced;
+		}
+		else if (progress != null && boss.getRollsPerKill() > 0)
+		{
+			// reward rolls: the estimate for the ones from before, plus the ones counted since
+			int subdues = combine(progress.clogKc.values(), boss.combineKcWithMax());
+			int before = progress.rollBase != null ? progress.rollBase : subdues * boss.getRollsPerKill();
+			kc = before + progress.lootKills;
+			known = progress.rollBase != null || !progress.clogKc.isEmpty() || progress.lootKills > 0;
+			synced = progress.clogSynced;
 		}
 		else if (progress != null)
 		{
@@ -2186,6 +2614,16 @@ public class Tracker
 				}
 				rate = kc > 0 ? expected / kc : 0;
 			}
+			else if (waveRuns != null)
+			{
+				// each run counts every wave up to the one it was claimed at
+				expected = 0;
+				for (Map.Entry<Integer, Integer> e : waveRuns.entrySet())
+				{
+					expected += e.getValue() * waveRate(drop, e.getKey());
+				}
+				rate = kc > 0 ? expected / kc : effectiveRate(boss, drop, raids);
+			}
 			else if (levels != null)
 			{
 				expected = 0;
@@ -2199,7 +2637,8 @@ public class Tracker
 			else
 			{
 				rate = effectiveRate(boss, drop, raids);
-				if (boss.isDetectTeam() && !drop.isNoShare() && progress != null && !progress.teamKills.isEmpty())
+				if (boss.isDetectTeam() && !drop.isNoShare() && progress != null
+					&& (!progress.teamKills.isEmpty() || progress.olderShare != null))
 				{
 					// group boss: each kill counts for your share of the team you had then
 					expected = rate * sharedKills(boss, progress, kc, raids);
@@ -2271,8 +2710,27 @@ public class Tracker
 				received = Math.min(received, drop.getMax());
 				row = row.capped(drop.getMax(), received);
 			}
+			if (progress != null && progress.fastestGap != null)
+			{
+				Integer fastest = null;
+				Integer longest = null;
+				for (String name : drop.getAllNames())
+				{
+					Integer f = progress.fastestGap.get(BossCatalog.normalize(name));
+					Integer l = progress.longestGap.get(BossCatalog.normalize(name));
+					if (f != null && (fastest == null || f < fastest))
+					{
+						fastest = f;
+					}
+					if (l != null && (longest == null || l > longest))
+					{
+						longest = l;
+					}
+				}
+				row.withRecords(fastest, longest);
+			}
 			rows.add(row);
-			if (drop.countsTowardAny())
+			if (counts(boss, drop, progress))
 			{
 				// For once-only items the total counts the chance of having one by now.
 				anyExpected += drop.getMax() > 0 ? DropMath.expectedCapped(expected, drop.getMax()) : expected;
@@ -2286,7 +2744,7 @@ public class Tracker
 		for (int i = 0; i < boss.getDrops().size(); i++)
 		{
 			DropDefinition drop = boss.getDrops().get(i);
-			if (!drop.countsTowardAny())
+			if (!counts(boss, drop, progress))
 			{
 				continue;
 			}
@@ -2367,13 +2825,14 @@ public class Tracker
 			}
 			RowStats bossRow = new RowStats(boss.getName(), iconFor(boss), 0, any.getExpected(), any.getReceived(), false)
 				.withRate(any.getRate()).withStreak(any.getStreak(), any.isStreakExact());
+			BossProgress progress = state.peek(boss.getName());
 			double driest = Double.NaN;
 			String driestItem = null;
 			for (int i = 0; i < boss.getDrops().size(); i++)
 			{
 				RowStats r = s.getRows().get(i);
 				double m = r.getStreakMultiple();
-				if (boss.getDrops().get(i).countsTowardAny() && !Double.isNaN(m) && (Double.isNaN(driest) || m > driest))
+				if (counts(boss, boss.getDrops().get(i), progress) && !Double.isNaN(m) && (Double.isNaN(driest) || m > driest))
 				{
 					driest = m;
 					driestItem = r.getLabel();
@@ -2382,7 +2841,7 @@ public class Tracker
 			rows.add(bossRow.withDriest(driest, driestItem));
 			for (int i = 0; i < boss.getDrops().size(); i++)
 			{
-				if (boss.getDrops().get(i).countsTowardAny())
+				if (counts(boss, boss.getDrops().get(i), progress))
 				{
 					items.add(new ItemHighlight(boss.getName(), s.getRows().get(i), boss.getDrops().get(i).isPet()));
 				}
@@ -2393,7 +2852,7 @@ public class Tracker
 				{
 					DropDefinition drop = boss.getDrops().get(i);
 					RowStats row = s.getRows().get(i);
-					if (!drop.countsTowardAny())
+					if (!counts(boss, drop, progress))
 					{
 						continue;
 					}
@@ -2417,6 +2876,15 @@ public class Tracker
 		// and GE value once On Rate knows the kills of every boss that drops them.
 		for (SharedPool pool : sharedPools(raids, cache))
 		{
+			if (isPetItem(pool.getItemName()) && pool.isLogKnown() && pool.getExpected() > 0)
+			{
+				// a pet several bosses drop (the Chaos elemental's): one entry in the Items tab's
+				// pets, judged on all those bosses together, "have it or not" like every pet
+				// (the pool keeps a pet as its chance of one by now; the row wants the expected count)
+				double lambda = -Math.log(Math.max(1e-12, 1 - Math.min(pool.getExpected(), 1 - 1e-12)));
+				RowStats row = new RowStats(pool.getLabel(), pool.getItemName(), 0, lambda, Math.min(1, pool.getReceived()), false);
+				items.add(new ItemHighlight(null, row.capped(1, Math.min(1, pool.getReceived())), true));
+			}
 			if (!pool.isComplete())
 			{
 				continue;

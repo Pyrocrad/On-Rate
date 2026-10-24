@@ -77,10 +77,11 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigItem(
 		keyName = "itemView",
 		name = "Luck view",
-		description = "How your luck per item (and per boss in the account overview) is shown: target bars, "
-			+ "the Delve Calculator's bars with Expected/Received tabs, a compact table, chance rings or a luck gauge",
+		description = "How your luck per item (and per boss in the account overview) is shown. Changed with the "
+			+ "switch next to ITEMS in the panel, so it's not listed here",
 		position = 7,
-		section = displaySection
+		section = displaySection,
+		hidden = true
 	)
 	default ItemView itemView()
 	{
@@ -114,9 +115,11 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigItem(
 		keyName = "showLuckGraph",
 		name = "Luck graph",
-		description = "Show a graph of your account's luck over time in the account overview",
+		description = "Whether the Luck over time section in the account overview is open. Opened and closed "
+			+ "by clicking its title in the panel, so it's not listed here",
 		position = 10,
-		section = displaySection
+		section = displaySection,
+		hidden = true
 	)
 	default boolean showLuckGraph()
 	{
@@ -250,7 +253,7 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigItem(
 		keyName = "readRaidPoints",
 		name = "Use raid points",
-		description = "At the end of each raid, work out that raid's purple chance: from your points in Chambers of Xeric, from the exact points the game sends in Tombs of Amascut (or On Rate's own estimate if they don't come), and in Theatre of Blood by splitting the team chance below over the team size on the end-of-raid board. Raids without this (older ones, synced from the collection log) use the percentages below.",
+		description = "At the end of each raid, use your points for that raid's purple chance: read from the game in Chambers of Xeric, estimated from your damage in Tombs of Amascut (like Raid Data Tracker does). Raids without points (older ones, synced from the collection log, Theatre of Blood) use the percentages below.",
 		position = 31,
 		section = raidsSection
 	)

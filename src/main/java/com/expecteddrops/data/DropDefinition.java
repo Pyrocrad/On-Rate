@@ -35,6 +35,8 @@ public class DropDefinition
 	private Boolean once;
 	/** True when this drop does not scale with damage share at team bosses (e.g. Bran). */
 	private Boolean noShare;
+	/** Other monsters that drop this item, whose drops the collection log counts here too. */
+	private String alsoFrom;
 	/** Per-level rates for delve bosses, keyed "1".."9" (9 = level 8+). */
 	private Map<String, String> levelRates;
 	/** Per-part rates for combined pages, keyed by part name. */
@@ -212,6 +214,12 @@ public class DropDefinition
 			return 1;
 		}
 		return max == null ? 0 : max;
+	}
+
+	/** "araxytes": other monsters that drop it (the log counts theirs too), or null. */
+	public String getAlsoFrom()
+	{
+		return alsoFrom;
 	}
 
 	public boolean isNoShare()

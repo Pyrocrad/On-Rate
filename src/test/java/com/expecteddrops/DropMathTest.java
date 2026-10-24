@@ -93,6 +93,34 @@ public class DropMathTest
 	}
 
 	@Test
+	public void middleBandIsSplitInThree()
+	{
+		assertEquals("A bit dry", DropMath.verdict(0.40));
+		assertEquals("On rate", DropMath.verdict(0.50));
+		assertEquals("A bit spooned", DropMath.verdict(0.60));
+		// right on a line: the side nearer the middle, as the dry and spooned lines always were
+		assertEquals("Dry", DropMath.verdict(0.3499));
+		assertEquals("A bit dry", DropMath.verdict(0.35));
+		assertEquals("A bit dry", DropMath.verdict(0.4499));
+		assertEquals("On rate", DropMath.verdict(0.45));
+		assertEquals("On rate", DropMath.verdict(0.55));
+		assertEquals("A bit spooned", DropMath.verdict(0.5501));
+		assertEquals("A bit spooned", DropMath.verdict(0.65));
+		assertEquals("Spooned", DropMath.verdict(0.6501));
+		// the outer bands are unchanged
+		assertEquals("Very dry", DropMath.verdict(0.0999));
+		assertEquals("Dry", DropMath.verdict(0.10));
+		assertEquals("Spooned", DropMath.verdict(0.90));
+		assertEquals("Very spooned", DropMath.verdict(0.9001));
+		assertEquals("", DropMath.verdict(Double.NaN));
+		// every word comes from the one list
+		for (double luck = 0; luck <= 1; luck += 0.01)
+		{
+			assertTrue(DropMath.VERDICTS.contains(DropMath.verdict(luck)));
+		}
+	}
+
+	@Test
 	public void mostCommonResultIsNotDry()
 	{
 		// 0 of 0.43 expected: 65% of players have none too, so that's on rate, not dry
