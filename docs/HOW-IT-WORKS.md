@@ -52,7 +52,7 @@ The trip card is on by default; the others are off. Change them in the settings 
 
 ## Supported bosses
 
-On Rate covers the **Bosses** and **Raids** tabs of the collection log:
+On Rate covers these bosses and raids from the **Bosses** and **Raids** tabs of the collection log (what it leaves out is under [Good to know](#good-to-know)):
 
 Abyssal Sire, Alchemical Hydra, Amoxliatl, Araxxor, Barrows, Brutus, Bryophyta, Callisto and Artio, Cerberus, Chambers of Xeric, Chaos Fanatic, Commander Zilyana, Corporeal Beast, Crazy Archaeologist, Dagannoth Kings, Deranged Archaeologist, Doom of Mokhaiotl, Duke Sucellus, General Graardor, Giant Mole, Grotesque Guardians, Hespori, Hueycoatl, K'ril Tsutsaroth, Kalphite Queen, King Black Dragon, Kraken, Kree'arra, Maggot King, Moons of Peril, Nex, Obor, Phantom Muspah, Phosani's Nightmare, Royal Titans, Sarachnis, Scorpia, Scurrius, Shellbane Gryphon, Skotizo, The Gauntlet, The Leviathan, The Mad Angel, The Whisperer, Theatre of Blood, Thermonuclear Smoke Devil, Tombs of Amascut, TzKal-Zuk, TzTok-Jad, Vardorvis, Venenatis and Spindel, Vet'ion and Calvar'ion, Vorkath, Yama, Zalcano and Zulrah.
 
@@ -77,7 +77,8 @@ Open the settings with the cog next to **On Rate** in the Configuration panel.
 - **Dry milestone messages:** a chat line when you pass 1x, 2x, 3x, 5x or 10x the drop rate dry on an item. On by default.
 - **Luck view:** how your luck is shown (see [Other views](#other-views)).
 - **Items tab:** the Items tab on the account overview (your 10 driest and luckiest items). On by default.
-- **GE value**, **Luck graph**, **This trip card**, **In-game overlay** and **Colour-blind colours**: see [Extras](#extras). GE value and This trip card are on by default.
+- **GE value:** the GP value tile (see [Account overview](#account-overview)). On by default.
+- **Luck graph**, **This trip card**, **In-game overlay** and **Colour-blind colours**: see [Extras](#extras). This trip card is on by default.
 - **Royal Titans:** kills count as **duo** kills unless you change it to **Solo** or **Some of each**. With *Some of each*, also enter how many of your kills were solo; the rest count as duo. In a duo you get about half the uniques of a solo kill, while the pet chance stays the same.
 - **Yama:** how you killed Yama before On Rate could count your team: **duo** by default, or **Solo** or **Some of each** (with your number of solo kills). Kills from then on use the counted team size.
 - **Count your team:** at Nex, Yama, the Hueycoatl and the Corporeal Beast, On Rate counts the players within 15 tiles of you at each kill and gives you that share of the kill: a quarter with four players, a half in a duo. The boss's page says how many kills it saw and the average team size. Kills from before count as solo, and the pet chance doesn't scale (except at Corp, where only the top damager gets loot). On by default.
@@ -105,11 +106,11 @@ Open the settings with the cog next to **On Rate** in the Configuration panel.
 
 ## Good to know
 
-- **Rates are solo / full-contribution base rates**, without diary, Combat Achievement or Slayer task boosts. At Nex, Yama, the Hueycoatl and Corp, On Rate counts your team from the players around you (see [Settings](#settings)); it assumes everyone does the same damage, so a carry or a leech is off. Royal Titans counts as duo kills by default and has its own solo/duo setting. Where every rate comes from, and when it was last checked against the wiki, is in [RATES.md](RATES.md).
+- **Rates are solo / full-contribution base rates**, without diary, Combat Achievement or Slayer task boosts. At Nex, Yama, the Hueycoatl and Corp, On Rate counts your team from the players around you (see [Settings](#settings)); it assumes everyone does the same damage, so a carry or a leech is off. Royal Titans and Yama count as duo kills by default, and each has its own solo/duo setting. Where every rate comes from, and when it was last checked against the wiki, is in [RATES.md](RATES.md).
 - **Items several bosses drop are counted together**: the dragon pickaxe, godsword shards, Virtus, chromium ingots, draconic visage, uncut onyx, dragon chainbody and the Chaos Elemental pet. The collection log has one total for all their bosses, so On Rate can't tell which boss each copy came from. Instead of guessing, every boss that drops one shows it under **Shared with other bosses**, judged on all those bosses' kills together against the one log total: the same numbers on each of those pages. Bosses whose kills On Rate doesn't know yet count as 0 until you open their log page, and the page says which. The **dragon 2h sword** is left out completely, because it also drops from monsters outside the bosses.
 - **Gauntlet loot** goes to a chest the Loot Tracker doesn't see. On Rate notices new items through the collection log message; open The Gauntlet's collection log page after a session to update repeat seeds.
 - **Pets** are counted from the "funny feeling" message right after a kill. Like the collection log, On Rate counts a pet once: for luck, what matters is whether you have it by now, not how many duplicates you might have rolled. Royal Titans prayer scrolls work the same way, because they stop dropping once read. You loot one titan per kill and each scroll only drops from its own titan (1/75), so On Rate assumes you loot both equally: 1/150 per scroll per kill, 1/300 in a duo.
-- **Not covered yet:** Fortis Colosseum (its rates depend on the wave), Tempoross and Wintertodt (their loot depends on points and reward rolls), and the team version of The Nightmare. Slayer monsters like Tormented Demons and demonic gorillas are in the log's Other tab, so On Rate leaves them out.
+- **Not covered:** Fortis Colosseum (its rates depend on the wave), Tempoross and Wintertodt (their loot depends on points and reward rolls), the team version of The Nightmare, and the collection log's Other tab (Slayer monsters like Tormented Demons and demonic gorillas are there).
 - **Chest bosses:** Obor's and Bryophyta's uniques come from their chests, which the Loot Tracker doesn't see. New items show up through the collection log message; open their collection log pages to update repeat drops.
 - **No files:** On Rate only uses the rates built into the plugin and saves your progress in RuneLite's own settings, so it doesn't read or write any files on your computer.
 - **Made a mistake?** The small **Reset this boss…** link at the bottom of a boss page clears that boss (it asks first). Open its collection log page again to re-sync.

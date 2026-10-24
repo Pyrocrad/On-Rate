@@ -12,7 +12,7 @@
 
 ## Features
 
-- **Every boss and raid** in the Bosses and Raids tabs of the collection log, over 50 in total, including Doom of Mokhaiotl per delve level.
+- **Over 50 bosses and raids** from the Bosses and Raids tabs of the collection log, including Doom of Mokhaiotl per delve level (a few are left out: see *Not covered* below).
 - **Two verdicts per boss**, from *Very dry* to *Very spooned*: how many uniques you got, and what they're worth in GP. Plus how you compare with other players at the same kill count.
 - **Account overview:** all your bosses added up, your driest and luckiest items and pets, and what you killed and got today and this week.
 - **Hover any item** for its drop rate, your dry streak, how far past the drop rate you are and how many players have fewer or more.
