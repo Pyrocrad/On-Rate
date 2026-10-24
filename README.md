@@ -1,8 +1,6 @@
 # On Rate
 
-**Are you on rate?** On Rate is a RuneLite plugin that shows, for every boss, how many uniques you *should* have by now compared with how many you actually got. One glance tells you whether you're spooned, dry, or right on rate.
-
-> Built on the idea of the [Delve Calculator](https://github.com/Speaax/Delve-calculator) by Speaax, which does this for Doom of Mokhaiotl. If you mainly do Doom, install it too. See [Credits](#credits).
+**Are you on rate?** On Rate is a RuneLite plugin that shows, for every boss and raid, how many uniques you *should* have by now at the drop rates and how many you actually got, with a plain verdict from *Very dry* to *Very spooned*.
 
 <p>
 <img src="docs/chambers-of-xeric.png" width="239" alt="Boss page: Chambers of Xeric, with the Uniques and GP value verdicts and every item against what you should have by now">
@@ -10,12 +8,22 @@
 <img src="docs/account-items.png" width="240" alt="Account overview, Items tab: your driest items across every boss">
 </p>
 
+**How to read it:** on each item, the bar is what you got and the white line is what you should have by now. Figures like "luckier than 83% of players" come from the drop-rate maths for a typical player at your kill count, not from other players' accounts: On Rate has no player data.
+
+> Built on the idea of the [Delve Calculator](https://github.com/Speaax/Delve-calculator) by Speaax, which does this for Doom of Mokhaiotl. If you mainly do Doom, install it too. See [Credits](#credits).
+
+## Before you start
+
+- **Open the collection log page** of each boss you do. Until you do, that boss says *Not synced* instead of a verdict.
+- **Keep the Loot Tracker plugin on.** On Rate reads new drops from it.
+- **Rates are solo base rates** from the OSRS Wiki, without diary, Combat Achievement or Slayer boosts, so your numbers can look drier than a boosted rate would.
+
 ## Features
 
-- **Over 50 bosses and raids** from the Bosses and Raids tabs of the collection log, including Doom of Mokhaiotl per delve level, Fortis Colosseum, Tempoross and Wintertodt (a few things are left out: see *Not covered* below).
-- **Two verdicts per boss**, from *Very dry* to *Very spooned*: how many uniques you got, and what they're worth in GP. Plus how you compare with other players at the same kill count.
+- **Over 50 bosses and raids** from the Bosses and Raids tabs of the collection log, including Doom of Mokhaiotl per delve level (Fortis Colosseum, Tempoross and Wintertodt arrive with the next update; a few things are left out: see *Not covered* below).
+- **Two verdicts per boss**, from *Very dry* to *Very spooned*: how many uniques you got, and what they're worth in GP. Plus how common your result is among players at the same kill count, worked out from the drop rates.
 - **Account overview:** all your bosses added up, your driest and luckiest items and pets, and what you killed and got today and this week.
-- **Hover any item** for its drop rate, your dry streak, how far past the drop rate you are and how many players have fewer or more.
+- **Hover any item** for its drop rate, your dry streak, how far past the drop rate you are and how many players at your kill count would have fewer or more (worked out from the drop rates).
 - **History** per boss: the kills On Rate saw and what they dropped.
 - **Uses your raid points** for each raid's purple chance, and **counts your team** at Nex, Yama, the Hueycoatl, Corp and Zalcano.
 - **Imports your past drops** from the collection log, then updates by itself after every kill.
@@ -40,9 +48,18 @@ The **?** at the top of the panel explains what you're looking at.
 
 Every part of the panel, every setting and every assumption is explained in [docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md). What changed in each version is in [CHANGELOG.md](CHANGELOG.md).
 
+## If something looks off
+
+- **A boss says *Not synced*:** open that boss's page in your collection log. The orange line at the top of the panel lists the bosses you killed that aren't loaded yet.
+- **A boss says *Too early* (from the next update):** less than half a unique is expected so far, and a few kills can't tell dry from lucky. It becomes a verdict as kills add up.
+- **Everything looks dry:** the rates are solo base rates without boosts (see *Before you start*). Raids from before you installed On Rate use an average purple chance, which you can change in the settings.
+- **Nex, Yama, Royal Titans or other team bosses look wrong:** check the **Team bosses** settings. Royal Titans and Yama count as duo by default.
+- **A drop rate looks wrong:** see Feedback below.
+- **Made a mistake?** The small **Reset this boss…** link at the bottom of a boss page clears that boss. Open its collection log page again to re-sync.
+
 ## Feedback
 
-Found a bug or a wrong drop rate, or have an idea? Join the **[On Rate Discord](https://discord.gg/gh9fx6T9zn)**. For a wrong rate, please include the boss and a link to the wiki page; for a bug, a screenshot helps a lot.
+Found a bug or a wrong drop rate, or have an idea? You can [open an issue on GitHub](https://github.com/Pyrocrad/On-Rate/issues/new/choose) (it asks for the details that help) or join the **[On Rate Discord](https://discord.gg/gh9fx6T9zn)**. For a wrong rate, please include the boss, the item and a link to the wiki page; for a bug, a screenshot helps a lot.
 
 ## Credits
 
@@ -52,7 +69,7 @@ Found a bug or a wrong drop rate, or have an idea? Join the **[On Rate Discord](
 
 ## For developers
 
-Open this folder in IntelliJ IDEA (Java 11 or newer) and run **Tasks → application → run** in the Gradle tool window to start RuneLite with the plugin. `gradlew test` runs the tests. Every upload to GitHub is built and tested automatically: a green tick next to a commit means it works.
+Open this folder in IntelliJ IDEA (Java 11 or newer) and run **Tasks → application → run** in the Gradle tool window to start RuneLite with the plugin. `gradlew test` runs the tests. Every upload to GitHub is built and tested automatically: a green tick next to a commit means it builds and passes its tests.
 
 ## Licence
 

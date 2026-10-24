@@ -1,0 +1,35 @@
+name: Bug report
+description: Something in On Rate doesn't work or looks wrong
+labels: ["bug"]
+body:
+  - type: input
+    id: boss
+    attributes:
+      label: Boss or page
+      description: Which boss or panel page, if it is about one (for example Zulrah, or the account overview).
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+      description: A screenshot of the panel helps a lot.
+    validations:
+      required: true
+  - type: dropdown
+    id: synced
+    attributes:
+      label: Did you open that boss's collection log page?
+      options:
+        - "Yes"
+        - "No"
+        - Not sure
+        - Not about a boss
+  - type: input
+    id: update
+    attributes:
+      label: Latest update heading in CHANGELOG.md that you have
+      description: For example "Update of 21 October 2026". Leave empty if you are not sure.
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Optional, but useful if you can say what you did right before.
