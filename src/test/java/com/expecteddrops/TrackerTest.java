@@ -1112,18 +1112,101 @@ public class TrackerTest
 	}
 
 	@Test
-	public void anyRowUsesPoisson()
+	public void anyRowAddsUpEachItemAsItCounts()
 	{
-		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>50</col>.", now);
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>49</col>.", now);
 		RowStats any = tracker.stats("Vorkath", RAIDS).getAnyRow();
 		// head, necklace, jar and the skeletal visage (the draconic one is shared with KBD),
 		// plus the pet as "have it or not"
-		// (the 50th kill's head roll is a sure one: + 1 - 1/50)
+		double plain = 49 * (1 / 50.0 + 1 / 1000.0 + 1 / 3000.0 + 1 / 5000.0);
+		double pet = 49 / 3000.0;
+		assertEquals(plain + (1 - Math.exp(-pet)), any.getExpected(), 1e-9);
+		// with none, the luck is the share of players who have none too: none of anything
+		assertEquals(Math.exp(-plain - pet), any.getLuck(), 1e-12);
+		assertEquals(1 - Math.exp(-plain - pet), any.getChanceAtLeastOne(), 1e-12);
+
+		// the 50th kill's head roll is a sure one: + 1 - 1/50, and nobody has none any more
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>50</col>.", now);
+		any = tracker.stats("Vorkath", RAIDS).getAnyRow();
 		double lambda = 50 * (1 / 50.0 + 1 / 1000.0 + 1 / 3000.0 + 1 / 5000.0) + (1 - 1 / 50.0) + (1 - Math.exp(-50 / 3000.0));
 		assertEquals(lambda, any.getExpected(), 1e-9);
-		assertEquals(DropMath.luck(0, lambda), any.getLuck(), 1e-12);
-		// with none, the luck is the share of players who have none too
-		assertEquals(Math.exp(-lambda), any.getLuck(), 1e-12);
+		assertEquals(0, any.getLuck(), 1e-12);
+		assertEquals(1, any.getChanceAtLeastOne(), 1e-12);
+	}
+
+	@Test
+	public void anyRowWithoutCapsIsStillPoisson()
+	{
+		// Hespori has one unique and no pet: the total is that item's Poisson
+		tracker.onChatMessage("Your Hespori kill count is: <col=ff0000>70</col>.", now);
+		RowStats any = tracker.stats("Hespori", RAIDS).getAnyRow();
+		assertEquals(DropMath.luck(0, 2.0), any.getLuck(), 1e-12);
+		assertEquals(DropMath.chanceAtLeastOne(2.0), any.getChanceAtLeastOne(), 1e-12);
+	}
+
+	@Test
+	public void petOnlyPageAgreesWithItsPet()
+	{
+		// TzKal-Zuk's only unique is the pet (1/100): at 300 kills without it, the page's
+		// verdict is the pet's, not a Poisson of the 0.95 pets that can count
+		tracker.onChatMessage("Your TzKal-Zuk kill count is: <col=ff0000>300</col>.", now);
+		BossStats s = tracker.stats("TzKal-Zuk", RAIDS);
+		RowStats pet = row(s, "Jal-nib-rek");
+		RowStats any = s.getAnyRow();
+		assertEquals(1 - Math.exp(-3), any.getExpected(), 1e-12);
+		assertEquals(Math.exp(-3), pet.getLuck(), 1e-12);
+		assertEquals(pet.getLuck(), any.getLuck(), 1e-12);
+		assertEquals("Very dry", DropMath.verdict(any.getLuck()));
+		assertEquals(pet.getChanceAtLeastOne(), any.getChanceAtLeastOne(), 1e-12);
+		assertEquals(3.0, any.getUncappedExpected(), 1e-12);
+	}
+
+	@Test
+	public void accountTotalAddsUpPetsAsHaveItOrNot()
+	{
+		tracker.onClogPage("The Inferno", Collections.singletonList("TzKal-Zuk kills: 300"), new LinkedHashMap<>());
+		tracker.onClogPage("The Fight Caves", Collections.singletonList("TzTok-Jad kills: 200"), new LinkedHashMap<>());
+		AccountStats account = tracker.accountStats(RAIDS);
+		RowStats total = account.getTotal();
+		assertEquals((1 - Math.exp(-3)) + (1 - Math.exp(-1)), total.getExpected(), 1e-9);
+		// no pet from either: as rare as missing both
+		assertEquals(Math.exp(-3) * Math.exp(-1), total.getLuck(), 1e-12);
+		// the boss rows in the overview judge each boss like its page does
+		for (RowStats bossRow : account.getRows())
+		{
+			assertEquals(tracker.stats(bossRow.getLabel(), RAIDS).getAnyRow().getLuck(), bossRow.getLuck(), 1e-12);
+		}
+	}
+
+	@Test
+	public void vorkathsHeadIsCertainFromTheFiftiethKill()
+	{
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>49</col>.", now);
+		RowStats head = row(tracker.stats("Vorkath", RAIDS), "Vorkath's head");
+		assertEquals(1 - Math.exp(-49 / 50.0), head.getChanceAtLeastOne(), 1e-12);
+
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>50</col>.", now);
+		head = row(tracker.stats("Vorkath", RAIDS), "Vorkath's head");
+		assertEquals(50 / 50.0 + 1 - 1 / 50.0, head.getExpected(), 1e-12);
+		assertEquals(1, head.getChanceAtLeastOne(), 1e-12);
+		// one sure head plus 49 rolls at 1/50: with none you'd be the only one
+		assertEquals(0, head.getLuck(), 1e-12);
+	}
+
+	@Test
+	public void sharedPetIsHaveItOrNot()
+	{
+		// Chaos Elemental 1/300: 300 kills is one pet expected, and the pool keeps it as that
+		tracker.onChatMessage("Your Chaos Elemental kill count is: <col=ff0000>300</col>.", now);
+		SharedPool pet = pool("Pet chaos elemental");
+		assertTrue(pet.isOnce());
+		assertEquals(1.0, pet.getExpected(), 1e-12);
+		assertEquals(1 - Math.exp(-1), pet.getCountedExpected(), 1e-12);
+		RowStats row = pet.toRow();
+		assertEquals(1, row.getCap());
+		// without it: the 37% who don't have it either, like any pet row, not "On rate"
+		assertEquals(Math.exp(-1), row.getLuck(), 1e-12);
+		assertEquals(1 - Math.exp(-1), row.getChanceAtLeastOne(), 1e-12);
 	}
 
 	private static RowStats row(BossStats stats, String label)

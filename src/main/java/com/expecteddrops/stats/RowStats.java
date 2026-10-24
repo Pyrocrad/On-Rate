@@ -21,6 +21,99 @@ public class RowStats
 	private double driestMultiple = Double.NaN;
 	private String driestItem;
 	private String mark = "";
+	/** How the expected count is made up (see {@link Parts}), or null for a single plain count. */
+	private Parts parts;
+
+	/**
+	 * What a total (the "Any" row, the account, a drop with a sure copy) is made of: copies that
+	 * drop for certain, a part with no limit, and items of which only a few copies count, each
+	 * with its uncapped expected. Its luck and chance come from these, not from a Poisson of the
+	 * total: a pet's "have it or not" isn't Poisson, nor is a sure copy.
+	 */
+	public static final class Parts
+	{
+		private int sure;
+		private double plain;
+		private final java.util.List<Double> cappedMeans = new java.util.ArrayList<>();
+		private final java.util.List<Integer> caps = new java.util.ArrayList<>();
+
+		/** {@code count} copies that drop for certain. */
+		public Parts addSure(int count)
+		{
+			sure += count;
+			return this;
+		}
+
+		/** Expected copies with no limit. */
+		public Parts addPlain(double expected)
+		{
+			plain += expected;
+			return this;
+		}
+
+		/** An item of which at most {@code cap} copies count, with its uncapped expected. */
+		public Parts addCapped(double expected, int cap)
+		{
+			cappedMeans.add(expected);
+			caps.add(cap);
+			return this;
+		}
+
+		/** Everything a row stands for: its own parts, or else its plain or capped count. */
+		public Parts add(RowStats row)
+		{
+			if (row.parts != null)
+			{
+				sure += row.parts.sure;
+				plain += row.parts.plain;
+				cappedMeans.addAll(row.parts.cappedMeans);
+				caps.addAll(row.parts.caps);
+			}
+			else if (row.cap > 0)
+			{
+				addCapped(row.expected, row.cap);
+			}
+			else
+			{
+				addPlain(row.expected);
+			}
+			return this;
+		}
+
+		/** Expected copies that count. */
+		public double expected()
+		{
+			double total = sure + plain;
+			for (int i = 0; i < caps.size(); i++)
+			{
+				total += DropMath.expectedCapped(cappedMeans.get(i), caps.get(i));
+			}
+			return total;
+		}
+
+		/** Expected copies if nothing were capped: what the drop rates add up to. */
+		double uncapped()
+		{
+			double total = sure + plain;
+			for (double m : cappedMeans)
+			{
+				total += m;
+			}
+			return total;
+		}
+
+		double[] shares(int received)
+		{
+			double[] means = new double[cappedMeans.size()];
+			int[] limits = new int[caps.size()];
+			for (int i = 0; i < means.length; i++)
+			{
+				means[i] = cappedMeans.get(i);
+				limits[i] = caps.get(i);
+			}
+			return DropMath.sharesSum(received, sure, plain, means, limits);
+		}
+	}
 
 	public RowStats(String label, String iconItem, double rate, double expected, int received, boolean any)
 	{
@@ -54,7 +147,20 @@ public class RowStats
 		copy.streakExact = streakExact;
 		copy.fastest = fastest;
 		copy.longest = longest;
+		copy.parts = parts;
 		return copy;
+	}
+
+	/** Sets what this row's expected count is made of; its luck and chance then follow from it. */
+	public RowStats withParts(Parts parts)
+	{
+		this.parts = parts;
+		return this;
+	}
+
+	public Parts getParts()
+	{
+		return parts;
 	}
 
 	/** Sets the dry streak: kills since the last copy (or since tracking began when not exact). */
@@ -188,10 +294,26 @@ public class RowStats
 		return any;
 	}
 
-	/** Chance of having had at least one by now. */
+	/**
+	 * Expected copies if none were capped: kills times the drop rates. For a pet that's the
+	 * pet's expected; for the "Any" row it's what "1x the unique rate" counts.
+	 */
+	public double getUncappedExpected()
+	{
+		return parts == null ? expected : parts.uncapped();
+	}
+
+	/**
+	 * Chance of having had at least one by now. A cap doesn't change the chance of none, so
+	 * this goes by the uncapped expected; a sure copy makes it certain.
+	 */
 	public double getChanceAtLeastOne()
 	{
-		return DropMath.chanceAtLeastOne(expected);
+		if (parts != null && parts.sure > 0)
+		{
+			return 1;
+		}
+		return DropMath.chanceAtLeastOne(getUncappedExpected());
 	}
 
 	/**
@@ -210,6 +332,10 @@ public class RowStats
 	 */
 	public double[] getShares()
 	{
+		if (parts != null)
+		{
+			return parts.shares(received);
+		}
 		return cap > 0 ? DropMath.sharesCapped(received, expected, cap) : DropMath.shares(received, expected);
 	}
 }

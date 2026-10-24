@@ -16,6 +16,7 @@ public class SharedPool
 	private final List<String> bosses;
 	private final List<String> missingPages;
 	private boolean logKnown = true;
+	private boolean once;
 
 	public SharedPool(String label, String itemName, double expected, int received, List<String> bosses, List<String> missingPages)
 	{
@@ -37,10 +38,28 @@ public class SharedPool
 		return itemName;
 	}
 
-	/** Expected drops from all the bosses together (chance of having one for pets). */
+	/** Expected drops from all the bosses together, uncapped (for a pet: its expected, not the chance of one). */
 	public double getExpected()
 	{
 		return expected;
+	}
+
+	/** The copies that count: for an item the log counts once (a pet), the chance of having one by now. */
+	public double getCountedExpected()
+	{
+		return once ? DropMath.chanceAtLeastOne(expected) : expected;
+	}
+
+	/** True for an item the collection log counts at most once (the Chaos elemental pet). */
+	public boolean isOnce()
+	{
+		return once;
+	}
+
+	public SharedPool withOnce(boolean once)
+	{
+		this.once = once;
+		return this;
 	}
 
 	/** The collection log total. */
@@ -78,8 +97,10 @@ public class SharedPool
 		return missingPages.isEmpty();
 	}
 
+	/** A row for the panel: "have it or not" for an item counted once, like every pet row. */
 	public RowStats toRow()
 	{
-		return new RowStats(label, itemName, 0, expected, received, false);
+		RowStats row = new RowStats(label, itemName, 0, expected, received, false);
+		return once ? row.capped(1, Math.min(1, received)) : row;
 	}
 }

@@ -1,6 +1,11 @@
 # Changelog
 
 **Next update**
+- **Pet-only pages fixed:** the verdict at the top of a page counted a pet you can only have once as if you could get several, so TzKal-Zuk at 300 kills without the pet said "A bit dry" while the pet itself said "Very dry". The top verdict, the account total and "chance of one by now" now add up each item the way it counts, so they agree with the item rows. This also touches Tempoross, Wintertodt, Royal Titans and, a little, every boss with a pet.
+- **Chaos elemental pet fixed:** under "Shared with other bosses" it was judged on the chance of having it instead of the expected number, which made a missing pet look on rate. It's now "have it or not" like every pet.
+- **Vorkath's head:** from your 50th kill the hover says 100% chance of one by now (the 50th kill always drops one), and the 50% / 90% kill counts stop at 50.
+- **Lil' Zik:** 1/500 in Hard Mode (was 1/650), as on the wiki.
+- **GP value:** an item you can only have once is never expected to be worth more than one copy.
 - **Trip summary in chat:** when a trip of 3 or more kills ends (another boss, the button, or the first kill after the break), one line sums it up: "Trip at Zulrah: 43 kills, 1 unique (Magic fang), 0.29 expected · Spooned." It follows the Drop messages switch.
 - **Last unique:** the account overview says how long ago your last unique was: "Last unique 12 days ago: Magic fang (Zulrah)." It goes by the drops On Rate saw itself.
 - **Drop records:** an item's hover shows the fastest and longest it took between drops since you installed On Rate ("fastest drop after 17 kills, longest after 1,204").

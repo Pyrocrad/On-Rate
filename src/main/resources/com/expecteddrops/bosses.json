@@ -510,7 +510,7 @@
         {"name": "Justiciar chestguard", "weight": 2},
         {"name": "Justiciar legguards", "weight": 2},
         {"name": "Scythe of vitur (uncharged)", "weight": 1},
-        {"name": "Lil' zik", "rate": "1/650", "pet": true, "partRates": {"Normal": "1/650", "Hard Mode": "1/650"}}
+        {"name": "Lil' zik", "rate": "1/650", "pet": true, "partRates": {"Normal": "1/650", "Hard Mode": "1/500"}}
       ]
     },
     {

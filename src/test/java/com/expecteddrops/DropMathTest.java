@@ -150,4 +150,90 @@ public class DropMathTest
 		assertTrue(more > 0 && more < 1);
 		assertEquals(null, DropMath.shares(1, 0));
 	}
+
+	@Test
+	public void sharesSumWithoutCapsIsPoisson()
+	{
+		for (int r = 0; r < 6; r++)
+		{
+			double[] plain = DropMath.shares(r, 2.4);
+			double[] sum = DropMath.sharesSum(r, 0, 2.4, new double[0], new int[0]);
+			assertEquals(plain[0], sum[0], 1e-15);
+			assertEquals(plain[1], sum[1], 1e-15);
+		}
+	}
+
+	@Test
+	public void sharesSumMatchesBruteForce()
+	{
+		// Poisson(1.3) plus min(Poisson(2), 1) plus min(Poisson(0.7), 3), by hand
+		double[] means = {2.0, 0.7};
+		int[] caps = {1, 3};
+		double[][] items = new double[2][];
+		for (int i = 0; i < 2; i++)
+		{
+			items[i] = new double[caps[i] + 1];
+			double rest = 1;
+			for (int k = 0; k < caps[i]; k++)
+			{
+				items[i][k] = poisson(k, means[i]);
+				rest -= items[i][k];
+			}
+			items[i][caps[i]] = rest;
+		}
+		double[] total = new double[12];
+		for (int a = 0; a < 8; a++)
+		{
+			for (int b = 0; b <= 1; b++)
+			{
+				for (int c = 0; c <= 3; c++)
+				{
+					total[a + b + c] += poisson(a, 1.3) * items[0][b] * items[1][c];
+				}
+			}
+		}
+		double below = 0;
+		for (int r = 0; r < 6; r++)
+		{
+			double[] s = DropMath.sharesSum(r, 0, 1.3, means, caps);
+			assertEquals(below, s[0], 1e-6);
+			assertEquals(total[r], s[1], 1e-6);
+			below += total[r];
+		}
+	}
+
+	@Test
+	public void sureCopiesShiftTheCount()
+	{
+		// one sure copy and 0.98 expected besides: 1 is the fewest anyone can have
+		double[] one = DropMath.sharesSum(1, 1, 0.98, null, null);
+		assertEquals(0, one[0], 1e-15);
+		assertEquals(Math.exp(-0.98), one[1], 1e-15);
+		double[] none = DropMath.sharesSum(0, 1, 0.98, null, null);
+		assertEquals(0, none[0] + none[1], 1e-15);
+		assertTrue(DropMath.sharesSum(0, 0, 0, new double[]{0}, new int[]{1}) == null);
+	}
+
+	@Test
+	public void valueLuckCountsCappedItemsOnce()
+	{
+		// an item you can only have once, 3 expected: having it is what 95% of players have
+		double capped = DropMath.valueLuck(new double[]{3}, new long[]{100}, new int[]{1}, 100, 5000, 1L);
+		assertEquals(0.5, capped, 1e-12);
+		// as if copies piled up, having one would look dry
+		double uncapped = DropMath.valueLuck(new double[]{3}, new long[]{100}, 100, 5000, 1L);
+		assertTrue(uncapped < 0.3);
+		assertEquals(DropMath.expectedCapped(3, 1), DropMath.expectedValue(3, 1), 1e-15);
+		assertEquals(3, DropMath.expectedValue(3, 0), 1e-15);
+	}
+
+	private static double poisson(int k, double mean)
+	{
+		double p = Math.exp(-mean);
+		for (int i = 1; i <= k; i++)
+		{
+			p *= mean / i;
+		}
+		return p;
+	}
 }

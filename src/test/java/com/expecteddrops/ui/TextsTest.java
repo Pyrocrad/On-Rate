@@ -127,4 +127,13 @@ public class TextsTest
 		com.expecteddrops.stats.RowStats one = new com.expecteddrops.stats.RowStats("Hydra's claw", null, 1 / 1001.0, 2.1, 1, false);
 		assertEquals(null, Texts.rateMultipleLine(one));
 	}
+
+	@Test
+	public void rateMultipleCountsAPetInFull()
+	{
+		// one pet expected: 1x the rate, though only 0.63 of it can count
+		com.expecteddrops.stats.RowStats any = new com.expecteddrops.stats.RowStats("Any", null, 0,
+			DropMath.expectedCapped(1, 1), 0, true).withParts(new com.expecteddrops.stats.RowStats.Parts().addCapped(1, 1));
+		assertEquals("1.0\u00d7 the unique rate without a unique", Texts.rateMultipleLine(any));
+	}
 }
