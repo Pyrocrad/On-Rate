@@ -1,7 +1,23 @@
 # Changelog
 
+Updates come through the Plugin Hub. Each heading is the date of that update; **Next update** is not out yet.
+
 **Next update**
-- **Unreadable saved data is kept:** if On Rate can't read the saved data, History or raids of an account, it starts fresh but keeps the old text under a ".corrupt" key, so the next save no longer destroys it.
+
+*Highlights*
+- **Three new pages:** Fortis Colosseum, Tempoross and Wintertodt.
+- **Clearer verdicts:** boss pages with less than half a unique expected say "Too early", and the middle of the scale has three words (A bit dry, On rate, A bit spooned).
+- **More careful counting:** pets, Zalcano and items several bosses drop are counted more accurately, and unreadable saved data is kept instead of overwritten.
+
+*Changes that affect your numbers*
+- **Pets:** a pet you can only have once no longer counts as if you could get several. This changes the top verdict of pages with a pet (TzKal-Zuk, Tempoross, Wintertodt, Royal Titans and, a little, every boss with a pet), the account total and "chance of one by now". The Chaos elemental pet is now judged as "have it or not".
+- **Verdict words:** the old "On rate" band (35% to 65%) is split into A bit dry, On rate and A bit spooned.
+- **Zalcano:** the crystal tool seed now counts the players around you, so its expected count and the trip card's "Unique value" change.
+- **Rates and caps:** Lil' Zik in Hard Mode is 1/500 (was 1/650); from your 50th kill Vorkath's head shows a 100% chance of one by now; the dragon axe is judged on the Dagannoth Kings and Wintertodt together; GP value never expects more than one copy of an item you can only have once.
+- **Group bosses:** kills from before On Rate counted your team now use the team of the first kill it counted, instead of counting as solo.
+
+*Everything in this update*
+- **Unreadable saved data is kept:** if On Rate can't read an account's saved data, History or raids, it starts fresh for that part but keeps a copy of the old data (under a ".corrupt" key in RuneLite's settings) instead of overwriting it. If that happens to you, please tell us in an issue or on Discord.
 - **Clearer panel:**
   - **ITEMS legend:** reads "bar = got · line = expected", and its hover says you can right-click an item to leave it out.
   - **Too early:** a boss page with less than half a unique expected says "Too early" instead of a verdict, because a few kills can't tell dry from lucky. "Dry" and "Spooned" are drawn in a quieter colour than "Very dry" and "Very spooned" on boss pages. The account overview keeps its verdicts as they were.
@@ -37,6 +53,9 @@
 - Group bosses (Nex, the Hueycoatl, Corp, Zalcano): kills from before On Rate counted your team now use the team of the first kill it counted, instead of counting as solo.
 
 **Update of 21 October 2026**
+
+*Your numbers may change:* see **A fairer verdict** below, which changes when a result counts as dry or spooned.
+
 - **Two verdicts** at the top of every boss page and the account overview: **Uniques** (how many you got) and **GP value** (what they're worth), each with its numbers. On the account they stay at the top on every tab.
 - **Recent** starts with **Today** and **Last 7 days**: kills and uniques in total and per boss, green when you got more than expected and orange when fewer (hover for the numbers). Kills from before this update are filled in from History.
 - History says "your first one" for an item you got for the first time (was "1st one"), counts in raids for the raids and in delves for Doom, and hovering the line under it lists which uniques those were.
@@ -108,7 +127,7 @@
 - The README is short now; the details moved to [docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md) and this changelog to its own file.
 - **Faster:** after a kill On Rate only saves what changed, the GE value luck is worked out about 15 times faster (with the same result), and the panel isn't rebuilt while it's closed. The old drop history data is no longer saved, so your saved data gets smaller too.
 
-**1.0.0** (on the Plugin Hub since 18 October 2026)
+**First release, 18 October 2026** (1.0.0)
 - Expected vs received uniques for every boss and raid, luck percentile and verdict, account overview with GE value luck, raid points, collection log sync, five luck views and optional extras.
 - Shared items (dragon pickaxe, godsword shards, Virtus, onyx...) are judged on all their bosses' kills together.
 - God Wars bodyguards count towards their general's uniques.

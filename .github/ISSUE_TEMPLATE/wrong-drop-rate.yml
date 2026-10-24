@@ -1,0 +1,32 @@
+name: Wrong drop rate
+description: A boss, item or rate in On Rate doesn't match the OSRS Wiki
+labels: ["rates"]
+body:
+  - type: input
+    id: boss
+    attributes:
+      label: Boss
+    validations:
+      required: true
+  - type: input
+    id: item
+    attributes:
+      label: Item
+    validations:
+      required: true
+  - type: input
+    id: shown
+    attributes:
+      label: Rate On Rate uses
+      description: Hover the item in the panel to see it, or look in docs/RATES.md.
+  - type: input
+    id: wiki
+    attributes:
+      label: Link to the OSRS Wiki page and the rate it states
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: For example whether the rate changed in a recent game update, or depends on a mode or boost.
