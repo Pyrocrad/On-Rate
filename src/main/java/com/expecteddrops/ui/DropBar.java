@@ -50,8 +50,12 @@ class DropBar extends JComponent
 
 	private static void drawShadowed(Graphics2D g2, String s, int x, int y)
 	{
-		g2.setColor(Color.BLACK);
+		// a dark outline all round keeps the white readable on the lighter fills
+		g2.setColor(new Color(0, 0, 0, 200));
 		g2.drawString(s, x + 1, y + 1);
+		g2.drawString(s, x - 1, y + 1);
+		g2.drawString(s, x + 1, y - 1);
+		g2.drawString(s, x - 1, y - 1);
 		g2.setColor(Color.WHITE);
 		g2.drawString(s, x, y);
 	}

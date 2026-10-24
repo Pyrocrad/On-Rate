@@ -357,6 +357,65 @@ final class Texts
 			: String.format("1 in %,d as lucky", Math.max(2, Math.round(1 / (1 - luck))));
 	}
 
+	/**
+	 * Below this many expected uniques a boss page says "Too early" instead of a verdict: a
+	 * handful of kills can't tell dry from lucky.
+	 */
+	static final double TOO_EARLY_BELOW = 0.5;
+
+	/** "90 got · 92.4 expected", with "(est.)" where the rates depend on settings. */
+	static String gotExpected(String got, String expected, boolean estimate)
+	{
+		return String.format("%s got · %s expected%s", got, expected, estimate ? " (est.)" : "");
+	}
+
+	/**
+	 * The line under a boss page's verdict, with what the "1 in N" counts: "1 in 5 players is
+	 * this dry", "74% of players have none". "About average" in the middle.
+	 */
+	static String luckPlayers(double[] shares, int received)
+	{
+		if (shares == null)
+		{
+			return "";
+		}
+		double fewer = shares[0];
+		double same = shares[1];
+		if (received <= 0 || fewer <= 1e-12)
+		{
+			if (same >= 0.995)
+			{
+				return ">99% of players have none";
+			}
+			if (same >= 0.5)
+			{
+				return String.format("%.0f%% of players have none", same * 100);
+			}
+			return String.format("only 1 in %,d players has none", Math.max(2, Math.round(1 / Math.max(same, 0.0001))));
+		}
+		return luckPlayers(com.expecteddrops.stats.DropMath.tieAware(fewer, same));
+	}
+
+	/** The same from the luck value alone (GP value). */
+	static String luckPlayers(double luck)
+	{
+		if (Double.isNaN(luck))
+		{
+			return "";
+		}
+		if (com.expecteddrops.stats.DropMath.VERDICTS.get(3).equals(com.expecteddrops.stats.DropMath.verdict(luck)))
+		{
+			return "about average";
+		}
+		if (luck < 0.5)
+		{
+			return luck < 0.0001 ? "<1 in 10,000 players is this dry"
+				: String.format("1 in %,d players is this dry", Math.max(2, Math.round(1 / luck)));
+		}
+		return 1 - luck < 0.0001 ? "<1 in 10,000 players is this lucky"
+			: String.format("1 in %,d players is this lucky", Math.max(2, Math.round(1 / (1 - luck))));
+	}
+
 	/** How far out a dry or lucky item must be to be worth a sentence: 8 in 10 players. */
 	static final double NOTABLE_SHARE = 0.80;
 	/** An item you don't have yet is worth a sentence once this many players would have it. */
