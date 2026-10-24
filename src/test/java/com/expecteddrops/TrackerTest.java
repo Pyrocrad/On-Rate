@@ -2028,4 +2028,100 @@ public class TrackerTest
 		assertEquals(chance * 5 / 19, row(toa, "Lightbearer").getExpected(), 1e-12);
 		assertEquals(chance * 1 / 19, row(toa, "Tumeken's shadow (uncharged)").getExpected(), 1e-12);
 	}
+
+	/** Per-kill rate of a pooled item for one boss (pooled drops are not on the boss's own page). */
+	private double poolRate(String bossName, String pool)
+	{
+		for (BossCatalog.PoolSource src : catalog.getPools().get(pool))
+		{
+			if (src.getBoss().getName().equals(bossName))
+			{
+				return Tracker.effectiveRate(src.getBoss(), src.getDrop(), RAIDS);
+			}
+		}
+		throw new AssertionError(bossName + " does not drop " + pool);
+	}
+
+	@Test
+	public void sharedPoolOnlyAddsUpTheBossesYouKnow()
+	{
+		// Uncut onyx: Skotizo 1/1000 and Zulrah 1/512 (different rates), only Zulrah's kills are known
+		tracker.onChatMessage("Your Zulrah kill count is: <col=ff0000>1000</col>.", now);
+		SharedPool onyx = pool("Uncut onyx");
+		double zulrahRate = poolRate("Zulrah", "uncut onyx");
+		assertEquals(1000 * zulrahRate, onyx.getExpected(), 1e-9);
+		assertEquals(Collections.singletonList("Skotizo"), onyx.getMissingPages());
+		assertFalse(onyx.isComplete());
+		// no log page showing the item yet: the total is unknown, not zero
+		assertFalse(onyx.isLogKnown());
+		assertEquals(0, onyx.getReceived());
+
+		// Skotizo's page, with none of the item: the total is known and both bosses count
+		tracker.onClogPage("Skotizo", Collections.singletonList("Skotizo kills: 100"), Collections.singletonMap("Uncut onyx", 0));
+		onyx = pool("Uncut onyx");
+		double skotizoRate = poolRate("Skotizo", "uncut onyx");
+		assertTrue(onyx.isComplete());
+		assertTrue(onyx.isLogKnown());
+		assertEquals(0, onyx.getReceived());
+		assertEquals(1000 * zulrahRate + 100 * skotizoRate, onyx.getExpected(), 1e-9);
+		assertTrue(skotizoRate != zulrahRate);
+	}
+
+	@Test
+	public void sharedItemWithNoKillsAnywhereIsNotAnExpectedDrop()
+	{
+		SharedPool onyx = pool("Uncut onyx");
+		assertEquals(0, onyx.getExpected(), 0);
+		assertEquals(2, onyx.getMissingPages().size());
+		assertFalse(onyx.isComplete());
+	}
+
+	@Test
+	public void unknownTeamSizeCountsEveryGroupKillAsSolo()
+	{
+		// a detector that can't tell (0) is the same as one that always sees you alone
+		Tracker unknown = new Tracker(catalog);
+		unknown.setTeamSizeDetector(() -> 0);
+		Tracker solo = new Tracker(catalog);
+		solo.setTeamSizeDetector(() -> 1);
+		Tracker none = new Tracker(catalog);
+		none.setTeamSizeDetector(null);
+		for (Tracker t : new Tracker[]{unknown, solo, none})
+		{
+			t.onChatMessage("Your Nex kill count is: <col=ff0000>100</col>.", now);
+			for (int kc = 101; kc <= 110; kc++)
+			{
+				t.onChatMessage("Your Nex kill count is: <col=ff0000>" + kc + "</col>.", now);
+			}
+		}
+		assertTrue(unknown.teamKills("Nex").isEmpty());
+		assertTrue(none.teamKills("Nex").isEmpty());
+		double expected = row(solo.stats("Nex", RAIDS), "Zaryte vambraces").getExpected();
+		assertTrue(expected > 0);
+		assertEquals(expected, row(unknown.stats("Nex", RAIDS), "Zaryte vambraces").getExpected(), 1e-12);
+		assertEquals(expected, row(none.stats("Nex", RAIDS), "Zaryte vambraces").getExpected(), 1e-12);
+	}
+
+	@Test
+	public void tripBoundaryIsInclusive()
+	{
+		// half an hour for a normal boss, two hours for a raid (Tracker keeps these package-private)
+		final long NORMAL_TRIP = 30 * 60_000L;
+		final long LONG_TRIP = 120 * 60_000L;
+		tracker.setSettings(RAIDS);
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>100</col>.", now);
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>101</col>.", now + NORMAL_TRIP);
+		assertEquals(2, tracker.tripStats().getKills());
+		// one millisecond later than half an hour after the last kill starts a new trip
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>102</col>.", now + 2 * NORMAL_TRIP + 1);
+		assertEquals(1, tracker.tripStats().getKills());
+
+		Tracker raid = new Tracker(catalog);
+		raid.setSettings(RAIDS);
+		raid.onChatMessage("Your completed Chambers of Xeric count is: <col=ff0000>10</col>.", now);
+		raid.onChatMessage("Your completed Chambers of Xeric count is: <col=ff0000>11</col>.", now + LONG_TRIP);
+		assertEquals(2, raid.tripStats().getKills());
+		raid.onChatMessage("Your completed Chambers of Xeric count is: <col=ff0000>12</col>.", now + 2 * LONG_TRIP + 1);
+		assertEquals(1, raid.tripStats().getKills());
+	}
 }

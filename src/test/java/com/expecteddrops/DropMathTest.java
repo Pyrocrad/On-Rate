@@ -2,6 +2,7 @@ package com.expecteddrops;
 
 import com.expecteddrops.stats.DropMath;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
@@ -235,5 +236,173 @@ public class DropMathTest
 			p *= mean / i;
 		}
 		return p;
+	}
+
+	// Golden values below were worked out by hand from the Poisson / geometric formulas.
+
+	@Test
+	public void goldenChanceAtLeastOne()
+	{
+		// 1 - (127/128)^100
+		assertEquals(0.5435690025908804, DropMath.chanceAtLeastOne(1.0 / 128, 100), 1e-12);
+		// Poisson: 1 - e^-1
+		assertEquals(0.6321205588285577, DropMath.chanceAtLeastOne(1.0), 1e-12);
+		// no kills, no rate, a certain rate
+		assertEquals(0, DropMath.chanceAtLeastOne(1.0 / 128, 0), 0);
+		assertEquals(0, DropMath.chanceAtLeastOne(1.0 / 128, -5), 0);
+		assertEquals(0, DropMath.chanceAtLeastOne(0, 1000), 0);
+		assertEquals(1, DropMath.chanceAtLeastOne(1, 1), 0);
+		assertEquals(1, DropMath.chanceAtLeastOne(1.5, 3), 0);
+		assertEquals(0, DropMath.chanceAtLeastOne(0), 0);
+		assertEquals(0, DropMath.chanceAtLeastOne(-1), 0);
+	}
+
+	@Test
+	public void chanceAtLeastOneStaysExactInTheTails()
+	{
+		// a tiny rate must not round to zero (1 - (1 - 1e-12) would)
+		assertEquals(1e-12, DropMath.chanceAtLeastOne(1e-12, 1), 1e-20);
+		assertEquals(1e-9, DropMath.chanceAtLeastOne(1e-12, 1000), 1e-17);
+		// a huge kill count saturates at 1 without NaN
+		assertEquals(1, DropMath.chanceAtLeastOne(1.0 / 5000, 10_000_000), 0);
+		assertEquals(1, DropMath.chanceAtLeastOne(1.0 / 5000, Long.MAX_VALUE), 0);
+	}
+
+	@Test
+	public void goldenKillsForChance()
+	{
+		// 50% needs ceil(ln 0.5 / ln(127/128)) = 89 kills at 1/128
+		assertEquals(89, DropMath.killsForChance(1.0 / 128, 0.5));
+		assertTrue(DropMath.chanceAtLeastOne(1.0 / 128, 89) >= 0.5);
+		assertTrue(DropMath.chanceAtLeastOne(1.0 / 128, 88) < 0.5);
+		assertEquals(-1, DropMath.killsForChance(0, 0.5));
+		assertEquals(-1, DropMath.killsForChance(1.0 / 128, 0));
+		assertEquals(1, DropMath.killsForChance(1, 0.5));
+	}
+
+	@Test
+	public void goldenShares()
+	{
+		// no drops at mean 3: nobody has fewer, e^-3 have exactly none
+		double[] none = DropMath.shares(0, 3.0);
+		assertEquals(0, none[0], 0);
+		assertEquals(Math.exp(-3), none[1], 1e-12);
+		// 2 drops at mean 2: fewer = e^-2 (1 + 2), same = e^-2 * 2
+		double[] two = DropMath.shares(2, 2.0);
+		assertEquals(0.4060058497098381, two[0], 1e-12);
+		assertEquals(0.2706705664732254, two[1], 1e-12);
+		// negative received counts as none
+		assertEquals(none[1], DropMath.shares(-4, 3.0)[1], 0);
+		assertNull(DropMath.shares(1, 0));
+		assertNull(DropMath.shares(1, Double.NaN));
+		assertTrue(Double.isNaN(DropMath.luck(1, 0)));
+		assertTrue(Double.isNaN(DropMath.luckPercentile(1, Double.NaN)));
+	}
+
+	@Test
+	public void percentileIsBetweenZeroAndOneAndRisesWithDrops()
+	{
+		double last = -1;
+		for (int received = 0; received <= 30; received++)
+		{
+			double luck = DropMath.luckPercentile(received, 5.0);
+			assertTrue(luck >= 0 && luck <= 1);
+			assertTrue("luck must not fall as drops rise", luck > last);
+			last = luck;
+		}
+		// far in the tail of a huge mean there is no NaN or infinity
+		assertTrue(DropMath.luckPercentile(2000, 1000) > 0.999999);
+		assertEquals(0, DropMath.luckPercentile(0, 1000), 1e-300);
+	}
+
+	@Test
+	public void cappedCountsStopAtTheCap()
+	{
+		// E[min(X,1)] = 1 - e^-lambda
+		assertEquals(0.6321205588285577, DropMath.expectedCapped(1.0, 1), 1e-12);
+		assertEquals(0, DropMath.expectedCapped(0, 3), 0);
+		assertEquals(0, DropMath.expectedCapped(2.0, 0), 0);
+		// a cap far above the mean changes nothing
+		assertEquals(2.0, DropMath.expectedCapped(2.0, 60), 1e-9);
+		assertEquals(2.0, DropMath.expectedValue(2.0, 0), 0);
+		assertEquals(DropMath.expectedCapped(2.0, 1), DropMath.expectedValue(2.0, 1), 0);
+		// one pet: you either have it or not; having it is as good as it gets
+		double[] have = DropMath.sharesCapped(1, 1.0, 1);
+		assertEquals(Math.exp(-1), have[0], 1e-12);
+		assertEquals(1 - Math.exp(-1), have[1], 1e-12);
+		// more than the cap is the same as the cap
+		assertEquals(have[0], DropMath.sharesCapped(5, 1.0, 1)[0], 0);
+		double[] dry = DropMath.sharesCapped(0, 1.0, 1);
+		assertEquals(0, dry[0], 0);
+		assertEquals(Math.exp(-1), dry[1], 1e-12);
+	}
+
+	@Test
+	public void guaranteedCopiesShiftTheDistribution()
+	{
+		// 1 sure copy plus Poisson(1): with 1 copy in total nobody has fewer, e^-1 have as few
+		double[] one = DropMath.sharesSum(1, 1, 1.0, null, null);
+		assertEquals(0, one[0], 0);
+		assertEquals(Math.exp(-1), one[1], 1e-12);
+		// 2 in total is one more than the sure copy: fewer = e^-1, same = e^-1
+		double[] two = DropMath.sharesSum(2, 1, 1.0, null, null);
+		assertEquals(Math.exp(-1), two[0], 1e-12);
+		assertEquals(Math.exp(-1), two[1], 1e-12);
+		// fewer than the sure copies is impossible
+		double[] impossible = DropMath.sharesSum(0, 1, 1.0, null, null);
+		assertEquals(0, impossible[0], 0);
+		assertEquals(0, impossible[1], 0);
+		// nothing expected at all
+		assertNull(DropMath.sharesSum(0, 0, 0, new double[]{0}, new int[]{1}));
+	}
+
+	@Test
+	public void cappedPartsInASumAddUpExactly()
+	{
+		// a plain item plus a pet that counts once: P(total = 0) = e^-a * e^-b
+		double[] zero = DropMath.sharesSum(0, 0, 2.0, new double[]{1.0}, new int[]{1});
+		assertEquals(0, zero[0], 0);
+		assertEquals(Math.exp(-3), zero[1], 1e-12);
+		// the pet can only add one, so a total of 1 is P(plain=1)*P(pet=0) + P(plain=0)*P(pet>=1)
+		double[] one = DropMath.sharesSum(1, 0, 2.0, new double[]{1.0}, new int[]{1});
+		double same = 2 * Math.exp(-2) * Math.exp(-1) + Math.exp(-2) * (1 - Math.exp(-1));
+		assertEquals(Math.exp(-3), one[0], 1e-12);
+		assertEquals(same, one[1], 1e-12);
+	}
+
+	@Test
+	public void verdictBoundariesGoToTheSideNearerTheMiddle()
+	{
+		assertEquals("", DropMath.verdict(Double.NaN));
+		assertEquals("Very dry", DropMath.verdict(0.0));
+		assertEquals("Very dry", DropMath.verdict(0.0999));
+		assertEquals("Dry", DropMath.verdict(0.10));
+		assertEquals("Dry", DropMath.verdict(0.3499));
+		assertEquals("A bit dry", DropMath.verdict(0.35));
+		assertEquals("A bit dry", DropMath.verdict(0.4499));
+		assertEquals("On rate", DropMath.verdict(0.45));
+		assertEquals("On rate", DropMath.verdict(0.55));
+		assertEquals("A bit spooned", DropMath.verdict(0.5501));
+		assertEquals("A bit spooned", DropMath.verdict(0.65));
+		assertEquals("Spooned", DropMath.verdict(0.6501));
+		assertEquals("Spooned", DropMath.verdict(0.90));
+		assertEquals("Very spooned", DropMath.verdict(0.9001));
+		assertEquals("Very spooned", DropMath.verdict(1.0));
+	}
+
+	@Test
+	public void parsesOddRates()
+	{
+		assertEquals(0, DropMath.parseRate("  "), 0);
+		assertEquals(1.0 / 25_000, DropMath.parseRate(" 1 / 25,000 "), 1e-15);
+		try
+		{
+			DropMath.parseRate("1/0");
+			throw new AssertionError("a rate over zero should be refused");
+		}
+		catch (IllegalArgumentException expected)
+		{
+			// fine
+		}
 	}
 }
