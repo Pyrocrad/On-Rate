@@ -37,6 +37,8 @@ final class ProfileStore
 		void unset(String key);
 	}
 
+	static final String BACKUP_SUFFIX = ".corrupt";
+
 	private final Backend backend;
 	private final Gson gson;
 	private String loadedProfile;
@@ -52,7 +54,7 @@ final class ProfileStore
 	 *
 	 * @return false when nothing was done: no profile yet, or it is already the one loaded
 	 */
-	boolean load(String profile, Tracker tracker)
+	synchronized boolean load(String profile, Tracker tracker)
 	{
 		if (profile == null || profile.equals(loadedProfile))
 		{
@@ -113,7 +115,7 @@ final class ProfileStore
 	}
 
 	/** Writes what changed since the last save. Does nothing before a profile is loaded. */
-	void save(Tracker tracker)
+	synchronized void save(Tracker tracker)
 	{
 		if (tracker == null || loadedProfile == null)
 		{
@@ -138,6 +140,12 @@ final class ProfileStore
 	void forget()
 	{
 		loadedProfile = null;
+	}
+
+	/** Keeps unreadable data under a ".corrupt" key, so the next save doesn't destroy it. */
+	private void backup(String key, String raw)
+	{
+		backend.set(key + BACKUP_SUFFIX, raw);
 	}
 
 	private void write(String key, String json)

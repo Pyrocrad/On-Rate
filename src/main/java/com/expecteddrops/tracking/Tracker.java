@@ -781,6 +781,13 @@ public class Tracker
 		raidsChanged.clear();
 		// another account: nothing of the last one's session carries over
 		daysFilled.clear();
+		outbox.clear();
+		pendingWave = null;
+		lastPart = null;
+		lastKillMillis = 0;
+		lastRaidMillis = 0;
+		latestToaMillis = 0;
+		pendingPartyMillis = 0;
 		lastBoss = null;
 		trip = null;
 		beforeThisKill = null;
@@ -2164,6 +2171,21 @@ public class Tracker
 		{
 			killsChanged.add(bossName);
 			raidsChanged.add(bossName);
+		}
+		// Recent's day counts, the trip and the last-kill pointers must not outlive the reset
+		for (Map<String, DayCount> forDay : state.days().values())
+		{
+			forDay.remove(bossName);
+		}
+		daysFilled.remove(bossName);
+		if (trip != null && trip.boss.equals(bossName))
+		{
+			trip = null;
+			beforeThisKill = null;
+		}
+		if (bossName.equals(lastBoss))
+		{
+			lastBoss = null;
 		}
 	}
 
