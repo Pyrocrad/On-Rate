@@ -17,7 +17,7 @@
 - **Account overview:** all your bosses added up, your driest and luckiest items and pets, and what you killed and got today and this week.
 - **Hover any item** for its drop rate, your dry streak, how far past the drop rate you are and how many players have fewer or more.
 - **History** per boss: the kills On Rate saw and what they dropped.
-- **Uses your raid points** for each raid's purple chance, and **counts your team** at Nex, Yama, the Hueycoatl and Corp.
+- **Uses your raid points** for each raid's purple chance, and **counts your team** at Nex, Yama, the Hueycoatl, Corp and Zalcano.
 - **Imports your past drops** from the collection log, then updates by itself after every kill.
 - **Quiet:** no web requests and no files. Everything is saved in RuneLite's own settings, per account.
 

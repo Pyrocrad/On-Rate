@@ -223,9 +223,9 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigItem(
 		keyName = "detectTeamSize",
 		name = "Count your team",
-		description = "At Nex, Yama, the Hueycoatl and the Corporeal Beast, count the players around you at each kill "
-			+ "and give you that share of the kill (a quarter with four players). Earlier kills count as solo "
-			+ "(Yama: as set above).",
+		description = "At Nex, Yama, the Hueycoatl, the Corporeal Beast and Zalcano, count the players around you at each kill "
+			+ "and give you that share of the kill (a quarter with four players). Earlier kills use the team of "
+			+ "the first kill On Rate counted (Yama: as set above).",
 		position = 55,
 		section = teamSection
 	)
