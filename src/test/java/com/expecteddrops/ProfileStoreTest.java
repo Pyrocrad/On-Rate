@@ -130,6 +130,18 @@ public class ProfileStoreTest
 	}
 
 	@Test
+	public void unreadableDataIsKeptAsABackupWhenSavingOverIt()
+	{
+		current.values.put("progress", "{this is not json");
+		current.values.put("kills.Vorkath", "[[[");
+		assertTrue(store.load("main", tracker));
+		vorkathKill(11, false);
+		store.save(tracker);
+		assertEquals("{this is not json", current.values.get("progress.corrupt"));
+		assertEquals("[[[", current.values.get("kills.Vorkath.corrupt"));
+	}
+
+	@Test
 	public void unreadableDataStartsFreshInsteadOfFailing()
 	{
 		vorkathKill(10, false);

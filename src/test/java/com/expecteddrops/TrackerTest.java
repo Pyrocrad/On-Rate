@@ -2124,4 +2124,27 @@ public class TrackerTest
 		raid.onChatMessage("Your completed Chambers of Xeric count is: <col=ff0000>12</col>.", now + 2 * LONG_TRIP + 1);
 		assertEquals(1, raid.tripStats().getKills());
 	}
+
+	@Test
+	public void switchingAccountsDropsPendingNotes()
+	{
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>1</col>.", 1000);
+		tracker.onLoot("Vorkath", 1, java.util.Collections.singletonList(new Tracker.LootItem("Vorkath's head", 1)), 1000);
+		tracker.setState(null);
+		assertTrue(tracker.drainNotes().isEmpty());
+	}
+
+	@Test
+	public void resetRemovesTheBossFromRecentAndTheTrip()
+	{
+		long now = System.currentTimeMillis();
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>1</col>.", now);
+		tracker.reset("Vorkath");
+		assertNull(tracker.tripStats());
+		assertNull(tracker.getLastBoss());
+		for (com.expecteddrops.tracking.BossDays d : tracker.recentDays(7, now))
+		{
+			assertTrue(!"Vorkath".equals(d.getBoss()) || d.getKills() == 0);
+		}
+	}
 }

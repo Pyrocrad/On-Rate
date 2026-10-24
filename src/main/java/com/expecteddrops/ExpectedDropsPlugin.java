@@ -604,7 +604,12 @@ public class ExpectedDropsPlugin extends Plugin
 		{
 			return;
 		}
-		String boss = tracker.onChatMessage(event.getMessage(), System.currentTimeMillis());
+		Tracker t = tracker;
+		if (t == null)
+		{
+			return;
+		}
+		String boss = t.onChatMessage(event.getMessage(), System.currentTimeMillis());
 		if (boss != null)
 		{
 			changed(boss, true);
@@ -615,6 +620,10 @@ public class ExpectedDropsPlugin extends Plugin
 	@Subscribe
 	public void onLootReceived(LootReceived event)
 	{
+		if (tracker == null)
+		{
+			return;
+		}
 		Collection<ItemStack> stacks = event.getItems();
 		List<Tracker.LootItem> items = new ArrayList<>();
 		if (stacks != null)
@@ -644,6 +653,10 @@ public class ExpectedDropsPlugin extends Plugin
 
 	private void readDoomScoreboard()
 	{
+		if (tracker == null)
+		{
+			return;
+		}
 		Map<Integer, Integer> levels = new TreeMap<>();
 		for (int level = 1; level <= 9; level++)
 		{
@@ -682,6 +695,10 @@ public class ExpectedDropsPlugin extends Plugin
 
 	private void readCollectionLogPage()
 	{
+		if (tracker == null)
+		{
+			return;
+		}
 		Widget header = client.getWidget(InterfaceID.Collection.HEADER_TEXT);
 		Widget itemsWidget = client.getWidget(InterfaceID.Collection.ITEMS_CONTENTS);
 		if (header == null || itemsWidget == null)
