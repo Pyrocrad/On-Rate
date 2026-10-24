@@ -172,20 +172,17 @@ final class Texts
 		{
 			return "Dry streak: your last one came before On Rate, so it counts from your next " + unit + ".";
 		}
-		String since = row.getReceived() > 0 || !row.isStreakExact()
-			? (row.isAny() ? "since your last unique" : "since your last one")
-			: (row.isAny() ? "without a unique so far" : "without one so far");
-		String text = String.format("Dry streak: %s%,d %ss %s", row.isStreakExact() ? "" : "at least ", row.getStreak(), unit, since);
+		String kills = String.format("%,d %s%s", row.getStreak(), unit, row.getStreak() == 1 ? "" : "s");
 		double m = row.getStreakMultiple();
-		if (!Double.isNaN(m) && row.getRate() > 0)
-		{
-			text += String.format(" (%s%s the rate)", row.isStreakExact() ? "" : "at least ", formatMultiple(m));
-		}
+		boolean multiple = !Double.isNaN(m) && row.getRate() > 0;
 		if (!row.isStreakExact())
 		{
-			text += ", counted from when On Rate started tracking";
+			// only a minimum is known: the last one came before On Rate
+			return "Dry streak: at least " + kills + (multiple ? String.format(" (%s the rate or more)", formatMultiple(m)) : "")
+				+ ". Your last one came before On Rate started tracking.";
 		}
-		return text + ".";
+		return String.format("Dry streak: %s %s", kills, row.isAny() ? "since your last unique" : "since your last one")
+			+ (multiple ? String.format(" (%s the rate)", formatMultiple(m)) : "") + ".";
 	}
 
 	/** Two-column table of completions per delve level, like the Doom plugin's header. */
@@ -520,8 +517,8 @@ final class Texts
 			return text;
 		}
 		double rest = 1 - share;
-		return text + (rest < 0.0001 ? " (<1 in 10,000)"
-			: String.format(" (1 in %,d)", Math.max(2, Math.round(1 / rest))));
+		return text + (rest < 0.0001 ? " (<1 in 10,000 players)"
+			: String.format(" (1 in %,d players)", Math.max(2, Math.round(1 / rest))));
 	}
 
 	/**

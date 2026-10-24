@@ -97,13 +97,13 @@ public class TextsTest
 		assertEquals("drier than 81%", Texts.luckPercent(DropMath.shares(0, 1.65), 0));
 		assertEquals("74% have none", Texts.luckPercent(DropMath.shares(0, 0.30), 0));
 		// 0 of 10: about 1 in 22,000 has none, past what the drop table can tell apart
-		assertEquals("drier than 99.99% (<1 in 10,000)", Texts.luckPercent(DropMath.shares(0, 10), 0));
+		assertEquals("drier than 99.99% (<1 in 10,000 players)", Texts.luckPercent(DropMath.shares(0, 10), 0));
 		// 4 of 5.67: 67% have more
 		assertEquals("drier than 67%", Texts.luckPercent(DropMath.shares(4, 5.67), 4));
 		// 1 of 0.16: 85% have none
 		assertEquals("luckier than 85%", Texts.luckPercent(DropMath.shares(1, 0.16), 1));
 		// 3 of 0.2: about 1 in 871 has this many or more
-		assertEquals("luckier than 99.8% (1 in 871)", Texts.luckPercent(DropMath.shares(3, 0.2), 3));
+		assertEquals("luckier than 99.8% (1 in 871 players)", Texts.luckPercent(DropMath.shares(3, 0.2), 3));
 		// 2 of 1.65: just over half have fewer
 		assertEquals("luckier than 51%", Texts.luckPercent(DropMath.shares(2, 1.65), 2));
 		// 1 of 1.0: 37% fewer, 37% as many, 26% more: no side is a majority
@@ -111,8 +111,8 @@ public class TextsTest
 		// by value
 		assertEquals("luckier than 83%", Texts.luckPercent(0.83));
 		assertEquals("drier than 70%", Texts.luckPercent(0.30));
-		assertEquals("drier than 99.99% (<1 in 10,000)", Texts.luckPercent(0.00001));
-		assertEquals("drier than 97% (1 in 33)", Texts.luckPercent(0.03));
+		assertEquals("drier than 99.99% (<1 in 10,000 players)", Texts.luckPercent(0.00001));
+		assertEquals("drier than 97% (1 in 33 players)", Texts.luckPercent(0.03));
 	}
 
 	@Test
@@ -135,5 +135,17 @@ public class TextsTest
 		com.expecteddrops.stats.RowStats any = new com.expecteddrops.stats.RowStats("Any", null, 0,
 			DropMath.expectedCapped(1, 1), 0, true).withParts(new com.expecteddrops.stats.RowStats.Parts().addCapped(1, 1));
 		assertEquals("1.0\u00d7 the unique rate without a unique", Texts.rateMultipleLine(any));
+	}
+
+	@Test
+	public void dryStreakSaysWhatItCountsAndAgreesInNumber()
+	{
+		com.expecteddrops.stats.RowStats one = new com.expecteddrops.stats.RowStats("Magic fang", null, 0.5, 5, 1, false)
+			.withStreak(1, true);
+		assertEquals("Dry streak: 1 kill since your last one (0.5\u00d7 the rate).", Texts.streakNote(one, "kill"));
+		com.expecteddrops.stats.RowStats many = new com.expecteddrops.stats.RowStats("Magic fang", null, 0.5, 5, 1, false)
+			.withStreak(40, false);
+		assertEquals("Dry streak: at least 40 kills (20\u00d7 the rate or more). Your last one came before On Rate started tracking.",
+			Texts.streakNote(many, "kill"));
 	}
 }

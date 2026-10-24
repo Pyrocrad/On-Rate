@@ -827,7 +827,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		else
 		{
-			syncLabel.setText("Counting drops from loot from now on");
+			syncLabel.setText("Counting uniques from your loot from now on");
 			syncLabel.setForeground(Theme.TEXT_MUTED);
 			syncLabel.setIcon(Theme.infoIcon());
 		}
@@ -1052,7 +1052,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		verdictTiles.setLayout(new GridLayout(1, value == null ? 1 : 2, 4, 0));
 		String verdict = early ? "Too early" : DropMath.verdict(luck);
 		Tip uniquesTip = new Tip(String.format("Uniques \u00b7 %s", verdict))
-			.line(String.format("Got %,d %s, expected %s by now", any.getReceived(), what, formatExpected(any.getExpected())));
+			.line(String.format("Got %,d %s, expected %s by now", any.getReceived(),
+				any.getReceived() == 1 ? what.substring(0, what.length() - 1) : what, formatExpected(any.getExpected())));
 		if (early)
 		{
 			uniquesTip.line("Less than half a " + (what.equals("purples") ? "purple" : "unique")
@@ -1068,9 +1069,9 @@ public class ExpectedDropsPanel extends PluginPanel
 			String.format("%,d / %s%s", any.getReceived(), formatExpected(any.getExpected()), estimateNote == null ? "" : " est."),
 			early ? "Too few " + (what.equals("purples") ? "raids" : "kills") : luckShort(any.getShares(), any.getReceived()),
 			uniquesTip
-				.note("Counts how many " + what + ", not what they're worth: a twisted bow counts the same as a prayer scroll. "
-					+ "Dry when fewer than 35% of players have this many or fewer (very dry: 10%); spooned when fewer than 35% "
-					+ "have this many or more (very spooned: 10%). In between: a bit dry, on rate or a bit spooned.")
+				.note("Counts " + what + ", not their value: a twisted bow counts like a prayer scroll.")
+				.note("Dry: fewer than 35% of players have this many or fewer. Very dry: fewer than 10%. "
+					+ "Spooned is the same from the lucky side. In between: A bit dry, On rate, A bit spooned.")
 				.note(estimateNote)
 				.wide());
 		verdictTiles.add(uniquesTile);
@@ -1237,16 +1238,14 @@ public class ExpectedDropsPanel extends PluginPanel
 			: account.getRows().isEmpty()
 			? "Open your collection log and click the pages of the bosses you do, or go kill one. "
 			+ "Your account shows up here."
-			: "Every boss you have kills at, added up. Click a boss to open it.<br><br>"
-			+ "GE value uses RuneLite's own price list. Untradeable items (pets, jars...) count for the number of "
-			+ "uniques but as 0 GP for value, so a twisted bow outweighs a pile of cheap drops.<br><br>"
-			+ "The <b>Items</b> tab shows your 10 driest or luckiest items across every boss, and your pets. "
-			+ "<b>Recent</b> shows your latest uniques.<br><br>"
-			+ "Items that several bosses drop (dragon pickaxe, godsword shards, Virtus, onyx...) have no row here: "
-			+ "you find them on the page of each boss that drops them. They do count in the verdict and GE value above, "
-			+ "once On Rate knows the kills of every boss that drops them. Pets count once, like in the log. "
-			+ "Raids without points use your purple chance settings, and team bosses assume you do all the damage.";
-		helpLabel.setToolTipText("<html><body style='width: 240px'>" + note + FEEDBACK_LINE + "</body></html>");
+			: "Every boss you have kills at, added up. Click one to open it.<br><br>"
+			+ "<b>Items</b>: your 10 driest or luckiest items, and your pets. <b>Recent</b>: your latest uniques.<br><br>"
+			+ "GE value uses RuneLite's prices. Pets, jars and other untradeables count as 0 GP, so a twisted bow outweighs many cheap drops.<br><br>"
+			+ "Items several bosses drop (dragon pickaxe, godsword shards, Virtus, onyx...) are on each boss's page. "
+			+ "They count in the totals once On Rate knows every kill count.<br><br>"
+			+ "Pets count once, like in the log. Raids without points use your purple chance settings. "
+			+ "Team bosses use your share of the kill (see Team bosses in the settings).";
+		helpLabel.setToolTipText("<html><body style='width: 240px'>" + note + "</body></html>");
 		noteLabel.setText(account.getRows().isEmpty() ? "<html><body style='width: 165px'>" + note + "</body></html>" : "");
 		noteLabel.setToolTipText(null);
 	}
@@ -1286,7 +1285,6 @@ public class ExpectedDropsPanel extends PluginPanel
 
 	/** On Rate's Discord: bugs, wrong rates and ideas. Opened in the browser, never contacted by the plugin. */
 	public static final String DISCORD = "https://discord.gg/gh9fx6T9zn";
-	private static final String FEEDBACK_LINE = "<br><br>Feedback, bugs or ideas? Join the On Rate Discord (link at the bottom of the panel).";
 
 	/** A quiet link at the bottom of the panel that opens the Discord in your browser. */
 	private JLabel feedbackLink()
@@ -1340,7 +1338,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			java.util.Collections.sort(hidden);
 			parts.add(String.format("+ %d more boss%s", hidden.size(), hidden.size() == 1 ? "" : "es"));
-			tip.append("<b>Too few kills to judge</b> (under 0.05 uniques expected), so not listed: ")
+			tip.append("<b>Too early to judge</b> (under 0.05 uniques expected), so not listed: ")
 				.append(String.join(", ", hidden)).append(". They still count in your account total.");
 		}
 		if (parts.isEmpty())
@@ -1411,8 +1409,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				d.getUniques(), d.getUniques() == 1 ? "" : "s", d.getKills(), unitsHere,
 				formatExpected(d.getExpected()),
 				Double.isNaN(luck) || d.getExpected() <= 0 ? "" : ": " + html(luckPercent(DropMath.shares(d.getUniques(), d.getExpected()), d.getUniques())))
-				+ uniquesLine(isTotal, d, days)
-				+ (isTotal ? "" : "<br>Click to open " + d.getBoss()) + "</html>";
+				+ uniquesLine(isTotal, d, days) + "</html>";
 			String bossName = d.getBoss();
 			// a boss line opens that boss's page
 			setTip(line, tip, isTotal ? null : () -> showBoss(bossName));
@@ -1452,7 +1449,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		int shown = Math.min(10, names.size());
 		return "<br><br>" + String.join("<br>", names.subList(0, shown))
-			+ (names.size() > shown ? "<br>and " + (names.size() - shown) + " more" : "") + "<br>";
+			+ (names.size() > shown ? "<br>and " + (names.size() - shown) + " more" : "");
 	}
 
 	/** The account's Recent tab: the latest uniques across every boss. */
@@ -1472,13 +1469,13 @@ public class ExpectedDropsPanel extends PluginPanel
 		List<com.expecteddrops.tracking.RecentDrop> recent = tracker.recentDrops(10);
 		if (!recent.isEmpty() && days)
 		{
-			JLabel latest = smallLabel("LATEST DROPS", ColorScheme.LIGHT_GRAY_COLOR);
+			JLabel latest = smallLabel("LATEST UNIQUES", ColorScheme.LIGHT_GRAY_COLOR);
 			latest.setAlignmentX(LEFT_ALIGNMENT);
 			rowsPanel.add(latest);
 		}
 		if (recent.isEmpty())
 		{
-			JLabel none = smallLabel("<html><body style='width: 165px'>No uniques seen yet. Drops show up here from now on.</body></html>",
+			JLabel none = smallLabel("<html><body style='width: 165px'>No uniques seen yet. They show up here from now on.</body></html>",
 				ColorScheme.LIGHT_GRAY_COLOR);
 			none.setAlignmentX(LEFT_ALIGNMENT);
 			none.setBorder(new EmptyBorder(Theme.S, 0, 0, 0));
@@ -1507,7 +1504,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			panel.add(text, BorderLayout.CENTER);
 			panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, panel.getPreferredSize().height));
 			setTip(panel, "<html><b>" + d.getName() + "</b><br>" + r.getBoss() + ", " + unit + " " + String.format("%,d", r.getKill().getKc())
-				+ "<br>Click to open " + r.getBoss() + "</html>", () -> showBoss(r.getBoss()));
+				+ "</html>", () -> showBoss(r.getBoss()));
 			rowsPanel.add(spacer(Theme.HAIR));
 			rowsPanel.add(panel);
 		}
@@ -1809,7 +1806,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		if (top.isEmpty())
 		{
 			JLabel none = smallLabel(topMode == TOP_PETS ? "No pets at the bosses you've killed."
-				: topMode == TOP_LUCKIEST ? "Nothing above average yet." : "Nothing dry right now!",
+				: topMode == TOP_LUCKIEST ? "Nothing above average yet." : "Nothing dry right now.",
 				ColorScheme.LIGHT_GRAY_COLOR);
 			none.setAlignmentX(LEFT_ALIGNMENT);
 			rowsPanel.add(none);
@@ -1846,7 +1843,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				title.setFont(FontManager.getRunescapeBoldFont());
 				title.setAlignmentX(LEFT_ALIGNMENT);
 				title.setBorder(new EmptyBorder(Theme.M, 0, 0, 0));
-				title.setToolTipText(group ? "The pets you got with the fewest kills expected: the earliest ones"
+				title.setToolTipText(group ? "Pets you have, luckiest first: the ones you got earliest compared with their drop rates"
 					: "The pets you'd most likely have by now, but don't");
 				rowsPanel.add(title);
 				if (view == ItemView.COMPACT)
@@ -1871,11 +1868,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			{
 				tb.append(past).append("<br>");
 			}
-			if (h.getBoss() != null)
-			{
-				tb.append("Click to open ").append(h.getBoss());
-			}
-			String tip = tb.append("</html>").toString();
+			String tip = tb.append("</html>").toString().replace("<br></html>", "</html>");
 			Runnable open = h.getBoss() == null ? null : () -> showBoss(h.getBoss());
 			if (view == ItemView.COMPACT)
 			{
@@ -2024,7 +2017,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		lastValueTip = new Tip("GP value \u00b7 " + DropMath.verdict(luck))
 			.line("Got " + DropMath.formatGp(received) + ", expected " + DropMath.formatGp((long) expected))
-			.line("By value: " + capital(luckPercent(luck)) + " for your kill count")
+			.line("By value: " + luckPercent(luck) + " for your kill count")
 			.note("The Uniques tile counts how many you got; this one weighs them by price. "
 				+ "Pets, jars and other untradeables count as 0 GP.")
 			.wide();
@@ -2273,7 +2266,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		return new Tip("GP value \u00b7 " + DropMath.verdict(luck))
 			.line("Got " + DropMath.formatGp(account.getReceivedValue()) + ", expected " + DropMath.formatGp(account.getExpectedValue()))
-			.line("By value: " + capital(luckPercent(luck)) + " for your kill counts")
+			.line("By value: " + luckPercent(luck) + " for your kill count")
 			.note("RuneLite's own price list. Pets, jars and other untradeables count as 0 GP.")
 			.wide();
 	}
@@ -2290,7 +2283,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		Tip tip = new Tip(row.isAny() ? "Whole account" : row.getShownLabel());
 		tip.line(row.isAny() ? account.getRows().size() + " bosses with kills"
 			: String.format("%,d %s", account.getKillCount(row.getLabel()), unitsOf(row.getLabel())));
-		tip.line(String.format("Got %d uniques, expected %s", row.getReceived(), formatExpected(row.getExpected())));
+		tip.line(String.format("Got %d unique%s, expected %s", row.getReceived(), row.getReceived() == 1 ? "" : "s", formatExpected(row.getExpected())));
 		double luck = row.getLuck();
 		if (!Double.isNaN(luck))
 		{
@@ -2300,10 +2293,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		if (!row.isAny() && row.getDriestItem() != null)
 		{
 			tip.line(String.format("Driest right now: %s at %s the rate", row.getDriestItem(), formatMultiple(row.getDriestMultiple())));
-		}
-		if (!row.isAny())
-		{
-			tip.note("Click to open " + row.getLabel() + ".");
 		}
 		return tip.wide();
 	}
@@ -2321,16 +2310,16 @@ public class ExpectedDropsPanel extends PluginPanel
 		switch (view)
 		{
 			case DELVE_BARS:
-				how = "<b>Expected</b>: the number is how many you should have by now, the bar your progress to the next one."
-					+ "<br><b>Received</b>: the number is how many you got, the bar how lucky that is.";
+				how = "<b>Expected</b>: the number is how many you should have by now; the bar is how close that is to the next whole one."
+					+ "<br><b>Received</b>: the number is how many you got; the bar is how lucky that is.";
 				break;
 			case COMPACT:
 				how = "Each item shows how many you got / should have by now, and how lucky that is "
 					+ "(a luck %: 50% is average, low is dry, high is spooned; hover for how many players have fewer or more).";
 				break;
 			case RINGS:
-				how = "Each ring fills up as your chance of having the item grows. Once you have it, the ring shows "
-					+ "your chance of the next one by now.";
+				how = "Each ring fills as the chance of having the item by now grows. Once you have it, the ring shows "
+					+ "the chance of having had another since your last.";
 				break;
 			case GAUGE:
 				how = "The needle shows your luck from dry to spooned; each item is a dot on the same scale.";
@@ -2341,7 +2330,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		return "<html><body style='width: 240px'>" + how + "<br><br>Hover an item for its drop rate, your chances "
 			+ "and your dry streak. Right-click one to leave it out of the calculations (a drop you got elsewhere, "
 			+ "or jars you don't care about). Click \u21c4 next to ITEMS for another view."
-			+ FEEDBACK_LINE + "</body></html>";
+			+ "</body></html>";
 	}
 
 	private void renderBossItems(BossStats stats, String unit, ItemView view)
@@ -2402,9 +2391,8 @@ public class ExpectedDropsPanel extends PluginPanel
 				break;
 			default:
 				rowsPanel.add(itemsHeader("ITEMS", view, "bar = got \u00b7 line = expected",
-					"The bar is how many you got. The white line is how many you should have by now: a bar that stops short "
-						+ "of it is behind, one that reaches past it is ahead. Rare items have their line near the start. "
-						+ "Right-click an item to leave it out of the calculations."));
+					"The bar is how many you got. The white line is how many you should have by now. "
+						+ "A bar short of the line is behind it; past the line is ahead. Rare items have their line near the start."));
 				for (int i = 0; i < all.size(); i++)
 				{
 					if (i > 0)
@@ -2539,8 +2527,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		ItemView next = views[(view.ordinal() + 1) % views.length];
 		JLabel change = smallLabel("\u21c4 " + viewName(view), ColorScheme.LIGHT_GRAY_COLOR);
 		change.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-		change.setToolTipText(new Tip("Change the look").line("Now: " + view)
-			.line("Click for " + next + ". The look you pick is kept, here and in the account overview.").small());
+		change.setToolTipText(new Tip("Change the view").line("Now: " + view)
+			.line("Next: " + next + ". Your choice is kept, here and on the account overview.").small());
 		change.addMouseListener(new MouseAdapter()
 		{
 			@Override
@@ -2562,7 +2550,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				change.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 			}
 		});
-		Activatable.install(change, "Change the look, now " + viewName(view), () ->
+		Activatable.install(change, "Change the view, now " + viewName(view), () ->
 		{
 			setItemView.accept(next);
 			refresh();
@@ -2837,6 +2825,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		JLabel luck = smallLabel("Luck", ColorScheme.LIGHT_GRAY_COLOR);
 		luck.setHorizontalAlignment(SwingConstants.CENTER);
 		luck.setPreferredSize(new Dimension(38, 14));
+		luck.setToolTipText(new Tip(null)
+			.line("Share of players with fewer than you at this kill count (ties count half). 50% is average.").small());
 		right.add(luck, BorderLayout.EAST);
 		panel.add(right, BorderLayout.EAST);
 		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 18));
@@ -2912,7 +2902,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			double m = r.getStreakMultiple();
 			double p = -Math.expm1(-m);
 			ring.set(p, luckColor(Math.exp(-m)));
-			sub = String.format("next: %.0f%%", p * 100);
+			sub = String.format("%.0f%% so far", p * 100);
 		}
 		else
 		{
@@ -3092,9 +3082,9 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			JLabel worth = smallLabel(String.format("<html>Unique value: <font color='#ffffff'>~%s/h</font> expected</html>",
 				DropMath.formatGp(perKill * perHour)), ColorScheme.LIGHT_GRAY_COLOR);
-			worth.setToolTipText(String.format("<html><body style='width: 240px'>What the uniques should be worth per hour at "
-				+ "this trip's speed: about %s per %s. Only uniques count; normal loot (bones, hides, runes...) "
-				+ "isn't included, so this is not your full GP per hour. Untradeables count as 0 GP.%s</body></html>",
+			worth.setToolTipText(String.format("<html><body style='width: 240px'>About %s per %s at this trip's speed. "
+				+ "Only uniques count: bones, hides and other loot aren't included, so this isn't your full GP per hour. "
+				+ "Untradeables count as 0 GP.%s</body></html>",
 				DropMath.formatGp(perKill), units.substring(0, units.length() - 1), mainValueNote(bossName)));
 			worth.setAlignmentX(LEFT_ALIGNMENT);
 			card.add(worth);
@@ -3110,7 +3100,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		if (!trip.getDrops().isEmpty())
 		{
-			JLabel d = smallLabel("<html><body style='width: 180px'>Drops: " + String.join(", ", trip.getDrops())
+			JLabel d = smallLabel("<html><body style='width: 180px'>Uniques: " + String.join(", ", trip.getDrops())
 				+ "</body></html>", Color.WHITE);
 			d.setAlignmentX(LEFT_ALIGNMENT);
 			card.add(d);
@@ -3275,7 +3265,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			+ "That loads your past drops.<br><br>"
 			+ "<b>2.</b> Go kill something. The panel follows your kills (keep the <b>Loot Tracker</b> plugin on).<br><br>"
 			+ "<b>3.</b> <i>Got it</i> opens the settings: check <i>Team bosses</i> if you solo Royal Titans or Yama. "
-			+ "Another look for the lists is one click on \u21c4 next to ITEMS.<br><br>"
+			+ "Another view for the lists is one click on \u21c4 next to ITEMS.<br><br>"
 			+ "Hover the <b>?</b> for help."
 			+ "</body></html>");
 		text.setFont(FontManager.getRunescapeSmallFont());
@@ -3346,8 +3336,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		setupHeader.setText((setupExpanded ? "\u25be " : "\u25b8 ") + status + (setupExpanded ? "" : " (show)"));
 		setupHeader.setForeground(statusColor);
-		setupHeader.setToolTipText("<html><body style='width: 240px'>Open these pages in your collection log to load your "
-			+ "kill count and past drops. Only the bosses you do matter; you don't need all " + checklist.size() + ".</body></html>");
+		setupHeader.setToolTipText("<html><body style='width: 240px'>Loads your kill count and past drops. "
+			+ "You don't need all " + checklist.size() + ".</body></html>");
 		setupHeader.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 		setupList.setVisible(setupExpanded);
 		if (!setupExpanded)
@@ -3575,7 +3565,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			tip.line(DropMath.formatRate(row.getRate()) + " per " + unit);
 		}
-		tip.line(String.format("Got %d, expected %s \u00b7 %s chance of one by now", row.getReceived(),
+		tip.line(String.format("Got %d, expected %s \u00b7 %s chance of at least one by now", row.getReceived(),
 			formatExpected(row.getExpected()), formatPercent(row.getChanceAtLeastOne())));
 		double luck = row.getLuck();
 		if (!Double.isNaN(luck))
@@ -3596,7 +3586,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				half = Math.min(half, sure);
 				most = Math.min(most, sure);
 			}
-			tip.line(String.format("50%% / 90%% chance by %,d / %,d %ss", half, most, unit));
+			tip.line(String.format("Starting from none, 50%% / 90%% chance of one takes %,d / %,d %ss", half, most, unit));
 		}
 		tip.note(streakNote(row, unit));
 		if (row.getFastest() != null)

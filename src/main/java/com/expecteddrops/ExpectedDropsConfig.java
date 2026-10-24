@@ -91,7 +91,7 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigItem(
 		keyName = "showGeValue",
 		name = "GE value",
-		description = "Show the GE value of your uniques, received vs expected, in the account overview",
+		description = "Show the GP value tile: the GE value of your uniques, got vs expected, on boss pages and the account overview",
 		position = 8,
 		section = displaySection
 	)
@@ -103,7 +103,7 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigItem(
 		keyName = "showTopItems",
 		name = "Items tab",
-		description = "On the account overview, an Items tab next to Bosses with your 10 driest and 10 luckiest items across every boss",
+		description = "Show an Items tab on the account overview: your 10 driest and 10 luckiest items across every boss, and your pets",
 		position = 9,
 		section = displaySection
 	)
@@ -128,7 +128,7 @@ public interface ExpectedDropsConfig extends Config
 
 	@ConfigItem(
 		keyName = "showTripCard",
-		name = "This trip card",
+		name = "Trip card",
 		description = "Show kills, uniques and expected for your current trip on the boss page",
 		position = 11,
 		section = displaySection
@@ -236,7 +236,7 @@ public interface ExpectedDropsConfig extends Config
 
 	@ConfigSection(
 		name = "Raids",
-		description = "Raid unique chances depend on your points and team, so set them here",
+		description = "How On Rate works out each raid's purple chance",
 		position = 30
 	)
 	String raidsSection = "raids";
@@ -253,7 +253,7 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigItem(
 		keyName = "readRaidPoints",
 		name = "Use raid points",
-		description = "At the end of each raid, work out that raid's purple chance: from your points in Chambers of Xeric, from the exact points the game sends in Tombs of Amascut (or On Rate's own estimate if they don't come), and in Theatre of Blood by splitting the team chance below over the team size on the end-of-raid board. Raids without this (older ones, synced from the collection log) use the percentages below.",
+		description = "Work out each raid's purple chance as it ends: from your points in Chambers of Xeric, from the game's points in Tombs of Amascut (or an estimate), and from the end-of-raid team size in Theatre of Blood. Older raids use the percentages below.",
 		position = 31,
 		section = raidsSection
 	)

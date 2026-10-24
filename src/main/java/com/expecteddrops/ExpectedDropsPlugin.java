@@ -385,7 +385,7 @@ public class ExpectedDropsPlugin extends Plugin
 				driest.getStreak() == 1 ? one : units, m);
 			driestColor = Palette.luck(Math.exp(-m)).brighter();
 		}
-		String tripText = String.format("%,d %s \u00b7 %d drop%s", trip.getKills(), trip.getKills() == 1 ? one : units,
+		String tripText = String.format("%,d %s \u00b7 %d unique%s", trip.getKills(), trip.getKills() == 1 ? one : units,
 			trip.getReceived(), trip.getReceived() == 1 ? "" : "s");
 		overlayInfo = new OverlayInfo(trip.getBoss(), verdict, Palette.luck(luck).brighter(),
 			String.format("%,d / %.1f", any.getReceived(), any.getExpected()), driestItem, driestText, driestColor,

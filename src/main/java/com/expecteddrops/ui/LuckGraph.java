@@ -260,7 +260,7 @@ class LuckGraph extends JComponent
 			return null;
 		}
 		HistoryPoint nearest = points.get(nearest(event.getX()));
-		return String.format("<html><b>%s</b><br>%s: %s<br>%d received, %.1f expected</html>",
+		return String.format("<html><b>%s</b><br>%s: %s<br>%d got, %.1f expected</html>",
 			LocalDate.ofEpochDay(nearest.getDay()).format(LONG_DATE), DropMath.verdict(nearest.getLuck()),
 			Texts.html(Texts.luckPercent(nearest.getLuck())), nearest.getReceived(), nearest.getExpected());
 	}
