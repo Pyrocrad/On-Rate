@@ -85,18 +85,10 @@ public class ExpectedDropsPlugin extends Plugin
 	static final String KILLS_KEY = "kills.";
 	/** Each raid's saved raids (with points) are under their own key too: "raids." plus the name. */
 	static final String RAIDS_KEY = "raids.";
-	private static final java.lang.reflect.Type RAIDS_TYPE =
-		new com.google.gson.reflect.TypeToken<List<com.expecteddrops.tracking.RaidRecord>>()
-		{
-		}.getType();
 	/** The luck graph's point for today is worked out again at most this often (it's the whole account). */
 	private static final long HISTORY_POINT_MILLIS = 10 * 60_000;
 	private long historyPointAt;
 	private long historyPointDay = -1;
-	private static final java.lang.reflect.Type KILLS_TYPE =
-		new com.google.gson.reflect.TypeToken<List<com.expecteddrops.tracking.KillEntry>>()
-		{
-		}.getType();
 	/** Script that draws a collection log page. */
 	private static final int COLLECTION_DRAW_LIST = 2731;
 	/** Doom of Mokhaiotl scoreboard: completions per delve level in children 46, 49, ... 70 (the last is "8+"). */
@@ -146,7 +138,7 @@ public class ExpectedDropsPlugin extends Plugin
 	private Tracker tracker;
 	private ExpectedDropsPanel panel;
 	private NavigationButton navButton;
-	private String loadedProfile;
+	private ProfileStore store;
 	private final Map<String, Integer> itemIds = new ConcurrentHashMap<>();
 	private boolean itemIdsResolved;
 	/** GE price per normalized item name, from RuneLite's own price list. Untradeables are 0. */
@@ -180,6 +172,26 @@ public class ExpectedDropsPlugin extends Plugin
 			}
 		}
 		tracker = new Tracker(loadCatalog());
+		store = new ProfileStore(new ProfileStore.Backend()
+		{
+			@Override
+			public String get(String key)
+			{
+				return configManager.getRSProfileConfiguration(ExpectedDropsConfig.GROUP, key);
+			}
+
+			@Override
+			public void set(String key, String value)
+			{
+				configManager.setRSProfileConfiguration(ExpectedDropsConfig.GROUP, key, value);
+			}
+
+			@Override
+			public void unset(String key)
+			{
+				configManager.unsetRSProfileConfiguration(ExpectedDropsConfig.GROUP, key);
+			}
+		}, gson);
 		tracker.setSettings(raidSettings());
 		tracker.setTeamSizeDetector(() -> config.detectTeamSize() ? playersAround() : 0);
 		panel = new ExpectedDropsPanel(tracker, itemManager, this::raidSettings, this::itemIdFor, this::save,
@@ -238,7 +250,7 @@ public class ExpectedDropsPlugin extends Plugin
 		navButton = null;
 		panel = null;
 		tracker = null;
-		loadedProfile = null;
+		store = null;
 		itemIds.clear();
 		itemIdsResolved = false;
 		prices.clear();
@@ -814,63 +826,12 @@ public class ExpectedDropsPlugin extends Plugin
 
 	private void loadProfile()
 	{
-		String profile = configManager.getRSProfileKey();
-		if (profile == null || profile.equals(loadedProfile) || tracker == null)
+		ProfileStore s = store;
+		if (tracker == null || s == null || !s.load(configManager.getRSProfileKey(), tracker))
 		{
 			return;
 		}
-		loadedProfile = profile;
 		remindedThisSession.clear();
-		TrackerState state = null;
-		String json = configManager.getRSProfileConfiguration(ExpectedDropsConfig.GROUP, DATA_KEY);
-		if (json != null && !json.isEmpty())
-		{
-			try
-			{
-				state = gson.fromJson(json, TrackerState.class);
-			}
-			catch (Exception e)
-			{
-				log.warn("Could not read saved On Rate data, starting fresh", e);
-			}
-		}
-		tracker.setState(state);
-		for (com.expecteddrops.data.BossDefinition boss : tracker.getCatalog().getBosses())
-		{
-			String kills = configManager.getRSProfileConfiguration(ExpectedDropsConfig.GROUP, killsKey(boss.getName()));
-			if (kills == null || kills.isEmpty())
-			{
-				continue;
-			}
-			try
-			{
-				tracker.setKills(boss.getName(), gson.fromJson(kills, KILLS_TYPE));
-			}
-			catch (Exception e)
-			{
-				log.warn("Could not read the saved On Rate history of {}", boss.getName(), e);
-			}
-		}
-		for (com.expecteddrops.data.BossDefinition boss : tracker.getCatalog().getBosses())
-		{
-			if (boss.getRaid() == null)
-			{
-				continue;
-			}
-			String raids = configManager.getRSProfileConfiguration(ExpectedDropsConfig.GROUP, raidsKey(boss.getName()));
-			if (raids == null || raids.isEmpty())
-			{
-				continue;
-			}
-			try
-			{
-				tracker.setRaids(boss.getName(), gson.fromJson(raids, RAIDS_TYPE));
-			}
-			catch (Exception e)
-			{
-				log.warn("Could not read the saved On Rate raids of {}", boss.getName(), e);
-			}
-		}
 		if (panel != null)
 		{
 			// Open on the account overview: how dry or spooned the account is overall.
@@ -901,35 +862,10 @@ public class ExpectedDropsPlugin extends Plugin
 
 	void save()
 	{
-		Tracker t = tracker;
-		if (t == null || loadedProfile == null)
+		ProfileStore s = store;
+		if (s != null)
 		{
-			return;
-		}
-		// put together under the tracker's lock: safe from any thread (shutDown runs on Swing's)
-		com.expecteddrops.tracking.SaveData data = t.saveData(gson::toJson);
-		// only the History and raids of bosses that changed are written again; they go first,
-		// so raids moved out of the main data by an update are stored before it drops them
-		for (Map.Entry<String, String> e : data.kills.entrySet())
-		{
-			write(killsKey(e.getKey()), e.getValue());
-		}
-		for (Map.Entry<String, String> e : data.raids.entrySet())
-		{
-			write(raidsKey(e.getKey()), e.getValue());
-		}
-		configManager.setRSProfileConfiguration(ExpectedDropsConfig.GROUP, DATA_KEY, data.progress);
-	}
-
-	private void write(String key, String json)
-	{
-		if (json == null)
-		{
-			configManager.unsetRSProfileConfiguration(ExpectedDropsConfig.GROUP, key);
-		}
-		else
-		{
-			configManager.setRSProfileConfiguration(ExpectedDropsConfig.GROUP, key, json);
+			s.save(tracker);
 		}
 	}
 
