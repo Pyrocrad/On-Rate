@@ -39,16 +39,10 @@ class VerdictTile extends JPanel
 
 	void set(String verdict, Color color, String numbersText, String luckText, String tip)
 	{
-		set(verdict, color, numbersText, luckText, tip, 0);
-	}
-
-	/** With a wrap width the two small lines wrap inside the tile instead of being cut off. */
-	void set(String verdict, Color color, String numbersText, String luckText, String tip, int wrapWidth)
-	{
 		word.setText(verdict);
 		word.setForeground(color);
-		numbers.setText(wrapWidth > 0 ? Theme.wrap(Texts.html(numbersText), wrapWidth) : numbersText);
-		luck.setText(wrapWidth > 0 && !luckText.isEmpty() ? Theme.wrap(Texts.html(luckText), wrapWidth) : luckText);
+		numbers.setText(numbersText);
+		luck.setText(luckText);
 		setToolTipText(tip);
 		for (Component c : getComponents())
 		{
