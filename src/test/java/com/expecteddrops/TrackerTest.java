@@ -385,9 +385,13 @@ public class TrackerTest
 		assertEquals(436, (int) stats.getPartCounts().get("Dagannoth Rex"));
 		assertEquals(436 / 128.0, row(stats, "Berserker ring").getExpected(), 1e-12);
 		assertEquals(10 / 128.0, row(stats, "Seers ring").getExpected(), 1e-12);
-		assertEquals(455 / 128.0, row(stats, "Dragon axe").getExpected(), 1e-12);
-		// Only the kings drop dragon axes, so the collection log total now counts.
-		assertEquals(3, row(stats, "Dragon axe").getReceived());
+		// Wintertodt drops dragon axes too: the log has one total, so it's judged on both together
+		com.expecteddrops.stats.SharedPool axe = tracker.sharedPoolsFor("Dagannoth Kings", RAIDS).stream()
+			.filter(pool -> pool.getItemName().equals("Dragon axe")).findFirst().orElse(null);
+		assertNotNull(axe);
+		assertEquals(455 / 128.0, axe.getExpected(), 1e-12);
+		assertEquals(3, axe.getReceived());
+		assertTrue(axe.getBosses().contains("Wintertodt"));
 
 		// A later Rex kill updates only Rex, and the pet message credits Rex's pet.
 		assertEquals("Dagannoth Kings", tracker.onChatMessage("Your Dagannoth Rex kill count is: <col=ff0000>437</col>.", now));
@@ -605,7 +609,8 @@ public class TrackerTest
 		assertEquals(Integer.valueOf(20), seen.get(4));
 		BossStats s = tracker.stats("Nex", RAIDS);
 		assertEquals(120, s.getKillCount());
-		// 99 unseen + 1 solo + 20 kills at a quarter each
+		// the 99 unseen kills count at the share of the first kill On Rate counted (solo here),
+		// then 1 solo + 20 kills at a quarter each
 		assertEquals((99 + 1 + 20 / 4.0) / 172.0, row(s, "Zaryte vambraces").getExpected(), 1e-9);
 		// the pet doesn't scale with the team
 		assertEquals(120 / 500.0, row(s, "Nexling").getExpected(), 1e-9);
@@ -613,6 +618,32 @@ public class TrackerTest
 		// other bosses ignore the team size
 		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>10</col>.", now);
 		assertTrue(tracker.teamKills("Vorkath").isEmpty());
+	}
+
+	@Test
+	public void zalcanoSeedIsSharedButShardsAndPetAreNot()
+	{
+		int[] around = {10};
+		tracker.setTeamSizeDetector(() -> around[0]);
+		// 200 kills from before On Rate (the log page), then 40 it sees at a team of 10
+		tracker.onClogPage("Zalcano", Collections.singletonList("Zalcano kills: 200"), new LinkedHashMap<>());
+		for (int kc = 201; kc <= 240; kc++)
+		{
+			tracker.onChatMessage("Your Zalcano kill count is: <col=ff0000>" + kc + "</col>.", now + kc * 60_000L);
+		}
+		BossStats s = tracker.stats("Zalcano", RAIDS);
+		assertEquals(240, s.getKillCount());
+		// one seed roll per kill for a team of 10, the older kills at the team first seen
+		assertEquals(240 * 39 / 8000.0 / 10, row(s, "Crystal tool seed").getExpected(), 1e-9);
+		// the trip is what its own kills add, not the older kills changing share
+		TripStats trip = tracker.tripStats();
+		assertEquals(40, trip.getKills());
+		// (the pet counts as "have it or not")
+		assertEquals(40 * (39 / 8000.0 / 10 + 1 / 750.0) + Math.exp(-200 / 2250.0) - Math.exp(-240 / 2250.0),
+			trip.getExpected(), 1e-6);
+		// every player rolls their own shard and pet
+		assertEquals(240 / 750.0, row(s, "Zalcano shard").getExpected(), 1e-9);
+		assertEquals(240 / 2250.0, row(s, "Smolcano").getExpected(), 1e-9);
 	}
 
 	@Test
@@ -1054,6 +1085,32 @@ public class TrackerTest
 	}
 
 	@Test
+	public void leftOutItemsDontCountButStayListed()
+	{
+		Gson gson = new Gson();
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>50</col>.", now);
+		double before = tracker.stats("Vorkath", RAIDS).getAnyRow().getExpected();
+		tracker.setLeftOut("Vorkath", "Jar of decay", true);
+		assertTrue(tracker.isLeftOut("Vorkath", "jar of decay"));
+		BossStats s = tracker.stats("Vorkath", RAIDS);
+		// gone from the total, still a row of its own
+		assertEquals(before - 50 / 3000.0, s.getAnyRow().getExpected(), 1e-9);
+		assertEquals(50 / 3000.0, row(s, "Jar of decay").getExpected(), 1e-9);
+		// and from the account's Items tab
+		for (com.expecteddrops.stats.ItemHighlight h : tracker.accountStats(RAIDS).getItems())
+		{
+			assertFalse("Jar of decay".equals(h.getRow().getLabel()));
+		}
+		// it's saved with the rest
+		Tracker restored = new Tracker(catalog);
+		restored.setState(gson.fromJson(gson.toJson(tracker.getState()), TrackerState.class));
+		assertTrue(restored.isLeftOut("Vorkath", "Jar of decay"));
+		// and can count again
+		tracker.setLeftOut("Vorkath", "Jar of decay", false);
+		assertEquals(before, tracker.stats("Vorkath", RAIDS).getAnyRow().getExpected(), 1e-9);
+	}
+
+	@Test
 	public void anyRowUsesPoisson()
 	{
 		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>50</col>.", now);
@@ -1407,6 +1464,252 @@ public class TrackerTest
 	{
 		assertFalse(tracker.recordHistory(20000, RAIDS));
 		assertTrue(tracker.history().isEmpty());
+	}
+
+	@Test
+	public void raidsTakingLongerThanHalfAnHourStayOneTrip()
+	{
+		tracker.setSettings(RAIDS);
+		long raid = 40 * 60_000L;
+		tracker.onChatMessage("Your completed Chambers of Xeric count is: <col=ff0000>10</col>.", now);
+		tracker.onChatMessage("Your completed Chambers of Xeric count is: <col=ff0000>11</col>.", now + raid);
+		tracker.onChatMessage("Your completed Chambers of Xeric count is: <col=ff0000>12</col>.", now + 2 * raid);
+		assertEquals(3, tracker.tripStats().getKills());
+		// a normal boss still ends a trip after half an hour
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>100</col>.", now + 3 * raid);
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>101</col>.", now + 4 * raid);
+		assertEquals(1, tracker.tripStats().getKills());
+	}
+
+	@Test
+	public void normalBossTripEndsAfterHalfAnHourIdle()
+	{
+		tracker.setSettings(RAIDS);
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>100</col>.", now);
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>101</col>.", now + 30 * 60_000L);
+		// 30 minutes is still the same trip
+		assertEquals(2, tracker.tripStats().getKills());
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>102</col>.", now + 61 * 60_000L);
+		// 31 idle minutes: a new trip that starts with this kill
+		assertEquals(1, tracker.tripStats().getKills());
+	}
+
+	@Test
+	public void raidTripSurvivesAnHourAndAHalfGap()
+	{
+		tracker.setSettings(RAIDS);
+		tracker.onChatMessage("Your completed Chambers of Xeric count is: <col=ff0000>10</col>.", now);
+		tracker.onChatMessage("Your completed Chambers of Xeric count is: <col=ff0000>11</col>.", now + 90 * 60_000L);
+		assertEquals(2, tracker.tripStats().getKills());
+		// past two hours it's a new trip after all
+		tracker.onChatMessage("Your completed Chambers of Xeric count is: <col=ff0000>12</col>.", now + 211 * 60_000L);
+		assertEquals(1, tracker.tripStats().getKills());
+	}
+
+	@Test
+	public void tripValueUsesTheTripsOwnDelveLevels()
+	{
+		tracker.setSettings(RAIDS);
+		java.util.function.ToLongFunction<String> prices = name -> name.startsWith("Dom") ? 0 : 10_000_000L;
+		// deep delves first: they're in the boss's average, but they're another trip
+		tracker.onChatMessage("Delve level: 8+ (12) duration: <col=ff0000>2:05.00</col>", now);
+		tracker.onChatMessage("Delve level: 8+ (13) duration: <col=ff0000>2:01.00</col>", now + 60_000);
+		tracker.resetTrip();
+		// then only level 1, where nothing drops: worth nothing
+		for (int i = 0; i < 5; i++)
+		{
+			tracker.onChatMessage("Delve level: 1 duration: <col=ff0000>0:50.00</col>", now + (2 + i) * 60_000L);
+		}
+		assertEquals(5, tracker.tripStats().getKills());
+		assertEquals(0, tracker.tripValue(prices), 1e-9);
+		// a level 4 delve adds what level 4 gives: cloth, eye and treads at 1/1,350 each
+		tracker.onChatMessage("Delve level: 4 duration: <col=ff0000>1:30.00</col>", now + 8 * 60_000L);
+		assertEquals(3 * 10_000_000.0 / 1350, tracker.tripValue(prices), 1e-6);
+	}
+
+	@Test
+	public void temporossCountsRewardRolls()
+	{
+		tracker.setSettings(RAIDS);
+		BossDefinition tempoross = catalog.byName("Tempoross");
+		assertEquals("rolls", Tracker.unit(tempoross));
+		// the log page knows subdues: 4 rolls each until the permits say more
+		Map<String, Integer> page = new LinkedHashMap<>();
+		page.put("Fish barrel", 0);
+		page.put("Tackle box", 1);
+		tracker.onClogPage("Tempoross", Collections.singletonList("Tempoross kills: 100"), page);
+		assertEquals(400, tracker.stats("Tempoross", RAIDS).getKillCount());
+		// the game's numbers: 100 subdues, 20 permits not spent yet
+		assertEquals("Tempoross", tracker.onRollBaseline("Tempoross", 100, 20));
+		assertEquals(380, tracker.stats("Tempoross", RAIDS).getKillCount());
+		// set once only
+		assertNull(tracker.onRollBaseline("Tempoross", 120, 0));
+		// spending 5 permits is 5 rolls, a trip of 5
+		assertEquals("Tempoross", tracker.onRewardRolls("Tempoross", 5, now));
+		assertEquals(385, tracker.stats("Tempoross", RAIDS).getKillCount());
+		assertEquals(5, tracker.tripStats().getKills());
+		// the loot itself isn't a kill
+		tracker.onLoot("Reward pool (Tempoross)", 1, Collections.singletonList(new Tracker.LootItem("Fish barrel", 1)), now);
+		BossStats s = tracker.stats("Tempoross", RAIDS);
+		assertEquals(385, s.getKillCount());
+		assertEquals(1, row(s, "Fish barrel").getReceived());
+		assertEquals(385 / 1600.0, row(s, "Big harpoonfish").getExpected(), 1e-9);
+	}
+
+	@Test
+	public void wintertodtCountsCartRolls()
+	{
+		tracker.setSettings(RAIDS);
+		assertEquals("Wintertodt", tracker.onRollBaseline("Wintertodt", 200, 30));
+		// 200 subdues at 3 rolls, 30 rewards still in the cart
+		assertEquals(570, tracker.stats("Wintertodt", RAIDS).getKillCount());
+		tracker.onRewardRolls("Wintertodt", 30, now);
+		BossStats s = tracker.stats("Wintertodt", RAIDS);
+		assertEquals(600, s.getKillCount());
+		// the outfit is one row: one roll at 1/150 for whichever piece you have fewest of
+		assertEquals(600 / 150.0, row(s, "Pyromancer outfit pieces").getExpected(), 1e-9);
+		// any piece counts for it
+		tracker.onLoot("Reward cart (Wintertodt)", 1, Collections.singletonList(new Tracker.LootItem("Pyromancer boots", 1)), now);
+		assertEquals(1, row(tracker.stats("Wintertodt", RAIDS), "Pyromancer outfit pieces").getReceived());
+		// Tempoross's numbers are its own
+		assertNull(tracker.onRewardRolls("Vorkath", 5, now));
+	}
+
+	@Test
+	public void colosseumCountsRunsByTheirClaimedWave()
+	{
+		tracker.setSettings(RAIDS);
+		BossDefinition colosseum = catalog.byName("Fortis Colosseum");
+		DropDefinition echo = colosseum.getDrops().get(0);
+		assertEquals("runs", Tracker.unit(colosseum));
+		// the wiki's chances per wave add up: 1/124 on wave 4 ... 1/12 on wave 12 for any unique
+		double wave12 = 0;
+		for (DropDefinition d : colosseum.getDrops())
+		{
+			if (!d.isPet())
+			{
+				wave12 += Tracker.waveRate(d, 12) - Tracker.waveRate(d, 11);
+			}
+		}
+		assertEquals(1 / 12.0, wave12, 1e-9);
+		assertEquals(1 / 310.0, Tracker.waveRate(echo, 4), 1e-12);
+		assertEquals(0, Tracker.waveRate(echo, 3), 1e-12);
+		// 10 completions from before On Rate: wave 12 claims
+		Map<String, Integer> page = new LinkedHashMap<>();
+		page.put("Echo crystal", 1);
+		tracker.onClogPage("Fortis Colosseum", Collections.singletonList("Sol Heredit kills: 10"), page);
+		BossStats s = tracker.stats("Fortis Colosseum", RAIDS);
+		assertEquals(10, s.getKillCount());
+		assertEquals(10 * Tracker.waveRate(echo, 12), row(s, "Echo crystal").getExpected(), 1e-9);
+		// a run claimed after wave 7 counts the waves up to 7
+		tracker.onWaveCompleted(7);
+		tracker.onLoot("Fortis Colosseum", 1, Collections.singletonList(new Tracker.LootItem("Sunfire splinters", 500)), now);
+		s = tracker.stats("Fortis Colosseum", RAIDS);
+		assertEquals(11, s.getKillCount());
+		assertEquals(10 * Tracker.waveRate(echo, 12) + Tracker.waveRate(echo, 7), row(s, "Echo crystal").getExpected(), 1e-9);
+		// a full run: the kill count message (not a run by itself), then the claim with the quiver
+		tracker.onChatMessage("Your Sol Heredit kill count is: <col=ff0000>11</col>.", now + 60_000);
+		assertEquals(11, tracker.stats("Fortis Colosseum", RAIDS).getKillCount());
+		tracker.onLoot("Fortis Colosseum", 1, Arrays.asList(new Tracker.LootItem("Dizana's quiver (uncharged)", 1),
+			new Tracker.LootItem("Echo crystal", 1)), now + 61_000);
+		s = tracker.stats("Fortis Colosseum", RAIDS);
+		assertEquals(12, s.getKillCount());
+		// one trip of two runs
+		assertEquals(2, tracker.tripStats().getKills());
+		// reading the log page again (11 completions now) doesn't count the new one twice
+		tracker.onClogPage("Fortis Colosseum", Collections.singletonList("Sol Heredit kills: 11"), page);
+		assertEquals(12, tracker.stats("Fortis Colosseum", RAIDS).getKillCount());
+		assertEquals(2, row(s, "Echo crystal").getReceived());
+		// a claim without a known wave isn't counted as a run
+		tracker.onLoot("Fortis Colosseum", 1, Collections.singletonList(new Tracker.LootItem("Sunfire splinters", 100)), now + 120_000);
+		assertEquals(12, tracker.stats("Fortis Colosseum", RAIDS).getKillCount());
+	}
+
+	@Test
+	public void aPetSeveralBossesDropCountsOnceAmongThePets()
+	{
+		tracker.setSettings(RAIDS);
+		Map<String, Integer> ele = new LinkedHashMap<>();
+		ele.put("Dragon pickaxe", 0);
+		ele.put("Pet chaos elemental", 0);
+		tracker.onClogPage("Chaos Elemental", Collections.singletonList("Chaos Elemental kills: 300"), ele);
+		Map<String, Integer> fanatic = new LinkedHashMap<>();
+		fanatic.put("Odium shard 1", 0);
+		fanatic.put("Pet chaos elemental", 0);
+		tracker.onClogPage("Chaos Fanatic", Collections.singletonList("Chaos Fanatic kills: 1000"), fanatic);
+		List<com.expecteddrops.stats.ItemHighlight> pets = new ArrayList<>();
+		for (com.expecteddrops.stats.ItemHighlight h : tracker.accountStats(RAIDS).getItems())
+		{
+			if (h.isPet() && h.getRow().getLabel().equals("Pet chaos elemental"))
+			{
+				pets.add(h);
+			}
+		}
+		// once, not zero times (it used to be left out) and not twice
+		assertEquals(1, pets.size());
+		RowStats pet = pets.get(0).getRow();
+		// judged on both bosses' kills: 300 at 1/300 and 1000 at 1/1,000
+		assertEquals(2.0, pet.getExpected(), 1e-9);
+		assertEquals(1 - Math.exp(-2.0), pet.getChanceAtLeastOne(), 1e-9);
+		assertFalse(pet.isComplete());
+		// once it's in the log, you have it
+		ele.put("Pet chaos elemental", 1);
+		tracker.onClogPage("Chaos Elemental", Collections.singletonList("Chaos Elemental kills: 300"), ele);
+		for (com.expecteddrops.stats.ItemHighlight h : tracker.accountStats(RAIDS).getItems())
+		{
+			if (h.getRow().getLabel().equals("Pet chaos elemental"))
+			{
+				assertTrue(h.getRow().isComplete());
+			}
+		}
+	}
+
+	@Test
+	public void aTripEndsWithOneSummaryLine()
+	{
+		tracker.setSettings(RAIDS);
+		for (int kc = 100; kc < 110; kc++)
+		{
+			tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>" + kc + "</col>.", now + (kc - 100) * 60_000L);
+		}
+		tracker.drainNotes();
+		// a kill at another boss ends the Vorkath trip
+		tracker.onChatMessage("Your Zulrah kill count is: <col=ff0000>50</col>.", now + 20 * 60_000L);
+		List<String> trips = new ArrayList<>();
+		for (Note n : tracker.drainNotes())
+		{
+			if (n.getKind() == Note.Kind.TRIP)
+			{
+				trips.add(n.getText());
+			}
+		}
+		assertEquals(1, trips.size());
+		assertTrue(trips.get(0), trips.get(0).startsWith("Trip at Vorkath: 10 kills, no uniques, "));
+		// too short a trip says nothing
+		tracker.resetTrip();
+		for (Note n : tracker.drainNotes())
+		{
+			assertFalse(n.getKind() == Note.Kind.TRIP);
+		}
+	}
+
+	@Test
+	public void recordsAndTheLastUnique()
+	{
+		tracker.setSettings(RAIDS);
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>100</col>.", now);
+		tracker.onLoot("Vorkath", 1, Collections.singletonList(new Tracker.LootItem("Vorkath's head", 1)), now);
+		assertEquals(null, row(tracker.stats("Vorkath", RAIDS), "Vorkath's head").getFastest());
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>130</col>.", now + 60_000);
+		tracker.onLoot("Vorkath", 1, Collections.singletonList(new Tracker.LootItem("Vorkath's head", 1)), now + 60_000);
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>140</col>.", now + 120_000);
+		tracker.onLoot("Vorkath", 1, Collections.singletonList(new Tracker.LootItem("Vorkath's head", 1)), now + 120_000);
+		RowStats head = row(tracker.stats("Vorkath", RAIDS), "Vorkath's head");
+		assertEquals(Integer.valueOf(10), head.getFastest());
+		assertEquals(Integer.valueOf(30), head.getLongest());
+		Tracker.LastUnique last = tracker.lastUnique();
+		assertEquals("Vorkath's head", last.item);
+		assertEquals(now + 120_000, last.time);
 	}
 
 	@Test

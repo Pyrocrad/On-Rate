@@ -32,6 +32,30 @@ public class BossProgress
 	Map<String, Integer> lastDropKc = new HashMap<>();
 	/** Kill count when On Rate first knew it; how long ago older drops came is unknown. */
 	Integer trackingStartKc;
+	/**
+	 * Content with loot per reward roll (Tempoross): the rolls from before On Rate counted them,
+	 * estimated once (subdues times the rolls per subdue, minus the permits not spent yet).
+	 * Null until known. Rolls counted since are in {@link #lootKills}.
+	 */
+	Integer rollBase;
+	/** Wave runs (Fortis Colosseum): runs claimed, per the wave they were claimed at. Null in older saves. */
+	Map<Integer, Integer> waveClaims;
+	/** Fewest kills between two drops of an item that On Rate saw (normalized item name). Null in older saves. */
+	Map<String, Integer> fastestGap;
+	/** Most kills between two drops of an item that On Rate saw. Null in older saves. */
+	Map<String, Integer> longestGap;
+	/** Wave runs: last-wave claims On Rate had counted when the log page was last read. */
+	Integer lastWaveClaimsAtSync;
+	/**
+	 * Group bosses: the share of a kill used for the kills from before On Rate counted teams,
+	 * fixed when it started counting. Null until then (they count as solo).
+	 */
+	Double olderShare;
+	/**
+	 * Items the player left out of the calculations (normalized item names), e.g. an Araxyte
+	 * head that came from a slayer task, or jars they don't care about. Null in older saves.
+	 */
+	java.util.Set<String> leftOut;
 	/** Highest milestone already announced per item in its current dry streak. */
 	Map<String, Integer> milestone = new HashMap<>();
 	/** Kill count at the last milestone check, so a big jump (first sync) stays quiet. */

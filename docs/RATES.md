@@ -25,6 +25,7 @@ Unless a line says otherwise, rates come from the boss's page on the [Old School
 | Crazy Archaeologist | [Crazy archaeologist](https://oldschool.runescape.wiki/w/Crazy_archaeologist) | |
 | Deranged Archaeologist | [Deranged archaeologist](https://oldschool.runescape.wiki/w/Deranged_archaeologist) | |
 | Duke Sucellus, The Leviathan, The Whisperer, Vardorvis | [Leviathan](https://oldschool.runescape.wiki/w/The_Leviathan), [Whisperer](https://oldschool.runescape.wiki/w/The_Whisperer), [Vardorvis](https://oldschool.runescape.wiki/w/Vardorvis) | Normal mode. Duke follows the same pattern (1/720); its wiki table didn't load during the check. |
+| Fortis Colosseum | [Rewards Chest (Fortis Colosseum)](https://oldschool.runescape.wiki/w/Fortis_chest) | Chances per wave from wave 4 (echo crystal 1/310 to 1/32, sunfire fanatic armour 1.5 times that for any of the three pieces, tonalztics from wave 7 at 1/1,312 to 1/192), at most one unique per wave. A run counts every wave up to the one you claimed at; a whole run is about 1/12 for an echo crystal, 1/8 for armour and 1/83 for tonalztics. Smol heredit is 1/200 for beating wave 12. Dizana's quiver is guaranteed for beating wave 12 and isn't counted. Completions from before On Rate count as wave 12 claims. |
 | Giant Mole | [Giant Mole](https://oldschool.runescape.wiki/w/Giant_Mole) | Mole claws and skins drop every kill, so they aren't tracked. |
 | Hueycoatl | [The Hueycoatl](https://oldschool.runescape.wiki/w/The_Hueycoatl), [Huberte](https://oldschool.runescape.wiki/w/Huberte) | |
 | Kalphite Queen | [Kalphite Queen](https://oldschool.runescape.wiki/w/Kalphite_Queen) | |
@@ -41,13 +42,15 @@ Unless a line says otherwise, rates come from the boss's page on the [Old School
 | Scurrius | [Scurrius](https://oldschool.runescape.wiki/w/Scurrius) | |
 | Shellbane Gryphon | [Shellbane Gryphon](https://oldschool.runescape.wiki/w/Shellbane_Gryphon) | Belle's folly 1/75 since the July 2026 update. |
 | Skotizo | [Skotizo](https://oldschool.runescape.wiki/w/Skotizo) | |
+| Tempoross | [Reward pool (Tempoross)](https://oldschool.runescape.wiki/w/Reward_pool_(Tempoross)) | Rates are per reward roll (one per permit). Rolls from now on are counted exactly from your reward permits; rolls from before are estimated as 4 per subdue minus the permits you hadn't spent yet. Fish barrel and tackle box drop once (duplicates become soaked pages). Spirit angler pieces have no listed rate and aren't counted. |
 | The Mad Angel | [The Mad Angel](https://oldschool.runescape.wiki/w/The_Mad_Angel) | |
 | Thermonuclear Smoke Devil | [Thermonuclear smoke devil](https://oldschool.runescape.wiki/w/Thermonuclear_smoke_devil) | |
 | TzTok-Jad, TzKal-Zuk | [TzTok-Jad](https://oldschool.runescape.wiki/w/TzTok-Jad), [TzKal-Zuk](https://oldschool.runescape.wiki/w/TzKal-Zuk) | Off-task rates. |
 | Venenatis and Spindel | [Venenatis](https://oldschool.runescape.wiki/w/Venenatis), [Spindel](https://oldschool.runescape.wiki/w/Spindel) | |
 | Vet'ion and Calvar'ion | [Vet'ion](https://oldschool.runescape.wiki/w/Vet%27ion), [Calvar'ion](https://oldschool.runescape.wiki/w/Calvar%27ion) | |
+| Wintertodt | [Reward cart](https://oldschool.runescape.wiki/w/Reward_cart) | Rates are per reward roll. Rolls from now on are counted exactly as you search the reward cart; rolls from before are estimated as 3 per subdue (a 1,000-point game) minus the rewards still in the cart. One roll at 1/150 gives the Pyromancer piece you have fewest of, so the outfit is one row. Warm gloves and bruma torches stop at 3 each. The dragon axe (1/10,000) is judged together with the Dagannoth Kings, who drop it too. |
 | Yama | [Yama](https://oldschool.runescape.wiki/w/Yama) | |
-| Zalcano | [Zalcano](https://oldschool.runescape.wiki/w/Zalcano) | Zalcano shard 1/750 is the best case; it drops to 1/1,500 with low contribution. |
+| Zalcano | [Zalcano](https://oldschool.runescape.wiki/w/Zalcano) | The crystal tool seed (39/8,000) is rolled once per kill for the whole team and given to one player, so On Rate gives you your share of it by the team it counts around you. Zalcano shard 1/750 is the best case; it drops to 1/1,500 with low contribution. Shards and the pet are rolled for each player. |
 | Zulrah | [Zulrah](https://oldschool.runescape.wiki/w/Zulrah) | Two rolls per kill: 2 × 1/1,024 = 1/512 per kill for each unique. |
 
 ## Fixed in this check

@@ -308,8 +308,8 @@ final class Texts
 
 	/**
 	 * Short line under a verdict: how common your result is among players at your kill count.
-	 * "74% have none" when you have none, else "1 in 3 as dry" or "1 in 6 as lucky", or "about
-	 * average" when you're on rate. Matches the tie-aware verdict (see DropMath#tieAware).
+	 * "74% have none" when you have none, else "1 in 3 as dry" or "1 in 6 as lucky" (also for a
+	 * bit dry and a bit spooned), or "about average" when the verdict is "On rate". Matches the tie-aware verdict (see DropMath#tieAware).
 	 */
 	static String luckShort(double[] shares, int received)
 	{
@@ -341,9 +341,9 @@ final class Texts
 		{
 			return "";
 		}
-		if (luck >= 0.35 && luck <= 0.65)
+		if (com.expecteddrops.stats.DropMath.VERDICTS.get(3).equals(com.expecteddrops.stats.DropMath.verdict(luck)))
 		{
-			// on rate: the same band as the verdict
+			// "On rate": the same band as the verdict (a bit dry and a bit spooned get their 1 in N)
 			return "about average";
 		}
 		if (luck < 0.5)
@@ -353,6 +353,185 @@ final class Texts
 		}
 		return 1 - luck < 0.0001 ? "<1 in 10,000 as lucky"
 			: String.format("1 in %,d as lucky", Math.max(2, Math.round(1 / (1 - luck))));
+	}
+
+	/** How far out a dry or lucky item must be to be worth a sentence: 8 in 10 players. */
+	static final double NOTABLE_SHARE = 0.80;
+	/** An item you don't have yet is worth a sentence once this many players would have it. */
+	static final double NOTABLE_CHANCE = 0.60;
+
+	/**
+	 * One true sentence for under an "On rate" verdict: the item furthest from average, or null
+	 * when nothing stands out. The driest item ("drier than 88% of players"), an item most
+	 * players would have by now while you don't ("6 in 10 players would have a Tumeken's shadow
+	 * by now"), or the luckiest item ("luckier than 97% of players"), whichever is furthest out.
+	 */
+	static String notableLine(java.util.List<com.expecteddrops.stats.RowStats> items)
+	{
+		com.expecteddrops.stats.RowStats best = null;
+		double bestShare = 0;
+		boolean bestLucky = false;
+		for (com.expecteddrops.stats.RowStats r : items)
+		{
+			double[] shares = r == null || r.isAny() ? null : r.getShares();
+			if (shares == null)
+			{
+				continue;
+			}
+			double fewer = r.getReceived() <= 0 ? 0 : shares[0];
+			double more = Math.max(0, 1 - fewer - shares[1]);
+			// none yet: a sentence once most players would have one; else 8 in 10 out
+			double dryNeeded = r.getReceived() <= 0 ? NOTABLE_CHANCE : NOTABLE_SHARE;
+			if (more >= dryNeeded && more > bestShare)
+			{
+				best = r;
+				bestShare = more;
+				bestLucky = false;
+			}
+			if (fewer >= NOTABLE_SHARE && fewer > bestShare)
+			{
+				best = r;
+				bestShare = fewer;
+				bestLucky = true;
+			}
+		}
+		if (best == null)
+		{
+			return null;
+		}
+		String name = best.getLabel();
+		if (bestLucky)
+		{
+			return String.format("Luckiest: %s, luckier than %s of players.", name, sharePct(bestShare));
+		}
+		if (best.getReceived() <= 0)
+		{
+			// with none, the players who have more are the ones who'd have one by now
+			String players = bestShare < 0.95
+				? String.format("%d in 10 players", (int) Math.floor(bestShare * 10))
+				: sharePct(bestShare) + " of players";
+			return String.format("%s would have %s by now.", players, withArticle(name));
+		}
+		return String.format("Driest: %s, drier than %s of players.", name, sharePct(bestShare));
+	}
+
+	/**
+	 * For the "Unique value" hover: the item most of the value comes from, when one item is at
+	 * least half of it ("Most of it is the Crystal tool seed (95%)."), else null.
+	 */
+	static String mainValueSource(java.util.List<String> names, java.util.List<Double> values)
+	{
+		double total = 0;
+		int best = -1;
+		for (int i = 0; i < values.size(); i++)
+		{
+			double v = Math.max(0, values.get(i));
+			total += v;
+			if (best < 0 || v > values.get(best))
+			{
+				best = i;
+			}
+		}
+		if (best < 0 || total <= 0 || values.get(best) / total < 0.5)
+		{
+			return null;
+		}
+		return String.format("Most of it is the %s (%.0f%%).", names.get(best), Math.floor(values.get(best) / total * 100));
+	}
+
+	/** "a Tumeken's shadow", "an Elder maul", "Bandos boots" (a pair or a set takes none). */
+	static String withArticle(String name)
+	{
+		if (name.isEmpty())
+		{
+			return name;
+		}
+		if (name.endsWith("s") && !name.endsWith("'s"))
+		{
+			return name;
+		}
+		return ("AEIOUaeiou".indexOf(name.charAt(0)) >= 0 ? "an " : "a ") + name;
+	}
+
+	/**
+	 * For hovers: how your result compares with players at your kill count, as a percentage.
+	 * Always told from the side that holds most players, so the number is over 50%: "drier than
+	 * 67%" (67% have more), "luckier than 83%" (83% have fewer), and "74% have none" when you
+	 * and most players have none. Players with exactly your count are on neither side. "About
+	 * average" when neither side is a majority. Past 95% the "1 in N" is added: "drier than
+	 * 99.91% (1 in 1,205)".
+	 */
+	static String luckPercent(double[] shares, int received)
+	{
+		if (shares == null)
+		{
+			return "";
+		}
+		double fewer = received <= 0 ? 0 : shares[0];
+		double same = shares[1];
+		double more = Math.max(0, 1 - fewer - same);
+		if (more > 0.5)
+		{
+			return side("drier", more);
+		}
+		if (fewer > 0.5)
+		{
+			return side("luckier", fewer);
+		}
+		if (received <= 0)
+		{
+			return same >= 0.995 ? ">99% have none" : String.format("%.0f%% have none", same * 100);
+		}
+		return "about average";
+	}
+
+	/** The same from the luck value alone (GP value, the luck graph). */
+	static String luckPercent(double luck)
+	{
+		if (Double.isNaN(luck))
+		{
+			return "";
+		}
+		if (luck < 0.495)
+		{
+			return side("drier", 1 - luck);
+		}
+		if (luck > 0.505)
+		{
+			return side("luckier", luck);
+		}
+		return "about average";
+	}
+
+	/** "drier than 67%", with "(1 in 33)" added past 95%: how rare a result this far out is. */
+	private static String side(String word, double share)
+	{
+		String text = word + " than " + sharePct(share);
+		if (share < 0.95)
+		{
+			return text;
+		}
+		double rest = 1 - share;
+		return text + (rest < 0.0001 ? " (<1 in 10,000)"
+			: String.format(" (1 in %,d)", Math.max(2, Math.round(1 / rest))));
+	}
+
+	/**
+	 * A majority share as a percentage: whole numbers like the hover's split ("67%", "97%"), then
+	 * decimals rounded down so it never reaches 100% ("99.4%", "99.91%").
+	 */
+	static String sharePct(double share)
+	{
+		double p = share * 100;
+		if (share < 0.99)
+		{
+			return String.format("%d%%", Math.round(p));
+		}
+		if (share < 0.999)
+		{
+			return String.format("%.1f%%", Math.floor(p * 10) / 10);
+		}
+		return String.format("%.2f%%", Math.min(99.99, Math.floor(p * 100) / 100));
 	}
 
 	/**

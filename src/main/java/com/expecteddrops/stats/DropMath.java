@@ -207,8 +207,23 @@ public final class DropMath
 	}
 
 	/**
-	 * A word for a luck percentile, from the player's point of view.
-	 * Empty when there's nothing to judge yet.
+	 * Every verdict word, driest first. The one list the tiles, the lists, the overlay, the
+	 * trip card and the luck graph all use (through {@link #verdict}).
+	 */
+	public static final java.util.List<String> VERDICTS = java.util.Collections.unmodifiableList(java.util.Arrays.asList(
+		"Very dry", "Dry", "A bit dry", "On rate", "A bit spooned", "Spooned", "Very spooned"));
+
+	/** Below this luck it's dry, at or above it the middle band starts. */
+	public static final double DRY_BELOW = 0.35;
+	/** Above this luck it's spooned. */
+	public static final double SPOONED_ABOVE = 0.65;
+
+	/**
+	 * A word for a luck percentile, from the player's point of view. Empty when there's
+	 * nothing to judge yet. Under 10% very dry, under 35% dry, under 45% a bit dry, 45% to 55%
+	 * on rate, up to 65% a bit spooned, up to 90% spooned, above that very spooned. A value
+	 * right on a line goes to the side nearer the middle (35% is a bit dry, 45% and 55% are on
+	 * rate, 65% is a bit spooned), as the dry and spooned lines always did.
 	 */
 	public static String verdict(double luck)
 	{
@@ -216,23 +231,36 @@ public final class DropMath
 		{
 			return "";
 		}
+		int band;
 		if (luck < 0.10)
 		{
-			return "Very dry";
+			band = 0;
 		}
-		if (luck < 0.35)
+		else if (luck < DRY_BELOW)
 		{
-			return "Dry";
+			band = 1;
 		}
-		if (luck <= 0.65)
+		else if (luck < 0.45)
 		{
-			return "On rate";
+			band = 2;
 		}
-		if (luck <= 0.90)
+		else if (luck <= 0.55)
 		{
-			return "Spooned";
+			band = 3;
 		}
-		return "Very spooned";
+		else if (luck <= SPOONED_ABOVE)
+		{
+			band = 4;
+		}
+		else if (luck <= 0.90)
+		{
+			band = 5;
+		}
+		else
+		{
+			band = 6;
+		}
+		return VERDICTS.get(band);
 	}
 
 	/**

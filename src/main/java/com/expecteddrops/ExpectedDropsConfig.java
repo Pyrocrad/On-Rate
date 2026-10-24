@@ -77,10 +77,11 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigItem(
 		keyName = "itemView",
 		name = "Luck view",
-		description = "How your luck per item (and per boss in the account overview) is shown: target bars, "
-			+ "the Delve Calculator's bars with Expected/Received tabs, a compact table, chance rings or a luck gauge",
+		description = "How your luck per item (and per boss in the account overview) is shown. Changed with the "
+			+ "switch next to ITEMS in the panel, so it's not listed here",
 		position = 7,
-		section = displaySection
+		section = displaySection,
+		hidden = true
 	)
 	default ItemView itemView()
 	{
@@ -114,9 +115,11 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigItem(
 		keyName = "showLuckGraph",
 		name = "Luck graph",
-		description = "Show a graph of your account's luck over time in the account overview",
+		description = "Whether the Luck over time section in the account overview is open. Opened and closed "
+			+ "by clicking its title in the panel, so it's not listed here",
 		position = 10,
-		section = displaySection
+		section = displaySection,
+		hidden = true
 	)
 	default boolean showLuckGraph()
 	{

@@ -29,6 +29,16 @@ public class BossDefinition
 	private Boolean estimate;
 	/** Group boss where On Rate counts the players around you at each kill (Nex, Corp...). */
 	private Boolean detectTeam;
+	/**
+	 * Loot per reward roll, not per kill (Tempoross): the reward rolls one subdue gives, used
+	 * for the subdues from before On Rate could count rolls. Null for every other boss.
+	 */
+	private Integer rollsPerKill;
+	/**
+	 * Waves of a run whose loot piles up wave by wave until you claim it (Fortis Colosseum: 12).
+	 * Its drops' level rates are per wave; a run claimed at wave W counts every wave up to W.
+	 */
+	private Integer waves;
 
 	public BossDefinition()
 	{
@@ -56,6 +66,18 @@ public class BossDefinition
 	public List<String> getMinionLoot()
 	{
 		return minionLoot == null ? Collections.emptyList() : minionLoot;
+	}
+
+	/** Waves in a run whose loot is claimed at the end (Fortis Colosseum), or 0. */
+	public int getWaves()
+	{
+		return waves == null ? 0 : waves;
+	}
+
+	/** Reward rolls per subdue for content with loot per roll (Tempoross), or 0. */
+	public int getRollsPerKill()
+	{
+		return rollsPerKill == null ? 0 : rollsPerKill;
 	}
 
 	/** Group boss: uniques are shared with the players you kill it with, counted at each kill. */

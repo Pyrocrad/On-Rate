@@ -32,8 +32,10 @@ import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
+import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
@@ -141,10 +143,29 @@ public class ExpectedDropsPanel extends PluginPanel
 	private final JLabel valueLabel = new JLabel();
 	/** Two answers side by side: how many uniques, and what they're worth. */
 	private final JPanel verdictTiles = new JPanel();
+	/** Under an "On rate" verdict: one notable fact (the driest or luckiest item), or hidden. */
+	private final JLabel notableLabel = new JLabel();
+	/** Account overview: how long ago the last unique was ("Last unique 12 days ago: ..."). */
+	private final JLabel lastUniqueLabel = new JLabel();
 	private final VerdictTile uniquesTile = new VerdictTile("UNIQUES");
 	private final VerdictTile valueTile = new VerdictTile("GP VALUE");
 	/** Boss pages: a tip when the numbers lean on a setting (raid purple chance, solo/duo). */
 	private final JLabel hintLabel = new JLabel();
+	/** Opens or closes the Luck over time section (remembered; see {@link #setGraphOpener}). */
+	private java.util.function.Consumer<Boolean> setGraphOpen = open -> { };
+	/** Sets the item view (remembered; see {@link #setItemViewChanger}). */
+	private java.util.function.Consumer<ItemView> setItemView = view -> { };
+	private final JLabel graphTitle = new JLabel();
+	/** Once, during a long trip: a line on the trip card offering the in-game overlay. */
+	private JLabel overlayOfferLabel;
+	private BooleanSupplier overlayOn = () -> true;
+	private BooleanSupplier overlayOfferSeen = () -> true;
+	private Runnable markOverlayOfferSeen = () -> { };
+	private Runnable turnOnOverlay = () -> { };
+	private boolean overlayOfferOnScreen;
+	/** A trip this long (kills, or minutes) is when the overlay is worth offering. */
+	static final int OVERLAY_OFFER_KILLS = 30;
+	static final int OVERLAY_OFFER_MINUTES = 45;
 	private final JLabel summaryLabel = new JLabel();
 	private final JLabel levelsLabel = new JLabel();
 	private final JButton expectedTab = new JButton("Expected");
@@ -318,6 +339,18 @@ public class ExpectedDropsPanel extends PluginPanel
 		verdictTiles.setAlignmentX(LEFT_ALIGNMENT);
 		verdictTiles.setBorder(new EmptyBorder(Theme.HAIR, 0, Theme.S, 0));
 		top.add(verdictTiles);
+		notableLabel.setFont(FontManager.getRunescapeSmallFont());
+		notableLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		notableLabel.setAlignmentX(LEFT_ALIGNMENT);
+		notableLabel.setBorder(new EmptyBorder(0, 0, Theme.S, 0));
+		notableLabel.setVisible(false);
+		top.add(notableLabel);
+		lastUniqueLabel.setFont(FontManager.getRunescapeSmallFont());
+		lastUniqueLabel.setForeground(Theme.TEXT_MUTED);
+		lastUniqueLabel.setAlignmentX(LEFT_ALIGNMENT);
+		lastUniqueLabel.setBorder(new EmptyBorder(0, 0, Theme.S, 0));
+		lastUniqueLabel.setVisible(false);
+		top.add(lastUniqueLabel);
 
 		for (JLabel l : new JLabel[]{summaryLabel, valueLabel, syncLabel, hintLabel})
 		{
@@ -338,10 +371,20 @@ public class ExpectedDropsPanel extends PluginPanel
 		graphPanel.setLayout(new BoxLayout(graphPanel, BoxLayout.Y_AXIS));
 		graphPanel.setOpaque(false);
 		graphPanel.setAlignmentX(LEFT_ALIGNMENT);
-		JLabel graphTitle = new JLabel("Luck over time");
 		graphTitle.setFont(FontManager.getRunescapeSmallFont());
 		graphTitle.setForeground(Color.WHITE);
 		graphTitle.setAlignmentX(LEFT_ALIGNMENT);
+		graphTitle.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+		graphTitle.setToolTipText("Click to show or hide your account's luck over time, one point per day you play");
+		graphTitle.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mouseClicked(MouseEvent e)
+			{
+				setGraphOpen.accept(!options.get().isLuckGraph());
+				refresh();
+			}
+		});
 		graphPanel.add(graphTitle);
 		graphPanel.add(spacer(Theme.HAIR));
 		graphPanel.add(graph);
@@ -617,6 +660,47 @@ public class ExpectedDropsPanel extends PluginPanel
 	/** Recomputes and redraws the selected page (see {@link #refresh()}). */
 	private void draw()
 	{
+		// the graph offer was on screen and this redraw may move on from it (see the end)
+		boolean overlayWasOnScreen = overlayOfferOnScreen && overlayOfferLabel != null && overlayOfferLabel.isShowing();
+		overlayOfferOnScreen = false;
+		drawPage();
+		// seen, and the player went on to another page or tab: never again on this account
+		if (overlayWasOnScreen && !overlayOfferOnScreen)
+		{
+			markOverlayOfferSeen.run();
+		}
+	}
+
+	/**
+	 * The overlay offer: during a long trip at one boss, one line on the trip card that turns
+	 * the in-game overlay on when clicked. Shown once per account (remembered as for the graph
+	 * offer), never when the overlay is on, and not in a session that already showed a tip.
+	 */
+	public void setOverlayOffer(BooleanSupplier on, BooleanSupplier seen, Runnable markSeen, Runnable turnOn)
+	{
+		overlayOn = on == null ? () -> true : on;
+		overlayOfferSeen = seen == null ? () -> true : seen;
+		markOverlayOfferSeen = markSeen == null ? () -> { } : markSeen;
+		turnOnOverlay = turnOn == null ? () -> { } : turnOn;
+	}
+
+	/**
+	 * Where the panel's own view choices are remembered: whether Luck over time is open, and
+	 * the item view. They're hidden settings, changed only from the panel.
+	 */
+	public void setGraphOpener(java.util.function.Consumer<Boolean> opener)
+	{
+		setGraphOpen = opener == null ? open -> { } : opener;
+	}
+
+	/** See {@link #setGraphOpener}. */
+	public void setItemViewChanger(java.util.function.Consumer<ItemView> changer)
+	{
+		setItemView = changer == null ? view -> { } : changer;
+	}
+
+	private void drawPage()
+	{
 		welcomePanel.setVisible(showWelcome.getAsBoolean());
 		refreshSetup();
 
@@ -628,8 +712,9 @@ public class ExpectedDropsPanel extends PluginPanel
 		boolean account = ACCOUNT.equals(bossName);
 		accountButton.setEnabled(!account);
 		// the luck graph belongs to the bosses list; the Items and Recent tabs get the room
-		graphPanel.setVisible(account && o.isLuckGraph()
-			&& (accountTab == TAB_BOSSES || accountTab == TAB_ITEMS && !o.isTopItems()));
+		// Luck over time sits with the bosses list; its title opens and closes it
+		graphPanel.setVisible(account && (accountTab == TAB_BOSSES || accountTab == TAB_ITEMS && !o.isTopItems()));
+		graphTitle.setText((o.isLuckGraph() ? "\u25be " : "\u25b8 ") + "Luck over time");
 		topItemsPanel.setVisible(account && o.isTopItems());
 		topItemsPanel.removeAll();
 		sortRow.setVisible(account);
@@ -637,6 +722,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		syncLabel.setVisible(!account);
 		valueLabel.setVisible(false);
 		hintLabel.setVisible(false);
+		lastUniqueLabel.setVisible(false);
 		headerIcon.setIcon(null);
 		headerIcon.setText(null);
 		if (account)
@@ -725,7 +811,15 @@ public class ExpectedDropsPanel extends PluginPanel
 			showVerdict(any);
 		}
 		double[] value = o.isGeValue() && !unsynced ? bossValue(stats) : null;
-		showTiles(unsynced ? null : any, value, lastValueTip, raid ? "purples" : "uniques");
+		List<RowStats> counted = new ArrayList<>();
+		for (int i = 0; i < stats.getBoss().getDrops().size(); i++)
+		{
+			if (tracker.counts(stats.getBoss(), stats.getBoss().getDrops().get(i)))
+			{
+				counted.add(stats.getRows().get(i));
+			}
+		}
+		showTiles(unsynced ? null : any, value, lastValueTip, raid ? "purples" : "uniques", counted);
 		lastHintTip = null;
 		String hint = unsynced ? null : settingsHint(stats);
 		Color hintColor = ColorScheme.LIGHT_GRAY_COLOR;
@@ -882,10 +976,14 @@ public class ExpectedDropsPanel extends PluginPanel
 	/** Set before {@link #showTiles} on an estimate boss page, null otherwise. */
 	private String estimateNote;
 
-	private void showTiles(RowStats any, double[] value, String valueTip, String what)
+	private void showTiles(RowStats any, double[] value, String valueTip, String what, List<RowStats> items)
 	{
 		double luck = any == null ? Double.NaN : any.getLuck();
 		boolean tiles = !Double.isNaN(luck) && !DropMath.verdict(luck).isEmpty();
+		// "On rate" says little by itself: one notable fact under it, when there is one
+		String notable = DropMath.VERDICTS.get(3).equals(DropMath.verdict(luck)) ? Texts.notableLine(items) : null;
+		notableLabel.setText(notable == null ? "" : "<html><body style='width: 165px'>" + html(notable) + "</body></html>");
+		notableLabel.setVisible(notable != null);
 		verdictTiles.setVisible(tiles);
 		verdictLabel.setVisible(!tiles);
 		summaryLabel.setVisible(!tiles);
@@ -900,10 +998,11 @@ public class ExpectedDropsPanel extends PluginPanel
 			luckShort(any.getShares(), any.getReceived()),
 			new Tip(String.format("Uniques \u00b7 %s", DropMath.verdict(luck)))
 				.line(String.format("Got %,d %s, expected %s by now", any.getReceived(), what, formatExpected(any.getExpected())))
+				.line(capital(luckPercent(any.getShares(), any.getReceived())))
 				.line(sharesLine(any.getShares(), any.getReceived()))
 				.note("Counts how many " + what + ", not what they're worth: a twisted bow counts the same as a prayer scroll. "
 					+ "Dry when fewer than 35% of players have this many or fewer (very dry: 10%); spooned when fewer than 35% "
-					+ "have this many or more (very spooned: 10%); else on rate.")
+					+ "have this many or more (very spooned: 10%). In between: a bit dry, on rate or a bit spooned.")
 				.note(estimateNote)
 				.wide());
 		verdictTiles.add(uniquesTile);
@@ -1002,14 +1101,21 @@ public class ExpectedDropsPanel extends PluginPanel
 		double[] accountValue = o.isGeValue() && account.getExpectedValue() > 0 && !Double.isNaN(account.getValueLuck())
 			? new double[]{account.getReceivedValue(), account.getExpectedValue(), account.getValueLuck()} : null;
 		estimateNote = null;
-		showTiles(account.getRows().isEmpty() ? null : total, accountValue, valueTooltip(account), "uniques");
+		List<RowStats> accountItems = new ArrayList<>();
+		for (com.expecteddrops.stats.ItemHighlight h : account.getItems())
+		{
+			accountItems.add(h.getRow());
+		}
+		showTiles(account.getRows().isEmpty() ? null : total, accountValue, valueTooltip(account), "uniques", accountItems);
+
+		showLastUnique();
 
 		List<com.expecteddrops.tracking.HistoryPoint> history = tracker.history();
 		graph.setPoints(history);
-		graph.setVisible(!history.isEmpty());
+		graph.setVisible(o.isLuckGraph() && !history.isEmpty());
 		graphHint.setText(history.size() >= 2 ? ""
 			: "<html><body style='width: 165px'>On Rate saves one point a day. Your line starts to show from tomorrow.</body></html>");
-		graphHint.setVisible(history.size() < 2);
+		graphHint.setVisible(o.isLuckGraph() && history.size() < 2);
 
 		// Bosses with almost nothing expected yet (a handful of kills) say nothing about luck:
 		// leave them out of the list. They still count in the totals above.
@@ -1231,7 +1337,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				isTotal ? "All bosses, " : d.getBoss() + ", ", title.toLowerCase(Locale.ROOT),
 				d.getUniques(), d.getUniques() == 1 ? "" : "s", d.getKills(), unitsHere,
 				formatExpected(d.getExpected()),
-				Double.isNaN(luck) || d.getExpected() <= 0 ? "" : ": " + html(luckShort(DropMath.shares(d.getUniques(), d.getExpected()), d.getUniques())))
+				Double.isNaN(luck) || d.getExpected() <= 0 ? "" : ": " + html(luckPercent(DropMath.shares(d.getUniques(), d.getExpected()), d.getUniques())))
 				+ uniquesLine(isTotal, d, days)
 				+ (isTotal ? "" : "<br>Click to open " + d.getBoss()) + "</html>";
 			String bossName = d.getBoss();
@@ -1371,7 +1477,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		boolean raid = boss.getRaid() != null;
 		boolean team = boss.isDetectTeam();
-		boolean delve = boss.isDelve();
+		// delve levels and Colosseum runs: every run is listed with its level or wave
+		boolean delve = boss.isDelve() || boss.getWaves() > 0;
 		boolean titans = "Royal Titans".equals(boss.getName());
 		boolean dropsOnly = !raid && !team && !delve && !titans;
 		long now = System.currentTimeMillis();
@@ -1398,7 +1505,8 @@ public class ExpectedDropsPanel extends PluginPanel
 			String middle;
 			if (delve)
 			{
-				first = "Lvl " + (k.getLevel() == null ? "?" : BossDefinition.delveLevelLabel(k.getLevel()));
+				first = boss.getWaves() > 0 ? "W" + (k.getLevel() == null ? "?" : k.getLevel())
+					: "Lvl " + (k.getLevel() == null ? "?" : BossDefinition.delveLevelLabel(k.getLevel()));
 				middle = daysAgo(k.getTime(), now);
 			}
 			else
@@ -1801,7 +1909,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			DropDefinition drop = stats.getBoss().getDrops().get(i);
 			RowStats row = stats.getRows().get(i);
-			long price = drop.countsTowardAny() ? Math.max(0, priceOf.applyAsLong(drop.getName())) : 0;
+			long price = tracker.counts(stats.getBoss(), drop) ? Math.max(0, priceOf.applyAsLong(drop.getName())) : 0;
 			if (price <= 0)
 			{
 				continue;
@@ -1829,7 +1937,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		lastValueTip = new Tip("GP value \u00b7 " + DropMath.verdict(luck))
 			.line("Got " + DropMath.formatGp(received) + ", expected " + DropMath.formatGp((long) expected))
-			.line("By value: " + capital(luckShort(luck)) + " for your kill count")
+			.line("By value: " + capital(luckPercent(luck)) + " for your kill count")
 			.note("The Uniques tile counts how many you got; this one weighs them by price. "
 				+ "Pets, jars and other untradeables count as 0 GP.")
 			.wide();
@@ -2074,7 +2182,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		return new Tip("GP value \u00b7 " + DropMath.verdict(luck))
 			.line("Got " + DropMath.formatGp(account.getReceivedValue()) + ", expected " + DropMath.formatGp(account.getExpectedValue()))
-			.line("By value: " + capital(luckShort(luck)) + " for your kill counts")
+			.line("By value: " + capital(luckPercent(luck)) + " for your kill counts")
 			.note("RuneLite's own price list. Pets, jars and other untradeables count as 0 GP.")
 			.wide();
 	}
@@ -2095,7 +2203,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		double luck = row.getLuck();
 		if (!Double.isNaN(luck))
 		{
-			tip.line(DropMath.verdict(luck), luckColor(luck).brighter());
+			tip.line(DropMath.verdict(luck) + ": " + luckPercent(row.getShares(), row.getReceived()), luckColor(luck).brighter());
 			tip.line(capital(sharesLine(row.getShares(), row.getReceived())));
 		}
 		if (!row.isAny() && row.getDriestItem() != null)
@@ -2140,14 +2248,26 @@ public class ExpectedDropsPanel extends PluginPanel
 				how = "The fill is how many you got; the white line is how many you should have by now.";
 		}
 		return "<html><body style='width: 240px'>" + how + "<br><br>Hover an item for its drop rate, your chances "
-			+ "and your dry streak. You can pick another view in the plugin settings (Display)." + FEEDBACK_LINE + "</body></html>";
+			+ "and your dry streak. Right-click one to leave it out of the calculations (a drop you got elsewhere, "
+			+ "or jars you don't care about). Click \u21c4 next to ITEMS for another view."
+			+ FEEDBACK_LINE + "</body></html>";
 	}
 
 	private void renderBossItems(BossStats stats, String unit, ItemView view)
 	{
+		String bossName = stats.getBoss().getName();
 		List<RowStats> all = new ArrayList<>();
 		all.add(stats.getAnyRow());
-		all.addAll(stats.getRows());
+		// items the player left out go last, in a section of their own
+		List<RowStats> leftOut = new ArrayList<>();
+		for (RowStats r : stats.getRows())
+		{
+			(tracker.isLeftOut(bossName, r.getIconItem()) ? leftOut : all).add(r);
+		}
+		if (view != ItemView.TARGET_BARS)
+		{
+			rowsPanel.add(itemsHeader("ITEMS", view, null, null));
+		}
 		switch (view)
 		{
 			case DELVE_BARS:
@@ -2157,14 +2277,14 @@ public class ExpectedDropsPanel extends PluginPanel
 					{
 						rowsPanel.add(spacer(Theme.HAIR));
 					}
-					rowsPanel.add(row(all.get(i), stats, unit));
+					rowsPanel.add(withLeaveOutMenu(row(all.get(i), stats, unit), bossName, all.get(i), false));
 				}
 				break;
 			case COMPACT:
 				rowsPanel.add(compactHeader("Item"));
 				for (RowStats r : all)
 				{
-					rowsPanel.add(compactRow(r, tooltip(r, stats, unit), null));
+					rowsPanel.add(withLeaveOutMenu(compactRow(r, tooltip(r, stats, unit), null), bossName, r, false));
 				}
 				break;
 			case RINGS:
@@ -2173,7 +2293,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				grid.setAlignmentX(LEFT_ALIGNMENT);
 				for (RowStats r : all)
 				{
-					grid.add(itemRing(r, tooltip(r, stats, unit)));
+					grid.add(withLeaveOutMenu(itemRing(r, tooltip(r, stats, unit)), bossName, r, false));
 				}
 				grid.setMaximumSize(new Dimension(Integer.MAX_VALUE, grid.getPreferredSize().height));
 				rowsPanel.add(grid);
@@ -2185,12 +2305,12 @@ public class ExpectedDropsPanel extends PluginPanel
 				for (RowStats r : all)
 				{
 					rowsPanel.add(spacer(Theme.HAIR));
-					rowsPanel.add(stripRow(r.isAny() ? null : r.getIconItem(), r.isAny() ? "Any unique" : r.getLabel(),
-						r.isAny(), r.isComplete() ? 1.0 : r.getLuck(), tooltip(r, stats, unit), null));
+					rowsPanel.add(withLeaveOutMenu(stripRow(r.isAny() ? null : r.getIconItem(), r.isAny() ? "Any unique" : r.getLabel(),
+						r.isAny(), r.isComplete() ? 1.0 : r.getLuck(), tooltip(r, stats, unit), null), bossName, r, false));
 				}
 				break;
 			default:
-				rowsPanel.add(sectionHeader("ITEMS", "white line = expected by now",
+				rowsPanel.add(itemsHeader("ITEMS", view, "white line = expected",
 					"The white line is how many you should have by now. A bar that stops short of it is behind, "
 						+ "one that reaches past it is ahead. Rare items have their line near the start."));
 				for (int i = 0; i < all.size(); i++)
@@ -2199,9 +2319,167 @@ public class ExpectedDropsPanel extends PluginPanel
 					{
 						rowsPanel.add(spacer(Theme.HAIR));
 					}
-					rowsPanel.add(targetRow(all.get(i), tooltip(all.get(i), stats, unit)));
+					rowsPanel.add(withLeaveOutMenu(targetRow(all.get(i), tooltip(all.get(i), stats, unit)), bossName, all.get(i), false));
 				}
 		}
+		if (!leftOut.isEmpty())
+		{
+			rowsPanel.add(spacer(Theme.M));
+			rowsPanel.add(sectionHeader("LEFT OUT", "right-click to count again",
+				"You left these out of the calculations: they don't count for this boss's verdicts, the account "
+					+ "overview, the Items tab or dry messages. Right-click one to count it again."));
+			for (RowStats r : leftOut)
+			{
+				rowsPanel.add(withLeaveOutMenu(leftOutRow(r, stats.getBoss().getName()), bossName, r, true));
+			}
+		}
+	}
+
+	/** A greyed line for an item the player left out: its name and got / expected, nothing judged. */
+	private JPanel leftOutRow(RowStats r, String bossName)
+	{
+		JPanel panel = new JPanel(new BorderLayout(4, 0));
+		panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		panel.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createMatteBorder(0, 0, 1, 0, ColorScheme.DARK_GRAY_COLOR), new EmptyBorder(Theme.HAIR, Theme.S, Theme.HAIR, Theme.S)));
+		panel.setAlignmentX(LEFT_ALIGNMENT);
+		panel.add(smallLabel(r.getShownLabel(), Theme.TEXT_MUTED), BorderLayout.CENTER);
+		panel.add(smallLabel(gotOfExpected(r), Theme.TEXT_MUTED), BorderLayout.EAST);
+		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
+		String tip = new Tip(r.getLabel())
+			.line(String.format("Got %d, expected %s", r.getReceived(), formatExpected(r.getExpected())))
+			.note("Left out of " + bossName + "'s verdicts, the account overview, the Items tab and dry messages. "
+				+ "Right-click to count it again.")
+			.wide();
+		setTip(panel, tip, null);
+		return panel;
+	}
+
+	/**
+	 * Adds the right-click menu to an item: "Leave out of the calculations", or "Count it again"
+	 * for one that's left out. The "Any unique" line has none.
+	 */
+	private <T extends java.awt.Component> T withLeaveOutMenu(T c, String bossName, RowStats r, boolean leftOut)
+	{
+		if (r.isAny() || r.getIconItem() == null)
+		{
+			return c;
+		}
+		JPopupMenu menu = new JPopupMenu();
+		JMenuItem item = new JMenuItem(leftOut ? "Count it again" : "Leave out of the calculations");
+		item.addActionListener(e ->
+		{
+			tracker.setLeftOut(bossName, r.getIconItem(), !leftOut);
+			save.run();
+			refresh();
+		});
+		menu.add(item);
+		addPopup(c, menu);
+		return c;
+	}
+
+	/** Shows the menu on a right-click anywhere on the component, its labels included. */
+	private static void addPopup(java.awt.Component c, JPopupMenu menu)
+	{
+		c.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mousePressed(MouseEvent e)
+			{
+				show(e);
+			}
+
+			@Override
+			public void mouseReleased(MouseEvent e)
+			{
+				show(e);
+			}
+
+			private void show(MouseEvent e)
+			{
+				if (e.isPopupTrigger())
+				{
+					menu.show(e.getComponent(), e.getX(), e.getY());
+				}
+			}
+		});
+		if (c instanceof java.awt.Container)
+		{
+			for (java.awt.Component child : ((java.awt.Container) c).getComponents())
+			{
+				addPopup(child, menu);
+			}
+		}
+	}
+
+	/** Short names of the item views, for the switch next to ITEMS. */
+	private static String viewName(ItemView view)
+	{
+		switch (view)
+		{
+			case DELVE_BARS:
+				return "tabs";
+			case COMPACT:
+				return "table";
+			case RINGS:
+				return "rings";
+			case GAUGE:
+				return "gauge";
+			default:
+				return "bars";
+		}
+	}
+
+	/**
+	 * The title over a list ("ITEMS"), with the view switch next to it ("\u21c4 bars": click for
+	 * the next view, remembered) and an optional key on the right.
+	 */
+	private JPanel itemsHeader(String title, ItemView view, String key, String keyTip)
+	{
+		JPanel panel = new JPanel(new BorderLayout(6, 0));
+		panel.setOpaque(false);
+		panel.setAlignmentX(LEFT_ALIGNMENT);
+		panel.setBorder(new EmptyBorder(0, 0, Theme.S, 0));
+		JPanel left = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 0, 0));
+		left.setOpaque(false);
+		left.add(smallLabel(title + "  ", Theme.TEXT_MUTED));
+		ItemView[] views = ItemView.values();
+		ItemView next = views[(view.ordinal() + 1) % views.length];
+		JLabel change = smallLabel("\u21c4 " + viewName(view), ColorScheme.LIGHT_GRAY_COLOR);
+		change.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+		change.setToolTipText(new Tip("Change the look").line("Now: " + view)
+			.line("Click for " + next + ". The look you pick is kept, here and in the account overview.").small());
+		change.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mouseClicked(MouseEvent e)
+			{
+				setItemView.accept(next);
+				refresh();
+			}
+
+			@Override
+			public void mouseEntered(MouseEvent e)
+			{
+				change.setForeground(Color.WHITE);
+			}
+
+			@Override
+			public void mouseExited(MouseEvent e)
+			{
+				change.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+			}
+		});
+		left.add(change);
+		panel.add(left, BorderLayout.WEST);
+		if (key != null)
+		{
+			JLabel right = smallLabel(key, Theme.TEXT_MUTED);
+			right.setToolTipText(new Tip(null).line(keyTip).small());
+			panel.add(right, BorderLayout.EAST);
+		}
+		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 16));
+		return panel;
 	}
 
 	/** A small grey section title with a key on the right ("ITEMS · white line = expected"). */
@@ -2226,6 +2504,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			// nothing to list yet: no empty table headers
 			return;
 		}
+		rowsPanel.add(itemsHeader("BOSSES", view, null, null));
 		switch (view)
 		{
 			case DELVE_BARS:
@@ -2696,15 +2975,20 @@ public class ExpectedDropsPanel extends PluginPanel
 			rate.setAlignmentX(LEFT_ALIGNMENT);
 			card.add(rate);
 		}
-		double perKill = options.get().isGeValue() ? uniqueValuePerKill(bossName) : 0;
-		if (!Double.isNaN(perHour) && perKill > 0)
+		// this trip's own kills (a delve level 1 trip is worth nothing), else the boss's average
+		double tripValue = options.get().isGeValue() ? tracker.tripValue(priceOf) : Double.NaN;
+		double perKill = !options.get().isGeValue() ? 0
+			: !Double.isNaN(tripValue) && trip.getKills() > 0 ? tripValue / trip.getKills() : uniqueValuePerKill(bossName);
+		// a trip worth nothing says so (delve level 1 has no uniques: 0 gp/h)
+		// (only when prices are known: the boss's uniques are worth something on average)
+		if (!Double.isNaN(perHour) && (perKill > 0 || !Double.isNaN(tripValue) && uniqueValuePerKill(bossName) > 0))
 		{
 			JLabel worth = smallLabel(String.format("<html>Unique value: <font color='#ffffff'>~%s/h</font> expected</html>",
 				DropMath.formatGp(perKill * perHour)), ColorScheme.LIGHT_GRAY_COLOR);
 			worth.setToolTipText(String.format("<html><body style='width: 240px'>What the uniques should be worth per hour at "
 				+ "this trip's speed: about %s per %s. Only uniques count; normal loot (bones, hides, runes...) "
-				+ "isn't included, so this is not your full GP per hour. Untradeables count as 0 GP.</body></html>",
-				DropMath.formatGp(perKill), units.substring(0, units.length() - 1)));
+				+ "isn't included, so this is not your full GP per hour. Untradeables count as 0 GP.%s</body></html>",
+				DropMath.formatGp(perKill), units.substring(0, units.length() - 1), mainValueNote(bossName)));
 			worth.setAlignmentX(LEFT_ALIGNMENT);
 			card.add(worth);
 		}
@@ -2713,6 +2997,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			JLabel v = smallLabel(String.format("%s this trip (%s)", DropMath.verdict(luck), luckShort(trip.getShares(), trip.getReceived())),
 				luckColor(luck).brighter());
+			v.setToolTipText(capital(luckPercent(trip.getShares(), trip.getReceived())) + " for a trip like this");
 			v.setAlignmentX(LEFT_ALIGNMENT);
 			card.add(v);
 		}
@@ -2728,16 +3013,103 @@ public class ExpectedDropsPanel extends PluginPanel
 		reset.setFont(FontManager.getRunescapeSmallFont());
 		reset.setFocusPainted(false);
 		reset.setAlignmentX(LEFT_ALIGNMENT);
-		reset.setToolTipText("The next kill starts a new trip. A trip also ends after 30 minutes without a kill.");
+		reset.setToolTipText("The next kill starts a new trip. A trip also ends after 30 minutes without a kill "
+			+ "(2 hours for raids, the Inferno and the Fight Caves).");
 		reset.addActionListener(e ->
 		{
 			tracker.resetTrip();
 			refresh();
 		});
 		card.add(reset);
+		if (trip.getKills() >= OVERLAY_OFFER_KILLS || minutes >= OVERLAY_OFFER_MINUTES)
+		{
+			addOverlayOffer(card);
+		}
 		card.setMaximumSize(new Dimension(Integer.MAX_VALUE, card.getPreferredSize().height));
 		rowsPanel.add(card);
 		rowsPanel.add(spacer(Theme.M));
+	}
+
+	/** The account overview's "Last unique 12 days ago: Vorkath's head." line, from History. */
+	private void showLastUnique()
+	{
+		com.expecteddrops.tracking.Tracker.LastUnique last = tracker.lastUnique();
+		if (last == null)
+		{
+			return;
+		}
+		java.time.ZoneId zone = java.time.ZoneId.systemDefault();
+		java.time.LocalDate today = java.time.LocalDate.now(zone);
+		String text;
+		if (last.item != null)
+		{
+			long days = java.time.temporal.ChronoUnit.DAYS.between(
+				java.time.Instant.ofEpochMilli(last.time).atZone(zone).toLocalDate(), today);
+			String when = days <= 0 ? "today" : days == 1 ? "yesterday" : String.format("%,d days ago", days);
+			text = String.format("Last unique %s: %s (%s).", when, last.item, last.boss);
+		}
+		else
+		{
+			text = "No unique since " + java.time.Instant.ofEpochMilli(last.historyStart).atZone(zone).toLocalDate()
+				.format(java.time.format.DateTimeFormatter.ofPattern("d MMM", Locale.ENGLISH)) + ".";
+		}
+		lastUniqueLabel.setText(Theme.wrap(html(text), Theme.TEXT_WIDTH));
+		lastUniqueLabel.setToolTipText("From History: the drops On Rate saw since you installed it. Items you left out don't count.");
+		lastUniqueLabel.setVisible(true);
+	}
+
+	/** The overlay offer line at the bottom of a long trip's card, when it's due (see {@link #setOverlayOffer}). */
+	private void addOverlayOffer(JPanel card)
+	{
+		if (overlayOn.getAsBoolean() || overlayOfferSeen.getAsBoolean())
+		{
+			return;
+		}
+		JLabel offer = smallLabel(Theme.wrap("Long trip? The in-game overlay shows this on screen. Click to turn it on.",
+			Theme.TEXT_WIDTH - 30), Theme.TEXT_MUTED);
+		offer.setIcon(Theme.infoIcon());
+		offer.setVerticalTextPosition(SwingConstants.TOP);
+		offer.setAlignmentX(LEFT_ALIGNMENT);
+		offer.setBorder(new EmptyBorder(Theme.S, 0, 0, 0));
+		offer.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+		offer.setToolTipText("Turns on In-game overlay in the settings (Display). This note shows only once.");
+		offer.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mouseClicked(MouseEvent e)
+			{
+				overlayOfferOnScreen = false;
+				offer.setVisible(false);
+				markOverlayOfferSeen.run();
+				turnOnOverlay.run();
+			}
+		});
+		card.add(offer);
+		overlayOfferLabel = offer;
+		overlayOfferOnScreen = true;
+	}
+
+	/** "<br><br>Most of it is the Crystal tool seed (95%)." for the value hover, or "" when it's spread out. */
+	private String mainValueNote(String bossName)
+	{
+		BossStats stats = tracker.stats(bossName, raidSettings.get());
+		if (stats == null || stats.getKillCount() <= 0)
+		{
+			return "";
+		}
+		List<String> names = new ArrayList<>();
+		List<Double> values = new ArrayList<>();
+		for (int i = 0; i < stats.getBoss().getDrops().size(); i++)
+		{
+			DropDefinition drop = stats.getBoss().getDrops().get(i);
+			if (tracker.counts(stats.getBoss(), drop))
+			{
+				names.add(stats.getRows().get(i).getLabel());
+				values.add(Math.max(0, priceOf.applyAsLong(drop.getName())) * stats.getRows().get(i).getExpected());
+			}
+		}
+		String note = Texts.mainValueSource(names, values);
+		return note == null ? "" : "<br><br>" + note;
 	}
 
 	/** GP the uniques of one kill are worth on average: each tradeable unique's rate times its price. */
@@ -2752,7 +3124,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		for (int i = 0; i < stats.getBoss().getDrops().size(); i++)
 		{
 			DropDefinition drop = stats.getBoss().getDrops().get(i);
-			if (!drop.countsTowardAny())
+			if (!tracker.counts(stats.getBoss(), drop))
 			{
 				continue;
 			}
@@ -2793,7 +3165,8 @@ public class ExpectedDropsPanel extends PluginPanel
 			+ "<b>1.</b> Open your <b>collection log</b> and click the pages of the bosses you do. "
 			+ "That loads your past drops.<br><br>"
 			+ "<b>2.</b> Go kill something. The panel follows your kills (keep the <b>Loot Tracker</b> plugin on).<br><br>"
-			+ "<b>3.</b> <i>Got it</i> opens the settings: pick a <i>Luck view</i> you like, and check <i>Team bosses</i> if you solo Royal Titans or Yama.<br><br>"
+			+ "<b>3.</b> <i>Got it</i> opens the settings: check <i>Team bosses</i> if you solo Royal Titans or Yama. "
+			+ "Another look for the lists is one click on \u21c4 next to ITEMS.<br><br>"
 			+ "Hover the <b>?</b> for help."
 			+ "</body></html>");
 		text.setFont(FontManager.getRunescapeSmallFont());
@@ -3043,16 +3416,34 @@ public class ExpectedDropsPanel extends PluginPanel
 	{
 		Tip tip = new Tip(row.isAny() ? "Any unique" : row.getLabel());
 		DropDefinition drop = row.isAny() ? null : findDrop(stats.getBoss(), row.getLabel());
-		if (drop != null && drop.hasLevelRates())
+		if (drop != null && drop.hasLevelRates() && stats.getBoss().getWaves() > 0)
+		{
+			// a run counts every wave up to the claim: the chance by the wave you claim at
+			StringBuilder rates = new StringBuilder("Chance over a run, by the wave you claim at:");
+			boolean first = true;
+			for (int wave = 1; wave <= stats.getBoss().getWaves(); wave++)
+			{
+				double cumulative = com.expecteddrops.tracking.Tracker.waveRate(drop, wave);
+				if (cumulative > 0)
+				{
+					rates.append(first ? " " : ", ").append(wave).append(": ").append(DropMath.formatRate(cumulative));
+					first = false;
+				}
+			}
+			tip.line(rates.toString());
+		}
+		else if (drop != null && drop.hasLevelRates())
 		{
 			StringBuilder rates = new StringBuilder("Rate per delve level:");
+			boolean first = true;
 			for (int level = 1; level <= BossDefinition.DELVE_LEVELS; level++)
 			{
 				String rate = drop.getLevelRate(level);
 				if (rate != null)
 				{
-					rates.append(level == 1 ? " " : ", ").append(BossDefinition.delveLevelLabel(level)).append(": ")
+					rates.append(first ? " " : ", ").append(BossDefinition.delveLevelLabel(level)).append(": ")
 						.append(DropMath.formatRate(DropMath.parseRate(rate)));
+					first = false;
 				}
 			}
 			tip.line(rates.toString());
@@ -3080,7 +3471,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		double luck = row.getLuck();
 		if (!Double.isNaN(luck))
 		{
-			tip.line(String.format("%s at %,d %ss", DropMath.verdict(luck), stats.getKillCount(), unit), luckColor(luck).brighter());
+			tip.line(String.format("%s at %,d %ss: %s", DropMath.verdict(luck), stats.getKillCount(), unit,
+				luckPercent(row.getShares(), row.getReceived())), luckColor(luck).brighter());
 			tip.line(capital(sharesLine(row.getShares(), row.getReceived())));
 		}
 		tip.line(rateMultipleLine(row));
@@ -3090,6 +3482,18 @@ public class ExpectedDropsPanel extends PluginPanel
 				DropMath.killsForChance(row.getRate(), 0.5), DropMath.killsForChance(row.getRate(), 0.9), unit));
 		}
 		tip.note(streakNote(row, unit));
+		if (row.getFastest() != null)
+		{
+			tip.note(row.getFastest().equals(row.getLongest())
+				? String.format("Since On Rate: one drop took %,d %s.", row.getFastest(), unit + (row.getFastest() == 1 ? "" : "s"))
+				: String.format("Since On Rate: fastest drop after %,d %s, longest after %,d.", row.getFastest(),
+					unit + (row.getFastest() == 1 ? "" : "s"), row.getLongest()));
+		}
+		if (drop != null && drop.getAlsoFrom() != null)
+		{
+			tip.note("Also drops from " + drop.getAlsoFrom() + ", and the collection log counts those too. "
+				+ "Got yours there? Right-click to leave it out.");
+		}
 		return tip.wide();
 	}
 

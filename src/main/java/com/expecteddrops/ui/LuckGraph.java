@@ -83,14 +83,17 @@ class LuckGraph extends JComponent
 		g.setColor(ColorScheme.DARKER_GRAY_COLOR);
 		g.fillRect(0, 0, getWidth(), getHeight());
 
-		// bands: dry below 35%, on rate 35-65%, spooned above
+		// bands: dry below 35%, the middle (a bit dry, on rate, a bit spooned), spooned above;
+		// the same lines as the verdict words (DropMath#verdict)
 		int w = plotWidth();
+		double dry = DropMath.DRY_BELOW;
+		double spooned = DropMath.SPOONED_ABOVE;
 		g.setColor(withAlpha(ExpectedDropsPanel.luckColor(0.9), 40));
-		g.fillRect(PAD_LEFT, yFor(1), w, yFor(0.65) - yFor(1));
+		g.fillRect(PAD_LEFT, yFor(1), w, yFor(spooned) - yFor(1));
 		g.setColor(withAlpha(ExpectedDropsPanel.luckColor(0.5), 40));
-		g.fillRect(PAD_LEFT, yFor(0.65), w, yFor(0.35) - yFor(0.65));
+		g.fillRect(PAD_LEFT, yFor(spooned), w, yFor(dry) - yFor(spooned));
 		g.setColor(withAlpha(ExpectedDropsPanel.luckColor(0.1), 40));
-		g.fillRect(PAD_LEFT, yFor(0.35), w, yFor(0) - yFor(0.35));
+		g.fillRect(PAD_LEFT, yFor(dry), w, yFor(0) - yFor(dry));
 
 		g.setFont(FontManager.getRunescapeSmallFont());
 		g.setColor(ColorScheme.LIGHT_GRAY_COLOR);
@@ -128,7 +131,18 @@ class LuckGraph extends JComponent
 		{
 			HistoryPoint a = points.get(i - 1);
 			HistoryPoint b = points.get(i);
-			g.drawLine(xFor(a.getDay()), yFor(a.getLuck()), xFor(b.getDay()), yFor(b.getLuck()));
+			// luck only moves on days you play: across days without a point it stays flat, then
+			// changes on the next day you played (a slope over the gap would suggest it drifted)
+			long dayBefore = b.getDay() - 1;
+			if (dayBefore > a.getDay())
+			{
+				g.drawLine(xFor(a.getDay()), yFor(a.getLuck()), xFor(dayBefore), yFor(a.getLuck()));
+				g.drawLine(xFor(dayBefore), yFor(a.getLuck()), xFor(b.getDay()), yFor(b.getLuck()));
+			}
+			else
+			{
+				g.drawLine(xFor(a.getDay()), yFor(a.getLuck()), xFor(b.getDay()), yFor(b.getLuck()));
+			}
 		}
 		int x = xFor(latest.getDay());
 		int y = yFor(latest.getLuck());
@@ -153,7 +167,7 @@ class LuckGraph extends JComponent
 		}
 		return String.format("<html><b>%s</b><br>%s: %s<br>%d received, %.1f expected</html>",
 			LocalDate.ofEpochDay(nearest.getDay()).format(LONG_DATE), DropMath.verdict(nearest.getLuck()),
-			Texts.html(Texts.luckShort(nearest.getLuck())), nearest.getReceived(), nearest.getExpected());
+			Texts.html(Texts.luckPercent(nearest.getLuck())), nearest.getReceived(), nearest.getExpected());
 	}
 
 	private static Color withAlpha(Color c, int alpha)
