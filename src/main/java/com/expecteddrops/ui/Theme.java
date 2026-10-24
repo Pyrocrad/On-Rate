@@ -32,6 +32,8 @@ public final class Theme
 	public static final Color TRACK = new Color(55, 55, 55);
 	public static final Color TRACK_DARK = new Color(26, 26, 26);
 	public static final Color OUTLINE = new Color(70, 70, 70);
+	/** Bars that show progress, not luck: no verdict colours on them. */
+	public static final Color PROGRESS = new Color(90, 106, 122);
 	/** Raid "purples": the game's own colour for raid uniques. */
 	public static final Color RAID_PURPLE = new Color(192, 112, 255);
 
