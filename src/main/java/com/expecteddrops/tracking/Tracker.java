@@ -1431,6 +1431,12 @@ public class Tracker
 	}
 
 	/** {@link #unit} for one: "kill", "raid", "delve" or "chest". */
+	/** "1 kill", "5 kills": the unit of a boss for a count. */
+	private static String units(BossDefinition boss, int count)
+	{
+		return count == 1 ? unitOne(boss) : unit(boss);
+	}
+
 	public static String unitOne(BossDefinition boss)
 	{
 		String units = unit(boss);
@@ -1458,16 +1464,16 @@ public class Tracker
 		if (previous != null && kc > previous)
 		{
 			int kills = kc - previous;
-			text = String.format("%s after %,d %s (%s the rate).", name, kills, unit, multiple(kills * rate));
+			text = String.format("%s after %,d %s (%s the rate).", name, kills, units(boss, kills), multiple(kills * rate));
 		}
 		else if (historyKnown && (before == null || before == 0) && kc > 0)
 		{
-			text = String.format("Your first %s, after %,d %s (%s the rate).", name, kc, unit, multiple(kc * rate));
+			text = String.format("Your first %s, after %,d %s (%s the rate).", name, kc, units(boss, kc), multiple(kc * rate));
 		}
 		else if (progress.trackingStartKc != null && kc > progress.trackingStartKc)
 		{
 			int kills = kc - progress.trackingStartKc;
-			text = String.format("%s after at least %,d %s.", name, kills, unit);
+			text = String.format("%s after at least %,d %s.", name, kills, units(boss, kills));
 		}
 		if (text != null && rate > 0)
 		{
@@ -1600,10 +1606,10 @@ public class Tracker
 		{
 			RowStats row = rowFor(s, names.get(0));
 			String streak = row.isStreakExact()
-				? String.format("%,d %s without one", row.getStreak(), unit)
-				: String.format("at least %,d %s since your last one", row.getStreak(), unit);
-			outbox.add(new Note(Note.Kind.MILESTONE, String.format("%s: %dx the drop rate dry (%s).",
-				names.get(0), levels.get(0), streak)));
+				? String.format("%,d %s without one", row.getStreak(), units(boss, row.getStreak()))
+				: String.format("at least %,d %s since your last one", row.getStreak(), units(boss, row.getStreak()));
+			outbox.add(new Note(Note.Kind.MILESTONE, String.format("%s: %s, %dx the drop rate.",
+				names.get(0), streak, levels.get(0))));
 			return;
 		}
 		int top = levels.get(0);

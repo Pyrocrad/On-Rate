@@ -18,10 +18,18 @@ Updates come through the Plugin Hub. Each heading is the date of that update; **
 
 *Everything in this update*
 - **Unreadable saved data is kept:** if On Rate can't read an account's saved data, History or raids, it starts fresh for that part but keeps a copy of the old data (under a ".corrupt" key in RuneLite's settings) instead of overwriting it. If that happens to you, please tell us in an issue or on Discord.
+- **Clearer text:** a pass over the panel, settings and chat wording.
+  - **Shorter hovers:** the account **?** help (165 words) and the Uniques tile note (88) are about half as long. The Discord line is gone from both help hovers (the link at the bottom stays). The setup line and the Unique value hover no longer repeat their own labels.
+  - **Neutral wording:** "50% / 90% chance by 693 / 2,302 kills" now reads "Starting from none, 50% / 90% chance of one takes 693 / 2,302 kills". The chance rings say "40% so far" instead of "next: 40%", and the Expected tab's bar is "how close that is to the next whole one" instead of "progress to the next one".
+  - **Clearer statistics:** the dry streak says "Your last one came before On Rate started tracking" instead of contradicting itself, far-out results say "1 in 1,339 players", the Compact table's Luck column has a hover, and the pets hover says what the ranking is.
+  - **Same words everywhere:** *uniques* (not "drops") for the things counted, *got* (not "received"), *view* (not "look"), and "Too early to judge" in the account footnote, matching the boss page's "Too early". The **Trip card** setting lost its "This".
+  - **Settings text:** GE value now says it also shows on boss pages, Items tab mentions pets, Use raid points is half as long, and the Raids section no longer tells you to change values that most players can leave alone.
+  - **Account help fixed:** it said team bosses assume you do all the damage. It now says they use your share of the kill.
+  - **Chat:** milestone messages read "Magic fang: 1,024 kills without one, 2x the drop rate." Plurals agree everywhere ("1 kill", "1 unique").
+  - **Dropped:** "Click to open" in hovers of rows that already light up, and the right-click hint in the ITEMS legend (it stays in the **?** help).
 - **Clearer panel:**
-  - **ITEMS legend:** reads "bar = got · line = expected", and its hover says you can right-click an item to leave it out.
+  - **Expected tab:** the progress bars are one neutral colour. They show how far you are to the next whole expected unique, not luck.
   - **Too early:** a boss page with less than half a unique expected says "Too early" instead of a verdict, because a few kills can't tell dry from lucky. "Dry" and "Spooned" are drawn in a quieter colour than "Very dry" and "Very spooned" on boss pages. The account overview keeps its verdicts as they were.
-  - **Expected tab:** the progress bars are one neutral colour. They show how far you are to the next expected unique, not luck.
   - **Account overview:** the **Account** button is now a bold **‹ Account** link next to the **?** on boss pages, and the header is one line. The sort stays right above the bosses, and the notable line and the last unique are one block.
   - **Luck graph:** the axis says *Spooned*, *On rate* and *Dry*, the line is neutral (the bands carry the colour), the day under the mouse is marked, the latest verdict is written beside the last point and a middle date shows when there's room. It needs two days of history before it draws.
   - **Keyboard and screen readers:** tabs, History, the setup line, the luck graph switch, Reset, the Account link and the look switch can be reached with Tab, used with Enter or Space, show a focus ring and have a name. Bar text has a darker outline, and long boss names in the Chance rings view wrap to two lines.

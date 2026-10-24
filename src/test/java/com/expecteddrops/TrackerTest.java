@@ -1027,8 +1027,8 @@ public class TrackerTest
 			}
 		}
 		assertEquals(Arrays.asList(
-			"150 Vorkath's head: 1x the drop rate dry (50 kills without one).",
-			"200 Vorkath's head: 2x the drop rate dry (100 kills without one)."), milestones);
+			"150 Vorkath's head: 50 kills without one, 1x the drop rate.",
+			"200 Vorkath's head: 100 kills without one, 2x the drop rate."), milestones);
 	}
 
 	@Test

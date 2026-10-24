@@ -34,7 +34,7 @@
 1. Install **On Rate** from the Plugin Hub. The panel opens with a short welcome guide.
 2. **Open your collection log** and click the pages of the bosses you do. That loads your kill count and past drops. The orange line at the top of the panel lists the bosses you killed that aren't loaded yet. Until a boss is loaded, its page says *Not synced* instead of a verdict.
 3. **Go kill something.** The panel follows your kills. Keep the Loot Tracker plugin on: On Rate reads new drops from it.
-4. **Check the settings:** change **Team bosses** if you solo Royal Titans or Yama (both count as duo by default). For another look (bars, a table, rings or a gauge), click **⇄** next to **ITEMS** in the panel.
+4. **Check the settings:** change **Team bosses** if you solo Royal Titans or Yama (both count as duo by default). For another view (bars, a table, rings or a gauge), click **⇄** next to **ITEMS** in the panel.
 
 The **?** at the top of the panel explains what you're looking at.
 
