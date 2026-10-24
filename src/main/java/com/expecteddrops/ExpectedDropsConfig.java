@@ -253,7 +253,7 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigItem(
 		keyName = "readRaidPoints",
 		name = "Use raid points",
-		description = "At the end of each raid, use your points for that raid's purple chance: read from the game in Chambers of Xeric, estimated from your damage in Tombs of Amascut (like Raid Data Tracker does). Raids without points (older ones, synced from the collection log, Theatre of Blood) use the percentages below.",
+		description = "At the end of each raid, work out that raid's purple chance: from your points in Chambers of Xeric, from the exact points the game sends in Tombs of Amascut (or On Rate's own estimate if they don't come), and in Theatre of Blood by splitting the team chance below over the team size on the end-of-raid board. Raids without this (older ones, synced from the collection log) use the percentages below.",
 		position = 31,
 		section = raidsSection
 	)

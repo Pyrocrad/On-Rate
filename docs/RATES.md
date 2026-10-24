@@ -58,6 +58,8 @@ Unless a line says otherwise, rates come from the boss's page on the [Old School
 | Boss | Was | Now | Why |
 |---|---|---|---|
 | Grotesque Guardians | Gloves 1/500, ring 1/500, hammer 1/750, core 1/1,000 | 1/250, 1/250, 1/375, 1/500 | The Guardians roll their table twice per kill. The old numbers were per roll. |
+| Araxxor | Noxious point, blade and pommel 1/200 each | 1/600 each | 1/200 is the chance of any halberd piece; each piece is a third of that. |
+| Tombs of Amascut | Osmumten's fang and Lightbearer weight 7 at every raid level | Weight drops from raid level 350 on (fang 6/4/4/3, Lightbearer 6/5/4/3.5 at 350/400/450/500) | The chest's item mix changes at high raid levels. |
 | The Mad Angel | Ardeaglais teleport 2/25 | 1/25, 2 at a time | Same expected number of teleports, but luck is now judged per drop rather than per teleport. |
 
 ## From other sources
@@ -65,7 +67,7 @@ Unless a line says otherwise, rates come from the boss's page on the [Old School
 - **Doom of Mokhaiotl:** per-delve-level rates from the [Delve Calculator](https://github.com/Speaax/Delve-calculator) by Speaax.
 - **Tumeken's guardian (ToA pet):** the [chest page](https://oldschool.runescape.wiki/w/Chest_(Tombs_of_Amascut)) gives 1% per 350,000 − 700 × raid level points, where the level counts in full up to 400 and a third above that (at most 550), and it isn't capped at 55%. On Rate uses that formula for every raid it read your points for. Next to a purple that's about 1/33 of the chance at raid level 150, 1/31 at 300, 1/19 at 400 and 1/14 at 500. Raids without points use 1/30 of the setting's purple chance.
 - **Vorkath's head:** 1/50 per kill, and your 50th kill always drops one ([Vorkath's head](https://oldschool.runescape.wiki/w/Vorkath's_head)). From kill 50 on, On Rate counts that kill as a sure head, so one more head is expected than 1/50 alone gives. (The Kalphite Queen's tattered head, guaranteed on the 256th kill, is a different item; On Rate tracks the normal Kq head.)
-- **Raids:** unique weights from the wiki pages for [Chambers of Xeric](https://oldschool.runescape.wiki/w/Chambers_of_Xeric/Rewards), [Theatre of Blood](https://oldschool.runescape.wiki/w/Theatre_of_Blood/Rewards) and [Tombs of Amascut](https://oldschool.runescape.wiki/w/Tombs_of_Amascut/Rewards). The purple chance comes from your points (see the README) or from the settings.
+- **Raids:** unique weights from the wiki pages for [Chambers of Xeric](https://oldschool.runescape.wiki/w/Chambers_of_Xeric/Rewards), [Theatre of Blood](https://oldschool.runescape.wiki/w/Theatre_of_Blood/Rewards) and [Tombs of Amascut](https://oldschool.runescape.wiki/w/Tombs_of_Amascut/Rewards). The purple chance comes from your points (see [HOW-IT-WORKS.md](HOW-IT-WORKS.md#settings)) or from the settings.
 - **The Gauntlet, Dagannoth Kings, Hespori, Obor, Bryophyta:** wiki rates, not rechecked in this pass because they haven't changed in years.
 - **Vorkath, and the Alchemical Hydra's heads, jar and pet:** wiki rates. Their tables didn't load during the check, so they weren't rechecked this time.
 
@@ -75,6 +77,6 @@ When Jagex changes a drop rate:
 
 1. Look the item up on the wiki.
 2. Change the `rate` in `bosses.json`.
-3. Add a line to "Fixed" above with the date.
+3. Add a row to "Fixed in this check" above, and update **Last full check** at the top when you've rechecked every boss.
 
 The tests check that every rate is between 0 and 1, and that every boss has a way to count kills.

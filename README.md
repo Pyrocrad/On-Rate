@@ -12,7 +12,7 @@
 
 ## Features
 
-- **Every boss and raid** in the Bosses and Raids tabs of the collection log, over 50 in total, including Doom of Mokhaiotl per delve level.
+- **Over 50 bosses and raids** from the Bosses and Raids tabs of the collection log, including Doom of Mokhaiotl per delve level, Fortis Colosseum, Tempoross and Wintertodt (a few things are left out: see *Not covered* below).
 - **Two verdicts per boss**, from *Very dry* to *Very spooned*: how many uniques you got, and what they're worth in GP. Plus how you compare with other players at the same kill count.
 - **Account overview:** all your bosses added up, your driest and luckiest items and pets, and what you killed and got today and this week.
 - **Hover any item** for its drop rate, your dry streak, how far past the drop rate you are and how many players have fewer or more.
@@ -36,7 +36,7 @@ The **?** at the top of the panel explains what you're looking at.
 - Items several bosses drop (dragon pickaxe, godsword shards, Virtus, onyx...) are judged on all those bosses' kills together, under **Shared with other bosses** on each boss page.
 - Pets and Royal Titans prayer scrolls count once, like in the collection log.
 - Raids without points (everything from before you installed On Rate) use an average purple chance, which you can change under **Raid purple chances** in the settings.
-- **Not covered:** Fortis Colosseum, Tempoross, Wintertodt, team Nightmare and the collection log's Other tab.
+- **Not covered:** team Nightmare and the collection log's Other tab.
 
 Every part of the panel, every setting and every assumption is explained in [docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md). What changed in each version is in [CHANGELOG.md](CHANGELOG.md).
 
