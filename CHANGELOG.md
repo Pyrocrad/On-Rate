@@ -1,6 +1,7 @@
 # Changelog
 
 **Next update**
+- **Unreadable saved data is kept:** if On Rate can't read the saved data, History or raids of an account, it starts fresh but keeps the old text under a ".corrupt" key, so the next save no longer destroys it.
 - **Clearer panel:**
   - **ITEMS legend:** reads "bar = got · line = expected", and its hover says you can right-click an item to leave it out.
   - **Too early:** a boss page with less than half a unique expected says "Too early" instead of a verdict, because a few kills can't tell dry from lucky. "Dry" and "Spooned" are drawn in a quieter colour than "Very dry" and "Very spooned" on boss pages. The account overview keeps its verdicts as they were.
