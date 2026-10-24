@@ -227,8 +227,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		titleRow.setAlignmentX(LEFT_ALIGNMENT);
 		titleRow.add(title, BorderLayout.WEST);
 		// one click back to the account overview, wherever you are (only on a boss page)
-		accountLink.setFont(FontManager.getRunescapeSmallFont());
-		accountLink.setForeground(Theme.TEXT_MUTED);
+		accountLink.setFont(FontManager.getRunescapeBoldFont());
+		accountLink.setForeground(Theme.TEXT);
 		accountLink.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 		accountLink.setToolTipText("Back to the account overview");
 		accountLink.addMouseListener(new MouseAdapter()
@@ -242,13 +242,13 @@ public class ExpectedDropsPanel extends PluginPanel
 			@Override
 			public void mouseEntered(MouseEvent e)
 			{
-				accountLink.setForeground(Theme.TEXT);
+				accountLink.setForeground(Theme.ACCENT);
 			}
 
 			@Override
 			public void mouseExited(MouseEvent e)
 			{
-				accountLink.setForeground(Theme.TEXT_MUTED);
+				accountLink.setForeground(Theme.TEXT);
 			}
 		});
 		Activatable.install(accountLink, "Back to the account overview", () -> showBoss(ACCOUNT));
@@ -406,7 +406,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		graphTitle.setAlignmentX(LEFT_ALIGNMENT);
 		graphTitle.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 		graphTitle.setToolTipText("Click to show or hide your account's luck over time, one point per day you play");
-		graphTitle.setBorder(new EmptyBorder(0, Theme.S, 0, 0));
 		graphTitle.addMouseListener(new MouseAdapter()
 		{
 			@Override
@@ -416,12 +415,13 @@ public class ExpectedDropsPanel extends PluginPanel
 				refresh();
 			}
 		});
-		Activatable.install(graphTitle, "Luck graph", () ->
+		Activatable.install(graphTitle, "Luck over time", () ->
 		{
 			setGraphOpen.accept(!options.get().isLuckGraph());
 			refresh();
 		});
-		graphPanel.add(spacer(Theme.S));
+		graphPanel.add(graphTitle);
+		graphPanel.add(spacer(Theme.HAIR));
 		graphPanel.add(graph);
 		graphHint.setFont(FontManager.getRunescapeSmallFont());
 		graphHint.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
@@ -432,6 +432,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		topItemsPanel.setOpaque(false);
 		topItemsPanel.setAlignmentX(LEFT_ALIGNMENT);
 		top.add(topItemsPanel);
+		top.add(graphPanel);
 
 		JPanel tabs = new JPanel(new GridLayout(1, 2, 2, 0));
 		tabsRow = tabs;
@@ -454,10 +455,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		sortSelect.setFont(FontManager.getRunescapeSmallFont());
 		sortSelect.addActionListener(e -> refresh());
 		sortRow.add(sortSelect, BorderLayout.CENTER);
-		sortRow.add(graphTitle, BorderLayout.EAST);
 		sortRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
 		top.add(sortRow);
-		top.add(graphPanel);
 
 		rowsPanel.setLayout(new BoxLayout(rowsPanel, BoxLayout.Y_AXIS));
 		rowsPanel.setOpaque(false);
@@ -751,7 +750,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		// the luck graph belongs to the bosses list; the Items and Recent tabs get the room
 		// Luck over time sits with the bosses list; its title opens and closes it
 		graphPanel.setVisible(account && (accountTab == TAB_BOSSES || accountTab == TAB_ITEMS && !o.isTopItems()));
-		graphTitle.setText((o.isLuckGraph() ? "\u25be " : "\u25b8 ") + "Luck graph");
+		graphTitle.setText((o.isLuckGraph() ? "\u25be " : "\u25b8 ") + "Luck over time");
 		topItemsPanel.setVisible(account && o.isTopItems());
 		topItemsPanel.removeAll();
 		sortRow.setVisible(account);
@@ -858,7 +857,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				counted.add(stats.getRows().get(i));
 			}
 		}
-		showTiles(unsynced ? null : any, value, lastValueTip, raid ? "purples" : "uniques", counted, true);
+		showTiles(unsynced ? null : any, value, lastValueTip, raid ? "purples" : "uniques", counted);
 		lastHintTip = null;
 		String hint = unsynced ? null : settingsHint(stats);
 		Color hintColor = ColorScheme.LIGHT_GRAY_COLOR;
@@ -1029,16 +1028,12 @@ public class ExpectedDropsPanel extends PluginPanel
 	/** The notable line set by the last {@link #showTiles}, or null. */
 	private String notableText;
 
-	private void showTiles(RowStats any, double[] value, String valueTip, String what, List<RowStats> items,
-		boolean bossPage)
+	private void showTiles(RowStats any, double[] value, String valueTip, String what, List<RowStats> items)
 	{
 		double luck = any == null ? Double.NaN : any.getLuck();
 		boolean tiles = !Double.isNaN(luck) && !DropMath.verdict(luck).isEmpty();
-		// a boss page with next to nothing expected says so instead of a verdict (the account overview
-		// adds up every boss and keeps its verdicts)
-		boolean early = bossPage && tiles && any.getExpected() < Texts.TOO_EARLY_BELOW;
 		// "On rate" says little by itself: one notable fact under it, when there is one
-		String notable = !early && DropMath.VERDICTS.get(3).equals(DropMath.verdict(luck)) ? Texts.notableLine(items) : null;
+		String notable = DropMath.VERDICTS.get(3).equals(DropMath.verdict(luck)) ? Texts.notableLine(items) : null;
 		notableText = notable;
 		notableLabel.setText(notable == null ? "" : "<html><body style='width: 165px'>" + html(notable) + "</body></html>");
 		notableLabel.setVisible(notable != null);
@@ -1051,43 +1046,24 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		verdictTiles.removeAll();
 		verdictTiles.setLayout(new GridLayout(1, value == null ? 1 : 2, 4, 0));
-		// Swing's HTML widths are not screen pixels (the 165 of TEXT_WIDTH fills the panel): a tile is
-		// about 3/4 of that wide with two tiles side by side
-		int wrap = !bossPage ? 0 : value == null ? Theme.TEXT_WIDTH - 5 : 76;
-		boolean estimate = estimateNote != null;
-		String gotText = bossPage ? Texts.gotExpected(String.format("%,d", any.getReceived()), formatExpected(any.getExpected()), estimate)
-			: String.format("%,d / %s%s", any.getReceived(), formatExpected(any.getExpected()), estimate ? " est." : "");
-		String verdict = early ? "Too early" : DropMath.verdict(luck);
-		Color verdictColor = early ? Theme.TEXT_MUTED : bossPage ? Palette.verdict(luck).brighter() : luckColor(luck).brighter();
-		String shortLine = early ? "Too few " + (what.equals("purples") ? "raids" : "kills") + " to judge"
-			: bossPage ? Texts.luckPlayers(any.getShares(), any.getReceived()) : luckShort(any.getShares(), any.getReceived());
-		Tip uniquesTip = new Tip(String.format("Uniques \u00b7 %s", verdict))
-			.line(String.format("Got %,d %s, expected %s by now", any.getReceived(), what, formatExpected(any.getExpected())));
-		if (early)
-		{
-			uniquesTip.line("Less than half a " + (what.equals("purples") ? "purple" : "unique")
-				+ " expected so far: too early to say if you are dry or lucky.");
-		}
-		else
-		{
-			uniquesTip.line(capital(luckPercent(any.getShares(), any.getReceived())))
-				.line(sharesLine(any.getShares(), any.getReceived()));
-		}
-		uniquesTile.set(verdict, verdictColor, gotText, shortLine,
-			uniquesTip
+		uniquesTile.set(DropMath.verdict(luck), luckColor(luck).brighter(),
+			String.format("%,d / %s%s", any.getReceived(), formatExpected(any.getExpected()), estimateNote == null ? "" : " est."),
+			luckShort(any.getShares(), any.getReceived()),
+			new Tip(String.format("Uniques \u00b7 %s", DropMath.verdict(luck)))
+				.line(String.format("Got %,d %s, expected %s by now", any.getReceived(), what, formatExpected(any.getExpected())))
+				.line(capital(luckPercent(any.getShares(), any.getReceived())))
+				.line(sharesLine(any.getShares(), any.getReceived()))
 				.note("Counts how many " + what + ", not what they're worth: a twisted bow counts the same as a prayer scroll. "
 					+ "Dry when fewer than 35% of players have this many or fewer (very dry: 10%); spooned when fewer than 35% "
 					+ "have this many or more (very spooned: 10%). In between: a bit dry, on rate or a bit spooned.")
 				.note(estimateNote)
-				.wide(), wrap);
+				.wide());
 		verdictTiles.add(uniquesTile);
 		if (value != null)
 		{
-			String valueText = bossPage ? Texts.gotExpected(DropMath.formatGp(value[0]), DropMath.formatGp(value[1]), false)
-				: DropMath.formatGp(value[0]) + " / " + DropMath.formatGp(value[1]);
-			valueTile.set(early ? "Too early" : DropMath.verdict(value[2]),
-				early ? Theme.TEXT_MUTED : bossPage ? Palette.verdict(value[2]).brighter() : luckColor(value[2]).brighter(),
-				valueText, early ? "" : bossPage ? Texts.luckPlayers(value[2]) : luckShort(value[2]), valueTip, wrap);
+			valueTile.set(DropMath.verdict(value[2]), luckColor(value[2]).brighter(),
+				DropMath.formatGp(value[0]) + " / " + DropMath.formatGp(value[1]),
+				luckShort(value[2]), valueTip);
 			verdictTiles.add(valueTile);
 		}
 		verdictTiles.setMaximumSize(new Dimension(Integer.MAX_VALUE, verdictTiles.getPreferredSize().height));
@@ -1181,7 +1157,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			accountItems.add(h.getRow());
 		}
-		showTiles(account.getRows().isEmpty() ? null : total, accountValue, valueTooltip(account), "uniques", accountItems, false);
+		showTiles(account.getRows().isEmpty() ? null : total, accountValue, valueTooltip(account), "uniques", accountItems);
 
 		showLastUnique();
 		if (notableText != null && lastUniqueText != null)
@@ -2659,7 +2635,7 @@ public class ExpectedDropsPanel extends PluginPanel
 					}
 					boolean streak = sortSelect.getSelectedItem() == Sort.STREAK;
 					rowsPanel.add(luckRow(row, accountTooltip(row, account), () -> showBoss(row.getLabel()),
-						streak ? streakText(row) : null, streak ? streakColor(row) : null, true));
+						streak ? streakText(row) : null, streak ? streakColor(row) : null));
 				}
 		}
 	}
@@ -2777,12 +2753,6 @@ public class ExpectedDropsPanel extends PluginPanel
 	 */
 	private JPanel luckRow(RowStats r, String tip, Runnable onClick, String right, Color rightColor)
 	{
-		return luckRow(r, tip, onClick, right, rightColor, false);
-	}
-
-	/** With {@code counts}, the verdict has what you got out of what you should have under it. */
-	private JPanel luckRow(RowStats r, String tip, Runnable onClick, String right, Color rightColor, boolean counts)
-	{
 		JPanel panel = new JPanel(new BorderLayout(Theme.S, 0));
 		panel.setBackground(Theme.SURFACE);
 		panel.setBorder(new EmptyBorder(Theme.S, Theme.HAIR, Theme.S, Theme.S));
@@ -2797,23 +2767,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		String text = right != null ? right : Double.isNaN(luck) ? "-" : DropMath.verdict(luck);
 		Color color = rightColor != null ? rightColor
 			: "-".equals(text) || Double.isNaN(luck) ? Theme.TEXT_MUTED : luckColor(luck).brighter();
-		JLabel verdictText = rowLabel(text, color);
-		if (counts && !Double.isNaN(luck))
-		{
-			JPanel stacked = new JPanel();
-			stacked.setLayout(new BoxLayout(stacked, BoxLayout.Y_AXIS));
-			stacked.setOpaque(false);
-			verdictText.setAlignmentX(RIGHT_ALIGNMENT);
-			JLabel got = smallLabel(gotOfExpected(r), Theme.TEXT_MUTED);
-			got.setAlignmentX(RIGHT_ALIGNMENT);
-			stacked.add(verdictText);
-			stacked.add(got);
-			line.add(stacked, BorderLayout.EAST);
-		}
-		else
-		{
-			line.add(verdictText, BorderLayout.EAST);
-		}
+		line.add(rowLabel(text, color), BorderLayout.EAST);
 		body.add(line, BorderLayout.CENTER);
 		LuckStrip strip = new LuckStrip();
 		strip.setLuck(luck);

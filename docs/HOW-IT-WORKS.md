@@ -47,7 +47,7 @@ Prefer something else than the bars? Click **⇄** next to **ITEMS** (or **BOSSE
 
 The trip card is on by default; the overlay is off. Change them in the settings under **Display**. Luck over time opens and closes from the panel itself.
 
-- **Luck over time:** your account's luck over time, one point per day you play, in the account overview. Click **Luck graph**, next to the sort, to open or close it; it stays the way you left it. On Rate saves a point every day even while it's closed, so it has data when you open it.
+- **Luck over time:** your account's luck over time, one point per day you play, in the account overview. Click its title to open or close it; it stays the way you left it. On Rate saves a point every day even while it's closed, so it has data when you open it.
 - **This trip card:** kills, uniques and expected for your current trip on the boss page, plus kills per hour, the drops you got and what the uniques should be worth per hour at that speed ("Unique value: ~1.2m/h expected"). That value only counts uniques, not normal loot like bones or hides. A trip ends when you kill another boss, after 30 minutes without a kill (2 hours for raids, the Inferno and the Fight Caves, where one run can take longer), or with the *Start a new trip* button.
 - **In-game overlay:** a small box on the game screen while you kill a boss: verdict, uniques, your driest item and the trip. During a long trip (30 kills or 45 minutes at one boss) the trip card offers it once with a one-line note; click the note to turn the overlay on.
 - **Colour-blind colours:** orange to blue instead of red to green.

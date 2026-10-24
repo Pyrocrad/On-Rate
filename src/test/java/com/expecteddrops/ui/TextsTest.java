@@ -136,26 +136,4 @@ public class TextsTest
 			DropMath.expectedCapped(1, 1), 0, true).withParts(new com.expecteddrops.stats.RowStats.Parts().addCapped(1, 1));
 		assertEquals("1.0\u00d7 the unique rate without a unique", Texts.rateMultipleLine(any));
 	}
-
-	@Test
-	public void gotAndExpectedAreLabelled()
-	{
-		assertEquals("90 got \u00b7 92.4 expected", Texts.gotExpected("90", "92.4", false));
-		assertEquals("4 got \u00b7 6.65 expected (est.)", Texts.gotExpected("4", "6.65", true));
-	}
-
-	@Test
-	public void bossPageLineSaysWhatTheOneInNCounts()
-	{
-		assertEquals("1 in 3 players is this dry", Texts.luckPlayers(DropMath.shares(4, 5.67), 4));
-		assertEquals("1 in 7 players is this lucky", Texts.luckPlayers(DropMath.shares(1, 0.16), 1));
-		assertEquals("about average", Texts.luckPlayers(DropMath.shares(2, 1.65), 2));
-		assertEquals("74% of players have none", Texts.luckPlayers(DropMath.shares(0, 0.30), 0));
-		assertEquals("only 1 in 5 players has none", Texts.luckPlayers(DropMath.shares(0, 1.65), 0));
-		assertEquals(">99% of players have none", Texts.luckPlayers(DropMath.shares(0, 0.001), 0));
-		assertEquals("1 in 6 players is this lucky", Texts.luckPlayers(0.83));
-		assertEquals("1 in 3 players is this dry", Texts.luckPlayers(0.30));
-		assertEquals("<1 in 10,000 players is this dry", Texts.luckPlayers(0.00001));
-		assertEquals("", Texts.luckPlayers(Double.NaN));
-	}
 }
