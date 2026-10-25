@@ -149,15 +149,20 @@ final class Texts
 	 */
 	static String rateMultipleLine(RowStats row)
 	{
+		String multiple = rateMultiple(row);
+		return multiple == null ? null : multiple + (row.isAny() ? " without a unique" : " without one");
+	}
+
+	/** {@link #rateMultipleLine} without its ending, for a hover row: "2.1× the drop rate". */
+	static String rateMultiple(RowStats row)
+	{
 		// the drop rates times the kills: a capped pet still counts in full here
 		double multiple = row.getUncappedExpected();
 		if (row.getReceived() > 0 || row.isComplete() || !(multiple > 0))
 		{
 			return null;
 		}
-		return row.isAny()
-			? String.format("%s the unique rate without a unique", formatMultiple(multiple))
-			: String.format("%s the drop rate without one", formatMultiple(multiple));
+		return String.format("%s the %s rate", formatMultiple(multiple), row.isAny() ? "unique" : "drop");
 	}
 
 	/** The dry streak as a footnote line, or null when unknown. */
