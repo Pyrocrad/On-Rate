@@ -103,7 +103,7 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigItem(
 		keyName = "showTopItems",
 		name = "Items tab",
-		description = "Show an Items tab on the account overview: your 10 driest and 10 luckiest items across every boss, and your pets",
+		description = "Show an Items tab on the account overview: your 15 driest and 15 luckiest items across every boss, and your pets",
 		position = 9,
 		section = displaySection
 	)

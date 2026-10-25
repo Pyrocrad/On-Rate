@@ -127,7 +127,7 @@ public class ExpectedDropsPanel extends PluginPanel
 	public static final int TOP_PETS = 2;
 	/** Pets shown per group in the Items tab: the luckiest ones you have, the driest ones you don't. */
 	static final int TOP_PETS_SHOWN = 5;
-	/** Account overview: showing the Items tab (top 10) instead of the bosses. */
+	/** Account overview: showing the Items tab (the top items) instead of the bosses. */
 	private int accountTab = TAB_BOSSES;
 	/** False while the panel is closed in the sidebar (see {@link #onActivate()}). */
 	private boolean shown = true;
@@ -1324,7 +1324,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			? "Open your collection log and click the pages of the bosses you do, or go kill one. "
 			+ "Your account shows up here."
 			: "Every boss you have kills at, added up. Click one to open it.<br><br>"
-			+ "<b>Items</b>: your 10 driest or luckiest items, and your pets. <b>Recent</b>: your latest uniques.<br><br>"
+			+ "<b>Items</b>: your " + TOP_ITEMS + " driest or luckiest items, and your pets. <b>Recent</b>: your latest uniques.<br><br>"
 			+ "GE value uses RuneLite's prices. Pets, jars and other untradeables count as 0 GP, so a twisted bow outweighs many cheap drops.<br><br>"
 			+ "Items several bosses drop (dragon pickaxe, godsword shards, Virtus, onyx...) are on each boss's page. "
 			+ "They count in the totals once On Rate knows every kill count.<br><br>"
@@ -1974,7 +1974,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		label.setBorder(BorderFactory.createCompoundBorder(
 			BorderFactory.createMatteBorder(0, 0, 2, 0, selected ? Theme.ACCENT : ColorScheme.DARK_GRAY_COLOR),
 			new EmptyBorder(Theme.HAIR, Theme.S, Theme.S, Theme.S)));
-		label.setToolTipText(tab == TAB_ITEMS ? "Your 10 driest and 10 luckiest items across every boss, and your pets"
+		label.setToolTipText(tab == TAB_ITEMS ? "Your " + TOP_ITEMS + " driest and " + TOP_ITEMS + " luckiest items across every boss, and your pets"
 			: tab == TAB_RECENT ? "Your latest uniques across every boss" : "Every boss you have kills at");
 		if (!selected)
 		{
@@ -1996,7 +1996,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		});
 	}
 
-	/** The Items tab: the 10 driest (or luckiest) items across every boss, in the chosen luck view. */
+	/** The Items tab: the {@link #TOP_ITEMS} driest (or luckiest) items across every boss, in the chosen luck view. */
 	private void renderItemsTab(AccountStats account, ItemView view)
 	{
 		// a segmented control, visibly a level below the Bosses / Items / Recent tabs
@@ -2029,6 +2029,19 @@ public class ExpectedDropsPanel extends PluginPanel
 			none.setAlignmentX(LEFT_ALIGNMENT);
 			rowsPanel.add(none);
 			return;
+		}
+		if (topMode != TOP_PETS)
+		{
+			JLabel key = smallLabel("got / expected: expected is an average", Theme.TEXT_MUTED);
+			key.setAlignmentX(LEFT_ALIGNMENT);
+			key.setBorder(new EmptyBorder(0, 0, Theme.S, 0));
+			key.setToolTipText(new Tip("Got / expected")
+				.line("Expected is the average number a player would have by now at these drop rates, with your kills. "
+					+ "It is a statistical average, not a number you were owed.")
+				.line("So 0 / 2.60 means none got, where the average player would have about 2.6.", Theme.TEXT_MUTED)
+				.note("Each kill is its own roll: being behind the average doesn't make the next drop more likely.")
+				.wide());
+			rowsPanel.add(key);
 		}
 		if (topMode == TOP_PETS)
 		{
@@ -2083,6 +2096,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				itemTip.row("Chance of one by now", formatPercent(r.getChanceAtLeastOne()));
 			}
 			itemTip.row("Without one", rateMultiple(r));
+			itemTip.note("Expected is a statistical average for players at your kill count, not drops you were owed.");
 			String tip = itemTip.wide();
 			Runnable open = h.getBoss() == null ? null : () -> showBoss(h.getBoss());
 			if (view == ItemView.COMPACT)
@@ -2092,8 +2106,10 @@ public class ExpectedDropsPanel extends PluginPanel
 			else
 			{
 				rowsPanel.add(spacer(Theme.HAIR));
+				// the verdict stays the main reading; on Driest and Luckiest "got / expected" sits beside the dot
 				rowsPanel.add(luckRow(r, tip, open, h.isPet() && !r.isComplete()
-					? String.format("%s \u00b7 %s", DropMath.verdict(r.getLuck()), formatPercent(r.getChanceAtLeastOne())) : null));
+					? String.format("%s \u00b7 %s", DropMath.verdict(r.getLuck()), formatPercent(r.getChanceAtLeastOne())) : null,
+					null, topMode == TOP_PETS ? null : gotOfExpected(r)));
 			}
 		}
 	}
@@ -2326,7 +2342,8 @@ public class ExpectedDropsPanel extends PluginPanel
 
 	/** Items need at least this many expected to count as dry: 0 of 0.2 says nothing yet. */
 	private static final double MIN_EXPECTED_DRY = 1.0;
-	private static final int TOP_ITEMS = 10;
+	/** How many items the Driest and Luckiest lists show. */
+	static final int TOP_ITEMS = 15;
 
 	/**
 	 * The driest (or luckiest) items across every boss: driest have at least one expected,
@@ -2926,7 +2943,7 @@ public class ExpectedDropsPanel extends PluginPanel
 
 	private static String gotOfExpected(RowStats r)
 	{
-		return String.format("%,d / %s", r.getReceived(), formatExpected(r.getExpected()));
+		return Texts.gotOfExpected(r);
 	}
 
 	/** Item row: name and "got / expected" on top, a bar with the expected marker below. */
@@ -2999,6 +3016,15 @@ public class ExpectedDropsPanel extends PluginPanel
 	 */
 	private JPanel luckRow(RowStats r, String tip, Runnable onClick, String right, Color rightColor)
 	{
+		return luckRow(r, tip, onClick, right, rightColor, null);
+	}
+
+	/**
+	 * @param figure "got / expected" to show beside the dot, in a column of one width on every row so the
+	 *     track and its middle tick line up down the list, or null for none
+	 */
+	private JPanel luckRow(RowStats r, String tip, Runnable onClick, String right, Color rightColor, String figure)
+	{
 		JPanel panel = new JPanel(new BorderLayout(Theme.S, 0));
 		panel.setBackground(Theme.SURFACE);
 		panel.setBorder(new EmptyBorder(Theme.S, Theme.HAIR, Theme.S, Theme.S));
@@ -3020,12 +3046,30 @@ public class ExpectedDropsPanel extends PluginPanel
 		strip.setBands(false);
 		strip.setLuck(luck);
 		strip.setPreferredSize(new Dimension(80, 12));
-		body.add(strip, BorderLayout.SOUTH);
+		if (figure == null)
+		{
+			body.add(strip, BorderLayout.SOUTH);
+		}
+		else
+		{
+			// the figure shares the strip's line, so the row is no taller than without it
+			JLabel figureLabel = smallLabel(figure, r.getReceived() > 0 ? Theme.TEXT : Theme.TEXT_MUTED);
+			figureLabel.setHorizontalAlignment(SwingConstants.RIGHT);
+			figureLabel.setPreferredSize(new Dimension(FIGURE_WIDTH, strip.getPreferredSize().height));
+			JPanel under = new JPanel(new BorderLayout(Theme.S, 0));
+			under.setOpaque(false);
+			under.add(strip, BorderLayout.CENTER);
+			under.add(figureLabel, BorderLayout.EAST);
+			body.add(under, BorderLayout.SOUTH);
+		}
 		panel.add(body, BorderLayout.CENTER);
 		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, panel.getPreferredSize().height));
 		setTip(panel, tip, onClick);
 		return panel;
 	}
+
+	/** Width of the "got / expected" column: "0 / 35.5" and "99 / 153" fit; the widest items need about 40. */
+	static final int FIGURE_WIDTH = 48;
 
 	private JPanel luckRow(RowStats r, String tip, Runnable onClick, String right)
 	{

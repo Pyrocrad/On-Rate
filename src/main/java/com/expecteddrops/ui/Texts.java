@@ -375,6 +375,16 @@ final class Texts
 		return r != null && !r.isAny() && r.getReceived() == 0 && r.getExpected() < TOO_EARLY_BELOW;
 	}
 
+	/**
+	 * "got / expected" for a row, as boss pages show it: "0 / 2.60", "3 / 1.20". Expected is the average a
+	 * player would have by now at the drop rates, not a number owed. A cap (a pet is 1, Warm gloves 3) only
+	 * limits what counts as got; the expected number is the row's own, as in every other view.
+	 */
+	static String gotOfExpected(com.expecteddrops.stats.RowStats r)
+	{
+		return String.format("%,d / %s", r.getReceived(), formatExpected(r.getExpected()));
+	}
+
 	/** What a row says once you have every copy that counts: "have it", "have both", "have all 3". */
 	static String haveText(com.expecteddrops.stats.RowStats r)
 	{
