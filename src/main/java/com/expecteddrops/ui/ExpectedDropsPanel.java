@@ -3430,25 +3430,50 @@ public class ExpectedDropsPanel extends PluginPanel
 
 	private void buildWelcome()
 	{
-		welcomePanel.setLayout(new BorderLayout(0, 6));
+		welcomePanel.setLayout(new BoxLayout(welcomePanel, BoxLayout.Y_AXIS));
 		welcomePanel.setAlignmentX(LEFT_ALIGNMENT);
 		welcomePanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		welcomePanel.setBorder(BorderFactory.createCompoundBorder(
 			BorderFactory.createMatteBorder(0, 3, 0, 0, ColorScheme.BRAND_ORANGE),
 			new EmptyBorder(Theme.M, Theme.M, Theme.M, Theme.M)));
 
-		JLabel text = new JLabel("<html><body style='width: 140px'>"
-			+ "<b>Welcome to On Rate!</b><br><br>"
-			+ "<b>1.</b> Open your <b>collection log</b> and click the pages of the bosses you do. "
-			+ "That loads your past drops.<br><br>"
-			+ "<b>2.</b> Go kill something. The panel follows your kills (keep the <b>Loot Tracker</b> plugin on).<br><br>"
-			+ "<b>3.</b> <i>Got it</i> opens the settings: check <i>Team bosses</i> if you solo Royal Titans or Yama. "
-			+ "Another view for the lists is one click on \u21c4 next to ITEMS.<br><br>"
-			+ "Hover the <b>?</b> for help."
-			+ "</body></html>");
-		text.setFont(FontManager.getRunescapeSmallFont());
-		text.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-		welcomePanel.add(text, BorderLayout.CENTER);
+		JLabel title = new JLabel("Are you on rate?");
+		title.setFont(FontManager.getRunescapeBoldFont());
+		title.setForeground(Theme.TEXT);
+		title.setAlignmentX(LEFT_ALIGNMENT);
+		welcomePanel.add(title);
+		JLabel intro = smallLabel(Theme.wrap("On Rate compares the uniques you got with what a typical player "
+			+ "would have by now, at the same drop rates and kill counts.", 160), Theme.TEXT_MUTED);
+		intro.setAlignmentX(LEFT_ALIGNMENT);
+		intro.setBorder(new EmptyBorder(Theme.HAIR, 0, Theme.M, 0));
+		welcomePanel.add(intro);
+
+		// numbered steps, each a row with a thin line above it, like the rows in the hovers
+		String[][] steps = {
+			{"Open your collection log", "and click the page of each boss you do. That loads your kill count and past drops."},
+			{"Keep Loot Tracker on.", "On Rate reads new drops from it."},
+			{"Go kill something.", "The panel follows your kills."},
+			{"Check the settings.", "Got it opens them: turn on Team bosses if you solo Royal Titans or Yama."},
+		};
+		for (int i = 0; i < steps.length; i++)
+		{
+			JLabel step = smallLabel(Theme.wrap("<font color='" + Theme.hex(Theme.TEXT) + "'>" + steps[i][0] + "</font> "
+				+ steps[i][1], 135), Theme.TEXT_MUTED);
+			step.setIcon(Theme.stepIcon(i + 1));
+			step.setIconTextGap(Theme.M);
+			step.setVerticalAlignment(SwingConstants.TOP);
+			step.setVerticalTextPosition(SwingConstants.TOP);
+			step.setAlignmentX(LEFT_ALIGNMENT);
+			step.setBorder(BorderFactory.createCompoundBorder(
+				BorderFactory.createMatteBorder(1, 0, 0, 0, Theme.DIVIDER), new EmptyBorder(Theme.S + 1, 0, Theme.S + 1, 0)));
+			welcomePanel.add(step);
+		}
+		JLabel help = smallLabel("Hover the ? for help.", Theme.TEXT_MUTED);
+		help.setAlignmentX(LEFT_ALIGNMENT);
+		help.setMaximumSize(new Dimension(Integer.MAX_VALUE, help.getPreferredSize().height));
+		help.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createMatteBorder(1, 0, 0, 0, Theme.DIVIDER), new EmptyBorder(Theme.S + 1, 0, Theme.M, 0)));
+		welcomePanel.add(help);
 
 		JButton gotIt = new JButton("Got it");
 		gotIt.setFont(FontManager.getRunescapeSmallFont());
@@ -3463,8 +3488,10 @@ public class ExpectedDropsPanel extends PluginPanel
 		});
 		JPanel buttonRow = new JPanel(new BorderLayout());
 		buttonRow.setOpaque(false);
+		buttonRow.setAlignmentX(LEFT_ALIGNMENT);
 		buttonRow.add(gotIt, BorderLayout.WEST);
-		welcomePanel.add(buttonRow, BorderLayout.SOUTH);
+		buttonRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, buttonRow.getPreferredSize().height));
+		welcomePanel.add(buttonRow);
 		welcomePanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, welcomePanel.getPreferredSize().height));
 	}
 

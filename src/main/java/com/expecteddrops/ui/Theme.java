@@ -97,6 +97,41 @@ public final class Theme
 		};
 	}
 
+	/** A step number in a thin circle, for the welcome guide. */
+	public static Icon stepIcon(int number)
+	{
+		return new Icon()
+		{
+			@Override
+			public void paintIcon(Component c, Graphics graphics, int x, int y)
+			{
+				Graphics2D g = (Graphics2D) graphics.create();
+				g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+				g.setColor(OUTLINE);
+				g.setStroke(new BasicStroke(1f));
+				g.drawOval(x, y, 14, 14);
+				g.setFont(net.runelite.client.ui.FontManager.getRunescapeSmallFont());
+				g.setColor(TEXT_MUTED);
+				String text = String.valueOf(number);
+				java.awt.FontMetrics fm = g.getFontMetrics();
+				g.drawString(text, x + (15 - fm.stringWidth(text)) / 2, y + (15 - fm.getHeight()) / 2 + fm.getAscent());
+				g.dispose();
+			}
+
+			@Override
+			public int getIconWidth()
+			{
+				return 15;
+			}
+
+			@Override
+			public int getIconHeight()
+			{
+				return 15;
+			}
+		};
+	}
+
 	/** The font of the verdicts at the top ("On rate") and of the names and numbers in the lists. */
 	static java.awt.Font rowFont()
 	{
