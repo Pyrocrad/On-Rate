@@ -101,6 +101,9 @@ public class ExpectedDropsPanel extends PluginPanel
 	private JPanel tabsRow;
 
 	private final JPanel welcomePanel = new JPanel();
+	/** The verdict words in the welcome guide's key, with the luck each stands for: recoloured with the palette. */
+	private final List<JLabel> welcomeVerdicts = new ArrayList<>();
+	private static final double[] WELCOME_VERDICT_LUCK = {0.05, 0.22, 0.40, 0.50, 0.60, 0.78, 0.95};
 	private final JLabel setupHeader = new JLabel();
 	private final JPanel setupList = new JPanel(new GridLayout(0, 1, 0, 2));
 	/** The space under the collection log line, hidden with it. */
@@ -774,6 +777,11 @@ public class ExpectedDropsPanel extends PluginPanel
 		String bossName = (String) bossSelect.getSelectedItem();
 		ViewOptions o = options.get();
 		Palette.setColourBlind(o.isColourBlind());
+		for (int i = 0; i < welcomeVerdicts.size(); i++)
+		{
+			// the guide's key follows the colour-blind setting like the verdicts do
+			welcomeVerdicts.get(i).setForeground(welcomeVerdictColor(i));
+		}
 		rowsPanel.removeAll();
 		styleTabs();
 		boolean account = ACCOUNT.equals(bossName);
@@ -3468,6 +3476,47 @@ public class ExpectedDropsPanel extends PluginPanel
 				BorderFactory.createMatteBorder(1, 0, 0, 0, Theme.DIVIDER), new EmptyBorder(Theme.S + 1, 0, Theme.S + 1, 0)));
 			welcomePanel.add(step);
 		}
+		// how the verdict words are drawn: your rank among 100 typical players
+		welcomePanel.add(welcomeHeading("Where the words come from",
+			"Your rank among 100 typical players with your kill counts, driest first."));
+		String[] ranks = {"1 to 10", "11 to 35", "36 to 45", "46 to 55", "56 to 65", "66 to 90", "91 to 100"};
+		welcomeVerdicts.clear();
+		for (int i = 0; i < ranks.length; i++)
+		{
+			JPanel row = new JPanel(new BorderLayout(Theme.M, 0));
+			row.setOpaque(false);
+			row.setAlignmentX(LEFT_ALIGNMENT);
+			row.setBorder(BorderFactory.createCompoundBorder(
+				BorderFactory.createMatteBorder(1, 0, 0, 0, Theme.DIVIDER), new EmptyBorder(Theme.HAIR, 0, Theme.HAIR, 0)));
+			JLabel word = smallLabel(DropMath.VERDICTS.get(i), welcomeVerdictColor(i));
+			welcomeVerdicts.add(word);
+			row.add(word, BorderLayout.WEST);
+			JLabel range = smallLabel(ranks[i], Theme.TEXT);
+			range.setHorizontalAlignment(SwingConstants.RIGHT);
+			row.add(range, BorderLayout.CENTER);
+			row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height));
+			welcomePanel.add(row);
+		}
+
+		// what the numbers can't tell you
+		welcomePanel.add(welcomeHeading("What this does not mean", null));
+		String[] limits = {
+			"\"Players\" is the drop-rate maths, not real accounts. On Rate has no player data.",
+			"Every kill is its own roll. Being dry doesn't make a drop more likely next, and being spooned "
+				+ "doesn't make one less likely.",
+			"Rates are solo base rates without diary, Combat Achievement or Slayer boosts, so you may look "
+				+ "drier than a boosted rate would say.",
+		};
+		for (String limit : limits)
+		{
+			JLabel line = smallLabel(Theme.wrap(limit, 160), Theme.TEXT_MUTED);
+			line.setAlignmentX(LEFT_ALIGNMENT);
+			line.setBorder(BorderFactory.createCompoundBorder(
+				BorderFactory.createMatteBorder(1, 0, 0, 0, Theme.DIVIDER), new EmptyBorder(Theme.S, 0, Theme.S, 0)));
+			line.setMaximumSize(new Dimension(Integer.MAX_VALUE, line.getPreferredSize().height));
+			welcomePanel.add(line);
+		}
+
 		JLabel help = smallLabel("Hover the ? for help.", Theme.TEXT_MUTED);
 		help.setAlignmentX(LEFT_ALIGNMENT);
 		help.setMaximumSize(new Dimension(Integer.MAX_VALUE, help.getPreferredSize().height));
@@ -3493,6 +3542,36 @@ public class ExpectedDropsPanel extends PluginPanel
 		buttonRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, buttonRow.getPreferredSize().height));
 		welcomePanel.add(buttonRow);
 		welcomePanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, welcomePanel.getPreferredSize().height));
+	}
+
+	/** The colour of the welcome key's verdict word {@code i}, as the boss page shows it. */
+	private static Color welcomeVerdictColor(int i)
+	{
+		double luck = WELCOME_VERDICT_LUCK[i];
+		return i == 3 ? Theme.TEXT : Palette.verdict(luck).brighter();
+	}
+
+	/** A section title in the welcome guide, with an optional grey line under it. */
+	private static JPanel welcomeHeading(String title, String sub)
+	{
+		JPanel p = new JPanel();
+		p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
+		p.setOpaque(false);
+		p.setAlignmentX(LEFT_ALIGNMENT);
+		p.setBorder(new EmptyBorder(Theme.M + Theme.S, 0, Theme.S, 0));
+		JLabel t = new JLabel(title);
+		t.setFont(FontManager.getRunescapeBoldFont());
+		t.setForeground(Theme.TEXT);
+		t.setAlignmentX(LEFT_ALIGNMENT);
+		p.add(t);
+		if (sub != null)
+		{
+			JLabel s = smallLabel(Theme.wrap(sub, 160), Theme.TEXT_MUTED);
+			s.setAlignmentX(LEFT_ALIGNMENT);
+			p.add(s);
+		}
+		p.setMaximumSize(new Dimension(Integer.MAX_VALUE, p.getPreferredSize().height));
+		return p;
 	}
 
 	/** Header "Collection log: 12 / 49 synced" plus, when expanded, the pages still to open. */
