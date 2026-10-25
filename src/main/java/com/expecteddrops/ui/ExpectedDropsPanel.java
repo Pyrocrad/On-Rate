@@ -1065,12 +1065,6 @@ public class ExpectedDropsPanel extends PluginPanel
 			uniquesTip.row("Compared", capital(luckPercent(any.getShares(), any.getReceived())))
 				.line(capital(sharesLine(any.getShares(), any.getReceived())), Theme.TEXT_MUTED);
 		}
-		// how the verdicts are drawn, as a small key
-		uniquesTip.row("Dry", "under 35% have as many or fewer")
-			.row("Very dry", "under 10%")
-			.row("Spooned", "under 35% have as many or more")
-			.row("Very spooned", "under 10%")
-			.row("In between", "A bit dry, On rate, A bit spooned");
 		uniquesTile.set(verdict,
 			early ? Theme.TEXT_MUTED : (bossPage ? Palette.verdict(luck) : luckColor(luck)).brighter(),
 			String.format("%,d / %s%s", any.getReceived(), formatExpected(any.getExpected()), estimateNote == null ? "" : " est."),
@@ -1957,22 +1951,20 @@ public class ExpectedDropsPanel extends PluginPanel
 			}
 			String where = h.getBoss() == null ? "shared by several bosses" : h.getBoss();
 			double luck = r.getLuck();
-			StringBuilder tb = new StringBuilder(String.format("<html><b>%s</b> (%s)<br>Got %d, expected %s<br>",
-				r.getLabel(), where, r.getReceived(), formatExpected(r.getExpected())));
-			if (h.isPet() && !r.isComplete())
-			{
-				tb.append("Chance you'd have it by now: ").append(formatPercent(r.getChanceAtLeastOne())).append("<br>");
-			}
+			// the same rows as an item's hover on its boss page
+			Tip itemTip = new Tip(r.getLabel()).line(capital(where), Theme.TEXT_MUTED);
 			if (!Double.isNaN(luck))
 			{
-				tb.append(DropMath.verdict(luck)).append(": ").append(html(sharesLine(r.getShares(), r.getReceived()))).append("<br>");
+				itemTip.row("Your result", "<b>" + DropMath.verdict(luck) + "</b>", luckColor(luck).brighter())
+					.line(capital(sharesLine(r.getShares(), r.getReceived())), Theme.TEXT_MUTED);
 			}
-			String past = rateMultipleLine(r);
-			if (past != null)
+			itemTip.row("Got / expected", String.format("%d / %s", r.getReceived(), formatExpected(r.getExpected())));
+			if (h.isPet() && !r.isComplete())
 			{
-				tb.append(past).append("<br>");
+				itemTip.row("Chance of one by now", formatPercent(r.getChanceAtLeastOne()));
 			}
-			String tip = tb.append("</html>").toString().replace("<br></html>", "</html>");
+			itemTip.row("Without one", rateMultiple(r));
+			String tip = itemTip.wide();
 			Runnable open = h.getBoss() == null ? null : () -> showBoss(h.getBoss());
 			if (view == ItemView.COMPACT)
 			{
@@ -2306,20 +2298,22 @@ public class ExpectedDropsPanel extends PluginPanel
 
 	private static String poolTooltip(com.expecteddrops.stats.SharedPool pool, RowStats row)
 	{
-		StringBuilder sb = new StringBuilder("<html><body style='width: 240px'><b>").append(pool.getLabel()).append("</b><br>");
-		sb.append("Dropped by: ").append(String.join(", ", pool.getBosses())).append("<br>");
-		sb.append(String.format("Expected from all of them: %s<br>In your collection log: %d<br>",
-			formatExpected(pool.getExpected()), pool.getReceived()));
+		Tip tip = new Tip(pool.getLabel()).line("Shared by several bosses", Theme.TEXT_MUTED);
 		double luck = row.getLuck();
 		if (!Double.isNaN(luck))
 		{
-			sb.append(DropMath.verdict(luck)).append(": ").append(html(sharesLine(row.getShares(), row.getReceived())));
+			tip.row("Your result", "<b>" + DropMath.verdict(luck) + "</b>", luckColor(luck).brighter())
+				.line(capital(sharesLine(row.getShares(), row.getReceived())), Theme.TEXT_MUTED);
 		}
+		tip.row("Dropped by", joinAnd(pool.getBosses()))
+			.row("Expected from all", formatExpected(pool.getExpected()))
+			.row("In your collection log", String.valueOf(pool.getReceived()));
 		if (!pool.isComplete())
 		{
-			sb.append("<br><br>Kills not counted yet (open these log pages): ").append(String.join(", ", pool.getMissingPages()));
+			tip.note("Kills not counted yet: open the " + joinAnd(pool.getMissingPages()) + " log page"
+				+ (pool.getMissingPages().size() == 1 ? "" : "s") + ".");
 		}
-		return sb.append("</body></html>").toString();
+		return tip.wide();
 	}
 
 	private static Comparator<RowStats> comparator(Sort sort, AccountStats account)
