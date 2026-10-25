@@ -1409,12 +1409,16 @@ public class ExpectedDropsPanel extends PluginPanel
 				ColorScheme.LIGHT_GRAY_COLOR);
 			numbers.setFont(FontManager.getRunescapeFont());
 			line.add(numbers, BorderLayout.EAST);
-			String tip = String.format("<html><b>%s%s</b><br>%,d unique%s in %,d %s<br>About %s expected%s",
-				isTotal ? "All bosses, " : d.getBoss() + ", ", title.toLowerCase(Locale.ROOT),
-				d.getUniques(), d.getUniques() == 1 ? "" : "s", d.getKills(), unitsHere,
-				formatExpected(d.getExpected()),
-				Double.isNaN(luck) || d.getExpected() <= 0 ? "" : ": " + html(luckPercent(DropMath.shares(d.getUniques(), d.getExpected()), d.getUniques())))
-				+ uniquesLine(isTotal, d, days) + "</html>";
+			Tip dayTip = new Tip((isTotal ? "All bosses" : d.getBoss()) + ", " + title.toLowerCase(Locale.ROOT))
+				.row(capital(units), String.format("%,d", d.getKills()))
+				.row("Uniques", String.format("%,d", d.getUniques()))
+				.row("Expected", "about " + formatExpected(d.getExpected()));
+			if (!Double.isNaN(luck) && d.getExpected() > 0)
+			{
+				dayTip.row("Compared", capital(luckPercent(DropMath.shares(d.getUniques(), d.getExpected()), d.getUniques())), uniquesColor);
+			}
+			addUniqueNames(dayTip, isTotal, d, days);
+			String tip = dayTip.wide();
 			String bossName = d.getBoss();
 			// a boss line opens that boss's page
 			setTip(line, tip, isTotal ? null : () -> showBoss(bossName));
@@ -1427,34 +1431,50 @@ public class ExpectedDropsPanel extends PluginPanel
 	}
 
 	/**
-	 * Which uniques those were, for the hover of a Recent line: "Tyrannical ring", or on the
-	 * total line "Tyrannical ring (Callisto and Artio)". Empty when History doesn't have them.
+	 * Which uniques those were, for the hover of a Recent line: one line each ("Tyrannical
+	 * ring"), or on the total line a row each with the boss on the left. Nothing when History
+	 * doesn't have them.
 	 */
-	private static String uniquesLine(boolean isTotal, com.expecteddrops.tracking.BossDays d,
+	private static void addUniqueNames(Tip tip, boolean isTotal, com.expecteddrops.tracking.BossDays d,
 		List<com.expecteddrops.tracking.BossDays> days)
 	{
-		List<String> names = new ArrayList<>();
-		if (isTotal)
+		// {boss, item}
+		List<String[]> names = new ArrayList<>();
+		for (com.expecteddrops.tracking.BossDays b : isTotal ? days.subList(1, days.size()) : java.util.Collections.singletonList(d))
 		{
-			for (com.expecteddrops.tracking.BossDays b : days.subList(1, days.size()))
+			for (String n : b.getUniqueNames())
 			{
-				for (String n : b.getUniqueNames())
-				{
-					names.add(n + " (" + b.getBoss() + ")");
-				}
+				names.add(new String[]{b.getBoss(), n});
 			}
-		}
-		else
-		{
-			names.addAll(d.getUniqueNames());
 		}
 		if (names.isEmpty())
 		{
-			return "";
+			return;
 		}
+		tip.line(names.size() == 1 ? "The unique" : "The uniques", Theme.TEXT_MUTED);
 		int shown = Math.min(10, names.size());
-		return "<br><br>" + String.join("<br>", names.subList(0, shown))
-			+ (names.size() > shown ? "<br>and " + (names.size() - shown) + " more" : "");
+		for (String[] n : names.subList(0, shown))
+		{
+			if (isTotal)
+			{
+				tip.row(n[0], n[1]);
+			}
+			else
+			{
+				tip.line(n[1]);
+			}
+		}
+		if (names.size() > shown)
+		{
+			tip.note("And " + (names.size() - shown) + " more.");
+		}
+	}
+
+	/** The gap before a unique, for a hover row: "7 kills (0.1\u00d7)", "your first one", or "". */
+	private static String gapText(com.expecteddrops.tracking.KillEntry.DropEntry d, String unit)
+	{
+		String after = afterText(d, unit);
+		return after.startsWith("after ") ? after.substring("after ".length()) : after;
 	}
 
 	/** The account's Recent tab: the latest uniques across every boss. */
@@ -1508,8 +1528,11 @@ public class ExpectedDropsPanel extends PluginPanel
 			text.add(second);
 			panel.add(text, BorderLayout.CENTER);
 			panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, panel.getPreferredSize().height));
-			setTip(panel, "<html><b>" + d.getName() + "</b><br>" + r.getBoss() + ", " + unit + " " + String.format("%,d", r.getKill().getKc())
-				+ "</html>", () -> showBoss(r.getBoss()));
+			setTip(panel, new Tip(d.getName())
+				.row("Where", whereText(boss, r.getBoss(), r.getKill()))
+				.row("When", daysAgo(r.getKill().getTime(), now))
+				.row("Gap before it", gapText(d, unit))
+				.wide(), () -> showBoss(r.getBoss()));
 			rowsPanel.add(spacer(Theme.HAIR));
 			rowsPanel.add(panel);
 		}
@@ -1564,8 +1587,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		long now = System.currentTimeMillis();
 		int shown = 0;
 		int drops = 0;
-		// which uniques those were, for the hover on the line under the list
-		List<String> dropNames = new ArrayList<>();
+		// which uniques those were ({item, where}), for the hover on the rows under the list
+		List<String[]> dropNames = new ArrayList<>();
 		for (com.expecteddrops.tracking.HistoryRow h : history)
 		{
 			com.expecteddrops.tracking.KillEntry k = h.getKill();
@@ -1573,8 +1596,8 @@ public class ExpectedDropsPanel extends PluginPanel
 			for (com.expecteddrops.tracking.KillEntry.DropEntry d : k.getDrops())
 			{
 				int at = k.getPartKc() != null && boss.hasParts() ? k.getPartKc() : k.getKc();
-				dropNames.add(String.format("%s \u00b7 %s%s %,d", d.getName(),
-					boss.hasParts() && k.getPart() != null && boss.getRaid() == null ? k.getPart() + " " : "", unit, at));
+				dropNames.add(new String[]{d.getName(), String.format("%s%s %,d",
+					boss.hasParts() && k.getPart() != null && boss.getRaid() == null ? k.getPart() + " " : "", unit, at)});
 			}
 			if (shown >= 10 || (dropsOnly && k.getDrops().isEmpty()))
 			{
@@ -1629,10 +1652,15 @@ public class ExpectedDropsPanel extends PluginPanel
 				for (com.expecteddrops.tracking.KillEntry.DropEntry d : k.getDrops())
 				{
 					String after = afterText(d, unit).replace("after ", "");
+					String tip = new Tip(d.getName())
+						.row(byPart ? k.getPart() : capital(unit), String.format("%,d", byPart ? k.getPartKc() : k.getKc()))
+						.row("When", daysAgo(k.getTime(), now))
+						.row("Gap before it", gapText(d, unit))
+						.wide();
 					rowsPanel.add(byPart
 						? historyTwoLines(String.format("%,d", k.getPartKc()), d.getName(), Color.WHITE,
-							k.getPart() + (after.isEmpty() ? "" : " \u00b7 " + after), multipleColor(d))
-						: historyLine(first, d.getName(), after, Color.WHITE, multipleColor(d)));
+							k.getPart() + (after.isEmpty() ? "" : " \u00b7 " + after), multipleColor(d), tip)
+						: historyLine(first, d.getName(), after, Color.WHITE, multipleColor(d), tip));
 				}
 			}
 			else
@@ -1642,9 +1670,10 @@ public class ExpectedDropsPanel extends PluginPanel
 				{
 					loot.append(loot.length() > 0 ? ", " : "").append(d.getName());
 				}
+				String tip = historyKillTip(boss, h, unit, now, loot.toString());
 				rowsPanel.add(loot.length() == 0
-					? historyLine(first, middle, "\u2013", ColorScheme.LIGHT_GRAY_COLOR, ColorScheme.LIGHT_GRAY_COLOR)
-					: historyLootLine(first, middle, loot.toString()));
+					? historyLine(first, middle, "\u2013", ColorScheme.LIGHT_GRAY_COLOR, ColorScheme.LIGHT_GRAY_COLOR, tip)
+					: historyLootLine(first, middle, loot.toString(), tip));
 			}
 		}
 		if (dropsOnly && shown == 0)
@@ -1652,7 +1681,15 @@ public class ExpectedDropsPanel extends PluginPanel
 			addHistoryNote("No uniques since you installed On Rate yet.");
 		}
 		int seen = tracker.killsSeen(boss.getName());
-		StringBuilder note = new StringBuilder();
+		// the uniques in History, one row each, on hover of the summary rows
+		Tip namesTip = new Tip(drops == 1 ? "The unique" : "The uniques");
+		for (String[] n : dropNames.subList(0, Math.min(15, dropNames.size())))
+		{
+			namesTip.row(n[0], n[1]);
+		}
+		String tip = dropNames.isEmpty() ? null
+			: namesTip.note(dropNames.size() > 15 ? "And " + (dropNames.size() - 15) + " more." : null).wide();
+		boolean summary = false;
 		if (raid)
 		{
 			for (com.expecteddrops.data.BossPart part : boss.getParts())
@@ -1660,27 +1697,26 @@ public class ExpectedDropsPanel extends PluginPanel
 				double a = tracker.averagePurpleChance(boss.getName(), part.getName());
 				if (!Double.isNaN(a))
 				{
-					note.append(String.format("%s%s raids with points: %.1f%% purple chance on average", note.length() > 0 ? "<br>" : "", part.getName(), a * 100));
+					if (!summary)
+					{
+						addHistoryNote("Purple chance on average, raids with points");
+						rowsPanel.add(spacer(Theme.HAIR));
+						summary = true;
+					}
+					rowsPanel.add(cardRow(part.getName(), String.format("%.1f%%", a * 100), Color.WHITE, tip));
 				}
 			}
 		}
 		else if (!delve)
 		{
-			note.append(String.format("Last %,d %s%s seen: %,d unique%s (%s expected)", seen, unit, seen == 1 ? "" : "s",
-				drops, drops == 1 ? "" : "s", formatExpected(stats.getAnyRow().getRate() * seen)));
+			rowsPanel.add(spacer(Theme.S));
+			rowsPanel.add(cardRow("Seen", String.format("last %,d %s%s", seen, unit, seen == 1 ? "" : "s"), Color.WHITE, tip));
+			rowsPanel.add(cardRow("Uniques", String.format("%,d (%s expected)", drops,
+				formatExpected(stats.getAnyRow().getRate() * seen)), Color.WHITE, tip));
 		}
 		if (seen >= com.expecteddrops.tracking.Tracker.MAX_KILLS)
 		{
-			note.append(note.length() > 0 ? "<br>" : "").append("On Rate keeps your last ")
-				.append(com.expecteddrops.tracking.Tracker.MAX_KILLS).append(" ").append(unit).append("s here.");
-		}
-		if (note.length() > 0)
-		{
-			String tip = dropNames.isEmpty() ? null : new Tip(drops == 1 ? "The unique" : "The uniques")
-				.line(String.join("<br>", dropNames.subList(0, Math.min(15, dropNames.size()))))
-				.note(dropNames.size() > 15 ? "And " + (dropNames.size() - 15) + " more." : null)
-				.wide();
-			addHistoryNote(note.toString()).setToolTipText(tip);
+			addHistoryNote("On Rate keeps your last " + com.expecteddrops.tracking.Tracker.MAX_KILLS + " " + unit + "s here.");
 		}
 	}
 
@@ -1693,14 +1729,77 @@ public class ExpectedDropsPanel extends PluginPanel
 		return note;
 	}
 
-	/** A History line with loot: what happened on top, the loot in purple underneath. */
-	private JPanel historyLootLine(String first, String middle, String loot)
+	/**
+	 * The hover of a History line for a raid, team boss, delve or Royal Titans kill: what the
+	 * line abbreviates, one row each.
+	 */
+	private static String historyKillTip(BossDefinition boss, com.expecteddrops.tracking.HistoryRow h, String unit, long now, String loot)
 	{
-		return historyTwoLines(first, middle, ColorScheme.LIGHT_GRAY_COLOR, loot, Theme.RAID_PURPLE);
+		com.expecteddrops.tracking.KillEntry k = h.getKill();
+		String title;
+		if (boss.getWaves() > 0)
+		{
+			title = "Wave " + (k.getLevel() == null ? "?" : k.getLevel());
+		}
+		else if (boss.isDelve())
+		{
+			title = "Delve level " + (k.getLevel() == null ? "?" : BossDefinition.delveLevelLabel(k.getLevel()));
+		}
+		else
+		{
+			title = String.format("%s %,d", capital(unit), k.getPartKc() != null && boss.getRaid() != null ? k.getPartKc() : k.getKc());
+		}
+		Tip tip = new Tip(title);
+		if (boss.getRaid() != null)
+		{
+			com.expecteddrops.tracking.RaidRecord r = h.getRaid();
+			if (k.getPart() != null && !"Normal".equals(k.getPart()))
+			{
+				tip.row("Mode", k.getPart());
+			}
+			if (r == null)
+			{
+				tip.row("Points", "not recorded");
+			}
+			else
+			{
+				if (r.getPersonalPoints() > 0)
+				{
+					tip.row("Your points", String.format("%,d", r.getPersonalPoints()));
+				}
+				if (!Double.isNaN(h.getPurpleChance()))
+				{
+					tip.row("Purple chance", String.format("%.1f%%", h.getPurpleChance() * 100));
+				}
+				tip.row("Team", String.valueOf(r.getTeamSize()));
+				if (r.getDeaths() > 0)
+				{
+					tip.row("Deaths", String.valueOf(r.getDeaths()));
+				}
+			}
+		}
+		else if (boss.isDetectTeam())
+		{
+			tip.row("Team", k.getTeam() == null ? "unknown" : k.getTeam() == 1 ? "solo"
+				: k.getTeam() + ", your share 1/" + k.getTeam());
+		}
+		else if ("Royal Titans".equals(boss.getName()))
+		{
+			tip.row("Titan looted", k.getTitan() == null ? "unknown" : k.getTitan());
+		}
+		tip.row("When", daysAgo(k.getTime(), now));
+		tip.row("Uniques", loot.isEmpty() ? "none" : loot);
+		return tip.wide();
+	}
+
+	/** A History line with loot: what happened on top, the loot in purple underneath. */
+	private JPanel historyLootLine(String first, String middle, String loot, String tip)
+	{
+		return historyTwoLines(first, middle, ColorScheme.LIGHT_GRAY_COLOR, loot, Theme.RAID_PURPLE, tip);
 	}
 
 	/** A History line with two rows of text next to the kill count. */
-	private JPanel historyTwoLines(String first, String top, Color topColor, String bottom, Color bottomColor)
+	private JPanel historyTwoLines(String first, String top, Color topColor, String bottom, Color bottomColor, String tip)
 	{
 		JPanel line = new JPanel(new BorderLayout(6, 0));
 		line.setBackground(ColorScheme.DARKER_GRAY_COLOR);
@@ -1717,12 +1816,12 @@ public class ExpectedDropsPanel extends PluginPanel
 		text.add(smallLabel(bottom, bottomColor));
 		line.add(text, BorderLayout.CENTER);
 		line.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
-		line.setToolTipText("<html>" + first + " \u00b7 " + top + "<br>" + bottom + "</html>");
+		setTip(line, tip, null);
 		return line;
 	}
 
 	/** One History line: kill count on the left, then what happened, then the loot or gap. */
-	private JPanel historyLine(String first, String middle, String last, Color middleColor, Color lastColor)
+	private JPanel historyLine(String first, String middle, String last, Color middleColor, Color lastColor, String tip)
 	{
 		JPanel line = new JPanel(new BorderLayout(6, 0));
 		line.setBackground(ColorScheme.DARKER_GRAY_COLOR);
@@ -1739,7 +1838,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		JLabel right = smallLabel(last, lastColor);
 		line.add(right, middle == null ? BorderLayout.CENTER : BorderLayout.EAST);
 		line.setMaximumSize(new Dimension(Integer.MAX_VALUE, 20));
-		line.setToolTipText(middle == null ? "<html>" + first + ": " + last + "</html>" : "<html>" + first + " \u00b7 " + middle + "<br>" + last + "</html>");
+		setTip(line, tip, null);
 		return line;
 	}
 
