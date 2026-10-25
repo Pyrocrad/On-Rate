@@ -87,6 +87,11 @@ public class BossCatalog
 						{
 							pools.computeIfAbsent(normalize(drop.getName()), k -> new ArrayList<>())
 								.add(new PoolSource(boss, drop));
+							// shared items show in the panel too: they need their pictures
+							for (String name : drop.getAllNames())
+							{
+								allItemNames.add(normalize(name));
+							}
 						}
 						return true;
 					}
@@ -208,7 +213,10 @@ public class BossCatalog
 		return minionLootNames.contains(normalize(lootName));
 	}
 
-	/** Bosses with nothing left to track once shared items are left out (Chaos Elemental). */
+	/**
+	 * Bosses with nothing left to track once shared items are left out (Chaos Elemental). They
+	 * still get a page, with only their shared items on it.
+	 */
 	public Set<String> getExcludedBosses()
 	{
 		return Collections.unmodifiableSet(excludedBosses);

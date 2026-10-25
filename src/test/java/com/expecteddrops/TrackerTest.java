@@ -77,10 +77,14 @@ public class TrackerTest
 	public void bundledDataIsValid()
 	{
 		assertTrue(catalog.getBosses().size() >= 50);
-		// Chaos Elemental only has the dragon pickaxe and a pet it shares with Chaos Fanatic
-		// it has no page of its own, but its kill count still counts for those shared items
+		// Chaos Elemental only has the dragon pickaxe and a pet it shares with Chaos Fanatic:
+		// no items of its own, so its page shows only those shared items
 		assertTrue(catalog.getExcludedBosses().contains("Chaos Elemental"));
 		assertNotNull(catalog.byName("Chaos Elemental"));
+		// shared items get their pictures looked up like any other item
+		assertTrue(catalog.getAllItemNames().contains("dragon axe"));
+		assertTrue(catalog.getAllItemNames().contains("pet chaos elemental"));
+		assertTrue(catalog.getAllItemNames().contains("dragon pickaxe"));
 		Set<String> names = new HashSet<>();
 		for (BossDefinition boss : catalog.getBosses())
 		{

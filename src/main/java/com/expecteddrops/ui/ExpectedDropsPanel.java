@@ -532,6 +532,37 @@ public class ExpectedDropsPanel extends PluginPanel
 		return false;
 	}
 
+	/** True when the boss drops an item it shares with other bosses (Chaos Elemental drops only those). */
+	private boolean hasSharedItems(BossDefinition boss)
+	{
+		return sharedItemOf(boss, false) != null;
+	}
+
+	/** The first shared item this boss drops, a pet first when {@code petFirst}; null when none. */
+	private String sharedItemOf(BossDefinition boss, boolean petFirst)
+	{
+		String first = null;
+		for (List<com.expecteddrops.data.BossCatalog.PoolSource> sources : tracker.getCatalog().getPools().values())
+		{
+			for (com.expecteddrops.data.BossCatalog.PoolSource src : sources)
+			{
+				if (src.getBoss() != boss)
+				{
+					continue;
+				}
+				if (petFirst && src.getDrop().isPet())
+				{
+					return src.getDrop().getName();
+				}
+				if (first == null)
+				{
+					first = src.getDrop().getName();
+				}
+			}
+		}
+		return first;
+	}
+
 	/** Fills the boss list with the bosses matching the search text. */
 	private void fillBossList(String query)
 	{
@@ -544,9 +575,9 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		for (BossDefinition boss : tracker.getCatalog().getBosses())
 		{
-			if (boss.getDrops().isEmpty())
+			if (boss.getDrops().isEmpty() && !hasSharedItems(boss))
 			{
-				// kept only for its kill count (Chaos Elemental: everything it drops is shared)
+				// nothing to show at all
 				continue;
 			}
 			if (q.isEmpty() || matches(boss, q))
@@ -832,8 +863,18 @@ public class ExpectedDropsPanel extends PluginPanel
 			syncLabel.setIcon(Theme.infoIcon());
 		}
 		RowStats any = stats.getAnyRow();
+		// everything this boss drops is shared (Chaos Elemental): no verdict of its own
+		boolean sharedOnly = stats.getBoss().getDrops().isEmpty();
 		boolean unsynced = reminder != null && stats.getKillCount() > 0;
-		if (unsynced)
+		if (sharedOnly)
+		{
+			verdictLabel.setText("All shared");
+			verdictLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+			verdictLabel.setToolTipText(null);
+			summaryLabel.setText(Theme.wrap("Everything it drops also drops from other bosses, so each item is judged on all "
+				+ "of them together below.", Theme.TEXT_WIDTH));
+		}
+		else if (unsynced)
 		{
 			// The kill count is known but not the drops from before On Rate: any verdict would be
 			// "very dry" for the wrong reason. Wait for the log page.
@@ -857,7 +898,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				counted.add(stats.getRows().get(i));
 			}
 		}
-		showTiles(unsynced ? null : any, value, lastValueTip, raid ? "purples" : "uniques", counted, true);
+		showTiles(unsynced || sharedOnly ? null : any, value, lastValueTip, raid ? "purples" : "uniques", counted, true);
 		lastHintTip = null;
 		String hint = unsynced ? null : settingsHint(stats);
 		Color hintColor = ColorScheme.LIGHT_GRAY_COLOR;
@@ -878,7 +919,10 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			addTripCard(stats.getBoss().getName());
 		}
-		renderBossItems(stats, unit, o.getItemView());
+		if (!sharedOnly)
+		{
+			renderBossItems(stats, unit, o.getItemView());
+		}
 		renderBossPools(stats, o.getItemView());
 		renderHistory(stats, unit);
 
@@ -1123,6 +1167,11 @@ public class ExpectedDropsPanel extends PluginPanel
 		if (item == null && !boss.getDrops().isEmpty())
 		{
 			item = boss.getDrops().get(0).getName();
+		}
+		if (item == null)
+		{
+			// a boss whose drops are all shared (Chaos Elemental): its pet from those
+			item = sharedItemOf(boss, true);
 		}
 		int id = item == null ? -1 : itemIdFor.applyAsInt(item);
 		if (id > 0 && itemManager != null)
@@ -1705,8 +1754,9 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			rowsPanel.add(spacer(Theme.S));
 			rowsPanel.add(cardRow("Seen", String.format("last %,d %s%s", seen, unit, seen == 1 ? "" : "s"), Color.WHITE, tip));
-			rowsPanel.add(cardRow("Uniques", String.format("%,d (%s expected)", drops,
-				formatExpected(stats.getAnyRow().getRate() * seen)), Color.WHITE, tip));
+			// a boss whose drops are all shared has no expected of its own
+			rowsPanel.add(cardRow("Uniques", boss.getDrops().isEmpty() ? String.format("%,d", drops)
+				: String.format("%,d (%s expected)", drops, formatExpected(stats.getAnyRow().getRate() * seen)), Color.WHITE, tip));
 		}
 		if (seen >= com.expecteddrops.tracking.Tracker.MAX_KILLS)
 		{
