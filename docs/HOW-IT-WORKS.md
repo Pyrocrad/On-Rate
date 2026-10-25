@@ -73,7 +73,7 @@ Bosses that share a collection log page are shown together, just like in the log
 Open the settings with the cog next to **On Rate** in the Configuration panel.
 
 - **Follow last kill:** switch the panel to the boss you just killed. On by default.
-- **Show welcome guide:** show the getting-started steps at the top of the panel. *Got it* turns this off; turn it back on here.
+- **Show welcome guide:** show the getting-started steps at the top of the panel. *Got it, open settings* turns this off and opens these settings; turn it back on here.
 - **Sync reminders:** the chat reminder after killing a boss that isn't synced yet. On by default.
 - **Drop messages:** a chat line when you get a unique, saying how many kills it took. On by default.
 - **Dry milestone messages:** a chat line when you pass 1x, 2x, 3x, 5x or 10x the drop rate dry on an item. On by default.

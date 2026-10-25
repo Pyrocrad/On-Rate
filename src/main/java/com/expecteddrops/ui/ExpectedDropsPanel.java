@@ -3461,7 +3461,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			{"Open your collection log", "and click the page of each boss you do. That loads your kill count and past drops."},
 			{"Keep Loot Tracker on.", "On Rate reads new drops from it."},
 			{"Go kill something.", "The panel follows your kills."},
-			{"Check the settings.", "Got it opens them. Royal Titans and Yama count as duo kills: set them to Solo, "
+			{"Check the settings.", "The button below opens them. Royal Titans and Yama count as duo kills: set them to Solo, "
 				+ "or Some of each, under Team bosses if that's how you kill them."},
 		};
 		for (int i = 0; i < steps.length; i++)
@@ -3540,7 +3540,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			BorderFactory.createMatteBorder(1, 0, 0, 0, Theme.DIVIDER), new EmptyBorder(Theme.S + 1, 0, Theme.M, 0)));
 		welcomePanel.add(help);
 
-		JButton gotIt = new JButton("Got it");
+		JButton gotIt = new JButton("Got it, open settings");
 		gotIt.setFont(FontManager.getRunescapeSmallFont());
 		gotIt.setFocusPainted(false);
 		gotIt.setToolTipText("Hide this guide and open On Rate's settings. Turn the guide back on with 'Show welcome guide' there.");
