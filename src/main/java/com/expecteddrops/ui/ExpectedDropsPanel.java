@@ -3461,7 +3461,8 @@ public class ExpectedDropsPanel extends PluginPanel
 			{"Open your collection log", "and click the page of each boss you do. That loads your kill count and past drops."},
 			{"Keep Loot Tracker on.", "On Rate reads new drops from it."},
 			{"Go kill something.", "The panel follows your kills."},
-			{"Check the settings.", "Got it opens them: turn on Team bosses if you solo Royal Titans or Yama."},
+			{"Check the settings.", "Got it opens them. Royal Titans and Yama count as duo kills: set them to Solo, "
+				+ "or Some of each, under Team bosses if that's how you kill them."},
 		};
 		for (int i = 0; i < steps.length; i++)
 		{
@@ -3509,12 +3510,27 @@ public class ExpectedDropsPanel extends PluginPanel
 		};
 		for (String limit : limits)
 		{
-			JLabel line = smallLabel(Theme.wrap(limit, 160), Theme.TEXT_MUTED);
-			line.setAlignmentX(LEFT_ALIGNMENT);
-			line.setBorder(BorderFactory.createCompoundBorder(
-				BorderFactory.createMatteBorder(1, 0, 0, 0, Theme.DIVIDER), new EmptyBorder(Theme.S, 0, Theme.S, 0)));
-			line.setMaximumSize(new Dimension(Integer.MAX_VALUE, line.getPreferredSize().height));
-			welcomePanel.add(line);
+			welcomePanel.add(welcomeLine(null, limit));
+		}
+
+		// what the panel shows in less common moments, so none of it comes as a surprise
+		welcomePanel.add(welcomeHeading("Things you may see", null));
+		String[][] moments = {
+			{"\"Load 3 bosses you killed\"", "at the top: their log pages aren't read yet. Click it for the list; it goes "
+				+ "away once they're loaded."},
+			{"\"Not synced\"", "on a boss: On Rate has its kill count but not your drops from before. Open its log "
+				+ "page once."},
+			{"Luck over time", "starts tomorrow: On Rate saves one point a day, even while the graph is closed."},
+			{"Searching:", "type part of a name, or a short one like cox, tob or toa."},
+			{"Left out:", "right-click an item to leave it out of the calculations, for example one you got "
+				+ "elsewhere. Right-click it again to count it."},
+			{"Reset this boss", "asks first. Opening its log page loads it again."},
+			{"History or raids empty", "out of the blue? On Rate couldn't read that saved data, started fresh and "
+				+ "kept a copy. Please tell us on Discord or in an issue."},
+		};
+		for (String[] m : moments)
+		{
+			welcomePanel.add(welcomeLine(m[0], m[1]));
 		}
 
 		JLabel help = smallLabel("Hover the ? for help.", Theme.TEXT_MUTED);
@@ -3549,6 +3565,18 @@ public class ExpectedDropsPanel extends PluginPanel
 	{
 		double luck = WELCOME_VERDICT_LUCK[i];
 		return i == 3 ? Theme.TEXT : Palette.verdict(luck).brighter();
+	}
+
+	/** A wrapped grey line in the welcome guide with a thin line above, starting with an optional white lead. */
+	private static JLabel welcomeLine(String lead, String text)
+	{
+		String html = lead == null ? text : "<font color='" + Theme.hex(Theme.TEXT) + "'>" + lead + "</font> " + text;
+		JLabel line = smallLabel(Theme.wrap(html, 160), Theme.TEXT_MUTED);
+		line.setAlignmentX(LEFT_ALIGNMENT);
+		line.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createMatteBorder(1, 0, 0, 0, Theme.DIVIDER), new EmptyBorder(Theme.S, 0, Theme.S, 0)));
+		line.setMaximumSize(new Dimension(Integer.MAX_VALUE, line.getPreferredSize().height));
+		return line;
 	}
 
 	/** A section title in the welcome guide, with an optional grey line under it. */
