@@ -60,7 +60,7 @@ Abyssal Sire, Alchemical Hydra, Amoxliatl, Araxxor, Barrows, Brutus, Bryophyta, 
 
 Bosses that share a collection log page are shown together, just like in the log: **Dagannoth Kings**, **Callisto and Artio**, **Vet'ion and Calvar'ion**, **Venenatis and Spindel**, and **The Gauntlet** (normal and Corrupted). Each boss on the page keeps its own kill count and drop rates.
 
-**Chaos Elemental** has no page of its own: its only uniques are the dragon pickaxe, the dragon 2h sword and a pet it shares with Chaos Fanatic. Its kill count still counts for the shared dragon pickaxe and pet (see [Good to know](#good-to-know)).
+**Chaos Elemental** has a page but no verdict of its own (it says *All shared*): none of its uniques are exclusive to it. The dragon pickaxe and a pet it shares with Chaos Fanatic are judged on all the bosses that drop them, under **Shared with other bosses**, and its kill count counts there (see [Good to know](#good-to-know)). The dragon 2h sword is left out.
 
 **God Wars Dungeon** generals assume you kill all three bodyguards every kill. The bodyguards roll some of the general's uniques (1/16,256 for each Bandos piece, 1/16,129 for each Armadyl piece, 3/16,129 for the Saradomin sword and Zamorakian spear, 1/1,524 for each godsword shard), and the collection log counts those under the general. Bodyguard loot counts for the general but not as a kill.
 
@@ -79,7 +79,7 @@ Open the settings with the cog next to **On Rate** in the Configuration panel.
 - **Dry milestone messages:** a chat line when you pass 1x, 2x, 3x, 5x or 10x the drop rate dry on an item. On by default.
 - **Items tab:** the Items tab on the account overview (up to 15 driest and luckiest items). On by default.
 - **GE value:** the GP value tile (see [Account overview](#account-overview)). On by default.
-- **This trip card**, **In-game overlay** and **Colour-blind colours**: see [Extras](#extras). This trip card is on by default.
+- **Trip card**, **In-game overlay** and **Colour-blind colours**: see [Extras](#extras). The trip card is on by default.
 - **Royal Titans:** kills count as **duo** kills unless you change it to **Solo** or **Some of each**. With *Some of each*, also enter how many of your kills were solo; the rest count as duo. In a duo you get about half the uniques of a solo kill, while the pet chance stays the same.
 - **Yama:** how you killed Yama before On Rate could count your team: **duo** by default, or **Solo** or **Some of each** (with your number of solo kills). Kills from then on use the counted team size.
 - **Count your team:** at Nex, Yama, the Hueycoatl, the Corporeal Beast and Zalcano, On Rate counts the players within 15 tiles of you at each kill and gives you that share of the kill: a quarter with four players, a half in a duo. The boss's page says how many kills it saw and the average team size. Kills from before On Rate counted use the team of the first kill it counted (Yama uses its own setting), and the pet chance doesn't scale (except at Corp, where only the top damager gets loot). At Zalcano only the crystal tool seed is shared; shards and the pet are rolled for each player. On by default.

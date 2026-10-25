@@ -42,7 +42,7 @@ tasks.withType(JavaCompile).configureEach {
 // ./gradlew run  starts RuneLite in developer mode with this plugin loaded
 tasks.register('run', JavaExec) {
 	group = 'application'
-	description = 'Runs RuneLite with the Expected Drops plugin'
+	description = 'Runs RuneLite with the On Rate plugin'
 	classpath = sourceSets.test.runtimeClasspath
 	mainClass = 'com.expecteddrops.ExpectedDropsPluginTest'
 	jvmArgs = ['-ea']

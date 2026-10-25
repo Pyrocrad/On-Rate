@@ -73,7 +73,7 @@ Found a bug or a wrong drop rate, or have an idea? You can [open an issue on Git
 
 ## For developers
 
-Open this folder in IntelliJ IDEA (Java 11 or newer) and run **Tasks → application → run** in the Gradle tool window to start RuneLite with the plugin. `gradlew test` runs the tests. Every upload to GitHub is built and tested automatically: a green tick next to a commit means it builds and passes its tests.
+Open this folder in IntelliJ IDEA (Java 11 or newer) and run **Tasks → application → run** in the Gradle tool window to start RuneLite with the plugin. `gradlew test` runs the tests. Every upload to GitHub is built and tested automatically: a green tick next to a commit means it builds and passes its tests. To correct a drop rate, see *Checking again* in [docs/RATES.md](docs/RATES.md).
 
 ## Licence
 
