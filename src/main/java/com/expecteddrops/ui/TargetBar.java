@@ -16,12 +16,23 @@ class TargetBar extends JComponent
 	private double fill;
 	private double marker = -1;
 	private Color color = Color.GRAY;
+	private boolean quiet;
 
 	TargetBar()
 	{
 		setPreferredSize(new Dimension(100, 10));
 		setMaximumSize(new Dimension(Integer.MAX_VALUE, 10));
 		setOpaque(false);
+	}
+
+	/** A quiet bar (nothing expected yet) has a slimmer track and a grey tick instead of a white one. */
+	void setQuiet(boolean quiet)
+	{
+		this.quiet = quiet;
+		int height = quiet ? 8 : 10;
+		setPreferredSize(new Dimension(100, height));
+		setMaximumSize(new Dimension(Integer.MAX_VALUE, height));
+		repaint();
 	}
 
 	/** Fractions of the bar width; marker below 0 hides the line. */
@@ -46,7 +57,7 @@ class TargetBar extends JComponent
 		if (marker >= 0)
 		{
 			int x = (int) Math.round(Math.min(1, marker) * (w - 2));
-			g.setColor(Color.WHITE);
+			g.setColor(quiet ? Theme.QUIET_MARK : Color.WHITE);
 			g.setStroke(new BasicStroke(2));
 			g.drawLine(x + 1, 0, x + 1, h);
 		}

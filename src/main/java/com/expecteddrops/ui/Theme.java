@@ -16,7 +16,8 @@ import net.runelite.client.ui.ColorScheme;
  * <ul>
  * <li>{@link #TEXT}: names, labels and headings</li>
  * <li>{@link #TEXT_MUTED}: secondary text, and the lowest grey any text may use</li>
- * <li>{@link #ACCENT}: selected or clickable things (tabs, the trip card, the sync line)</li>
+ * <li>{@link #ACCENT}: selection, focus and hover (tab underlines, the focus ring, link hovers). Never
+ * for notices or decoration: orange is also the "dry" end of the luck colours</li>
  * </ul>
  */
 public final class Theme
@@ -34,6 +35,8 @@ public final class Theme
 	public static final Color OUTLINE = new Color(70, 70, 70);
 	/** The thin line between label / value rows in a tooltip. */
 	public static final Color DIVIDER = new Color(60, 60, 60);
+	/** The expected-by-now tick on a quiet item row (nothing expected yet): visible, but not white. */
+	public static final Color QUIET_MARK = new Color(150, 150, 150);
 	/** Bars that show progress, not luck: no verdict colours on them. */
 	public static final Color PROGRESS = new Color(90, 106, 122);
 	/** Raid "purples": the game's own colour for raid uniques. */
@@ -130,6 +133,12 @@ public final class Theme
 				return 15;
 			}
 		};
+	}
+
+	/** Item and secondary numbers in lists: the regular weight, so names stay the bold ones. */
+	static java.awt.Font numberFont()
+	{
+		return net.runelite.client.ui.FontManager.getRunescapeFont();
 	}
 
 	/** The font of the verdicts at the top ("On rate") and of the names and numbers in the lists. */

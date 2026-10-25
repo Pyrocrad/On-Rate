@@ -32,7 +32,7 @@
 ## Getting started
 
 1. Install **On Rate** from the Plugin Hub. The panel opens with a short welcome guide.
-2. **Open your collection log** and click the pages of the bosses you do. That loads your kill count and past drops. The orange line at the top of the panel lists the bosses you killed that aren't loaded yet. Until a boss is loaded, its page says *Not synced* instead of a verdict.
+2. **Open your collection log** and click the pages of the bosses you do. That loads your kill count and past drops. The line at the top of the panel lists the bosses you killed that aren't loaded yet. Until a boss is loaded, its page says *Not synced* instead of a verdict.
 3. **Go kill something.** The panel follows your kills. Keep the Loot Tracker plugin on: On Rate reads new drops from it.
 4. **Check the settings:** change **Team bosses** if you solo Royal Titans or Yama (both count as duo by default). For another view (bars, a table, rings or a gauge), click **⇄** next to **ITEMS** in the panel.
 
@@ -50,7 +50,7 @@ Every part of the panel, every setting and every assumption is explained in [doc
 
 ## If something looks off
 
-- **A boss says *Not synced*:** open that boss's page in your collection log. The orange line at the top of the panel lists the bosses you killed that aren't loaded yet.
+- **A boss says *Not synced*:** open that boss's page in your collection log. The line at the top of the panel lists the bosses you killed that aren't loaded yet.
 - **A boss says *Too early* (from the next update):** less than half a unique is expected so far, and a few kills can't tell dry from lucky. It becomes a verdict as kills add up.
 - **Everything looks dry:** the rates are solo base rates without boosts (see *Before you start*). Raids from before you installed On Rate use an average purple chance, which you can change in the settings.
 - **Nex, Yama, Royal Titans or other team bosses look wrong:** check the **Team bosses** settings. Royal Titans and Yama count as duo by default.

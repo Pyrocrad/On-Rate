@@ -365,6 +365,31 @@ final class Texts
 	 */
 	static final double TOO_EARLY_BELOW = 0.5;
 
+	/**
+	 * A row with nothing to read yet: none got and under {@link #TOO_EARLY_BELOW} expected. Its verdict is
+	 * always "On rate" (see {@code DropMath.luck}), so lists draw it quietly without hiding anything
+	 * dry. Never "Any unique".
+	 */
+	static boolean isQuiet(com.expecteddrops.stats.RowStats r)
+	{
+		return r != null && !r.isAny() && r.getReceived() == 0 && r.getExpected() < TOO_EARLY_BELOW;
+	}
+
+	/** What a row says once you have every copy that counts: "have it", "have both", "have all 3". */
+	static String haveText(com.expecteddrops.stats.RowStats r)
+	{
+		switch (r.getCap())
+		{
+			case 0:
+			case 1:
+				return "have it";
+			case 2:
+				return "have both";
+			default:
+				return "have all " + r.getCap();
+		}
+	}
+
 	/** How far out a dry or lucky item must be to be worth a sentence: 8 in 10 players. */
 	static final double NOTABLE_SHARE = 0.80;
 	/** An item you don't have yet is worth a sentence once this many players would have it. */
