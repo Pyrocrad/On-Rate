@@ -1052,8 +1052,9 @@ public class ExpectedDropsPanel extends PluginPanel
 		verdictTiles.setLayout(new GridLayout(1, value == null ? 1 : 2, 4, 0));
 		String verdict = early ? "Too early" : DropMath.verdict(luck);
 		Tip uniquesTip = new Tip(String.format("Uniques \u00b7 %s", verdict))
-			.line(String.format("Got %,d %s, expected %s by now", any.getReceived(),
-				any.getReceived() == 1 ? what.substring(0, what.length() - 1) : what, formatExpected(any.getExpected())));
+			.row("Got", String.format("%,d %s", any.getReceived(),
+				any.getReceived() == 1 ? what.substring(0, what.length() - 1) : what))
+			.row("Expected by now", formatExpected(any.getExpected()));
 		if (early)
 		{
 			uniquesTip.line("Less than half a " + (what.equals("purples") ? "purple" : "unique")
@@ -1061,17 +1062,21 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		else
 		{
-			uniquesTip.line(capital(luckPercent(any.getShares(), any.getReceived())))
-				.line(sharesLine(any.getShares(), any.getReceived()));
+			uniquesTip.row("Compared", capital(luckPercent(any.getShares(), any.getReceived())))
+				.line(capital(sharesLine(any.getShares(), any.getReceived())), Theme.TEXT_MUTED);
 		}
+		// how the verdicts are drawn, as a small key
+		uniquesTip.row("Dry", "under 35% have as many or fewer")
+			.row("Very dry", "under 10%")
+			.row("Spooned", "under 35% have as many or more")
+			.row("Very spooned", "under 10%")
+			.row("In between", "A bit dry, On rate, A bit spooned");
 		uniquesTile.set(verdict,
 			early ? Theme.TEXT_MUTED : (bossPage ? Palette.verdict(luck) : luckColor(luck)).brighter(),
 			String.format("%,d / %s%s", any.getReceived(), formatExpected(any.getExpected()), estimateNote == null ? "" : " est."),
 			early ? "Too few " + (what.equals("purples") ? "raids" : "kills") : luckShort(any.getShares(), any.getReceived()),
 			uniquesTip
 				.note("Counts " + what + ", not their value: a twisted bow counts like a prayer scroll.")
-				.note("Dry: fewer than 35% of players have this many or fewer. Very dry: fewer than 10%. "
-					+ "Spooned is the same from the lucky side. In between: A bit dry, On rate, A bit spooned.")
 				.note(estimateNote)
 				.wide());
 		verdictTiles.add(uniquesTile);
@@ -2016,8 +2021,9 @@ public class ExpectedDropsPanel extends PluginPanel
 			return null;
 		}
 		lastValueTip = new Tip("GP value \u00b7 " + DropMath.verdict(luck))
-			.line("Got " + DropMath.formatGp(received) + ", expected " + DropMath.formatGp((long) expected))
-			.line("By value: " + luckPercent(luck) + " for your kill count")
+			.row("Got", DropMath.formatGp(received))
+			.row("Expected", DropMath.formatGp((long) expected))
+			.row("By value", capital(luckPercent(luck)) + " for your kill count")
 			.note("The Uniques tile counts how many you got; this one weighs them by price. "
 				+ "Pets, jars and other untradeables count as 0 GP.")
 			.wide();
@@ -2265,8 +2271,9 @@ public class ExpectedDropsPanel extends PluginPanel
 			return null;
 		}
 		return new Tip("GP value \u00b7 " + DropMath.verdict(luck))
-			.line("Got " + DropMath.formatGp(account.getReceivedValue()) + ", expected " + DropMath.formatGp(account.getExpectedValue()))
-			.line("By value: " + luckPercent(luck) + " for your kill count")
+			.row("Got", DropMath.formatGp(account.getReceivedValue()))
+			.row("Expected", DropMath.formatGp(account.getExpectedValue()))
+			.row("By value", capital(luckPercent(luck)) + " for your kill count")
 			.note("RuneLite's own price list. Pets, jars and other untradeables count as 0 GP.")
 			.wide();
 	}
@@ -2281,18 +2288,28 @@ public class ExpectedDropsPanel extends PluginPanel
 	private String accountTooltip(RowStats row, AccountStats account)
 	{
 		Tip tip = new Tip(row.isAny() ? "Whole account" : row.getShownLabel());
-		tip.line(row.isAny() ? account.getRows().size() + " bosses with kills"
-			: String.format("%,d %s", account.getKillCount(row.getLabel()), unitsOf(row.getLabel())));
-		tip.line(String.format("Got %d unique%s, expected %s", row.getReceived(), row.getReceived() == 1 ? "" : "s", formatExpected(row.getExpected())));
+		if (row.isAny())
+		{
+			tip.row("Bosses with kills", String.valueOf(account.getRows().size()));
+		}
+		else
+		{
+			tip.row(capital(unitsOf(row.getLabel())), String.format("%,d", account.getKillCount(row.getLabel())));
+		}
+		tip.row("Uniques", String.format("Got %d, expected %s", row.getReceived(), formatExpected(row.getExpected())));
 		double luck = row.getLuck();
 		if (!Double.isNaN(luck))
 		{
-			tip.line(DropMath.verdict(luck) + ": " + luckPercent(row.getShares(), row.getReceived()), luckColor(luck).brighter());
-			tip.line(capital(sharesLine(row.getShares(), row.getReceived())));
+			tip.row("Luck", DropMath.verdict(luck) + ": " + luckPercent(row.getShares(), row.getReceived()), luckColor(luck).brighter());
 		}
 		if (!row.isAny() && row.getDriestItem() != null)
 		{
-			tip.line(String.format("Driest right now: %s at %s the rate", row.getDriestItem(), formatMultiple(row.getDriestMultiple())));
+			tip.row("Driest right now", String.format("%s, %s the rate", row.getDriestItem(), formatMultiple(row.getDriestMultiple())));
+		}
+		if (!Double.isNaN(luck))
+		{
+			// the full split is a sentence: under the rows, in grey
+			tip.note(capital(sharesLine(row.getShares(), row.getReceived())));
 		}
 		return tip.wide();
 	}
@@ -3068,9 +3085,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		double perHour = trip.getKillsPerHour();
 		if (!Double.isNaN(perHour))
 		{
-			JLabel rate = smallLabel(String.format("%.1f %s per hour", perHour, units), Color.WHITE);
-			rate.setAlignmentX(LEFT_ALIGNMENT);
-			card.add(rate);
+			card.add(cardRow("Per hour", String.format("%.1f %s", perHour, units), Color.WHITE, null));
 		}
 		// this trip's own kills (a delve level 1 trip is worth nothing), else the boss's average
 		double tripValue = options.get().isGeValue() ? tracker.tripValue(priceOf) : Double.NaN;
@@ -3080,30 +3095,24 @@ public class ExpectedDropsPanel extends PluginPanel
 		// (only when prices are known: the boss's uniques are worth something on average)
 		if (!Double.isNaN(perHour) && (perKill > 0 || !Double.isNaN(tripValue) && uniqueValuePerKill(bossName) > 0))
 		{
-			JLabel worth = smallLabel(String.format("<html>Unique value: <font color='#ffffff'>~%s/h</font> expected</html>",
-				DropMath.formatGp(perKill * perHour)), ColorScheme.LIGHT_GRAY_COLOR);
-			worth.setToolTipText(String.format("<html><body style='width: 240px'>About %s per %s at this trip's speed. "
+			String worthTip = String.format("<html><body style='width: 240px'>About %s per %s at this trip's speed. "
 				+ "Only uniques count: bones, hides and other loot aren't included, so this isn't your full GP per hour. "
 				+ "Untradeables count as 0 GP.%s</body></html>",
-				DropMath.formatGp(perKill), units.substring(0, units.length() - 1), mainValueNote(bossName)));
-			worth.setAlignmentX(LEFT_ALIGNMENT);
-			card.add(worth);
+				DropMath.formatGp(perKill), units.substring(0, units.length() - 1), mainValueNote(bossName));
+			card.add(cardRow("Unique value", String.format("~%s/h expected", DropMath.formatGp(perKill * perHour)),
+				Color.WHITE, worthTip));
 		}
 		double luck = trip.getLuck();
 		if (!Double.isNaN(luck))
 		{
-			JLabel v = smallLabel(String.format("%s this trip (%s)", DropMath.verdict(luck), luckShort(trip.getShares(), trip.getReceived())),
-				luckColor(luck).brighter());
-			v.setToolTipText(capital(luckPercent(trip.getShares(), trip.getReceived())) + " for a trip like this");
-			v.setAlignmentX(LEFT_ALIGNMENT);
-			card.add(v);
+			card.add(cardRow("This trip", String.format("%s (%s)", DropMath.verdict(luck), luckShort(trip.getShares(), trip.getReceived())),
+				luckColor(luck).brighter(), capital(luckPercent(trip.getShares(), trip.getReceived())) + " for a trip like this"));
 		}
 		if (!trip.getDrops().isEmpty())
 		{
-			JLabel d = smallLabel("<html><body style='width: 180px'>Uniques: " + String.join(", ", trip.getDrops())
-				+ "</body></html>", Color.WHITE);
-			d.setAlignmentX(LEFT_ALIGNMENT);
-			card.add(d);
+			// a long list wraps under itself, right-aligned like the other values
+			card.add(cardRow("Uniques", "<html><body style='width: " + (Theme.TEXT_WIDTH - 50) + "px'><div align='right'>"
+				+ html(String.join(", ", trip.getDrops())) + "</div></body></html>", Color.WHITE, null));
 		}
 		card.add(spacer(Theme.S));
 		JButton reset = new JButton("Start a new trip");
@@ -3232,6 +3241,32 @@ public class ExpectedDropsPanel extends PluginPanel
 			value += price * stats.getRows().get(i).getExpected() / stats.getKillCount();
 		}
 		return value;
+	}
+
+	/**
+	 * A grey label on the left and its value on the right, with a thin line above: the same rows
+	 * as in the hovers ({@link Tip#row}). For the trip card.
+	 */
+	private static JPanel cardRow(String label, String value, Color valueColor, String tip)
+	{
+		JPanel row = new JPanel(new BorderLayout(Theme.M, 0));
+		row.setOpaque(false);
+		row.setAlignmentX(LEFT_ALIGNMENT);
+		row.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createMatteBorder(1, 0, 0, 0, Theme.DIVIDER), new EmptyBorder(Theme.HAIR, 0, Theme.HAIR, 0)));
+		JLabel name = smallLabel(label, Theme.TEXT_MUTED);
+		name.setVerticalAlignment(SwingConstants.TOP);
+		row.add(name, BorderLayout.WEST);
+		JLabel shown = smallLabel(value, valueColor);
+		shown.setHorizontalAlignment(SwingConstants.RIGHT);
+		shown.setVerticalAlignment(SwingConstants.TOP);
+		row.add(shown, BorderLayout.CENTER);
+		for (javax.swing.JComponent c : new javax.swing.JComponent[]{row, name, shown})
+		{
+			c.setToolTipText(tip);
+		}
+		row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height));
+		return row;
 	}
 
 	private static JPanel tile(String title, String value)
@@ -3514,68 +3549,38 @@ public class ExpectedDropsPanel extends PluginPanel
 	private static String tooltip(RowStats row, BossStats stats, String unit)
 	{
 		Tip tip = new Tip(row.isAny() ? "Any unique" : row.getLabel());
+		tip.line(stats.getBoss().getName(), Theme.TEXT_MUTED);
 		DropDefinition drop = row.isAny() ? null : findDrop(stats.getBoss(), row.getLabel());
-		if (drop != null && drop.hasLevelRates() && stats.getBoss().getWaves() > 0)
-		{
-			// a run counts every wave up to the claim: the chance by the wave you claim at
-			StringBuilder rates = new StringBuilder("Chance over a run, by the wave you claim at:");
-			boolean first = true;
-			for (int wave = 1; wave <= stats.getBoss().getWaves(); wave++)
-			{
-				double cumulative = com.expecteddrops.tracking.Tracker.waveRate(drop, wave);
-				if (cumulative > 0)
-				{
-					rates.append(first ? " " : ", ").append(wave).append(": ").append(DropMath.formatRate(cumulative));
-					first = false;
-				}
-			}
-			tip.line(rates.toString());
-		}
-		else if (drop != null && drop.hasLevelRates())
-		{
-			StringBuilder rates = new StringBuilder("Rate per delve level:");
-			boolean first = true;
-			for (int level = 1; level <= BossDefinition.DELVE_LEVELS; level++)
-			{
-				String rate = drop.getLevelRate(level);
-				if (rate != null)
-				{
-					rates.append(first ? " " : ", ").append(BossDefinition.delveLevelLabel(level)).append(": ")
-						.append(DropMath.formatRate(DropMath.parseRate(rate)));
-					first = false;
-				}
-			}
-			tip.line(rates.toString());
-		}
-		else if (drop != null && drop.hasPartRates())
-		{
-			StringBuilder rates = new StringBuilder();
-			for (java.util.Map.Entry<String, Integer> e : stats.getPartCounts().entrySet())
-			{
-				String rate = drop.getPartRate(e.getKey());
-				if (rate != null)
-				{
-					rates.append(rates.length() > 0 ? ", " : "").append(e.getKey()).append(" ")
-						.append(DropMath.formatRate(DropMath.parseRate(rate)));
-				}
-			}
-			tip.line("Rate per " + unit + ": " + rates);
-		}
-		else if (!row.isAny())
-		{
-			tip.line(DropMath.formatRate(row.getRate()) + " per " + unit);
-		}
-		tip.line(String.format("Got %d, expected %s \u00b7 %s chance of at least one by now", row.getReceived(),
-			formatExpected(row.getExpected()), formatPercent(row.getChanceAtLeastOne())));
+		int kills = stats.getKillCount();
+		String units = kills == 1 ? unit : unit + "s";
+
+		// the verdict first, then the split of players it comes from
 		double luck = row.getLuck();
 		if (!Double.isNaN(luck))
 		{
-			tip.line(String.format("%s at %,d %ss: %s", DropMath.verdict(luck), stats.getKillCount(), unit,
-				luckPercent(row.getShares(), row.getReceived())), luckColor(luck).brighter());
-			tip.line(capital(sharesLine(row.getShares(), row.getReceived())));
+			tip.row("Your result", "<b>" + DropMath.verdict(luck) + "</b>", luckColor(luck).brighter());
+			String compared = luckPercent(row.getShares(), row.getReceived());
+			// with none, "64% have none" is already in the line below
+			if (!compared.endsWith("have none"))
+			{
+				tip.row("Compared", capital(compared));
+			}
+			tip.line(capital(sharesLine(row.getShares(), row.getReceived())), Theme.TEXT_MUTED);
 		}
-		tip.line(rateMultipleLine(row));
-		if (!row.isAny() && row.getRate() > 0 && (drop == null || (!drop.hasLevelRates() && !drop.hasPartRates())))
+
+		boolean oneRate = !row.isAny() && (drop == null || (!drop.hasLevelRates() && !drop.hasPartRates()));
+		if (oneRate)
+		{
+			tip.row("Drop rate", DropMath.formatRate(row.getRate()) + " per " + unit);
+		}
+		tip.row("Got / expected", String.format("%d / %s", row.getReceived(), formatExpected(row.getExpected())));
+		tip.row("Chance of one by now", formatPercent(row.getChanceAtLeastOne()));
+		String multiple = rateMultiple(row);
+		if (multiple != null)
+		{
+			tip.row(row.isAny() ? "Without a unique" : "Without one", String.format("%,d %s, %s", kills, units, multiple));
+		}
+		if (oneRate && row.getRate() > 0)
 		{
 			long half = DropMath.killsForChance(row.getRate(), 0.5);
 			long most = DropMath.killsForChance(row.getRate(), 0.9);
@@ -3586,8 +3591,48 @@ public class ExpectedDropsPanel extends PluginPanel
 				half = Math.min(half, sure);
 				most = Math.min(most, sure);
 			}
-			tip.line(String.format("Starting from none, 50%% / 90%% chance of one takes %,d / %,d %ss", half, most, unit));
+			tip.row("From none, 50% / 90% takes", String.format("%,d / %,d %ss", half, most, unit));
 		}
+
+		// rates that depend on the run: one row each, under a small heading
+		if (drop != null && drop.hasLevelRates() && stats.getBoss().getWaves() > 0)
+		{
+			// a run counts every wave up to the claim: the chance by the wave you claim at
+			tip.line("Chance over a run, by the wave you claim at", Theme.TEXT_MUTED);
+			for (int wave = 1; wave <= stats.getBoss().getWaves(); wave++)
+			{
+				double cumulative = com.expecteddrops.tracking.Tracker.waveRate(drop, wave);
+				if (cumulative > 0)
+				{
+					tip.row("Wave " + wave, DropMath.formatRate(cumulative));
+				}
+			}
+		}
+		else if (drop != null && drop.hasLevelRates())
+		{
+			tip.line("Rate per delve level", Theme.TEXT_MUTED);
+			for (int level = 1; level <= BossDefinition.DELVE_LEVELS; level++)
+			{
+				String rate = drop.getLevelRate(level);
+				if (rate != null)
+				{
+					tip.row(BossDefinition.delveLevelLabel(level), DropMath.formatRate(DropMath.parseRate(rate)));
+				}
+			}
+		}
+		else if (drop != null && drop.hasPartRates())
+		{
+			tip.line("Rate per " + unit, Theme.TEXT_MUTED);
+			for (java.util.Map.Entry<String, Integer> e : stats.getPartCounts().entrySet())
+			{
+				String rate = drop.getPartRate(e.getKey());
+				if (rate != null)
+				{
+					tip.row(e.getKey(), DropMath.formatRate(DropMath.parseRate(rate)));
+				}
+			}
+		}
+
 		tip.note(streakNote(row, unit));
 		if (row.getFastest() != null)
 		{
@@ -3600,6 +3645,11 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			tip.note("Also drops from " + drop.getAlsoFrom() + ", and the collection log counts those too. "
 				+ "Got yours there? Right-click to leave it out.");
+		}
+		if (multiple != null)
+		{
+			// a dry spell says nothing about the next one
+			tip.note(String.format("Each %s is its own roll. Going without one does not make the next more likely.", unit));
 		}
 		return tip.wide();
 	}
