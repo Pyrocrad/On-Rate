@@ -4,11 +4,15 @@
 
 <p>
 <img src="docs/chambers-of-xeric.png" width="239" alt="Boss page: Chambers of Xeric, with the Uniques and GP value verdicts and every item against what you should have by now">
-<img src="docs/account-bosses.png" width="229" alt="Account overview: your whole account's verdicts, luck over time and every boss sorted driest first">
-<img src="docs/account-items.png" width="240" alt="Account overview, Items tab: your driest items across every boss">
+<img src="docs/account-bosses.png" width="225" alt="Account overview: your whole account's verdicts, luck over time and every boss sorted driest first">
+<img src="docs/account-items.png" width="238" alt="Account overview, Items tab: your driest items across every boss, each with its verdict and got / expected">
 </p>
 
-**How to read it:** on each item, the bar is what you got and the white line is what you should have by now. Figures like "luckier than 83% of players" come from the drop-rate maths for a typical player at your kill count, not from other players' accounts: On Rate has no player data.
+<p>
+<img src="docs/item-hover.png" width="346" alt="Hovering an item: your result, how it compares with other players, the drop rate, got / expected, your chance by now and your dry streak">
+</p>
+
+**How to read it:** on each item, the bar is what you got and the white line is what you should have by now. On the Items tab each row also says *got / expected* (for example `0 / 2.60`): what you have against the average for a typical player at your kill count. That is an average, not drops you were owed. Figures like "luckier than 83% of players" come from the drop-rate maths for a typical player at your kill count, not from other players' accounts: On Rate has no player data.
 
 > Built on the idea of the [Delve Calculator](https://github.com/Speaax/Delve-calculator) by Speaax, which does this for Doom of Mokhaiotl. If you mainly do Doom, install it too. See [Credits](#credits).
 
@@ -22,7 +26,7 @@
 
 - **Over 50 bosses and raids** from the Bosses and Raids tabs of the collection log, including Doom of Mokhaiotl per delve level (Fortis Colosseum, Tempoross and Wintertodt arrive with the next update; a few things are left out: see *Not covered* below).
 - **Two verdicts per boss**, from *Very dry* to *Very spooned*: how many uniques you got, and what they're worth in GP. Plus how common your result is among players at the same kill count, worked out from the drop rates.
-- **Account overview:** all your bosses added up, your driest and luckiest items and pets, and what you killed and got today and this week.
+- **Account overview:** all your bosses added up, up to 15 of your driest and 15 of your luckiest items, each with got / expected, your pets, and what you killed and got today and this week.
 - **Hover any item** for its drop rate, your dry streak, how far past the drop rate you are and how many players at your kill count would have fewer or more (worked out from the drop rates).
 - **History** per boss: the kills On Rate saw and what they dropped.
 - **Uses your raid points** for each raid's purple chance, and **counts your team** at Nex, Yama, the Hueycoatl, Corp and Zalcano.

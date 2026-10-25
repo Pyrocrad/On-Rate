@@ -1324,7 +1324,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			? "Open your collection log and click the pages of the bosses you do, or go kill one. "
 			+ "Your account shows up here."
 			: "Every boss you have kills at, added up. Click one to open it.<br><br>"
-			+ "<b>Items</b>: your " + TOP_ITEMS + " driest or luckiest items, and your pets. <b>Recent</b>: your latest uniques.<br><br>"
+			+ "<b>Items</b>: up to " + TOP_ITEMS + " of your driest or luckiest items, and your pets. <b>Recent</b>: your latest uniques.<br><br>"
 			+ "GE value uses RuneLite's prices. Pets, jars and other untradeables count as 0 GP, so a twisted bow outweighs many cheap drops.<br><br>"
 			+ "Items several bosses drop (dragon pickaxe, godsword shards, Virtus, onyx...) are on each boss's page. "
 			+ "They count in the totals once On Rate knows every kill count.<br><br>"
@@ -1974,7 +1974,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		label.setBorder(BorderFactory.createCompoundBorder(
 			BorderFactory.createMatteBorder(0, 0, 2, 0, selected ? Theme.ACCENT : ColorScheme.DARK_GRAY_COLOR),
 			new EmptyBorder(Theme.HAIR, Theme.S, Theme.S, Theme.S)));
-		label.setToolTipText(tab == TAB_ITEMS ? "Your " + TOP_ITEMS + " driest and " + TOP_ITEMS + " luckiest items across every boss, and your pets"
+		label.setToolTipText(tab == TAB_ITEMS ? "Up to " + TOP_ITEMS + " of your driest and " + TOP_ITEMS + " of your luckiest items across every boss, and your pets"
 			: tab == TAB_RECENT ? "Your latest uniques across every boss" : "Every boss you have kills at");
 		if (!selected)
 		{
