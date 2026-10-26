@@ -19,6 +19,7 @@ Pick a boss from the dropdown, or let the panel follow your kills. To find a bos
   - **Raids:** every raid, with its mode, your points and that raid's purple chance (or the team size and deaths for Theatre of Blood), and the purples in it. Under it: your average purple chance over the raids with points.
   - **Nex, Yama, the Hueycoatl, Corp and Zalcano:** every kill with the team size On Rate counted and your share.
   - **Royal Titans:** every kill with the titan you looted. **Doom of Mokhaiotl:** every delve with its level.
+  - **Remove from History:** right-click a unique here, or in the account's Recent tab, and choose *Remove from History* to take out that one entry (it asks first), for example a unique saved with the wrong date or boss. Only that entry goes from History, Recent and Last unique: your unique counts, kill count, expected and dry streak stay as they are, and the kill itself stays in History. Today and Last 7 days keep counting it until that day is more than two weeks old, because On Rate doesn't save which day it counted a unique on. A kill line with several uniques lets you pick which one.
 
 ### Account overview
 

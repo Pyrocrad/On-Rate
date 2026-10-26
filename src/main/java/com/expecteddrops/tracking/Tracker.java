@@ -678,6 +678,56 @@ public class Tracker
 		return all.size() > limit ? new ArrayList<>(all.subList(0, limit)) : all;
 	}
 
+	/**
+	 * Removes one unique from History: exactly this saved drop of this kill, as picked in Recent
+	 * or History (by the entries themselves, so two copies of the same item stay apart). Only
+	 * what is read from History changes: History, Recent and Last unique. The received count,
+	 * kill count, expected and dry streak stay as they are, and the kill itself stays in History.
+	 * Today and Last 7 days keep their counts: the day a unique was counted on isn't saved (it
+	 * can differ from its kill's day), so a removed unique stays in them until that day expires.
+	 * Returns false when the entry isn't there any more (trimmed, or another account loaded since
+	 * it was shown).
+	 */
+	public synchronized boolean removeFromHistory(String bossName, KillEntry kill, KillEntry.DropEntry drop)
+	{
+		BossDefinition boss = catalog.byName(bossName);
+		BossProgress p = state.peek(bossName);
+		if (boss == null || p == null || kill == null || drop == null || kill.drops == null)
+		{
+			return false;
+		}
+		boolean listed = false;
+		for (KillEntry k : p.kills)
+		{
+			if (k == kill)
+			{
+				listed = true;
+				break;
+			}
+		}
+		boolean removed = false;
+		for (java.util.Iterator<KillEntry.DropEntry> it = kill.drops.iterator(); listed && it.hasNext(); )
+		{
+			if (it.next() == drop)
+			{
+				it.remove();
+				removed = true;
+				break;
+			}
+		}
+		if (!removed)
+		{
+			return false;
+		}
+		if (kill.drops.isEmpty())
+		{
+			// saved like a kill that never had a unique
+			kill.drops = null;
+		}
+		killsChanged.add(bossName);
+		return true;
+	}
+
 	/** Group bosses: how many kills On Rate saw per team size. Empty for other bosses. */
 	public synchronized Map<Integer, Integer> teamKills(String bossName)
 	{

@@ -2373,4 +2373,246 @@ public class TrackerTest
 			assertTrue(!"Vorkath".equals(d.getBoss()) || d.getKills() == 0);
 		}
 	}
+
+	// ---------------------------------------------------------------- Remove from History
+
+	private static List<KillEntry> historyJson(String json)
+	{
+		return new Gson().fromJson(json, new com.google.gson.reflect.TypeToken<List<KillEntry>>()
+		{
+		}.getType());
+	}
+
+	private static int uniquesOn(List<BossDays> days, String boss)
+	{
+		for (BossDays d : days)
+		{
+			if (boss == null ? d.getBoss() == null : boss.equals(d.getBoss()))
+			{
+				return d.getUniques();
+			}
+		}
+		return 0;
+	}
+
+	/** The saved uniques of a boss, newest first, as History holds them: {kill, drop}. */
+	private List<Object[]> savedUniques(String boss)
+	{
+		List<Object[]> list = new ArrayList<>();
+		for (HistoryRow h : tracker.history(boss))
+		{
+			for (KillEntry.DropEntry d : h.getKill().getDrops())
+			{
+				list.add(new Object[]{h.getKill(), d});
+			}
+		}
+		return list;
+	}
+
+	@Test
+	public void removeFromHistoryRemovesOnlyThatEntry()
+	{
+		Map<String, Integer> page = new LinkedHashMap<>();
+		page.put("Steel ring", 1);
+		tracker.onClogPage("Deranged Archaeologist", Collections.singletonList("Deranged Archaeologist kills: 40"), page);
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>10</col>.", now);
+		tracker.onLoot("Vorkath", 1, Collections.singletonList(new Tracker.LootItem("Vorkath's head", 1)), now);
+		tracker.onChatMessage("Your Deranged Archaeologist kill count is: <col=ff0000>41</col>.", now + 60_000);
+		tracker.onLoot("Deranged archaeologist", 1, Collections.singletonList(new Tracker.LootItem("Steel ring", 1)), now + 60_000);
+		for (int kc = 42; kc <= 44; kc++)
+		{
+			tracker.onChatMessage("Your Deranged Archaeologist kill count is: <col=ff0000>" + kc + "</col>.", now + 60_000 + kc);
+		}
+		tracker.onChatMessage("Your Deranged Archaeologist kill count is: <col=ff0000>45</col>.", now + 120_000);
+		tracker.onLoot("Deranged archaeologist", 1, Collections.singletonList(new Tracker.LootItem("Steel ring", 1)), now + 120_000);
+
+		RowStats ringBefore = row(tracker.stats("Deranged Archaeologist", RAIDS), "Steel ring");
+		RowStats anyBefore = tracker.stats("Deranged Archaeologist", RAIDS).getAnyRow();
+		int seenBefore = tracker.killsSeen("Deranged Archaeologist");
+		List<BossDays> daysBefore = tracker.recentDays(7, now + 120_000);
+		assertEquals(2, uniquesOn(daysBefore, "Deranged Archaeologist"));
+		assertEquals(3, uniquesOn(daysBefore, null));
+		assertEquals(now + 120_000, tracker.lastUnique().time);
+
+		// two Steel rings at the same boss: remove the newest one only
+		List<Object[]> rings = savedUniques("Deranged Archaeologist");
+		assertEquals(2, rings.size());
+		KillEntry kill45 = (KillEntry) rings.get(0)[0];
+		assertEquals(45, kill45.getKc());
+		tracker.changedKills();
+		assertTrue(tracker.removeFromHistory("Deranged Archaeologist", kill45, (KillEntry.DropEntry) rings.get(0)[1]));
+
+		// gone from History and Recent; the other ring and the other boss stay
+		List<Object[]> left = savedUniques("Deranged Archaeologist");
+		assertEquals(1, left.size());
+		assertEquals(41, ((KillEntry) left.get(0)[0]).getKc());
+		List<RecentDrop> recent = tracker.recentDrops(10);
+		assertEquals(2, recent.size());
+		assertEquals(41, recent.get(0).getKill().getKc());
+		assertEquals("Vorkath", recent.get(1).getBoss());
+		assertEquals(1, savedUniques("Vorkath").size());
+		// what's read from History follows: Last unique, and the names in the day's hover
+		assertEquals("Steel ring", tracker.lastUnique().item);
+		assertEquals(now + 60_000, tracker.lastUnique().time);
+		List<BossDays> daysAfter = tracker.recentDays(7, now + 120_000);
+		for (BossDays d : daysAfter)
+		{
+			if ("Deranged Archaeologist".equals(d.getBoss()))
+			{
+				assertEquals(Collections.singletonList("Steel ring"), d.getUniqueNames());
+			}
+		}
+		// the kill itself stays
+		assertEquals(seenBefore, tracker.killsSeen("Deranged Archaeologist"));
+		assertTrue(tracker.history("Deranged Archaeologist").get(0).getKill().getDrops().isEmpty());
+		assertEquals(45, tracker.history("Deranged Archaeologist").get(0).getKill().getKc());
+		// Today and Last 7 days keep their counts: kills, uniques and expected (the day a unique
+		// was counted on isn't saved, so a removal can't know which day to take it off)
+		assertEquals(2, uniquesOn(daysAfter, "Deranged Archaeologist"));
+		assertEquals(3, uniquesOn(daysAfter, null));
+		assertEquals(1, uniquesOn(daysAfter, "Vorkath"));
+		for (int i = 0; i < daysBefore.size(); i++)
+		{
+			assertEquals(daysBefore.get(i).getKills(), daysAfter.get(i).getKills());
+			assertEquals(daysBefore.get(i).getUniques(), daysAfter.get(i).getUniques());
+			assertEquals(daysBefore.get(i).getExpected(), daysAfter.get(i).getExpected(), 1e-12);
+		}
+		// what isn't built from History doesn't change: received, kill count, expected, dry streak
+		BossStats s = tracker.stats("Deranged Archaeologist", RAIDS);
+		RowStats ring = row(s, "Steel ring");
+		assertEquals(45, s.getKillCount());
+		assertEquals(ringBefore.getReceived(), ring.getReceived());
+		assertEquals(3, ring.getReceived());
+		assertEquals(ringBefore.getExpected(), ring.getExpected(), 1e-12);
+		assertEquals(ringBefore.getStreak(), ring.getStreak());
+		assertEquals(0, (int) ring.getStreak());
+		assertEquals(anyBefore.getReceived(), s.getAnyRow().getReceived());
+		assertEquals(anyBefore.getExpected(), s.getAnyRow().getExpected(), 1e-12);
+		// saved again with the next save
+		assertTrue(tracker.changedKills().containsKey("Deranged Archaeologist"));
+		// and it can't be removed twice
+		assertFalse(tracker.removeFromHistory("Deranged Archaeologist", kill45, (KillEntry.DropEntry) rings.get(0)[1]));
+	}
+
+	@Test
+	public void removeFromHistoryTellsIdenticalEntriesApart()
+	{
+		// a pre-fix collection log sync could put a second, identical ring in the same kill
+		tracker.setKills("Deranged Archaeologist", historyJson("[{\"k\":40,\"t\":" + now + ",\"d\":[{\"i\":\"Steel ring\"},{\"i\":\"Steel ring\"}]},"
+			+ "{\"k\":41,\"t\":" + (now + 1) + ",\"d\":[{\"i\":\"Steel ring\"}]}]"));
+		KillEntry kill40 = tracker.history("Deranged Archaeologist").get(1).getKill();
+		KillEntry kill41 = tracker.history("Deranged Archaeologist").get(0).getKill();
+		KillEntry.DropEntry first = kill40.getDrops().get(0);
+		KillEntry.DropEntry second = kill40.getDrops().get(1);
+		assertTrue(tracker.removeFromHistory("Deranged Archaeologist", kill40, second));
+		assertEquals(1, kill40.getDrops().size());
+		assertTrue(kill40.getDrops().get(0) == first);
+		assertEquals(1, kill41.getDrops().size());
+		assertEquals(2, tracker.recentDrops(10).size());
+		// the last unique of a kill: the kill stays, without uniques
+		assertTrue(tracker.removeFromHistory("Deranged Archaeologist", kill41, kill41.getDrops().get(0)));
+		assertEquals(2, tracker.killsSeen("Deranged Archaeologist"));
+		assertTrue(kill41.getDrops().isEmpty());
+		assertEquals(1, tracker.recentDrops(10).size());
+		assertTrue(tracker.recentDrops(10).get(0).getDrop() == first);
+	}
+
+	@Test
+	public void removeFromHistoryOnlyTakesTheShownEntry()
+	{
+		tracker.setKills("Deranged Archaeologist", historyJson("[{\"k\":40,\"t\":" + now + ",\"d\":[{\"i\":\"Steel ring\"}]}]"));
+		KillEntry kill = tracker.history("Deranged Archaeologist").get(0).getKill();
+		// an entry that looks the same but isn't the saved one is not removed
+		KillEntry lookalike = historyJson("[{\"k\":40,\"t\":" + now + ",\"d\":[{\"i\":\"Steel ring\"}]}]").get(0);
+		tracker.changedKills();
+		assertFalse(tracker.removeFromHistory("Deranged Archaeologist", lookalike, lookalike.getDrops().get(0)));
+		assertFalse(tracker.removeFromHistory("Deranged Archaeologist", kill, lookalike.getDrops().get(0)));
+		assertFalse(tracker.removeFromHistory("Vorkath", kill, kill.getDrops().get(0)));
+		assertFalse(tracker.removeFromHistory("Deranged Archaeologist", null, null));
+		assertEquals(1, tracker.recentDrops(10).size());
+		assertTrue(tracker.changedKills().isEmpty());
+		// another account loaded since it was shown: nothing happens
+		KillEntry.DropEntry ring = kill.getDrops().get(0);
+		tracker.setState(null);
+		assertFalse(tracker.removeFromHistory("Deranged Archaeologist", kill, ring));
+		assertEquals(1, kill.getDrops().size());
+	}
+
+	private static long atLocal(java.time.LocalDate day, int hour, int minute)
+	{
+		return day.atTime(hour, minute).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+	}
+
+	/** One boss's uniques on one day, as Today / Last 7 days add them up. */
+	private int uniquesOnDay(String boss, java.time.LocalDate day, java.time.LocalDate today)
+	{
+		long noon = atLocal(today, 12, 0);
+		int back = (int) (today.toEpochDay() - day.toEpochDay());
+		return uniquesOn(tracker.recentDays(back + 1, noon), boss) - (back == 0 ? 0 : uniquesOn(tracker.recentDays(back, noon), boss));
+	}
+
+	@Test
+	public void removingALegacyLogArtefactLeavesBothDaysCounts()
+	{
+		// an older version's log sync put a second ring in the kill from 3 days ago (its kill count
+		// hadn't changed) and counted it on the sync day
+		java.time.LocalDate today = java.time.LocalDate.of(2026, 10, 20);
+		java.time.LocalDate killDay = today.minusDays(3);
+		long kill = atLocal(killDay, 18, 0);
+		long sync = atLocal(today, 9, 0);
+		tracker.setState(new Gson().fromJson("{\"bosses\":{\"Deranged Archaeologist\":{\"received\":{\"steel ring\":2},"
+			+ "\"clogKc\":{\"deranged archaeologist kills\":40},\"clogSynced\":true,\"trackingStartKc\":39,\"lastDropKc\":{\"steel ring\":40}}},"
+			+ "\"days\":{\"" + killDay.toEpochDay() + "\":{\"Deranged Archaeologist\":{\"k\":1,\"u\":1,\"e\":0.02,\"f\":" + kill + "}},"
+			+ "\"" + today.toEpochDay() + "\":{\"Deranged Archaeologist\":{\"k\":0,\"u\":1,\"e\":0,\"f\":" + sync + "}}}}", TrackerState.class));
+		tracker.setKills("Deranged Archaeologist", historyJson("[{\"k\":40,\"t\":" + kill
+			+ ",\"d\":[{\"i\":\"Steel ring\",\"s\":39,\"f\":true},{\"i\":\"Steel ring\"}]}]"));
+		assertEquals(1, uniquesOnDay("Deranged Archaeologist", killDay, today));
+		assertEquals(1, uniquesOnDay("Deranged Archaeologist", today, today));
+		RowStats before = row(tracker.stats("Deranged Archaeologist", RAIDS), "Steel ring");
+
+		KillEntry k = tracker.history("Deranged Archaeologist").get(0).getKill();
+		KillEntry.DropEntry genuine = k.getDrops().get(0);
+		assertTrue(tracker.removeFromHistory("Deranged Archaeologist", k, k.getDrops().get(1)));
+
+		// the genuine ring's day isn't touched, and neither is the sync day (it keeps the artefact
+		// until it expires)
+		assertEquals(1, uniquesOnDay("Deranged Archaeologist", killDay, today));
+		assertEquals(1, uniquesOnDay("Deranged Archaeologist", today, today));
+		// the genuine ring and the counts stay
+		assertEquals(1, k.getDrops().size());
+		assertTrue(k.getDrops().get(0) == genuine);
+		assertTrue(genuine.isFirst());
+		RowStats after = row(tracker.stats("Deranged Archaeologist", RAIDS), "Steel ring");
+		assertEquals(2, after.getReceived());
+		assertEquals(before.getReceived(), after.getReceived());
+		assertEquals(before.getExpected(), after.getExpected(), 1e-12);
+		assertEquals(before.getStreak(), after.getStreak());
+		assertEquals(40, tracker.stats("Deranged Archaeologist", RAIDS).getKillCount());
+	}
+
+	@Test
+	public void removingBodyguardLootAfterMidnightLeavesTheDaysCounts()
+	{
+		// the general's kill before midnight; a bodyguard drops a chestplate after it, which goes
+		// with that kill in History but is counted on the new day
+		java.time.LocalDate today = java.time.LocalDate.of(2026, 10, 20);
+		java.time.LocalDate yesterday = today.minusDays(1);
+		tracker.onChatMessage("Your General Graardor kill count is: <col=ff0000>100</col>.", atLocal(yesterday, 23, 50));
+		tracker.onLoot("Sergeant Strongstack", 1, Collections.singletonList(new Tracker.LootItem("Bones", 1)), atLocal(today, 0, 5));
+		tracker.onLoot("Sergeant Steelwill", 1, Collections.singletonList(new Tracker.LootItem("Bandos chestplate", 1)), atLocal(today, 0, 6));
+		KillEntry k = tracker.history("General Graardor").get(0).getKill();
+		assertEquals(100, k.getKc());
+		assertTrue(k.getTime() < atLocal(today, 0, 0));
+		assertEquals(0, uniquesOnDay("General Graardor", yesterday, today));
+		assertEquals(1, uniquesOnDay("General Graardor", today, today));
+		int received = tracker.stats("General Graardor", RAIDS).getAnyRow().getReceived();
+
+		assertTrue(tracker.removeFromHistory("General Graardor", k, k.getDrops().get(0)));
+
+		assertEquals(0, uniquesOnDay("General Graardor", yesterday, today));
+		assertEquals(1, uniquesOnDay("General Graardor", today, today));
+		assertTrue(tracker.recentDrops(10).isEmpty());
+		assertEquals(received, tracker.stats("General Graardor", RAIDS).getAnyRow().getReceived());
+		assertEquals(100, tracker.stats("General Graardor", RAIDS).getKillCount());
+	}
 }

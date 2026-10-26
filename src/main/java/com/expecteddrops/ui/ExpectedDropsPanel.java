@@ -1627,11 +1627,13 @@ public class ExpectedDropsPanel extends PluginPanel
 			text.add(second);
 			panel.add(text, BorderLayout.CENTER);
 			panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, panel.getPreferredSize().height));
+			// left click opens the boss; right click is the Remove from History menu
 			setTip(panel, new Tip(d.getName())
 				.row("Where", whereText(boss, r.getBoss(), r.getKill()))
 				.row("When", daysAgo(r.getKill().getTime(), now))
 				.row("Gap before it", gapText(d, unit))
-				.wide(), () -> showBoss(r.getBoss()));
+				.wide(), () -> showBoss(r.getBoss()), true);
+			withRemoveMenu(panel, r.getBoss(), r.getKill(), java.util.Collections.singletonList(d));
 			rowsPanel.add(spacer(Theme.HAIR));
 			rowsPanel.add(panel);
 		}
@@ -1756,10 +1758,11 @@ public class ExpectedDropsPanel extends PluginPanel
 						.row("When", daysAgo(k.getTime(), now))
 						.row("Gap before it", gapText(d, unit))
 						.wide();
-					rowsPanel.add(byPart
+					rowsPanel.add(withRemoveMenu(byPart
 						? historyTwoLines(String.format("%,d", k.getPartKc()), d.getName(), Color.WHITE,
 							k.getPart() + (after.isEmpty() ? "" : " \u00b7 " + after), multipleColor(d), tip)
-						: historyLine(first, d.getName(), after, Color.WHITE, multipleColor(d), tip));
+						: historyLine(first, d.getName(), after, Color.WHITE, multipleColor(d), tip),
+						boss.getName(), k, java.util.Collections.singletonList(d)));
 				}
 			}
 			else
@@ -1772,7 +1775,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				String tip = historyKillTip(boss, h, unit, now, loot.toString());
 				rowsPanel.add(loot.length() == 0
 					? historyLine(first, middle, "", ColorScheme.LIGHT_GRAY_COLOR, ColorScheme.LIGHT_GRAY_COLOR, tip)
-					: historyLootLine(first, middle, loot.toString(), tip));
+					: withRemoveMenu(historyLootLine(first, middle, loot.toString(), tip), boss.getName(), k, k.getDrops()));
 			}
 		}
 		if (dropsOnly && shown == 0)
@@ -2695,6 +2698,62 @@ public class ExpectedDropsPanel extends PluginPanel
 		return c;
 	}
 
+	/**
+	 * Adds the right-click "Remove from History" menu to a line of saved uniques: one item for a
+	 * line with one unique, or one per unique when a kill line lists several. It removes only
+	 * that saved entry, after asking.
+	 */
+	private <T extends java.awt.Component> T withRemoveMenu(T c, String bossName,
+		com.expecteddrops.tracking.KillEntry kill, List<com.expecteddrops.tracking.KillEntry.DropEntry> drops)
+	{
+		if (drops.isEmpty())
+		{
+			return c;
+		}
+		JPopupMenu menu = new JPopupMenu();
+		if (drops.size() == 1)
+		{
+			menu.add(removeItem("Remove from History", bossName, kill, drops.get(0)));
+		}
+		else
+		{
+			javax.swing.JMenu remove = new javax.swing.JMenu("Remove from History");
+			for (com.expecteddrops.tracking.KillEntry.DropEntry d : new ArrayList<>(drops))
+			{
+				remove.add(removeItem(d.getName(), bossName, kill, d));
+			}
+			menu.add(remove);
+		}
+		addPopup(c, menu);
+		return c;
+	}
+
+	private JMenuItem removeItem(String label, String bossName, com.expecteddrops.tracking.KillEntry kill,
+		com.expecteddrops.tracking.KillEntry.DropEntry drop)
+	{
+		JMenuItem item = new JMenuItem(label);
+		item.addActionListener(e ->
+		{
+			BossDefinition boss = tracker.getCatalog().byName(bossName);
+			int answer = JOptionPane.showConfirmDialog(this,
+				"Remove " + drop.getName() + " (" + whereText(boss, bossName, kill) + ", "
+					+ daysAgo(kill.getTime(), System.currentTimeMillis()) + ") from History?\n"
+					+ "Only this entry goes from History and Recent. Your unique counts, kill count, expected and dry streak stay as they are.",
+				"Remove from History", JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
+			if (answer != JOptionPane.OK_OPTION)
+			{
+				return;
+			}
+			if (tracker.removeFromHistory(bossName, kill, drop))
+			{
+				save.run();
+			}
+			// also when it was already gone (trimmed, or another account loaded): show what's there
+			refresh();
+		});
+		return item;
+	}
+
 	/** Shows the menu on a right-click anywhere on the component, its labels included. */
 	private static void addPopup(java.awt.Component c, JPopupMenu menu)
 	{
@@ -3273,13 +3332,25 @@ public class ExpectedDropsPanel extends PluginPanel
 	/** Tooltip (and click) on a row and everything in it. */
 	private static void setTip(JPanel panel, String tip, Runnable onClick)
 	{
+		setTip(panel, tip, onClick, false);
+	}
+
+	/**
+	 * {@link #setTip(JPanel, String, Runnable)}, where only a left click runs {@code onClick}
+	 * when {@code leftOnly}: for rows whose right click opens a menu.
+	 */
+	private static void setTip(JPanel panel, String tip, Runnable onClick, boolean leftOnly)
+	{
 		Color normal = panel.getBackground();
 		MouseAdapter click = onClick == null ? null : new MouseAdapter()
 		{
 			@Override
 			public void mouseClicked(MouseEvent e)
 			{
-				onClick.run();
+				if (!leftOnly || javax.swing.SwingUtilities.isLeftMouseButton(e))
+				{
+					onClick.run();
+				}
 			}
 
 			// a clickable row lights up under the mouse, so "click to open" shows without a tooltip

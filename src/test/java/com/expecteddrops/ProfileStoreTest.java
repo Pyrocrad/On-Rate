@@ -297,4 +297,120 @@ public class ProfileStoreTest
 		BossStats stats = reload("fresh").stats("Vorkath", RAIDS);
 		assertTrue(stats == null || stats.getKillCount() == 0);
 	}
+
+	@Test
+	public void entryRemovedFromHistoryStaysRemovedAfterReload()
+	{
+		store.load("main", tracker);
+		vorkathKill(41, true);
+		vorkathKill(42, true);
+		vorkathKill(43, false);
+		tracker.onChatMessage("Your Zulrah kill count is: <col=ff0000>500</col>.", NOW);
+		tracker.onLoot("Zulrah", 1, Collections.singletonList(new Tracker.LootItem("Tanzanite fang", 1)), NOW);
+		store.save(tracker);
+		int received = tracker.stats("Vorkath", RAIDS).getAnyRow().getReceived();
+
+		// remove the head of kill 41 (two heads look the same apart from their kill)
+		com.expecteddrops.tracking.KillEntry kill41 = null;
+		for (com.expecteddrops.tracking.HistoryRow h : tracker.history("Vorkath"))
+		{
+			if (h.getKill().getKc() == 41)
+			{
+				kill41 = h.getKill();
+			}
+		}
+		assertNotNull(kill41);
+		assertTrue(tracker.removeFromHistory("Vorkath", kill41, kill41.getDrops().get(0)));
+		current.writes.clear();
+		store.save(tracker);
+		// only that boss's History is written again
+		assertTrue(current.writes.contains("kills.Vorkath"));
+		assertFalse(current.writes.contains("kills.Zulrah"));
+
+		Tracker loaded = reload("main again");
+		List<Integer> headKills = new ArrayList<>();
+		for (com.expecteddrops.tracking.HistoryRow h : loaded.history("Vorkath"))
+		{
+			if (!h.getKill().getDrops().isEmpty())
+			{
+				headKills.add(h.getKill().getKc());
+			}
+		}
+		assertEquals(Collections.singletonList(42), headKills);
+		// the kills stay, and so do the counts that aren't built from History
+		assertEquals(3, loaded.killsSeen("Vorkath"));
+		assertEquals(43, loaded.stats("Vorkath", RAIDS).getKillCount());
+		assertEquals(received, loaded.stats("Vorkath", RAIDS).getAnyRow().getReceived());
+		assertEquals(1, loaded.history("Zulrah").get(0).getKill().getDrops().size());
+		assertEquals(2, loaded.recentDrops(10).size());
+	}
+
+	private static List<Integer> headKills(Tracker t)
+	{
+		List<Integer> kcs = new ArrayList<>();
+		for (com.expecteddrops.tracking.HistoryRow h : t.history("Vorkath"))
+		{
+			if (!h.getKill().getDrops().isEmpty())
+			{
+				kcs.add(h.getKill().getKc());
+			}
+		}
+		return kcs;
+	}
+
+	@Test
+	public void removingFromHistoryOnlyTouchesTheLoadedAccount()
+	{
+		Settings a = new Settings();
+		Settings b = new Settings();
+		current = a;
+		store.load("A", tracker);
+		vorkathKill(41, true);
+		vorkathKill(42, true);
+		tracker.onChatMessage("Your Zulrah kill count is: <col=ff0000>500</col>.", NOW);
+		tracker.onLoot("Zulrah", 1, Collections.singletonList(new Tracker.LootItem("Tanzanite fang", 1)), NOW);
+		store.save(tracker);
+		// A's entry as the panel showed it
+		com.expecteddrops.tracking.KillEntry killA = tracker.history("Vorkath").get(1).getKill();
+		com.expecteddrops.tracking.KillEntry.DropEntry headA = killA.getDrops().get(0);
+		assertEquals(41, killA.getKc());
+
+		// the same tracker moves to B, which has its own Vorkath head
+		current = b;
+		assertTrue(store.load("B", tracker));
+		vorkathKill(7, true);
+		store.save(tracker);
+		Map<String, String> savedA = new HashMap<>(a.values);
+		Map<String, String> savedB = new HashMap<>(b.values);
+
+		// removing A's entry while B is loaded does nothing, and nothing is written
+		assertFalse(tracker.removeFromHistory("Vorkath", killA, headA));
+		b.writes.clear();
+		store.save(tracker);
+		assertFalse(b.writes.contains("kills.Vorkath"));
+		assertEquals(savedA, a.values);
+		assertEquals(savedB, b.values);
+
+		// removing B's own head changes only B's Vorkath History; the rest of B's data is the same
+		com.expecteddrops.tracking.KillEntry killB = tracker.history("Vorkath").get(0).getKill();
+		assertTrue(tracker.removeFromHistory("Vorkath", killB, killB.getDrops().get(0)));
+		store.save(tracker);
+		assertEquals(savedA, a.values);
+		assertTrue(!savedB.get("kills.Vorkath").equals(b.values.get("kills.Vorkath")));
+		assertEquals(savedB.get("progress"), b.values.get("progress"));
+		assertEquals(savedB.keySet(), b.values.keySet());
+
+		// A comes back exactly as it was saved
+		current = a;
+		Tracker backToA = reload("A again");
+		assertEquals(java.util.Arrays.asList(42, 41), headKills(backToA));
+		assertEquals(1, backToA.history("Zulrah").get(0).getKill().getDrops().size());
+		assertEquals(2, backToA.stats("Vorkath", RAIDS).getAnyRow().getReceived());
+		// and B keeps its removal, with its head still counted
+		current = b;
+		Tracker backToB = reload("B again");
+		assertTrue(headKills(backToB).isEmpty());
+		assertEquals(1, backToB.stats("Vorkath", RAIDS).getAnyRow().getReceived());
+		assertEquals(7, backToB.stats("Vorkath", RAIDS).getKillCount());
+	}
 }
