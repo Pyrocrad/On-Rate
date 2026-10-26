@@ -183,11 +183,11 @@ final class Texts
 		if (!row.isStreakExact())
 		{
 			// only a minimum is known: the last one came before On Rate
-			return "Dry streak: at least " + kills + (multiple ? String.format(" (%s the rate or more)", formatMultiple(m)) : "")
+			return "Dry streak: at least " + kills + (multiple ? String.format(" (%s the drop rate or more)", formatMultiple(m)) : "")
 				+ ". Your last one came before On Rate started tracking.";
 		}
 		return String.format("Dry streak: %s %s", kills, row.isAny() ? "since your last unique" : "since your last one")
-			+ (multiple ? String.format(" (%s the rate)", formatMultiple(m)) : "") + ".";
+			+ (multiple ? String.format(" (%s the drop rate)", formatMultiple(m)) : "") + ".";
 	}
 
 	/** Two-column table of completions per delve level, like the Doom plugin's header. */
@@ -363,7 +363,7 @@ final class Texts
 	 * Below this many expected uniques a boss page says "Too early" instead of a verdict: a
 	 * handful of kills can't tell dry from lucky.
 	 */
-	static final double TOO_EARLY_BELOW = 0.5;
+	static final double TOO_EARLY_BELOW = com.expecteddrops.stats.DropMath.TOO_EARLY_BELOW;
 
 	/**
 	 * A row with nothing to read yet: none got and under {@link #TOO_EARLY_BELOW} expected. Its verdict is

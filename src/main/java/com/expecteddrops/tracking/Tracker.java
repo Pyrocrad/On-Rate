@@ -63,7 +63,7 @@ public class Tracker
 		}
 	}
 
-	private static final int[] MILESTONES = {1, 2, 3, 5, 10};
+	private static final int[] MILESTONES = {2, 3, 5, 10};
 	/** A kill count jump bigger than this (a sync, a first message) doesn't announce milestones. */
 	private static final int MAX_QUIET_JUMP = 5;
 
@@ -1529,11 +1529,11 @@ public class Tracker
 		if (previous != null && kc > previous)
 		{
 			int kills = kc - previous;
-			text = String.format("%s after %,d %s (%s the rate).", name, kills, units(boss, kills), multiple(kills * rate));
+			text = String.format("%s after %,d %s (%s the drop rate).", name, kills, units(boss, kills), multiple(kills * rate));
 		}
 		else if (historyKnown && (before == null || before == 0) && kc > 0)
 		{
-			text = String.format("Your first %s, after %,d %s (%s the rate).", name, kc, units(boss, kc), multiple(kc * rate));
+			text = String.format("Your first %s, after %,d %s (%s the drop rate).", name, kc, units(boss, kc), multiple(kc * rate));
 		}
 		else if (progress.trackingStartKc != null && kc > progress.trackingStartKc)
 		{
@@ -1614,7 +1614,7 @@ public class Tracker
 	}
 
 	/**
-	 * After a kill: announce items that just passed 1x, 2x, 3x, 5x or 10x the drop rate
+	 * After a kill: announce items that just passed 2x, 3x, 5x or 10x the drop rate
 	 * without dropping. Several at once become one message. A big jump in kill count
 	 * (first sync, first message after installing) only catches up quietly.
 	 */

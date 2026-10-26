@@ -9,6 +9,7 @@ Updates come through the Plugin Hub. Each heading is the date of that update; **
 - **Clearer verdicts:** boss pages with less than half a unique expected say "Too early", and the middle of the scale has three words (A bit dry, On rate, A bit spooned).
 - **More careful counting:** pets, Zalcano and items several bosses drop are counted more accurately, and unreadable saved data is kept instead of overwritten.
 - **Shorter welcome guide:** the guide opens with the intro, three steps, how many collection log pages are loaded (with the next one to open) and the settings button. The verdict key, what the numbers don't mean and the odd moments are folded under "How to read it".
+- **Calmer chat and clearer settings:** dry milestone messages start at 2x the drop rate instead of 1x, chat settings have their own section, and the team settings are in a clearer order, with clearer names.
 
 *Changes that affect your numbers*
 - **Pets:** a pet you can only have once no longer counts as if you could get several. This changes the top verdict of pages with a pet (TzKal-Zuk, Tempoross, Wintertodt, Royal Titans and, a little, every boss with a pet), the account total and "chance of one by now". The Chaos elemental pet is now judged as "have it or not".
@@ -19,6 +20,7 @@ Updates come through the Plugin Hub. Each heading is the date of that update; **
 - **Alchemical Hydra:** dragon thrownaxes and dragon knives no longer count as Hydra uniques. Wyrms, drakes and hydras drop them too, and the collection log has one total for all of them, so On Rate can't tell which came from the Hydra. That also means the thrownaxes and knives the Hydra really dropped aren't counted. The Hydra page loses both rows, expects two uniques fewer per 2,000 kills (about 4% fewer), and its received count, GP value and your account totals no longer include them. Ones already in your History stay saved, but no longer show in Recent or as your last unique.
 
 *Everything in this update*
+- **Overlay and chat wording:** the overlay says "Too early" or "Not synced" instead of "-", and its Uniques line reads "2 of 1.9 expected". "the drop rate" is used the same way in the overlay, hovers and chat lines (it was "the rate" in some).
 - **Unreadable saved data is kept:** if On Rate can't read an account's saved data, History or raids, it starts fresh for that part but keeps a copy of the old data (under a ".corrupt" key in RuneLite's settings) instead of overwriting it. If that happens to you, please tell us in an issue or on Discord.
 - **Recent no longer makes up dates:** opening a collection log page that showed more of an item than last time added a "drop" to History, Recent and Today, dated to your last kill of any boss (or to the moment you opened the page) and credited to that page's boss, even at 0 kills. That's how an item you got long ago, or a boss you never killed, could show up as "6 days ago". The log doesn't say when or where you got a copy, so it now only updates your totals and the item's dry streak. Entries already saved this way stay in your History.
 - **Clearer text:** a pass over the panel, settings and chat wording.

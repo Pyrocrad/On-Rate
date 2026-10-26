@@ -34,11 +34,19 @@ public interface ExpectedDropsConfig extends Config
 		return true;
 	}
 
+	@ConfigSection(
+		name = "Chat messages",
+		description = "What On Rate says in your chat box",
+		position = 3
+	)
+	String chatSection = "chat";
+
 	@ConfigItem(
 		keyName = "syncReminders",
 		name = "Sync reminders",
 		description = "After killing a boss whose history isn't loaded yet, say in chat which collection log page to open (once per session)",
-		position = 3
+		position = 4,
+		section = chatSection
 	)
 	default boolean syncReminders()
 	{
@@ -49,7 +57,8 @@ public interface ExpectedDropsConfig extends Config
 		keyName = "dropMessages",
 		name = "Drop messages",
 		description = "When a unique drops, say in chat how many kills it took and how that compares with the drop rate",
-		position = 4
+		position = 5,
+		section = chatSection
 	)
 	default boolean dropMessages()
 	{
@@ -59,8 +68,9 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigItem(
 		keyName = "milestoneMessages",
 		name = "Dry milestone messages",
-		description = "Say in chat when an item passes 1x, 2x, 3x, 5x or 10x its drop rate without dropping",
-		position = 5
+		description = "Say in chat when an item passes 2x, 3x, 5x or 10x its drop rate without dropping",
+		position = 6,
+		section = chatSection
 	)
 	default boolean milestoneMessages()
 	{
@@ -170,8 +180,22 @@ public interface ExpectedDropsConfig extends Config
 	String teamSection = "team";
 
 	@ConfigItem(
+		keyName = "detectTeamSize",
+		name = "Count your team",
+		description = "At Nex, Yama, the Hueycoatl, the Corporeal Beast and Zalcano, count the players around you at each kill "
+			+ "and give you that share of the kill (a quarter with four players). Earlier kills use the team of "
+			+ "the first kill On Rate counted (Yama: as set below).",
+		position = 50,
+		section = teamSection
+	)
+	default boolean detectTeamSize()
+	{
+		return true;
+	}
+
+	@ConfigItem(
 		keyName = "royalTitansTeam",
-		name = "Royal Titans",
+		name = "Royal Titans: how you kill them",
 		description = "How you kill the Royal Titans. Counted as duo kills unless you change it. In a duo you get about half the uniques of a solo kill; the pet chance stays the same.",
 		position = 51,
 		section = teamSection
@@ -183,7 +207,7 @@ public interface ExpectedDropsConfig extends Config
 
 	@ConfigItem(
 		keyName = "royalTitansSoloKills",
-		name = "Royal Titans solo kills",
+		name = "Royal Titans: solo kills",
 		description = "Only used with 'Some of each': how many of your Royal Titans kills were solo. The rest count as duo.",
 		position = 52,
 		section = teamSection
@@ -196,7 +220,7 @@ public interface ExpectedDropsConfig extends Config
 
 	@ConfigItem(
 		keyName = "yamaTeam",
-		name = "Yama",
+		name = "Yama: earlier kills",
 		description = "How you killed Yama before On Rate could count your team (it counts it from now on). "
 			+ "Counted as duo kills unless you change it. In a duo you get about half the uniques of a solo kill; the pet chance stays the same.",
 		position = 53,
@@ -209,7 +233,7 @@ public interface ExpectedDropsConfig extends Config
 
 	@ConfigItem(
 		keyName = "yamaSoloKills",
-		name = "Yama solo kills",
+		name = "Yama: solo kills",
 		description = "Only used with 'Some of each': how many of those earlier Yama kills were solo. The rest count as duo.",
 		position = 54,
 		section = teamSection
@@ -218,20 +242,6 @@ public interface ExpectedDropsConfig extends Config
 	default int yamaSoloKills()
 	{
 		return 0;
-	}
-
-	@ConfigItem(
-		keyName = "detectTeamSize",
-		name = "Count your team",
-		description = "At Nex, Yama, the Hueycoatl, the Corporeal Beast and Zalcano, count the players around you at each kill "
-			+ "and give you that share of the kill (a quarter with four players). Earlier kills use the team of "
-			+ "the first kill On Rate counted (Yama: as set above).",
-		position = 55,
-		section = teamSection
-	)
-	default boolean detectTeamSize()
-	{
-		return true;
 	}
 
 	@ConfigSection(

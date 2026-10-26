@@ -9,7 +9,7 @@ public class Note
 	{
 		/** A unique dropped: how many kills it took. */
 		DROP,
-		/** An item passed 1x, 2x, 3x... the drop rate without dropping. */
+		/** An item passed 2x, 3x, 5x... the drop rate without dropping. */
 		MILESTONE,
 		/** A trip ended: its kills, uniques and verdict in one line (with the drop messages). */
 		TRIP

@@ -142,10 +142,10 @@ public class TextsTest
 	{
 		com.expecteddrops.stats.RowStats one = new com.expecteddrops.stats.RowStats("Magic fang", null, 0.5, 5, 1, false)
 			.withStreak(1, true);
-		assertEquals("Dry streak: 1 kill since your last one (0.5\u00d7 the rate).", Texts.streakNote(one, "kill"));
+		assertEquals("Dry streak: 1 kill since your last one (0.5\u00d7 the drop rate).", Texts.streakNote(one, "kill"));
 		com.expecteddrops.stats.RowStats many = new com.expecteddrops.stats.RowStats("Magic fang", null, 0.5, 5, 1, false)
 			.withStreak(40, false);
-		assertEquals("Dry streak: at least 40 kills (20\u00d7 the rate or more). Your last one came before On Rate started tracking.",
+		assertEquals("Dry streak: at least 40 kills (20\u00d7 the drop rate or more). Your last one came before On Rate started tracking.",
 			Texts.streakNote(many, "kill"));
 	}
 }

@@ -2539,7 +2539,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		if (!row.isAny() && row.getDriestItem() != null)
 		{
-			tip.row("Driest right now", String.format("%s, %s the rate", row.getDriestItem(), formatMultiple(row.getDriestMultiple())));
+			tip.row("Driest right now", String.format("%s, %s the drop rate", row.getDriestItem(), formatMultiple(row.getDriestMultiple())));
 		}
 		if (!Double.isNaN(luck))
 		{

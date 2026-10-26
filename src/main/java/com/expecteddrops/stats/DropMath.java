@@ -294,6 +294,9 @@ public final class DropMath
 		return (long) Math.ceil(Math.log1p(-probability) / Math.log1p(-rate));
 	}
 
+	/** Below this many expected uniques there is nothing to read yet: the panel and overlay say "Too early". */
+	public static final double TOO_EARLY_BELOW = 0.5;
+
 	/**
 	 * Every verdict word, driest first. The one list the tiles, the lists, the overlay, the
 	 * trip card and the luck graph all use (through {@link #verdict}).

@@ -1208,14 +1208,14 @@ public class TrackerTest
 		}
 		tracker.onLoot("Vorkath", 1, Collections.singletonList(new Tracker.LootItem("Vorkath's head", 1)), now);
 		notes = tracker.drainNotes();
-		assertEquals("Vorkath's head after 40 kills (0.8x the rate).", notes.get(notes.size() - 1).getText());
+		assertEquals("Vorkath's head after 40 kills (0.8x the drop rate).", notes.get(notes.size() - 1).getText());
 		stats = tracker.stats("Vorkath", RAIDS);
 		assertEquals(0, (int) row(stats, "Vorkath's head").getStreak());
 		assertTrue(row(stats, "Vorkath's head").isStreakExact());
 
 		tracker.onLoot("Vorkath", 1, Collections.singletonList(new Tracker.LootItem("Dragonbone necklace", 1)), now);
 		notes = tracker.drainNotes();
-		assertEquals("Your first Dragonbone necklace, after 420 kills (0.4x the rate).", notes.get(0).getText());
+		assertEquals("Your first Dragonbone necklace, after 420 kills (0.4x the drop rate).", notes.get(0).getText());
 	}
 
 	@Test
@@ -1241,7 +1241,6 @@ public class TrackerTest
 			}
 		}
 		assertEquals(Arrays.asList(
-			"150 Vorkath's head: 50 kills without one, 1x the drop rate.",
 			"200 Vorkath's head: 100 kills without one, 2x the drop rate."), milestones);
 	}
 
@@ -1261,15 +1260,15 @@ public class TrackerTest
 	@Test
 	public void manyItemsAtOnceBecomeOneMessage()
 	{
-		tracker.onClogPage("Barrows Chests", Collections.singletonList("Barrows Chests opened: 340"), new LinkedHashMap<>());
+		tracker.onClogPage("Barrows Chests", Collections.singletonList("Barrows Chests opened: 680"), new LinkedHashMap<>());
 		List<Note> notes = new ArrayList<>();
-		for (int kc = 340; kc <= 351; kc++)
+		for (int kc = 680; kc <= 702; kc++)
 		{
 			tracker.onChatMessage("Your Barrows chest count is: <col=ff0000>" + kc + "</col>.", now);
 			notes.addAll(tracker.drainNotes());
 		}
 		assertEquals(1, notes.size());
-		assertEquals("Barrows: 24 items passed 1x the drop rate dry: Ahrim's hood, Ahrim's robetop, Ahrim's robeskirt and 21 more.",
+		assertEquals("Barrows: 24 items passed 2x the drop rate dry: Ahrim's hood, Ahrim's robetop, Ahrim's robeskirt and 21 more.",
 			notes.get(0).getText());
 	}
 

@@ -361,7 +361,9 @@ public class ExpectedDropsPlugin extends Plugin
 		String one = Tracker.unitOne(stats.getBoss());
 		RowStats any = stats.getAnyRow();
 		double luck = any.getLuck();
-		String verdict = Double.isNaN(luck) ? "-" : DropMath.verdict(luck);
+		// the panel's words for a verdict that can't be read yet
+		String verdict = !Double.isNaN(luck) ? DropMath.verdict(luck)
+			: any.getExpected() < DropMath.TOO_EARLY_BELOW ? "Too early" : "Not synced";
 		RowStats driest = null;
 		for (RowStats row : stats.getRows())
 		{
@@ -381,14 +383,14 @@ public class ExpectedDropsPlugin extends Plugin
 		{
 			double m = driest.getStreakMultiple();
 			driestItem = shortName(driest.getLabel());
-			driestText = String.format("%s%,d %s (%.1fx)", driest.isStreakExact() ? "" : "at least ", driest.getStreak(),
+			driestText = String.format("%s%,d %s (%.1fx rate)", driest.isStreakExact() ? "" : "at least ", driest.getStreak(),
 				driest.getStreak() == 1 ? one : units, m);
 			driestColor = Palette.luck(Math.exp(-m)).brighter();
 		}
 		String tripText = String.format("%,d %s \u00b7 %d unique%s", trip.getKills(), trip.getKills() == 1 ? one : units,
 			trip.getReceived(), trip.getReceived() == 1 ? "" : "s");
 		overlayInfo = new OverlayInfo(trip.getBoss(), verdict, Palette.luck(luck).brighter(),
-			String.format("%,d / %.1f", any.getReceived(), any.getExpected()), driestItem, driestText, driestColor,
+			String.format("%,d of %.1f expected", any.getReceived(), any.getExpected()), driestItem, driestText, driestColor,
 			tripText, trip.getLastMillis());
 	}
 
