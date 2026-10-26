@@ -3077,6 +3077,7 @@ public class Tracker
 			boolean once = false;
 			String label = null;
 			String itemName = null;
+			String alsoFrom = null;
 			List<String> bosses = new ArrayList<>();
 			List<String> missing = new ArrayList<>();
 			for (BossCatalog.PoolSource src : e.getValue())
@@ -3087,6 +3088,10 @@ public class Tracker
 				{
 					label = drop.getDisplayName();
 					itemName = drop.getName();
+				}
+				if (alsoFrom == null)
+				{
+					alsoFrom = drop.getAlsoFrom();
 				}
 				once |= drop.isOnce();
 				bosses.add(boss.getName());
@@ -3118,7 +3123,8 @@ public class Tracker
 			{
 				got = Math.min(got, 1);
 			}
-			result.add(new SharedPool(label, itemName, expected, got, bosses, missing).withLogKnown(logTotal != null).withOnce(once));
+			result.add(new SharedPool(label, itemName, expected, got, bosses, missing).withLogKnown(logTotal != null).withOnce(once)
+				.withAlsoFrom(alsoFrom));
 		}
 		return result;
 	}

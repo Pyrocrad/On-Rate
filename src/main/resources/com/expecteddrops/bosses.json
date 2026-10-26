@@ -13,10 +13,10 @@
       "name": "Alchemical Hydra", "kc": ["Alchemical Hydra"], "loot": ["Alchemical Hydra"], "clog": ["Alchemical Hydra"],
       "note": "Dragon thrownaxes and knives are left out: wyrms, drakes and hydras drop them too, and the collection log has one total for all of them, so On Rate can't tell which came from the Hydra. That means the ones the Hydra did drop aren't counted either.",
       "drops": [
-        {"name": "Hydra's eye", "rate": "1/181"},
-        {"name": "Hydra's fang", "rate": "1/181"},
-        {"name": "Hydra's heart", "rate": "1/181"},
-        {"name": "Hydra tail", "rate": "1/513"},
+        {"name": "Hydra's eye", "rate": "1/181", "alsoFrom": "hydras"},
+        {"name": "Hydra's fang", "rate": "1/181", "alsoFrom": "hydras"},
+        {"name": "Hydra's heart", "rate": "1/181", "alsoFrom": "hydras"},
+        {"name": "Hydra tail", "rate": "1/513", "alsoFrom": "hydras"},
         {"name": "Hydra leather", "rate": "1/514"},
         {"name": "Hydra's claw", "rate": "1/1001"},
         {"name": "Dragon thrownaxe", "rate": "1/2000", "stack": 750, "clogShared": true},
@@ -30,7 +30,7 @@
       "name": "Amoxliatl", "kc": ["Amoxliatl"], "loot": ["Amoxliatl"], "clog": ["Amoxliatl"],
       "drops": [
         {"name": "Pendant of ates (inert)", "rate": "1/25"},
-        {"name": "Glacial temotli", "rate": "1/100"},
+        {"name": "Glacial temotli", "rate": "1/100", "alsoFrom": "Frost Nagua"},
         {"name": "Moxi", "rate": "1/3000", "pet": true}
       ]
     },
@@ -299,7 +299,7 @@
       "name": "Kalphite Queen", "kc": ["Kalphite Queen"], "loot": ["Kalphite Queen"], "clog": ["Kalphite Queen"],
       "drops": [
         {"name": "Kq head", "rate": "1/128"},
-        {"name": "Dragon chainbody", "rate": "1/128"},
+        {"name": "Dragon chainbody", "rate": "1/128", "alsoFrom": "dust devils and smoke devils"},
         {"name": "Dragon 2h sword", "rate": "1/256", "clogShared": true},
         {"name": "Dragon pickaxe", "rate": "1/400"},
         {"name": "Jar of sand", "rate": "1/2000"},
@@ -312,13 +312,13 @@
         {"name": "Kbd heads", "rate": "1/128"},
         {"name": "Dragon pickaxe", "rate": "1/1000"},
         {"name": "Prince black dragon", "rate": "1/3000", "pet": true},
-        {"name": "Draconic visage", "rate": "1/5000"}
+        {"name": "Draconic visage", "rate": "1/5000", "alsoFrom": "other dragons and skeletal wyverns"}
       ]
     },
     {
       "name": "Kraken", "kc": ["Kraken"], "loot": ["Kraken"], "clog": ["Kraken"],
       "drops": [
-        {"name": "Kraken tentacle", "rate": "1/400"},
+        {"name": "Kraken tentacle", "rate": "1/400", "alsoFrom": "cave krakens"},
         {"name": "Trident of the seas (full)", "rate": "1/512"},
         {"name": "Jar of dirt", "rate": "1/1000"},
         {"name": "Pet kraken", "rate": "1/3000", "pet": true}
@@ -444,7 +444,7 @@
         {"name": "Dark claw", "rate": "1/25", "any": false},
         {"name": "Skotos", "rate": "1/65", "pet": true},
         {"name": "Jar of darkness", "rate": "1/200"},
-        {"name": "Uncut onyx", "rate": "1/1000"}
+        {"name": "Uncut onyx", "rate": "1/1000", "alsoFrom": "Zalcano and the Fortis Colosseum"}
       ]
     },
     {
@@ -454,7 +454,7 @@
         {"name": "Tackle box", "rate": "1/400", "max": 1},
         {"name": "Big harpoonfish", "rate": "1/1600"},
         {"name": "Tome of water (empty)", "rate": "1/1600"},
-        {"name": "Dragon harpoon", "rate": "1/8000"},
+        {"name": "Dragon harpoon", "rate": "1/8000", "alsoFrom": "wyrms"},
         {"name": "Tiny tempor", "rate": "1/8000", "pet": true}
       ]
     },
@@ -518,7 +518,7 @@
       "drops": [
         {"name": "Occult necklace", "rate": "1/350", "alsoFrom": "regular smoke devils"},
         {"name": "Smoke battlestaff", "rate": "1/512"},
-        {"name": "Dragon chainbody", "rate": "1/2000"},
+        {"name": "Dragon chainbody", "rate": "1/2000", "alsoFrom": "dust devils and smoke devils"},
         {"name": "Jar of smoke", "rate": "1/2000"},
         {"name": "Pet smoke devil", "rate": "1/3000", "pet": true}
       ]
@@ -588,7 +588,7 @@
         {"name": "Dragonbone necklace", "rate": "1/1000"},
         {"name": "Jar of decay", "rate": "1/3000"},
         {"name": "Vorki", "rate": "1/3000", "pet": true},
-        {"name": "Draconic visage", "rate": "1/5000"},
+        {"name": "Draconic visage", "rate": "1/5000", "alsoFrom": "other dragons and skeletal wyverns"},
         {"name": "Skeletal visage", "rate": "1/5000"}
       ]
     },
@@ -627,7 +627,7 @@
         {"name": "Tanzanite fang", "rate": "1/512"},
         {"name": "Magic fang", "rate": "1/512"},
         {"name": "Serpentine visage", "rate": "1/512"},
-        {"name": "Uncut onyx", "rate": "1/512"},
+        {"name": "Uncut onyx", "rate": "1/512", "alsoFrom": "Zalcano and the Fortis Colosseum"},
         {"name": "Tanzanite mutagen", "rate": "1/6554"},
         {"name": "Magma mutagen", "rate": "1/6554"},
         {"name": "Jar of swamp", "rate": "1/3000"},

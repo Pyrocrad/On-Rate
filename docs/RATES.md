@@ -6,6 +6,8 @@ Unless a line says otherwise, rates come from the boss's page on the [Old School
 
 **Last full check: 18 October 2026.**
 
+**Items other monsters drop too.** The collection log counts these from every source, so a boss's number can include copies it didn't drop. On Rate still counts them for the boss, and their hover says where else they come from, with a right-click to leave them out: the Alchemical Hydra's eye, fang, heart and tail (hydras), the Kraken tentacle (cave krakens), the Glacial temotli (Frost Nagua), Tempoross's dragon harpoon (wyrms), the Araxyte head (araxytes), the Smouldering stone (hellhounds) and the Occult necklace (regular smoke devils). Shared items work the same way, without the right-click: the dragon chainbody (dust devils and smoke devils), draconic visage (other dragons and skeletal wyverns) and uncut onyx (Zalcano and the Fortis Colosseum). Sources from the wiki's drop tables and its list of items on more than one collection log page.
+
 ## Checked and matching the wiki
 
 | Boss | Wiki page | Notes |

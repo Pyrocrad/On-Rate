@@ -2663,4 +2663,69 @@ public class TrackerTest
 			}.getType()));
 		assertEquals("Jar of Chemicals", tracker.lastUnique().item);
 	}
+
+	// ---------------------------------------------------------------- items other monsters drop too
+
+	@Test
+	public void itemsOtherMonstersDropTooSaySo()
+	{
+		// boss items whose collection log entry also counts copies from monsters outside the bosses
+		Map<String, String> expected = new java.util.TreeMap<>();
+		expected.put("Alchemical Hydra/Hydra's eye", "hydras");
+		expected.put("Alchemical Hydra/Hydra's fang", "hydras");
+		expected.put("Alchemical Hydra/Hydra's heart", "hydras");
+		expected.put("Alchemical Hydra/Hydra tail", "hydras");
+		expected.put("Kraken/Kraken tentacle", "cave krakens");
+		expected.put("Amoxliatl/Glacial temotli", "Frost Nagua");
+		expected.put("Tempoross/Dragon harpoon", "wyrms");
+		// already marked before
+		expected.put("Araxxor/Araxyte head", "araxytes");
+		expected.put("Cerberus/Smouldering stone", "hellhounds");
+		expected.put("Thermonuclear Smoke Devil/Occult necklace", "regular smoke devils");
+		Map<String, String> found = new java.util.TreeMap<>();
+		for (BossDefinition boss : catalog.getBosses())
+		{
+			for (DropDefinition drop : boss.getDrops())
+			{
+				if (drop.getAlsoFrom() != null)
+				{
+					found.put(boss.getName() + "/" + drop.getName(), drop.getAlsoFrom());
+				}
+			}
+		}
+		assertEquals(expected, found);
+		// the shared items say it too; the others don't
+		Map<String, String> pools = new java.util.TreeMap<>();
+		for (SharedPool pool : tracker.sharedPools(RAIDS))
+		{
+			if (pool.getAlsoFrom() != null)
+			{
+				pools.put(pool.getItemName(), pool.getAlsoFrom());
+			}
+		}
+		Map<String, String> expectedPools = new java.util.TreeMap<>();
+		expectedPools.put("Dragon chainbody", "dust devils and smoke devils");
+		expectedPools.put("Draconic visage", "other dragons and skeletal wyverns");
+		expectedPools.put("Uncut onyx", "Zalcano and the Fortis Colosseum");
+		assertEquals(expectedPools, pools);
+	}
+
+	@Test
+	public void itemsOtherMonstersDropTooStillCountUnlessLeftOut()
+	{
+		Map<String, Integer> page = new LinkedHashMap<>();
+		page.put("Hydra's eye", 2);
+		page.put("Hydra's claw", 1);
+		tracker.onClogPage("Alchemical Hydra", Collections.singletonList("Alchemical Hydra kills: 1000"), page);
+		BossStats s = tracker.stats("Alchemical Hydra", RAIDS);
+		assertEquals(2, row(s, "Hydra's eye").getReceived());
+		assertEquals(1000 / 181.0, row(s, "Hydra's eye").getExpected(), 1e-9);
+		assertEquals(3, s.getAnyRow().getReceived());
+		double any = s.getAnyRow().getExpected();
+		// a player who got theirs from hydras leaves it out, as before
+		tracker.setLeftOut("Alchemical Hydra", "Hydra's eye", true);
+		s = tracker.stats("Alchemical Hydra", RAIDS);
+		assertEquals(1, s.getAnyRow().getReceived());
+		assertEquals(any - 1000 / 181.0, s.getAnyRow().getExpected(), 1e-9);
+	}
 }

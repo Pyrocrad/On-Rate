@@ -17,6 +17,7 @@ public class SharedPool
 	private final List<String> missingPages;
 	private boolean logKnown = true;
 	private boolean once;
+	private String alsoFrom;
 
 	public SharedPool(String label, String itemName, double expected, int received, List<String> bosses, List<String> missingPages)
 	{
@@ -59,6 +60,18 @@ public class SharedPool
 	public SharedPool withOnce(boolean once)
 	{
 		this.once = once;
+		return this;
+	}
+
+	/** "dust devils and smoke devils": monsters outside the bosses whose copies the log counts too, or null. */
+	public String getAlsoFrom()
+	{
+		return alsoFrom;
+	}
+
+	public SharedPool withAlsoFrom(String alsoFrom)
+	{
+		this.alsoFrom = alsoFrom;
 		return this;
 	}
 

@@ -2443,6 +2443,12 @@ public class ExpectedDropsPanel extends PluginPanel
 			tip.note("Kills not counted yet: open the " + joinAnd(pool.getMissingPages()) + " log page"
 				+ (pool.getMissingPages().size() == 1 ? "" : "s") + ".");
 		}
+		if (pool.getAlsoFrom() != null)
+		{
+			// shared items have no "leave out": the account totals count the log total as it is
+			tip.note("Also drops from " + pool.getAlsoFrom() + ", and the collection log counts those too, "
+				+ "so this can look luckier than it is.");
+		}
 		return tip.wide();
 	}
 
