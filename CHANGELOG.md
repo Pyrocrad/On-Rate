@@ -8,6 +8,7 @@ Updates come through the Plugin Hub. Each heading is the date of that update; **
 - **Three new pages:** Fortis Colosseum, Tempoross and Wintertodt.
 - **Clearer verdicts:** boss pages with less than half a unique expected say "Too early", and the middle of the scale has three words (A bit dry, On rate, A bit spooned).
 - **More careful counting:** pets, Zalcano and items several bosses drop are counted more accurately, and unreadable saved data is kept instead of overwritten.
+- **Shorter welcome guide:** the guide opens with the intro, three steps, how many collection log pages are loaded (with the next one to open) and the settings button. The verdict key, what the numbers don't mean and the odd moments are folded under "How to read it".
 
 *Changes that affect your numbers*
 - **Pets:** a pet you can only have once no longer counts as if you could get several. This changes the top verdict of pages with a pet (TzKal-Zuk, Tempoross, Wintertodt, Royal Titans and, a little, every boss with a pet), the account total and "chance of one by now". The Chaos elemental pet is now judged as "have it or not".

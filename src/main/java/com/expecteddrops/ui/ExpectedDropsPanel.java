@@ -104,6 +104,12 @@ public class ExpectedDropsPanel extends PluginPanel
 	/** The verdict words in the welcome guide's key, with the luck each stands for: recoloured with the palette. */
 	private final List<JLabel> welcomeVerdicts = new ArrayList<>();
 	private static final double[] WELCOME_VERDICT_LUCK = {0.05, 0.22, 0.40, 0.50, 0.60, 0.78, 0.95};
+	/** The guide's reference part (verdict key, limits, odd moments): folded until "How to read it" is clicked. */
+	private final JPanel welcomeMore = new JPanel();
+	private boolean welcomeMoreOpen;
+	/** "3 of 52 pages loaded · next: Vorkath" and its bar, inside the guide. */
+	private final JLabel welcomeProgress = new JLabel();
+	private final TargetBar welcomeProgressBar = new TargetBar();
 	private final JLabel setupHeader = new JLabel();
 	private final JPanel setupList = new JPanel(new GridLayout(0, 1, 0, 2));
 	/** The space under the collection log line, hidden with it. */
@@ -3664,8 +3670,6 @@ public class ExpectedDropsPanel extends PluginPanel
 			{"Open your collection log", "and click the page of each boss you do. That loads your kill count and past drops."},
 			{"Keep Loot Tracker on.", "On Rate reads new drops from it."},
 			{"Go kill something.", "The panel follows your kills."},
-			{"Check the settings.", "The button below opens them. Royal Titans and Yama count as duo kills: set them to Solo, "
-				+ "or Some of each, under Team bosses if that's how you kill them."},
 		};
 		for (int i = 0; i < steps.length; i++)
 		{
@@ -3680,8 +3684,89 @@ public class ExpectedDropsPanel extends PluginPanel
 				BorderFactory.createMatteBorder(1, 0, 0, 0, Theme.DIVIDER), new EmptyBorder(Theme.S + 1, 0, Theme.S + 1, 0)));
 			welcomePanel.add(step);
 		}
+
+		// how far the collection log pages are, with the next one to open
+		JPanel progress = new JPanel();
+		progress.setLayout(new BoxLayout(progress, BoxLayout.Y_AXIS));
+		progress.setOpaque(false);
+		progress.setAlignmentX(LEFT_ALIGNMENT);
+		progress.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createMatteBorder(1, 0, 0, 0, Theme.DIVIDER), new EmptyBorder(Theme.S + 1, 0, Theme.S, 0)));
+		welcomeProgress.setFont(FontManager.getRunescapeSmallFont());
+		welcomeProgress.setForeground(Theme.TEXT_MUTED);
+		welcomeProgress.setAlignmentX(LEFT_ALIGNMENT);
+		welcomeProgressBar.setAlignmentX(LEFT_ALIGNMENT);
+		progress.add(welcomeProgress);
+		progress.add(welcomeProgressBar);
+		progress.setMaximumSize(new Dimension(Integer.MAX_VALUE, progress.getPreferredSize().height));
+		progress.setVisible(false);
+		welcomeProgressPanel = progress;
+		welcomePanel.add(progress);
+
+		JButton gotIt = new JButton("Got it, open settings");
+		gotIt.setFont(FontManager.getRunescapeSmallFont());
+		gotIt.setFocusPainted(false);
+		gotIt.setToolTipText("Hide this guide and open On Rate's settings. Turn the guide back on with 'Show welcome guide' there.");
+		gotIt.addActionListener(e ->
+		{
+			dismissWelcome.run();
+			welcomePanel.setVisible(false);
+			revalidate();
+			repaint();
+		});
+		JPanel buttonRow = new JPanel(new BorderLayout());
+		buttonRow.setOpaque(false);
+		buttonRow.setAlignmentX(LEFT_ALIGNMENT);
+		buttonRow.setBorder(new EmptyBorder(Theme.S, 0, Theme.S, 0));
+		buttonRow.add(gotIt, BorderLayout.WEST);
+		buttonRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, buttonRow.getPreferredSize().height));
+		welcomePanel.add(buttonRow);
+
+		// the reference part, folded: how to read the words, what they don't mean, and odd moments
+		JLabel toggle = smallLabel("", Theme.TEXT_MUTED);
+		toggle.setAlignmentX(LEFT_ALIGNMENT);
+		toggle.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+		toggle.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createMatteBorder(1, 0, 0, 0, Theme.DIVIDER), new EmptyBorder(Theme.S + 1, 0, Theme.S, 0)));
+		toggle.setToolTipText("The verdict words, what they don't mean, and a few things you may see");
+		Runnable flip = () ->
+		{
+			welcomeMoreOpen = !welcomeMoreOpen;
+			styleWelcomeToggle(toggle);
+			welcomeMore.setVisible(welcomeMoreOpen);
+			welcomePanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, welcomePanel.getPreferredSize().height));
+			revalidate();
+			repaint();
+		};
+		toggle.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mouseClicked(MouseEvent e)
+			{
+				flip.run();
+			}
+
+			@Override
+			public void mouseEntered(MouseEvent e)
+			{
+				toggle.setForeground(Theme.TEXT);
+			}
+
+			@Override
+			public void mouseExited(MouseEvent e)
+			{
+				toggle.setForeground(Theme.TEXT_MUTED);
+			}
+		});
+		styleWelcomeToggle(toggle);
+		Activatable.install(toggle, "How to read it", flip);
+		welcomePanel.add(toggle);
+
+		welcomeMore.setLayout(new BoxLayout(welcomeMore, BoxLayout.Y_AXIS));
+		welcomeMore.setOpaque(false);
+		welcomeMore.setAlignmentX(LEFT_ALIGNMENT);
 		// how the verdict words are drawn: your rank among 100 typical players
-		welcomePanel.add(welcomeHeading("Where the words come from",
+		welcomeMore.add(welcomeHeading("Where the words come from",
 			"Your rank among 100 typical players with your kill counts, driest first."));
 		String[] ranks = {"1 to 10", "11 to 35", "36 to 45", "46 to 55", "56 to 65", "66 to 90", "91 to 100"};
 		welcomeVerdicts.clear();
@@ -3699,11 +3784,11 @@ public class ExpectedDropsPanel extends PluginPanel
 			range.setHorizontalAlignment(SwingConstants.RIGHT);
 			row.add(range, BorderLayout.CENTER);
 			row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height));
-			welcomePanel.add(row);
+			welcomeMore.add(row);
 		}
 
 		// what the numbers can't tell you
-		welcomePanel.add(welcomeHeading("What this does not mean", null));
+		welcomeMore.add(welcomeHeading("What this does not mean", null));
 		String[] limits = {
 			"\"Players\" is the drop-rate maths, not real accounts. On Rate has no player data.",
 			"Every kill is its own roll. Being dry doesn't make a drop more likely next, and being spooned "
@@ -3713,55 +3798,45 @@ public class ExpectedDropsPanel extends PluginPanel
 		};
 		for (String limit : limits)
 		{
-			welcomePanel.add(welcomeLine(null, limit));
+			welcomeMore.add(welcomeLine(null, limit));
 		}
 
 		// what the panel shows in less common moments, so none of it comes as a surprise
-		welcomePanel.add(welcomeHeading("Things you may see", null));
+		welcomeMore.add(welcomeHeading("Things you may see", null));
 		String[][] moments = {
-			{"\"Load 3 bosses you killed\"", "at the top: their log pages aren't read yet. Click it for the list; it goes "
-				+ "away once they're loaded."},
 			{"\"Not synced\"", "on a boss: On Rate has its kill count but not your drops from before. Open its log "
 				+ "page once."},
-			{"Luck over time", "starts tomorrow: On Rate saves one point a day, even while the graph is closed."},
+			{"Team bosses:", "Royal Titans and Yama count as duo kills. Set them to Solo, or Some of each, "
+				+ "under Team bosses in the settings if that's how you kill them."},
 			{"Searching:", "type part of a name, or a short one like cox, tob or toa."},
 			{"Left out:", "right-click an item to leave it out of the calculations, for example one you got "
 				+ "elsewhere. Right-click it again to count it."},
-			{"Reset this boss", "asks first. Opening its log page loads it again."},
 			{"History or raids empty", "out of the blue? On Rate couldn't read that saved data, started fresh and "
 				+ "kept a copy. Please tell us on Discord or in an issue."},
 		};
 		for (String[] m : moments)
 		{
-			welcomePanel.add(welcomeLine(m[0], m[1]));
+			welcomeMore.add(welcomeLine(m[0], m[1]));
 		}
-
 		JLabel help = smallLabel("Hover the ? for help.", Theme.TEXT_MUTED);
 		help.setAlignmentX(LEFT_ALIGNMENT);
 		help.setMaximumSize(new Dimension(Integer.MAX_VALUE, help.getPreferredSize().height));
 		help.setBorder(BorderFactory.createCompoundBorder(
-			BorderFactory.createMatteBorder(1, 0, 0, 0, Theme.DIVIDER), new EmptyBorder(Theme.S + 1, 0, Theme.M, 0)));
-		welcomePanel.add(help);
-
-		JButton gotIt = new JButton("Got it, open settings");
-		gotIt.setFont(FontManager.getRunescapeSmallFont());
-		gotIt.setFocusPainted(false);
-		gotIt.setToolTipText("Hide this guide and open On Rate's settings. Turn the guide back on with 'Show welcome guide' there.");
-		gotIt.addActionListener(e ->
-		{
-			dismissWelcome.run();
-			welcomePanel.setVisible(false);
-			revalidate();
-			repaint();
-		});
-		JPanel buttonRow = new JPanel(new BorderLayout());
-		buttonRow.setOpaque(false);
-		buttonRow.setAlignmentX(LEFT_ALIGNMENT);
-		buttonRow.add(gotIt, BorderLayout.WEST);
-		buttonRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, buttonRow.getPreferredSize().height));
-		welcomePanel.add(buttonRow);
+			BorderFactory.createMatteBorder(1, 0, 0, 0, Theme.DIVIDER), new EmptyBorder(Theme.S + 1, 0, Theme.S, 0)));
+		welcomeMore.add(help);
+		welcomeMore.setVisible(welcomeMoreOpen);
+		welcomePanel.add(welcomeMore);
+		// the guide's height is that of its folded part; it grows when the fold opens (see the toggle)
 		welcomePanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, welcomePanel.getPreferredSize().height));
 	}
+
+	private void styleWelcomeToggle(JLabel toggle)
+	{
+		toggle.setText((welcomeMoreOpen ? "\u25be " : "\u25b8 ") + "How to read it");
+	}
+
+	/** The progress block inside the guide, shown while collection log pages are missing. */
+	private JPanel welcomeProgressPanel;
 
 	/** The colour of the welcome key's verdict word {@code i}, as the boss page shows it. */
 	private static Color welcomeVerdictColor(int i)
@@ -3805,6 +3880,37 @@ public class ExpectedDropsPanel extends PluginPanel
 		return p;
 	}
 
+	/** "3 of 52 pages loaded · next: Vorkath" in the guide; gone once every page is loaded. */
+	private void updateWelcomeProgress(int total, int done, List<SyncStatus> missing)
+	{
+		if (welcomeProgressPanel == null)
+		{
+			return;
+		}
+		boolean show = total > 0 && !missing.isEmpty();
+		if (show)
+		{
+			// a page of a boss you killed is the next one to open, else the first missing
+			SyncStatus next = missing.get(0);
+			for (SyncStatus s : missing)
+			{
+				if (s.isKilled())
+				{
+					next = s;
+					break;
+				}
+			}
+			welcomeProgress.setText(String.format("<html><font color='%s'>%d of %d</font> pages loaded · next: %s</html>",
+				Theme.hex(Theme.TEXT), done, total, Texts.html(next.getPage())));
+			welcomeProgressBar.set(done / (double) total, -1, Theme.PROGRESS);
+		}
+		if (welcomeProgressPanel.isVisible() != show)
+		{
+			welcomeProgressPanel.setVisible(show);
+			welcomePanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, welcomePanel.getPreferredSize().height));
+		}
+	}
+
 	/** Header "Collection log: 12 / 49 synced" plus, when expanded, the pages still to open. */
 	private void refreshSetup()
 	{
@@ -3818,6 +3924,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			}
 		}
 		int done = checklist.size() - missing.size();
+		updateWelcomeProgress(checklist.size(), done, missing);
 
 		setupList.removeAll();
 		// all loaded: nothing to say, so the line is gone; it only shows when something is missing
