@@ -2615,4 +2615,52 @@ public class TrackerTest
 		assertEquals(received, tracker.stats("General Graardor", RAIDS).getAnyRow().getReceived());
 		assertEquals(100, tracker.stats("General Graardor", RAIDS).getKillCount());
 	}
+
+	// ---------------------------------------------------------------- uniques saved under another name
+
+	@Test
+	public void lastUniqueAndDayNamesKnowItemsSavedUnderAnotherName()
+	{
+		// a Tome of fire (empty) is saved under that name; it's still the Tome of fire row
+		tracker.onRollBaseline("Wintertodt", 10, 0);
+		// searching the cart: the roll first, then its loot
+		tracker.onRewardRolls("Wintertodt", 1, now);
+		tracker.onLoot("Reward cart (Wintertodt)", 1, Collections.singletonList(new Tracker.LootItem("Tome of fire (empty)", 1)), now);
+		Tracker.LastUnique last = tracker.lastUnique();
+		assertEquals("Tome of fire (empty)", last.item);
+		assertEquals("Wintertodt", last.boss);
+		assertEquals(now, last.time);
+		boolean named = false;
+		for (BossDays d : tracker.recentDays(1, now))
+		{
+			if ("Wintertodt".equals(d.getBoss()))
+			{
+				assertEquals(Collections.singletonList("Tome of fire (empty)"), d.getUniqueNames());
+				assertEquals(1, d.getUniques());
+				named = true;
+			}
+		}
+		assertTrue(named);
+		// left out of the calculations: not the last unique any more
+		tracker.setLeftOut("Wintertodt", "Tome of fire", true);
+		assertNull(tracker.lastUnique().item);
+	}
+
+	@Test
+	public void lastUniqueKnowsItemsSavedInAnotherCase()
+	{
+		// the game's name can differ in case from the drop data ("Jar of Chemicals")
+		tracker.setKills("Alchemical Hydra", new Gson().fromJson("[{\"k\":300,\"t\":" + now + ",\"d\":[{\"i\":\"Jar of Chemicals\"}]}]",
+			new com.google.gson.reflect.TypeToken<List<KillEntry>>()
+			{
+			}.getType()));
+		assertEquals("Jar of Chemicals", tracker.lastUnique().item);
+		assertEquals("Alchemical Hydra", tracker.lastUnique().boss);
+		// an item that isn't a row of the boss still doesn't count
+		tracker.setKills("Vorkath", new Gson().fromJson("[{\"k\":5,\"t\":" + (now + 1) + ",\"d\":[{\"i\":\"Dragon thrownaxe\"}]}]",
+			new com.google.gson.reflect.TypeToken<List<KillEntry>>()
+			{
+			}.getType()));
+		assertEquals("Jar of Chemicals", tracker.lastUnique().item);
+	}
 }

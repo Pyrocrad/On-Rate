@@ -301,7 +301,7 @@ public class Tracker
 			}
 			for (KillEntry.DropEntry d : k.getDrops())
 			{
-				DropDefinition drop = dropNamed(boss, d.getName());
+				DropDefinition drop = rowOfSaved(boss, d.getName());
 				if (drop != null && drop.countsTowardAny())
 				{
 					names.add(d.getName());
@@ -372,6 +372,16 @@ public class Tracker
 			}
 		}
 		return null;
+	}
+
+	/**
+	 * The row a saved unique belongs to: by the name the panel shows, or else by any of the row's
+	 * item names, in any case ("Tome of fire (empty)" is saved under its own name).
+	 */
+	private static DropDefinition rowOfSaved(BossDefinition boss, String name)
+	{
+		DropDefinition drop = dropNamed(boss, name);
+		return drop != null ? drop : findDrop(boss, name);
 	}
 
 	/** Adds a kill to today's count, with the uniques that one kill should give. */
@@ -2386,7 +2396,7 @@ public class Tracker
 				earliest = Math.min(earliest, k.time);
 				for (KillEntry.DropEntry d : k.getDrops())
 				{
-					DropDefinition drop = dropNamed(boss, d.getName());
+					DropDefinition drop = rowOfSaved(boss, d.getName());
 					if (drop != null && counts(boss, drop, p) && (result == null || k.time > result.time))
 					{
 						result = new LastUnique(d.getName(), boss.getName(), k.time, 0);
