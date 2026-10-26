@@ -475,7 +475,7 @@ public class TrackerTest
 		// their bosses, so they would count as expected but never as received
 		for (String item : new String[]{"Dragon pickaxe", "Godsword shard 1", "Godsword shard 2", "Godsword shard 3",
 			"Chromium ingot", "Virtus mask", "Virtus robe top", "Virtus robe bottom", "Dragon chainbody",
-			"Draconic visage", "Uncut onyx", "Pet chaos elemental", "Dragon 2h sword"})
+			"Draconic visage", "Uncut onyx", "Pet chaos elemental", "Dragon 2h sword", "Dragon thrownaxe", "Dragon knife"})
 		{
 			assertTrue(item, catalog.getExcludedItems().contains(item));
 			for (BossDefinition boss : catalog.getBosses())
@@ -693,9 +693,9 @@ public class TrackerTest
 	@Test
 	public void itemsInTheLogWithoutKillsDontCount()
 	{
-		// dragon thrownaxes can come from elsewhere: with 0 Hydra kills they say nothing about Hydra
+		// with 0 Hydra kills, a Hydra item in the log came from elsewhere: it says nothing about Hydra
 		Map<String, Integer> hydra = new LinkedHashMap<>();
-		hydra.put("Dragon thrownaxe", 750);
+		hydra.put("Hydra's claw", 1);
 		tracker.onClogPage("Alchemical Hydra", Collections.singletonList("Alchemical Hydra kills: 0"), hydra);
 		BossStats s = tracker.stats("Alchemical Hydra", RAIDS);
 		assertEquals(0, s.getKillCount());
@@ -707,7 +707,128 @@ public class TrackerTest
 		}
 		// once there are kills, the log counts again
 		tracker.onChatMessage("Your Alchemical Hydra kill count is: <col=ff0000>5</col>.", now);
-		assertEquals(1, row(tracker.stats("Alchemical Hydra", RAIDS), "Dragon thrownaxe").getReceived());
+		assertEquals(1, row(tracker.stats("Alchemical Hydra", RAIDS), "Hydra's claw").getReceived());
+	}
+
+	@Test
+	public void dragonThrownaxesAndKnivesAreNotHydraUniques()
+	{
+		// wyrms, drakes and hydras drop them too, so the log total can't be credited to the Hydra
+		for (String item : new String[]{"Dragon thrownaxe", "Dragon knife"})
+		{
+			assertTrue(catalog.getExcludedItems().contains(item));
+			assertFalse(catalog.getPools().containsKey(BossCatalog.normalize(item)));
+			assertTrue(catalog.isUntracked(item));
+		}
+		Map<String, Integer> hydra = new LinkedHashMap<>();
+		hydra.put("Dragon thrownaxe", 1500);
+		hydra.put("Dragon knife", 1500);
+		hydra.put("Hydra's claw", 1);
+		tracker.onClogPage("Alchemical Hydra", Collections.singletonList("Alchemical Hydra kills: 2000"), hydra);
+		BossStats s = tracker.stats("Alchemical Hydra", RAIDS);
+		assertFalse(hasRow(s, "Dragon thrownaxe"));
+		assertFalse(hasRow(s, "Dragon knife"));
+		assertEquals(1, s.getAnyRow().getReceived());
+		double expected = s.getAnyRow().getExpected();
+		// what's left: the brimstone pieces, tail, leather, claw, heads, jar and the pet
+		double rates = 3 / 181.0 + 1 / 513.0 + 1 / 514.0 + 1 / 1001.0 + 1 / 256.0 + 1 / 2000.0;
+		assertEquals(2000 * rates + DropMath.chanceAtLeastOne(2000 / 3000.0), expected, 1e-9);
+		AccountStats gp = tracker.accountStats(RAIDS, item -> 1_000_000L);
+		// more thrownaxes and knives in the log change nothing: not the uniques, not the GP value
+		hydra.put("Dragon thrownaxe", 3000);
+		hydra.put("Dragon knife", 3000);
+		tracker.onClogPage("Alchemical Hydra", Collections.singletonList("Alchemical Hydra kills: 2000"), hydra);
+		s = tracker.stats("Alchemical Hydra", RAIDS);
+		assertEquals(1, s.getAnyRow().getReceived());
+		assertEquals(expected, s.getAnyRow().getExpected(), 1e-12);
+		AccountStats gpAfter = tracker.accountStats(RAIDS, item -> 1_000_000L);
+		assertEquals(gp.getExpectedValue(), gpAfter.getExpectedValue(), 1e-6);
+		assertEquals(gp.getReceivedValue(), gpAfter.getReceivedValue());
+		assertTrue(tracker.recentDrops(10).isEmpty());
+	}
+
+	@Test
+	public void hydraLootThrownaxesAndKnivesAreNotCounted()
+	{
+		tracker.onChatMessage("Your Alchemical Hydra kill count is: <col=ff0000>10</col>.", now);
+		tracker.onLoot("Alchemical Hydra", 1, Collections.singletonList(new Tracker.LootItem("Dragon thrownaxe", 750)), now);
+		tracker.onChatMessage("Your Alchemical Hydra kill count is: <col=ff0000>11</col>.", now + 1);
+		tracker.onLoot("Alchemical Hydra", 1, Collections.singletonList(new Tracker.LootItem("Dragon knife", 600)), now + 1);
+		assertEquals(0, tracker.stats("Alchemical Hydra", RAIDS).getAnyRow().getReceived());
+		assertTrue(tracker.recentDrops(10).isEmpty());
+		for (BossDays d : tracker.recentDays(1, now))
+		{
+			assertEquals(0, d.getUniques());
+		}
+		assertNull(tracker.lastUnique().item);
+		// a real Hydra unique still counts
+		tracker.onLoot("Alchemical Hydra", 1, Collections.singletonList(new Tracker.LootItem("Hydra's claw", 1)), now);
+		assertEquals(1, tracker.stats("Alchemical Hydra", RAIDS).getAnyRow().getReceived());
+		assertEquals("Hydra's claw", tracker.recentDrops(10).get(0).getDrop().getName());
+	}
+
+	@Test
+	public void savedThrownaxesAndKnivesStayInHistoryButNotInRecent()
+	{
+		// History saved before they were left out: kept as it is, but not shown as uniques
+		tracker.setKills("Alchemical Hydra", savedKills("[{\"k\":5,\"t\":" + now + ",\"d\":[{\"i\":\"Dragon thrownaxe\"}]},"
+			+ "{\"k\":9,\"t\":" + (now + 1) + ",\"d\":[{\"i\":\"Dragon knife\"},{\"i\":\"Hydra's claw\"}]}]"));
+		List<RecentDrop> recent = tracker.recentDrops(10);
+		assertEquals(1, recent.size());
+		assertEquals("Hydra's claw", recent.get(0).getDrop().getName());
+		assertEquals("Hydra's claw", tracker.lastUnique().item);
+		List<HistoryRow> history = tracker.history("Alchemical Hydra");
+		assertEquals(2, history.size());
+		assertEquals(2, history.get(0).getKill().getDrops().size());
+		assertEquals("Dragon knife", history.get(0).getKill().getDrops().get(0).getName());
+		assertEquals("Dragon thrownaxe", history.get(1).getKill().getDrops().get(0).getName());
+	}
+
+	@Test
+	public void savedPooledDropsStayInRecent()
+	{
+		// a dragon axe the Kings dropped when it was still one of their rows: a real drop with
+		// a real date, so it stays in Recent now that the axe is pooled with Wintertodt
+		assertFalse(catalog.isUntracked("Dragon axe"));
+		assertTrue(catalog.getPools().containsKey("dragon axe"));
+		tracker.setKills("Dagannoth Kings", savedKills(
+			"[{\"k\":300,\"p\":120,\"m\":\"Dagannoth Rex\",\"t\":" + now + ",\"d\":[{\"i\":\"Dragon axe\",\"s\":40}]}]"));
+		List<RecentDrop> recent = tracker.recentDrops(10);
+		assertEquals(1, recent.size());
+		assertEquals("Dagannoth Kings", recent.get(0).getBoss());
+		assertEquals("Dragon axe", recent.get(0).getDrop().getName());
+		assertEquals(now, recent.get(0).getKill().getTime());
+	}
+
+	@Test
+	public void onlyItemsFlaggedClogSharedAreUntracked()
+	{
+		assertTrue(catalog.isUntracked("Dragon thrownaxe"));
+		assertTrue(catalog.isUntracked("dragon knife"));
+		assertTrue(catalog.isUntracked("Dragon 2h sword"));
+		// pooled items and normal rows are still tracked
+		assertFalse(catalog.isUntracked("Dragon axe"));
+		assertFalse(catalog.isUntracked("Dragon pickaxe"));
+		assertFalse(catalog.isUntracked("Hydra's claw"));
+		assertFalse(catalog.isUntracked("Tome of fire (empty)"));
+	}
+
+	private static List<KillEntry> savedKills(String json)
+	{
+		return new Gson().fromJson(json, new com.google.gson.reflect.TypeToken<List<KillEntry>>()
+		{
+		}.getType());
+	}
+
+	@Test
+	public void recentKeepsItemsSavedUnderAnotherNameOfTheirRow()
+	{
+		// a Tome of fire (empty) is saved under that name; it's still the Tome of fire row
+		tracker.onRollBaseline("Wintertodt", 10, 0);
+		tracker.onLoot("Reward cart (Wintertodt)", 1, Collections.singletonList(new Tracker.LootItem("Tome of fire (empty)", 1)), now);
+		List<RecentDrop> recent = tracker.recentDrops(10);
+		assertEquals(1, recent.size());
+		assertEquals("Tome of fire (empty)", recent.get(0).getDrop().getName());
 	}
 
 	@Test
@@ -1217,6 +1338,11 @@ public class TrackerTest
 	{
 		return stats.getRows().stream().filter(r -> r.getLabel().equals(label)).findFirst()
 			.orElseThrow(() -> new AssertionError("no row " + label));
+	}
+
+	private static boolean hasRow(BossStats stats, String label)
+	{
+		return stats.getRows().stream().anyMatch(r -> r.getLabel().equals(label));
 	}
 
 	@Test
@@ -2001,14 +2127,21 @@ public class TrackerTest
 	@Test
 	public void stackedItemsCountAsDrops()
 	{
+		// Ardeaglais teleports drop 2 at a time: the log's 6 are 3 drops
+		Map<String, Integer> angel = new LinkedHashMap<>();
+		angel.put("Ardeaglais teleport", 6);
+		tracker.onClogPage("The Mad Angel", Collections.singletonList("Mad Angel kills: 100"), angel);
+		assertEquals(3, row(tracker.stats("The Mad Angel", RAIDS), "Ardeaglais teleport").getReceived());
+
 		Map<String, Integer> hydra = new LinkedHashMap<>();
 		hydra.put("Dragon thrownaxe", 1480);
-		hydra.put("Dragon knife", 600);
+		hydra.put("Dragon knife", 1480);
 		hydra.put("Hydra's claw", 1);
 		tracker.onClogPage("Alchemical Hydra", Collections.singletonList("Alchemical Hydra kills: 2000"), hydra);
 		BossStats s = tracker.stats("Alchemical Hydra", RAIDS);
-		assertEquals(2, row(s, "Dragon thrownaxe").getReceived());
-		assertEquals(1, row(s, "Dragon knife").getReceived());
+		// thrownaxes and knives are left out (other monsters drop them too)
+		assertFalse(hasRow(s, "Dragon thrownaxe"));
+		assertFalse(hasRow(s, "Dragon knife"));
 		assertEquals(1, row(s, "Hydra's claw").getReceived());
 		assertEquals(2000 / 256.0, row(s, "Alchemical hydra heads").getExpected(), 1e-9);
 	}

@@ -15,6 +15,7 @@ Updates come through the Plugin Hub. Each heading is the date of that update; **
 - **Zalcano:** the crystal tool seed now counts the players around you, so its expected count and the trip card's "Unique value" change.
 - **Rates and caps:** Lil' Zik in Hard Mode is 1/500 (was 1/650); from your 50th kill Vorkath's head shows a 100% chance of one by now; the dragon axe is judged on the Dagannoth Kings and Wintertodt together; GP value never expects more than one copy of an item you can only have once.
 - **Group bosses:** kills from before On Rate counted your team now use the team of the first kill it counted, instead of counting as solo.
+- **Alchemical Hydra:** dragon thrownaxes and dragon knives no longer count as Hydra uniques. Wyrms, drakes and hydras drop them too, and the collection log has one total for all of them, so On Rate can't tell which came from the Hydra. That also means the thrownaxes and knives the Hydra really dropped aren't counted. The Hydra page loses both rows, expects two uniques fewer per 2,000 kills (about 4% fewer), and its received count, GP value and your account totals no longer include them. Ones already in your History stay saved, but no longer show in Recent or as your last unique.
 
 *Everything in this update*
 - **Unreadable saved data is kept:** if On Rate can't read an account's saved data, History or raids, it starts fresh for that part but keeps a copy of the old data (under a ".corrupt" key in RuneLite's settings) instead of overwriting it. If that happens to you, please tell us in an issue or on Discord.

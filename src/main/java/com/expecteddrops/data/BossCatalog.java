@@ -23,6 +23,8 @@ public class BossCatalog
 	private final Map<String, BossDefinition> byLootName = new HashMap<>();
 	private final Map<String, List<BossDefinition>> byClogPage = new HashMap<>();
 	private final Set<String> clogSharedItems = new HashSet<>();
+	/** Items flagged clogShared in the data (dragon 2h sword, thrownaxes...): not tracked anywhere. */
+	private final Set<String> untrackedItems = new HashSet<>();
 	/** Display names of the shared items that were left out, for the panel. */
 	private final Set<String> excludedItems = new java.util.TreeSet<>();
 	private final Set<String> allItemNames = new HashSet<>();
@@ -52,6 +54,7 @@ public class BossCatalog
 					if (drop.isClogSharedFlag())
 					{
 						clogSharedItems.add(key);
+						untrackedItems.add(key);
 					}
 				}
 			}
@@ -279,6 +282,16 @@ public class BossCatalog
 	public boolean isClogShared(String itemName)
 	{
 		return clogSharedItems.contains(normalize(itemName));
+	}
+
+	/**
+	 * True for an item flagged clogShared in the data: it also drops from monsters outside the
+	 * bosses, so it isn't tracked at any boss (not pooled either). Items several bosses drop
+	 * (pooled, like the dragon axe) aren't untracked.
+	 */
+	public boolean isUntracked(String itemName)
+	{
+		return untrackedItems.contains(normalize(itemName));
 	}
 
 	public Set<String> getAllItemNames()

@@ -1,5 +1,5 @@
 {
-  "_readme": "'once': true marks items you can only get once (pets count as once automatically). Items that drop from more than one boss (or have clogShared) are only counted from loot, because the collection log total covers every source. Rates are per kill/completion, solo or full contribution, base rates (no diary or CA boosts). 'rate' is a fraction string. Delve items use 'levelRates' per delve level (9 = 8+). Combined pages (Dagannoth Kings, Callisto and Artio...) list 'parts', each with its own kill-count names, and drops use 'partRates' per part. Raid modes are parts with a 'raid' key for their purple chance; 'partWeights' overrides an item's weight in one mode. Raid items use 'weight' (share of the purple, chance set in the plugin settings). 'match' lists extra item names that count for that row. 'any': false keeps a row out of the 'Any' total. 'kc' = chat kill-count names, 'loot' = loot tracker names, 'clog' = collection log page titles.",
+  "_readme": "'once': true marks items you can only get once (pets count as once automatically). Items that drop from more than one boss are pooled: judged on all those bosses' kills together against their one collection log total. 'clogShared': true marks items that also drop from monsters outside the bosses: they are left out entirely (no row, and neither the collection log nor loot counts them), because the log total can't be credited to a boss. Rates are per kill/completion, solo or full contribution, base rates (no diary or CA boosts). 'rate' is a fraction string. Delve items use 'levelRates' per delve level (9 = 8+). Combined pages (Dagannoth Kings, Callisto and Artio...) list 'parts', each with its own kill-count names, and drops use 'partRates' per part. Raid modes are parts with a 'raid' key for their purple chance; 'partWeights' overrides an item's weight in one mode. Raid items use 'weight' (share of the purple, chance set in the plugin settings). 'match' lists extra item names that count for that row. 'any': false keeps a row out of the 'Any' total. 'kc' = chat kill-count names, 'loot' = loot tracker names, 'clog' = collection log page titles.",
   "bosses": [
     {
       "name": "Abyssal Sire", "kc": ["Abyssal Sire"], "loot": ["Abyssal Sire"], "clog": ["Abyssal Sire"], "note": "Bludgeon pieces and the abyssal dagger come from Unsired, not from the kill itself.",
@@ -11,7 +11,7 @@
     },
     {
       "name": "Alchemical Hydra", "kc": ["Alchemical Hydra"], "loot": ["Alchemical Hydra"], "clog": ["Alchemical Hydra"],
-      "note": "Dragon thrownaxes and knives drop in stacks of 500 to 1,000. The collection log counts items, so On Rate turns your total into an estimated number of drops.",
+      "note": "Dragon thrownaxes and knives are left out: wyrms, drakes and hydras drop them too, and the collection log has one total for all of them, so On Rate can't tell which came from the Hydra. That means the ones the Hydra did drop aren't counted either.",
       "drops": [
         {"name": "Hydra's eye", "rate": "1/181"},
         {"name": "Hydra's fang", "rate": "1/181"},
@@ -19,8 +19,8 @@
         {"name": "Hydra tail", "rate": "1/513"},
         {"name": "Hydra leather", "rate": "1/514"},
         {"name": "Hydra's claw", "rate": "1/1001"},
-        {"name": "Dragon thrownaxe", "rate": "1/2000", "stack": 750},
-        {"name": "Dragon knife", "rate": "1/2000", "stack": 750},
+        {"name": "Dragon thrownaxe", "rate": "1/2000", "stack": 750, "clogShared": true},
+        {"name": "Dragon knife", "rate": "1/2000", "stack": 750, "clogShared": true},
         {"name": "Alchemical hydra heads", "rate": "1/256"},
         {"name": "Jar of chemicals", "rate": "1/2000"},
         {"name": "Ikkle hydra", "rate": "1/3000", "pet": true}

@@ -665,7 +665,12 @@ public class Tracker
 			{
 				for (KillEntry.DropEntry d : k.getDrops())
 				{
-					all.add(new RecentDrop(boss.getName(), k, d));
+					// saved before the item was flagged clogShared (dragon thrownaxes and knives): kept,
+					// not shown. Pooled items saved when they were a row (a Kings dragon axe) still show.
+					if (!catalog.isUntracked(d.getName()))
+					{
+						all.add(new RecentDrop(boss.getName(), k, d));
+					}
 				}
 			}
 		}
@@ -2699,8 +2704,8 @@ public class Tracker
 				}
 			}
 			int received = 0;
-			// No kills here: anything in the log came from elsewhere (dragon thrownaxes
-			// bought or looted outside Hydra...), so it doesn't count for this boss.
+			// No kills here: anything in the log came from elsewhere (an occult necklace
+			// from a regular smoke devil...), so it doesn't count for this boss.
 			if (progress != null && kc > 0)
 			{
 				for (String name : drop.getAllNames())
