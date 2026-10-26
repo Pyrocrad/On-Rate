@@ -2033,12 +2033,9 @@ public class Tracker
 						Integer before = progress.received.get(key);
 						if (before != null && qty > before && progress.trackingStartKc != null)
 						{
-							KillEntry.DropEntry entry = new KillEntry.DropEntry();
-							entry.name = drop.getDisplayName();
-							entry.pet = drop.isPet() ? Boolean.TRUE : null;
-							addDropToHistory(boss, progress, currentKc(boss), entry);
-							countUniqueToday(boss, drop);
-							// a new copy since the last look; the best guess for when is "now"
+							// a new copy since the last look. The log doesn't say when or where it
+							// came from, so it gets no History entry or day count (they'd show a date
+							// and kill that aren't known); only its dry streak restarts here
 							progress.lastDropKc.put(key, currentKc(boss));
 							progress.milestone.remove(key);
 						}

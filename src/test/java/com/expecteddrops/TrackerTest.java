@@ -239,6 +239,95 @@ public class TrackerTest
 		// New drops after the sync are added on top.
 		tracker.onLoot("Vorkath", 1, Collections.singletonList(new Tracker.LootItem("Vorkath's head", 1)), now);
 		assertEquals(8, row(tracker.stats("Vorkath", RAIDS), "Vorkath's head").getReceived());
+		// the two heads the loot tracker saw are in Recent; the log's older ones aren't
+		assertEquals(2, tracker.recentDrops(10).size());
+	}
+
+	@Test
+	public void logGrowthAtABossWithoutKillsAddsNothingToRecent()
+	{
+		Map<String, Integer> hydra = new LinkedHashMap<>();
+		hydra.put("Hydra's claw", 0);
+		tracker.onClogPage("Alchemical Hydra", Collections.singletonList("Alchemical Hydra kills: 0"), hydra);
+		hydra.put("Hydra's claw", 1);
+		tracker.onClogPage("Alchemical Hydra", Collections.singletonList("Alchemical Hydra kills: 0"), hydra);
+		assertTrue(tracker.recentDrops(10).isEmpty());
+		assertTrue(tracker.history("Alchemical Hydra").isEmpty());
+		assertNull(tracker.lastUnique());
+		for (BossDays d : tracker.recentDays(7, System.currentTimeMillis()))
+		{
+			assertFalse("Alchemical Hydra".equals(d.getBoss()));
+			assertEquals(0, d.getUniques());
+		}
+		// the log count is kept for when there are kills
+		tracker.onChatMessage("Your Alchemical Hydra kill count is: <col=ff0000>5</col>.", now);
+		assertEquals(1, row(tracker.stats("Alchemical Hydra", RAIDS), "Hydra's claw").getReceived());
+	}
+
+	@Test
+	public void itemsFirstSeenInTheLogAreNotDatedDrops()
+	{
+		Map<String, Integer> page = new LinkedHashMap<>();
+		page.put("Steel ring", 3);
+		tracker.onClogPage("Deranged Archaeologist", Collections.singletonList("Deranged Archaeologist kills: 40"), page);
+		assertTrue(tracker.recentDrops(10).isEmpty());
+		// a kill elsewhere, then the log shows one more ring: when and where it came from is unknown
+		tracker.onChatMessage("Your Zulrah kill count is: <col=ff0000>10</col>.", now);
+		page.put("Steel ring", 4);
+		tracker.onClogPage("Deranged Archaeologist", Collections.singletonList("Deranged Archaeologist kills: 40"), page);
+		assertTrue(tracker.recentDrops(10).isEmpty());
+		assertTrue(tracker.history("Deranged Archaeologist").isEmpty());
+		assertNull(tracker.lastUnique().item);
+		for (BossDays d : tracker.recentDays(1, now))
+		{
+			assertEquals(0, d.getUniques());
+		}
+		// the count, expected and dry streak are as before: 4 rings, streak restarted
+		RowStats ring = row(tracker.stats("Deranged Archaeologist", RAIDS), "Steel ring");
+		assertEquals(4, ring.getReceived());
+		assertEquals(40 * 3 / 131.0, ring.getExpected(), 1e-9);
+		assertEquals(0, (int) ring.getStreak());
+	}
+
+	@Test
+	public void firstLogSyncAfterALootDropKeepsOnlyThatDrop()
+	{
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>351</col>.", now);
+		tracker.onLoot("Vorkath", 1, Collections.singletonList(new Tracker.LootItem("Vorkath's head", 1)), now);
+		tracker.onChatMessage("Your Zulrah kill count is: <col=ff0000>10</col>.", now + 60_000);
+		Map<String, Integer> page = new LinkedHashMap<>();
+		page.put("Vorkath's head", 7);
+		tracker.onClogPage("Vorkath", Collections.singletonList("Vorkath kills: 351"), page);
+		List<RecentDrop> recent = tracker.recentDrops(10);
+		assertEquals(1, recent.size());
+		assertEquals("Vorkath's head", recent.get(0).getDrop().getName());
+		assertEquals(351, recent.get(0).getKill().getKc());
+		assertEquals(now, recent.get(0).getKill().getTime());
+		assertEquals(7, row(tracker.stats("Vorkath", RAIDS), "Vorkath's head").getReceived());
+		int uniquesToday = 0;
+		for (BossDays d : tracker.recentDays(1, now))
+		{
+			if ("Vorkath".equals(d.getBoss()))
+			{
+				uniquesToday = d.getUniques();
+			}
+		}
+		assertEquals(1, uniquesToday);
+	}
+
+	@Test
+	public void repeatedAndInconsistentLogReadsAddNoDrops()
+	{
+		Map<String, Integer> page = new LinkedHashMap<>();
+		for (int qty : new int[]{2, 2, 1, 2, 2})
+		{
+			page.put("Steel ring", qty);
+			tracker.onClogPage("Deranged Archaeologist", Collections.singletonList("Deranged Archaeologist kills: 40"), page);
+		}
+		assertTrue(tracker.recentDrops(10).isEmpty());
+		assertTrue(tracker.history("Deranged Archaeologist").isEmpty());
+		// a lower read is still stored as it was (unchanged behaviour); the last read wins
+		assertEquals(2, row(tracker.stats("Deranged Archaeologist", RAIDS), "Steel ring").getReceived());
 	}
 
 	@Test
