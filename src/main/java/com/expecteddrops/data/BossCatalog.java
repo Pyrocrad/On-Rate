@@ -28,6 +28,8 @@ public class BossCatalog
 	/** Display names of the shared items that were left out, for the panel. */
 	private final Set<String> excludedItems = new java.util.TreeSet<>();
 	private final Set<String> allItemNames = new HashSet<>();
+	/** Untradeable items worth something through a conversion: normalized name to formula. */
+	private final Map<String, ValueFormula> valueFormulas = new HashMap<>();
 	private final Set<String> excludedBosses = new java.util.TreeSet<>();
 	private final Map<String, List<PoolSource>> pools = new java.util.TreeMap<>();
 	private final Set<String> minionLootNames = new HashSet<>();
@@ -47,6 +49,10 @@ public class BossCatalog
 			Set<String> namesForBoss = new HashSet<>();
 			for (DropDefinition drop : boss.getDrops())
 			{
+				if (drop.getValueFrom() != null)
+				{
+					valueFormulas.put(normalize(drop.getName()), ValueFormula.parse(drop.getValueFrom()));
+				}
 				for (String item : drop.getAllNames())
 				{
 					String key = normalize(item);
@@ -292,6 +298,26 @@ public class BossCatalog
 	public boolean isUntracked(String itemName)
 	{
 		return untrackedItems.contains(normalize(itemName));
+	}
+
+	/** How to price an untradeable item from tradeable ones, or null when it has no such value. */
+	public ValueFormula getValueFormula(String itemName)
+	{
+		return valueFormulas.get(normalize(itemName));
+	}
+
+	/** Every tradeable item some value formula needs a price for (normalized). */
+	public Set<String> getFormulaItemNames()
+	{
+		Set<String> names = new HashSet<>();
+		for (ValueFormula f : valueFormulas.values())
+		{
+			for (String name : f.getItemNames())
+			{
+				names.add(normalize(name));
+			}
+		}
+		return names;
 	}
 
 	public Set<String> getAllItemNames()

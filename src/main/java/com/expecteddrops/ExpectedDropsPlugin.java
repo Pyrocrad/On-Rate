@@ -1,6 +1,7 @@
 package com.expecteddrops;
 
 import com.expecteddrops.data.BossCatalog;
+import com.expecteddrops.data.ValueFormula;
 import com.expecteddrops.raids.RaidPointsReader;
 import com.expecteddrops.stats.RaidSettings;
 import com.expecteddrops.tracking.Tracker;
@@ -145,11 +146,6 @@ public class ExpectedDropsPlugin extends Plugin
 	private final Map<String, Long> prices = new ConcurrentHashMap<>();
 	private long pricesRefreshedAt;
 	private static final long PRICE_REFRESH_MILLIS = 10 * 60_000;
-	private static final String HALBERD = "noxious halberd";
-	/** The fang can't be traded; like the wiki, it's worth what it adds to an amulet of torture. */
-	private static final String FANG = "araxyte fang";
-	private static final String RANCOUR = "amulet of rancour";
-	private static final String TORTURE = "amulet of torture";
 
 	@Provides
 	ExpectedDropsConfig provideConfig(ConfigManager configManager)
@@ -919,9 +915,7 @@ public class ExpectedDropsPlugin extends Plugin
 			return;
 		}
 		Set<String> wanted = new HashSet<>(tracker.getCatalog().getAllItemNames());
-		wanted.add(HALBERD);
-		wanted.add(RANCOUR);
-		wanted.add(TORTURE);
+		wanted.addAll(tracker.getCatalog().getFormulaItemNames());
 		int count = client.getItemCount();
 		for (int id = 0; id < count; id++)
 		{
@@ -971,20 +965,19 @@ public class ExpectedDropsPlugin extends Plugin
 
 	long priceOf(String itemName)
 	{
-		String key = BossCatalog.normalize(itemName);
-		Long price = prices.get(key);
-		if ((price == null || price <= 0) && FANG.equals(key))
+		Long price = prices.get(BossCatalog.normalize(itemName));
+		if (price != null && price > 0)
 		{
-			Long rancour = prices.get(RANCOUR);
-			Long torture = prices.get(TORTURE);
-			return rancour == null || torture == null ? 0 : Math.max(0, rancour - torture);
+			return price;
 		}
-		if ((price == null || price <= 0) && DropMath.isHalberdPiece(key))
-		{
-			// the pieces can't be traded; a full set makes a halberd, so each is worth a third of it
-			Long halberd = prices.get(HALBERD);
-			return halberd == null ? 0 : halberd / DropMath.halberdPieceCount();
-		}
+		// untradeable, but worth what it makes (a halberd piece, a vestige...)
+		ValueFormula formula = tracker.getCatalog().getValueFormula(itemName);
+		return formula == null ? 0 : formula.evaluate(this::tradedPrice);
+	}
+
+	private long tradedPrice(String itemName)
+	{
+		Long price = prices.get(BossCatalog.normalize(itemName));
 		return price == null ? 0 : price;
 	}
 

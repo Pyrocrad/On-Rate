@@ -60,7 +60,7 @@ Unless a line says otherwise, rates come from the boss's page on the [Old School
 | Boss | Was | Now | Why |
 |---|---|---|---|
 | Grotesque Guardians | Gloves 1/500, ring 1/500, hammer 1/750, core 1/1,000 | 1/250, 1/250, 1/375, 1/500 | The Guardians roll their table twice per kill. The old numbers were per roll. |
-| Araxxor | Noxious point, blade and pommel 1/200 each | 1/600 each | 1/200 is the chance of any halberd piece; each piece is a third of that.  For GP value each piece counts as a third of a Noxious halberd. |
+| Araxxor | Noxious point, blade and pommel 1/200 each | 1/600 each | 1/200 is the chance of any halberd piece; each piece is a third of that. |
 | Tombs of Amascut | Osmumten's fang and Lightbearer weight 7 at every raid level | Weight drops from raid level 350 on (fang 6/4/4/3, Lightbearer 6/5/4/3.5 at 350/400/450/500) | The chest's item mix changes at high raid levels. |
 | The Mad Angel | Ardeaglais teleport 2/25 | 1/25, 2 at a time | Same expected number of teleports, but luck is now judged per drop rather than per teleport. |
 | Theatre of Blood | Lil' Zik 1/650 in Hard Mode | 1/500 | [Lil' Zik](https://oldschool.runescape.wiki/w/Lil%27_Zik): 1/650 at best in normal raids and 1/500 at best in Hard Mode, from your own performance. |
@@ -83,3 +83,20 @@ When Jagex changes a drop rate:
 3. Add a row to "Fixed in this check" above, and update **Last full check** at the top when you've rechecked every boss.
 
 The tests check that every rate is between 0 and 1, and that every boss has a way to count kills.
+
+## GP value of untradeable uniques
+
+An item you can't trade has no Grand Exchange price, so On Rate prices it from what it makes (`valueFrom` in `bosses.json`). If one of the items in a formula has no price, the item counts as 0 GP.
+
+| Item | Worth |
+|---|---|
+| Noxious point, blade, pommel | Noxious halberd ÷ 3 (the GP you got counts full sets of three only) |
+| Araxyte fang | Amulet of rancour − Amulet of torture (as on the wiki) |
+| Elder venator fang | Necklace of rupture − Necklace of anguish |
+| Mokhaiotl cloth | Confliction gauntlets − Tormented bracelet − 10,000 × Demon tear (as on the wiki) |
+| Magus, Venator, Bellator, Ultor vestige | its ring − 3 × Chromium ingot |
+| Executioner's axe head, Eye of the duke, Leviathan's lure, Siren's staff | Soulreaper axe ÷ 4 (an estimate: four bosses each drop one piece) |
+| Hydra's eye, fang, heart | Brimstone ring ÷ 3 |
+| Ancient icon | 5,000 × Ancient essence (as on the wiki) |
+
+Pets, most jars, the Hydra heads and similar have no conversion and stay at 0 GP.
