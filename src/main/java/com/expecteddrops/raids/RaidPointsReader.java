@@ -80,10 +80,15 @@ public class RaidPointsReader
 	private static final String TOA_EVENT_NAMESPACE = "tombs-of-amascut";
 	private static final String TOA_EVENT_NAME_POINTS = "raidCompletedPoints";
 
-	/** Theatre of Blood board: MVP name, then player names and deaths in pairs (22/23 ... 30/31). */
-	private static final int TOB_MVP_CHILD = 14;
-	private static final int TOB_FIRST_PLAYER_CHILD = 22;
-	private static final int TOB_PLAYERS = 5;
+	/** Theatre of Blood board: the MVP's name, then each player's name and deaths. */
+	private static final int[] TOB_NAMES = {
+		InterfaceID.TobInfoboard.PLAYERNAME0, InterfaceID.TobInfoboard.PLAYERNAME1, InterfaceID.TobInfoboard.PLAYERNAME2,
+		InterfaceID.TobInfoboard.PLAYERNAME3, InterfaceID.TobInfoboard.PLAYERNAME4,
+	};
+	private static final int[] TOB_DEATHS = {
+		InterfaceID.TobInfoboard.DEATHS0, InterfaceID.TobInfoboard.DEATHS1, InterfaceID.TobInfoboard.DEATHS2,
+		InterfaceID.TobInfoboard.DEATHS3, InterfaceID.TobInfoboard.DEATHS4,
+	};
 
 	private final Client client;
 	private final ClientThread clientThread;
@@ -324,15 +329,15 @@ public class RaidPointsReader
 		int teamSize = 0;
 		int teamDeaths = 0;
 		int myDeaths = -1;
-		for (int i = 0; i < TOB_PLAYERS; i++)
+		for (int i = 0; i < TOB_NAMES.length; i++)
 		{
-			String name = widgetText(client.getWidget(InterfaceID.TOB_INFOBOARD, TOB_FIRST_PLAYER_CHILD + i * 2));
+			String name = widgetText(client.getWidget(TOB_NAMES[i]));
 			if (name.isEmpty())
 			{
 				continue;
 			}
 			teamSize++;
-			int deaths = widgetNumber(client.getWidget(InterfaceID.TOB_INFOBOARD, TOB_FIRST_PLAYER_CHILD + i * 2 + 1));
+			int deaths = widgetNumber(client.getWidget(TOB_DEATHS[i]));
 			teamDeaths += deaths;
 			if (myName != null && myName.equalsIgnoreCase(clean(name)))
 			{
@@ -343,7 +348,7 @@ public class RaidPointsReader
 		{
 			return;
 		}
-		String mvp = widgetText(client.getWidget(InterfaceID.TOB_INFOBOARD, TOB_MVP_CHILD));
+		String mvp = widgetText(client.getWidget(InterfaceID.TobInfoboard.MVP_PLAYER));
 		Boolean isMvp = myName == null || mvp.isEmpty() ? null : myName.equalsIgnoreCase(clean(mvp));
 		report(tracker.onRaidRecord(RaidRecord.tob(teamSize, myDeaths, teamDeaths, isMvp), System.currentTimeMillis()));
 	}

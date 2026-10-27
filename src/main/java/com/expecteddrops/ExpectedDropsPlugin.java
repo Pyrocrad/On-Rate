@@ -39,6 +39,7 @@ import net.runelite.api.GameState;
 import net.runelite.api.ItemComposition;
 import net.runelite.api.MenuAction;
 import net.runelite.api.Player;
+import net.runelite.api.ScriptID;
 import net.runelite.api.WorldView;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.events.ChatMessage;
@@ -89,11 +90,14 @@ public class ExpectedDropsPlugin extends Plugin
 	private static final long HISTORY_POINT_MILLIS = 10 * 60_000;
 	private long historyPointAt;
 	private long historyPointDay = -1;
-	/** Script that draws a collection log page. */
-	private static final int COLLECTION_DRAW_LIST = 2731;
-	/** Doom of Mokhaiotl scoreboard: completions per delve level in children 46, 49, ... 70 (the last is "8+"). */
-	private static final int DOOM_SCOREBOARD_GROUP = 920;
-	private static final int DOOM_SCOREBOARD_FIRST_CHILD = 46;
+	/** Doom of Mokhaiotl scoreboard: your completions per delve level 1 to 8, then "8+". */
+	private static final int[] DOOM_LEVEL_TOTALS = {
+		InterfaceID.DomScoreboard.P_TOTAL_LEVEL_1_VAL, InterfaceID.DomScoreboard.P_TOTAL_LEVEL_2_VAL,
+		InterfaceID.DomScoreboard.P_TOTAL_LEVEL_3_VAL, InterfaceID.DomScoreboard.P_TOTAL_LEVEL_4_VAL,
+		InterfaceID.DomScoreboard.P_TOTAL_LEVEL_5_VAL, InterfaceID.DomScoreboard.P_TOTAL_LEVEL_6_VAL,
+		InterfaceID.DomScoreboard.P_TOTAL_LEVEL_7_VAL, InterfaceID.DomScoreboard.P_TOTAL_LEVEL_8_VAL,
+		InterfaceID.DomScoreboard.P_TOTAL_LEVEL_8__VAL,
+	};
 
 	@Inject
 	private Client client;
@@ -652,7 +656,7 @@ public class ExpectedDropsPlugin extends Plugin
 	@Subscribe
 	public void onWidgetLoaded(WidgetLoaded event)
 	{
-		if (event.getGroupId() == DOOM_SCOREBOARD_GROUP)
+		if (event.getGroupId() == InterfaceID.DOM_SCOREBOARD)
 		{
 			clientThread.invokeLater(this::readDoomScoreboard);
 		}
@@ -665,9 +669,9 @@ public class ExpectedDropsPlugin extends Plugin
 			return;
 		}
 		Map<Integer, Integer> levels = new TreeMap<>();
-		for (int level = 1; level <= 9; level++)
+		for (int level = 1; level <= DOOM_LEVEL_TOTALS.length; level++)
 		{
-			Widget w = client.getWidget(DOOM_SCOREBOARD_GROUP, DOOM_SCOREBOARD_FIRST_CHILD + (level - 1) * 3);
+			Widget w = client.getWidget(DOOM_LEVEL_TOTALS[level - 1]);
 			if (w == null || w.getText() == null)
 			{
 				continue;
@@ -692,7 +696,7 @@ public class ExpectedDropsPlugin extends Plugin
 	@Subscribe
 	public void onScriptPostFired(ScriptPostFired event)
 	{
-		if (event.getScriptId() != COLLECTION_DRAW_LIST)
+		if (event.getScriptId() != ScriptID.COLLECTION_DRAW_LIST)
 		{
 			return;
 		}

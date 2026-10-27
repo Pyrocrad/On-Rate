@@ -50,7 +50,6 @@ public class RaidStateTracker
 {
 
 	private static final int REGION_LOBBY = 13454;
-	private static final int WIDGET_CHILD_ID = 40;
 
 	static final RaidState DEFAULT_STATE = new RaidState(false, false, null, 0);
 
@@ -81,7 +80,7 @@ public class RaidStateTracker
 		LocalPoint lp = player == null ? null : player.getLocalLocation();
 		int region = lp == null ? -1 : WorldPoint.fromLocalInstance(client, lp).getRegionID();
 
-		Widget w = client.getWidget(InterfaceID.TOA_HUD, WIDGET_CHILD_ID);
+		Widget w = client.getWidget(InterfaceID.ToaHud.RAID_STATE);
 
 		boolean inLobby = region == REGION_LOBBY;
 		RaidRoom currentRoom = RaidRoom.forRegionId(region);
