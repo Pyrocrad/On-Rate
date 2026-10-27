@@ -255,8 +255,7 @@ public interface ExpectedDropsConfig extends Config
 		name = "Raid purple chances",
 		description = "Only used for raids where On Rate has no points: everything from before you installed it, "
 			+ "and Theatre of Blood. Most players can leave these alone.",
-		position = 40,
-		closedByDefault = true
+		position = 40
 	)
 	String raidChancesSection = "raidChances";
 

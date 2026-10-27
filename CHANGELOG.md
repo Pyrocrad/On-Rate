@@ -133,7 +133,7 @@ Updates come through the Plugin Hub. Each heading is the date of that update; **
 - A shorter welcome guide: three steps.
 - The collection log line at the top lists the bosses you killed first ("Load 2 bosses you killed") and says you only need the bosses you do, not all 58 pages.
 - Royal Titans and Yama pages say when your kills count as duo, and where to change it.
-- The raid purple chance settings are folded away under **Raid purple chances**, and **Team bosses** comes before **Raids** in the settings.
+- The raid purple chance settings are in their own **Raid purple chances** section, and **Team bosses** comes before **Raids** in the settings.
 - Raid pages say in one grey line how many raids use an average purple chance instead of your points; hover it for how to change that.
 - Right after loading a log page, hovering an item no longer says "at least 0 kills (0.00x)": it says your streak is counted from your next kill.
 - Clearer notes for shared items ("Draconic visage also drops from King Black Dragon..."), one line instead of two on an empty account, and *Reset this boss* is a small link instead of a big button.
