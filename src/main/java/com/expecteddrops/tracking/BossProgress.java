@@ -56,6 +56,11 @@ public class BossProgress
 	 * head that came from a slayer task, or jars they don't care about. Null in older saves.
 	 */
 	java.util.Set<String> leftOut;
+	/**
+	 * Copies of shared items (pool key) On Rate saw this boss drop, for judging them per boss
+	 * (see {@link PoolSplit}). Null in older saves.
+	 */
+	Map<String, Integer> poolSeen;
 	/** Highest milestone already announced per item in its current dry streak. */
 	Map<String, Integer> milestone = new HashMap<>();
 	/** Kill count at the last milestone check, so a big jump (first sync) stays quiet. */

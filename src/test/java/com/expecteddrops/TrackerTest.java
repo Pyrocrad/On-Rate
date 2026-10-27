@@ -2727,4 +2727,140 @@ public class TrackerTest
 		assertEquals(1, s.getAnyRow().getReceived());
 		assertEquals(any - 1000 / 181.0, s.getAnyRow().getExpected(), 1e-9);
 	}
+
+	/** The Kings with 3 dragon axes in the log and Wintertodt's kills known: the axe is shared by both. */
+	private void kingsWithThreeAxes(int axes)
+	{
+		Map<String, Integer> items = new LinkedHashMap<>();
+		items.put("Berserker ring", 2);
+		items.put("Dragon axe", axes);
+		tracker.onClogPage("Dagannoth Kings", Arrays.asList(
+			"Dagannoth Rex kills: 436", "Dagannoth Prime kills: 10", "Dagannoth Supreme kills: 9"), items);
+		tracker.onRollBaseline("Wintertodt", 200, 0);
+	}
+
+	private boolean hasPool(String bossName, String item)
+	{
+		return tracker.sharedPoolsFor(bossName, RAIDS).stream().anyMatch(p -> p.getItemName().equals(item));
+	}
+
+	@Test
+	public void aSharedItemCanBeJudgedOnEachBossSeparately()
+	{
+		kingsWithThreeAxes(3);
+		SharedPool axe = pool("Dragon axe");
+		assertTrue(axe.isSplittable());
+		assertEquals(3, axe.getOlderCopies());
+		assertFalse(hasRow(tracker.stats("Dagannoth Kings", RAIDS), "Dragon axe"));
+		java.util.function.ToLongFunction<String> prices = item -> item.equals("Dragon axe") ? 1_000_000L : 0;
+		AccountStats before = tracker.accountStats(RAIDS, prices);
+
+		// the 3 older ones came from the Kings
+		tracker.splitPool("dragon axe", "Dagannoth Kings");
+		BossStats kings = tracker.stats("Dagannoth Kings", RAIDS);
+		RowStats row = row(kings, "Dragon axe");
+		assertEquals(3, row.getReceived());
+		assertEquals(455 / 128.0, row.getExpected(), 1e-12);
+		assertNull(row.getStreak());
+		assertEquals(kings.getRows().size(), kings.getDrops().size());
+		assertFalse(hasPool("Dagannoth Kings", "Dragon axe"));
+		BossStats todt = tracker.stats("Wintertodt", RAIDS);
+		assertEquals(0, row(todt, "Dragon axe").getReceived());
+		assertTrue(row(todt, "Dragon axe").getExpected() > 0);
+		assertEquals("dragon axe", tracker.splitPoolOf("Dagannoth Kings", "Dragon axe"));
+
+		// the account adds up the same copies and the same expected, only split differently
+		AccountStats after = tracker.accountStats(RAIDS, prices);
+		assertEquals(before.getTotal().getReceived(), after.getTotal().getReceived());
+		assertEquals(before.getTotal().getExpected(), after.getTotal().getExpected(), 1e-9);
+		// GP too (Wintertodt isn't synced, so its share still counts through the split row)
+		assertEquals(3_000_000L, after.getReceivedValue());
+		assertEquals(before.getReceivedValue(), after.getReceivedValue());
+		assertEquals(before.getExpectedValue(), after.getExpectedValue(), 1e-3);
+
+		// and back
+		tracker.unsplitPool("dragon axe");
+		assertFalse(hasRow(tracker.stats("Dagannoth Kings", RAIDS), "Dragon axe"));
+		assertTrue(hasPool("Dagannoth Kings", "Dragon axe"));
+		assertNull(tracker.splitPoolOf("Dagannoth Kings", "Dragon axe"));
+	}
+
+	@Test
+	public void aSplitSharedItemCountsTheDropsOnRateSees()
+	{
+		kingsWithThreeAxes(3);
+		tracker.splitPool("dragon axe", "Wintertodt");
+		tracker.onChatMessage("Your Dagannoth Rex kill count is: <col=ff0000>437</col>.", now);
+		tracker.onLoot("Dagannoth Rex", 1, Collections.singletonList(new Tracker.LootItem("Dragon axe", 1)), now);
+		// still split: the new copy is the Kings', the 3 older ones stay Wintertodt's
+		assertEquals(1, row(tracker.stats("Dagannoth Kings", RAIDS), "Dragon axe").getReceived());
+		assertEquals(3, row(tracker.stats("Wintertodt", RAIDS), "Dragon axe").getReceived());
+	}
+
+	@Test
+	public void aCopyOnRateDidNotSeeMakesItSharedAgain()
+	{
+		kingsWithThreeAxes(3);
+		tracker.splitPool("dragon axe", "Dagannoth Kings");
+		// the log shows one more than On Rate saw drop (played on another client)
+		kingsWithThreeAxes(4);
+		assertFalse(hasRow(tracker.stats("Dagannoth Kings", RAIDS), "Dragon axe"));
+		SharedPool axe = pool("Dragon axe");
+		assertTrue(axe.isSplitNeedsAnswer());
+		assertEquals(4, axe.getOlderCopies());
+		// answering again splits it with all 4
+		tracker.splitPool("dragon axe", "Dagannoth Kings");
+		assertEquals(4, row(tracker.stats("Dagannoth Kings", RAIDS), "Dragon axe").getReceived());
+	}
+
+	@Test
+	public void itemsTheLogAlsoCountsFromOtherMonstersCantBeSplit()
+	{
+		// uncut onyx: the log also counts Zalcano's and the Colosseum's
+		tracker.onClogPage("Skotizo", Collections.singletonList("Skotizo kills: 100"), Collections.singletonMap("Uncut onyx", 1));
+		SharedPool onyx = pool("Uncut onyx");
+		assertFalse(onyx.isSplittable());
+		tracker.splitPool(onyx.getKey(), "Skotizo");
+		assertFalse(hasRow(tracker.stats("Skotizo", RAIDS), "Uncut onyx"));
+		assertNotNull(pool("Uncut onyx"));
+	}
+
+	@Test
+	public void aSplitNeedsTheLogTotalAndAKnownBoss()
+	{
+		// no page showing the axe yet: nothing to split
+		tracker.onChatMessage("Your Dagannoth Rex kill count is: <col=ff0000>10</col>.", now);
+		assertFalse(pool("Dragon axe").isSplittable());
+		tracker.splitPool("dragon axe", "Dagannoth Kings");
+		assertFalse(hasRow(tracker.stats("Dagannoth Kings", RAIDS), "Dragon axe"));
+		// a boss that doesn't drop it can't take the older copies
+		kingsWithThreeAxes(3);
+		tracker.splitPool("dragon axe", "Zulrah");
+		assertFalse(hasRow(tracker.stats("Dagannoth Kings", RAIDS), "Dragon axe"));
+	}
+
+	@Test
+	public void noOlderCopiesSplitsWithoutABoss()
+	{
+		kingsWithThreeAxes(0);
+		assertEquals(0, pool("Dragon axe").getOlderCopies());
+		tracker.splitPool("dragon axe", null);
+		assertEquals(0, row(tracker.stats("Dagannoth Kings", RAIDS), "Dragon axe").getReceived());
+	}
+
+	@Test
+	public void aSplitIsSaved()
+	{
+		Gson gson = new Gson();
+		kingsWithThreeAxes(3);
+		tracker.splitPool("dragon axe", "Dagannoth Kings");
+		tracker.onChatMessage("Your Dagannoth Rex kill count is: <col=ff0000>437</col>.", now);
+		tracker.onLoot("Dagannoth Rex", 1, Collections.singletonList(new Tracker.LootItem("Dragon axe", 1)), now);
+		Tracker restored = new Tracker(catalog);
+		restored.setState(gson.fromJson(gson.toJson(tracker.getState()), TrackerState.class));
+		assertEquals(4, row(restored.stats("Dagannoth Kings", RAIDS), "Dragon axe").getReceived());
+		// a save from before this existed has neither field
+		restored.setState(gson.fromJson("{\"sharedClog\":{\"dragon axe\":3}}", TrackerState.class));
+		assertNotNull(restored.sharedPools(RAIDS));
+	}
 }

@@ -18,6 +18,7 @@ public class BossStats
 	private final double raidUniqueChance;
 	private final Map<Integer, Integer> levelCounts;
 	private Map<String, Integer> partCounts;
+	private List<com.expecteddrops.data.DropDefinition> drops;
 
 	public BossStats(BossDefinition boss, int killCount, boolean killCountKnown, boolean clogSynced,
 		RowStats anyRow, List<RowStats> rows, double raidUniqueChance, Map<Integer, Integer> levelCounts)
@@ -61,6 +62,20 @@ public class BossStats
 	public List<RowStats> getRows()
 	{
 		return rows;
+	}
+
+	/**
+	 * The drop of each row, in the same order: the boss's own uniques, then any shared items
+	 * the player chose to judge on each boss separately.
+	 */
+	public List<com.expecteddrops.data.DropDefinition> getDrops()
+	{
+		return drops != null ? drops : boss.getDrops();
+	}
+
+	public void setDrops(List<com.expecteddrops.data.DropDefinition> drops)
+	{
+		this.drops = drops;
 	}
 
 	/** Kill count per part for combined pages, otherwise null. */

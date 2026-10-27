@@ -18,6 +18,10 @@ public class SharedPool
 	private boolean logKnown = true;
 	private boolean once;
 	private String alsoFrom;
+	private String key;
+	private boolean splittable;
+	private int olderCopies;
+	private boolean splitNeedsAnswer;
 
 	public SharedPool(String label, String itemName, double expected, int received, List<String> bosses, List<String> missingPages)
 	{
@@ -72,6 +76,47 @@ public class SharedPool
 	public SharedPool withAlsoFrom(String alsoFrom)
 	{
 		this.alsoFrom = alsoFrom;
+		return this;
+	}
+
+	/** The pool's key (its normalized item name), for choosing to judge it per boss. */
+	public String getKey()
+	{
+		return key;
+	}
+
+	public SharedPool withKey(String key)
+	{
+		this.key = key;
+		return this;
+	}
+
+	/**
+	 * True when it can be judged on each boss separately: only the bosses drop it (nothing like
+	 * devils or other dragons the log also counts) and the log total is known.
+	 */
+	public boolean isSplittable()
+	{
+		return splittable;
+	}
+
+	/** Copies in the log On Rate didn't see drop (from before it, or played elsewhere). */
+	public int getOlderCopies()
+	{
+		return olderCopies;
+	}
+
+	/** True when it was judged per boss, but the log has gained copies On Rate didn't see since. */
+	public boolean isSplitNeedsAnswer()
+	{
+		return splitNeedsAnswer;
+	}
+
+	public SharedPool withSplit(boolean splittable, int olderCopies, boolean needsAnswer)
+	{
+		this.splittable = splittable;
+		this.olderCopies = olderCopies;
+		this.splitNeedsAnswer = needsAnswer;
 		return this;
 	}
 

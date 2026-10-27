@@ -902,7 +902,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		RowStats any = stats.getAnyRow();
 		// everything this boss drops is shared (Chaos Elemental): no verdict of its own
-		boolean sharedOnly = stats.getBoss().getDrops().isEmpty();
+		boolean sharedOnly = stats.getDrops().isEmpty();
 		boolean unsynced = reminder != null && stats.getKillCount() > 0;
 		if (sharedOnly)
 		{
@@ -929,9 +929,9 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		double[] value = o.isGeValue() && !unsynced ? bossValue(stats) : null;
 		List<RowStats> counted = new ArrayList<>();
-		for (int i = 0; i < stats.getBoss().getDrops().size(); i++)
+		for (int i = 0; i < stats.getDrops().size(); i++)
 		{
-			if (tracker.counts(stats.getBoss(), stats.getBoss().getDrops().get(i)))
+			if (tracker.counts(stats.getBoss(), stats.getDrops().get(i)))
 			{
 				counted.add(stats.getRows().get(i));
 			}
@@ -2163,12 +2163,20 @@ public class ExpectedDropsPanel extends PluginPanel
 					rowsPanel.add(compactHeader("Item"));
 					headerAdded = true;
 				}
-				rowsPanel.add(compactRow(row, tip, null));
+				rowsPanel.add(withSplitMenu(compactRow(row, tip, null), pool));
 			}
 			else
 			{
 				rowsPanel.add(spacer(Theme.HAIR));
-				rowsPanel.add(targetRow(row, tip));
+				rowsPanel.add(withSplitMenu(targetRow(row, tip), pool));
+			}
+			if (pool.isSplitNeedsAnswer() && pool.isSplittable())
+			{
+				missingLines.add(String.format("Your collection log has %s %s On Rate didn't see drop, so it's judged "
+					+ "with the other bosses again. Right-click it to say where %s came from.",
+					pool.getOlderCopies() == 1 ? "a" : String.valueOf(pool.getOlderCopies()),
+					pool.getOlderCopies() == 1 ? pool.getLabel() : pool.getLabel() + " copies",
+					pool.getOlderCopies() == 1 ? "it" : "they"));
 			}
 			List<String> missing = new ArrayList<>(new java.util.TreeSet<>(pool.getMissingPages()));
 			missing.remove(page);
@@ -2220,9 +2228,9 @@ public class ExpectedDropsPanel extends PluginPanel
 		List<Integer> itemCaps = new ArrayList<>();
 		double expected = 0;
 		long received = 0;
-		for (int i = 0; i < stats.getBoss().getDrops().size(); i++)
+		for (int i = 0; i < stats.getDrops().size(); i++)
 		{
-			DropDefinition drop = stats.getBoss().getDrops().get(i);
+			DropDefinition drop = stats.getDrops().get(i);
 			RowStats row = stats.getRows().get(i);
 			long price = tracker.counts(stats.getBoss(), drop) ? Math.max(0, priceOf.applyAsLong(drop.getName())) : 0;
 			if (price <= 0)
@@ -2454,6 +2462,10 @@ public class ExpectedDropsPanel extends PluginPanel
 			// shared items have no "leave out": the account totals count the log total as it is
 			tip.note("Also drops from " + pool.getAlsoFrom() + ", and the collection log counts those too, "
 				+ "so this can look luckier than it is.");
+		}
+		else if (pool.isSplittable())
+		{
+			tip.note("Know which boss your older ones came from? Right-click to judge it on each boss separately.");
 		}
 		return tip.wide();
 	}
@@ -2698,6 +2710,21 @@ public class ExpectedDropsPanel extends PluginPanel
 			return c;
 		}
 		JPopupMenu menu = new JPopupMenu();
+		String splitKey = tracker.splitPoolOf(bossName, r.getIconItem());
+		if (splitKey != null)
+		{
+			// a shared item the player chose to judge per boss: it can go back, not be left out
+			JMenuItem back = new JMenuItem("Judge it with the other bosses again");
+			back.addActionListener(e ->
+			{
+				tracker.unsplitPool(splitKey);
+				save.run();
+				refresh();
+			});
+			menu.add(back);
+			addPopup(c, menu);
+			return c;
+		}
 		JMenuItem item = new JMenuItem(leftOut ? "Count it again" : "Leave out of the calculations");
 		item.addActionListener(e ->
 		{
@@ -2708,6 +2735,57 @@ public class ExpectedDropsPanel extends PluginPanel
 		menu.add(item);
 		addPopup(c, menu);
 		return c;
+	}
+
+	/**
+	 * Adds the right-click menu to a shared item that only bosses drop: judge it on each boss
+	 * separately. The copies On Rate saw go to the boss that dropped them; the older ones it
+	 * didn't see all go to the boss picked here (only bosses with kills are offered).
+	 */
+	private <T extends java.awt.Component> T withSplitMenu(T c, com.expecteddrops.stats.SharedPool pool)
+	{
+		if (!pool.isSplittable() || pool.getKey() == null)
+		{
+			return c;
+		}
+		JPopupMenu menu = new JPopupMenu();
+		int older = pool.getOlderCopies();
+		if (older == 0)
+		{
+			JMenuItem item = new JMenuItem("Judge it on each boss separately");
+			item.addActionListener(e -> splitPool(pool, null));
+			menu.add(item);
+		}
+		else
+		{
+			javax.swing.JMenu from = new javax.swing.JMenu(older == 1 ? "Judge per boss: my older one came from"
+				: "Judge per boss: my " + older + " older ones came from");
+			for (String boss : pool.getBosses())
+			{
+				com.expecteddrops.stats.BossStats s = tracker.stats(boss, raidSettings.get());
+				if (s == null || s.getKillCount() <= 0)
+				{
+					continue;
+				}
+				JMenuItem item = new JMenuItem(boss);
+				item.addActionListener(e -> splitPool(pool, boss));
+				from.add(item);
+			}
+			if (from.getItemCount() == 0)
+			{
+				return c;
+			}
+			menu.add(from);
+		}
+		addPopup(c, menu);
+		return c;
+	}
+
+	private void splitPool(com.expecteddrops.stats.SharedPool pool, String olderBoss)
+	{
+		tracker.splitPool(pool.getKey(), olderBoss);
+		save.run();
+		refresh();
 	}
 
 	/**
@@ -3567,9 +3645,9 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		List<String> names = new ArrayList<>();
 		List<Double> values = new ArrayList<>();
-		for (int i = 0; i < stats.getBoss().getDrops().size(); i++)
+		for (int i = 0; i < stats.getDrops().size(); i++)
 		{
-			DropDefinition drop = stats.getBoss().getDrops().get(i);
+			DropDefinition drop = stats.getDrops().get(i);
 			if (tracker.counts(stats.getBoss(), drop))
 			{
 				names.add(stats.getRows().get(i).getLabel());
@@ -3589,9 +3667,9 @@ public class ExpectedDropsPanel extends PluginPanel
 			return 0;
 		}
 		double value = 0;
-		for (int i = 0; i < stats.getBoss().getDrops().size(); i++)
+		for (int i = 0; i < stats.getDrops().size(); i++)
 		{
-			DropDefinition drop = stats.getBoss().getDrops().get(i);
+			DropDefinition drop = stats.getDrops().get(i);
 			if (!tracker.counts(stats.getBoss(), drop))
 			{
 				continue;
@@ -4137,7 +4215,7 @@ public class ExpectedDropsPanel extends PluginPanel
 	{
 		Tip tip = new Tip(row.isAny() ? "Any unique" : row.getLabel());
 		tip.line(stats.getBoss().getName(), Theme.TEXT_MUTED);
-		DropDefinition drop = row.isAny() ? null : findDrop(stats.getBoss(), row.getLabel());
+		DropDefinition drop = row.isAny() ? null : findDrop(stats.getDrops(), row.getLabel());
 		int kills = stats.getKillCount();
 		String units = kills == 1 ? unit : unit + "s";
 
@@ -4233,6 +4311,13 @@ public class ExpectedDropsPanel extends PluginPanel
 			tip.note("Also drops from " + drop.getAlsoFrom() + ", and the collection log counts those too. "
 				+ "Got yours there? Right-click to leave it out.");
 		}
+		if (drop != null && !stats.getBoss().getDrops().contains(drop))
+		{
+			// a shared item the player split: their own choice of where the older copies came from
+			tip.note("Other bosses drop this too. You chose to judge it on each boss separately: the copies On Rate "
+				+ "saw drop count for the boss that dropped them, and the older ones for the boss you picked. "
+				+ "Right-click to judge it with the other bosses again.");
+		}
 		if (multiple != null)
 		{
 			// a dry spell says nothing about the next one
@@ -4253,9 +4338,9 @@ public class ExpectedDropsPanel extends PluginPanel
 		return Texts.nextChance(rate, kills);
 	}
 
-	private static DropDefinition findDrop(BossDefinition boss, String label)
+	private static DropDefinition findDrop(List<DropDefinition> drops, String label)
 	{
-		for (DropDefinition drop : boss.getDrops())
+		for (DropDefinition drop : drops)
 		{
 			if (drop.getDisplayName().equals(label))
 			{

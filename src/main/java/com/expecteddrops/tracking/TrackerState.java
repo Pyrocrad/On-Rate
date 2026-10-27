@@ -42,6 +42,18 @@ public class TrackerState
 		return history;
 	}
 
+	/** Shared items (pool key) the player chose to judge on each boss separately. Null in older saves. */
+	Map<String, PoolSplit> poolSplits = new HashMap<>();
+
+	Map<String, PoolSplit> poolSplits()
+	{
+		if (poolSplits == null)
+		{
+			poolSplits = new HashMap<>();
+		}
+		return poolSplits;
+	}
+
 	Map<String, Integer> sharedClog()
 	{
 		if (sharedClog == null)

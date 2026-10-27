@@ -350,6 +350,125 @@ public class Tracker
 		}
 	}
 
+	/** Copies of a shared item On Rate saw this boss drop. */
+	private int poolSeenAt(String bossName, String key)
+	{
+		BossProgress p = state.peek(bossName);
+		Integer n = p == null || p.poolSeen == null ? null : p.poolSeen.get(key);
+		return n == null ? 0 : n;
+	}
+
+	private boolean poolOnce(String key)
+	{
+		for (BossCatalog.PoolSource src : catalog.getPools().getOrDefault(key, Collections.emptyList()))
+		{
+			if (src.getDrop().isOnce())
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** Copies of a shared item in the log that On Rate didn't see drop: from before it, or played elsewhere. */
+	private int olderCopies(String key)
+	{
+		Integer total = state.sharedClog().get(key);
+		if (total == null)
+		{
+			return 0;
+		}
+		int seen = 0;
+		for (BossCatalog.PoolSource src : catalog.getPools().getOrDefault(key, Collections.emptyList()))
+		{
+			seen += poolSeenAt(src.getBoss().getName(), key);
+		}
+		boolean once = poolOnce(key);
+		return Math.max(0, (once ? Math.min(total, 1) : total) - (once ? Math.min(seen, 1) : seen));
+	}
+
+	/**
+	 * True when a shared item can be judged on each boss separately: its log total is known and
+	 * only the bosses drop it (the log also counts onyx from Zalcano, visages from other dragons...).
+	 */
+	private boolean canSplit(String key)
+	{
+		List<BossCatalog.PoolSource> sources = catalog.getPools().get(key);
+		if (sources == null || !state.sharedClog().containsKey(key))
+		{
+			return false;
+		}
+		for (BossCatalog.PoolSource src : sources)
+		{
+			if (src.getDrop().getAlsoFrom() != null)
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * The player's choice for a shared item while it still covers every copy, else null: a copy
+	 * the log gained without On Rate seeing it makes the item shared again until they answer.
+	 */
+	private PoolSplit activeSplit(String key)
+	{
+		PoolSplit split = state.poolSplits().get(key);
+		if (split == null || !canSplit(key) || split.olderCopies != olderCopies(key))
+		{
+			return null;
+		}
+		if (split.olderCopies > 0 && !poolBosses(key).contains(split.olderBoss))
+		{
+			return null;
+		}
+		return split;
+	}
+
+	private List<String> poolBosses(String key)
+	{
+		List<String> names = new ArrayList<>();
+		for (BossCatalog.PoolSource src : catalog.getPools().getOrDefault(key, Collections.emptyList()))
+		{
+			names.add(src.getBoss().getName());
+		}
+		return names;
+	}
+
+	/**
+	 * Judges a shared item on each boss separately: the copies On Rate saw go to the boss that
+	 * dropped them, and the older ones (if any) all to {@code olderBoss}. Does nothing for an
+	 * item that can't be split (see {@link #canSplit}).
+	 */
+	public synchronized void splitPool(String key, String olderBoss)
+	{
+		if (!canSplit(key))
+		{
+			return;
+		}
+		int older = olderCopies(key);
+		if (older > 0 && !poolBosses(key).contains(olderBoss))
+		{
+			return;
+		}
+		state.poolSplits().put(key, new PoolSplit(older > 0 ? olderBoss : null, older));
+	}
+
+	/** Judges a shared item on all its bosses together again. */
+	public synchronized void unsplitPool(String key)
+	{
+		state.poolSplits().remove(key);
+	}
+
+	/** The pool key of a shared item this boss's page judges on its own (the player split it), or null. */
+	public synchronized String splitPoolOf(String bossName, String itemName)
+	{
+		BossDefinition boss = catalog.byName(bossName);
+		String key = boss == null || itemName == null ? null : catalog.poolOf(boss, itemName);
+		return key != null && activeSplit(key) != null ? key : null;
+	}
+
 	/** Whether a drop counts towards this boss's totals: a unique the player didn't leave out. */
 	private boolean counts(BossDefinition boss, DropDefinition drop, BossProgress p)
 	{
@@ -1636,7 +1755,7 @@ public class Tracker
 		for (int i = 0; i < s.getRows().size(); i++)
 		{
 			RowStats row = s.getRows().get(i);
-			DropDefinition drop = boss.getDrops().get(i);
+			DropDefinition drop = s.getDrops().get(i);
 			if (!counts(boss, drop, progress) || row.getStreak() == null || row.getRate() <= 0)
 			{
 				continue;
@@ -1841,6 +1960,15 @@ public class Tracker
 				if (pool != null && state.sharedClog().containsKey(pool))
 				{
 					state.sharedClog().merge(pool, 1, Integer::sum);
+				}
+				if (pool != null)
+				{
+					// which boss it came from, for judging it per boss (see PoolSplit)
+					if (progress.poolSeen == null)
+					{
+						progress.poolSeen = new HashMap<>();
+					}
+					progress.poolSeen.merge(pool, 1, Integer::sum);
 				}
 			}
 		}
@@ -2699,7 +2827,20 @@ public class Tracker
 				partRaids.put(part.getName(), partRaids(part, raids, parts.get(part.getName()), progress));
 			}
 		}
-		for (DropDefinition drop : boss.getDrops())
+		// the boss's own uniques, then the shared items the player chose to judge per boss
+		List<DropDefinition> drops = new ArrayList<>(boss.getDrops());
+		Map<DropDefinition, Integer> splitReceived = new HashMap<>();
+		for (Map.Entry<String, DropDefinition> e : catalog.poolsOf(boss).entrySet())
+		{
+			PoolSplit split = activeSplit(e.getKey());
+			if (split != null)
+			{
+				drops.add(e.getValue());
+				splitReceived.put(e.getValue(), poolSeenAt(boss.getName(), e.getKey())
+					+ (boss.getName().equals(split.olderBoss) ? split.olderCopies : 0));
+			}
+		}
+		for (DropDefinition drop : drops)
 		{
 			double expected;
 			double rate;
@@ -2760,10 +2901,11 @@ public class Tracker
 					sureDropped = true;
 				}
 			}
-			int received = 0;
+			Integer split = splitReceived.get(drop);
+			int received = split != null ? split : 0;
 			// No kills here: anything in the log came from elsewhere (an occult necklace
 			// from a regular smoke devil...), so it doesn't count for this boss.
-			if (progress != null && kc > 0)
+			if (split == null && progress != null && kc > 0)
 			{
 				for (String name : drop.getAllNames())
 				{
@@ -2780,7 +2922,8 @@ public class Tracker
 				// one copy is certain, the rest is chance: nobody at this kill count has none
 				row.withParts(new RowStats.Parts().addSure(1).addPlain(Math.max(0, expected - 1)));
 			}
-			if (!(drop.getMax() > 0 && received >= drop.getMax()))
+			// a split shared item has no dry streak: On Rate never saw when the older copies dropped
+			if (split == null && !(drop.getMax() > 0 && received >= drop.getMax()))
 			{
 				Integer last = null;
 				if (progress != null)
@@ -2848,9 +2991,9 @@ public class Tracker
 		// "Any" streak: kills since the most recent unique On Rate knows of.
 		double anyRate = 0;
 		Integer lastAny = null;
-		for (int i = 0; i < boss.getDrops().size(); i++)
+		for (int i = 0; i < drops.size(); i++)
 		{
-			DropDefinition drop = boss.getDrops().get(i);
+			DropDefinition drop = drops.get(i);
 			if (!counts(boss, drop, progress))
 			{
 				continue;
@@ -2884,6 +3027,7 @@ public class Tracker
 		double raidChance = boss.getRaid() != null ? raids.uniqueChance(boss.getRaid()) : Double.NaN;
 		BossStats stats = new BossStats(boss, kc, known, synced, any, rows, raidChance, levels);
 		stats.setPartCounts(parts);
+		stats.setDrops(drops);
 		return stats;
 	}
 
@@ -2916,12 +3060,22 @@ public class Tracker
 		List<Integer> valueCaps = new ArrayList<>();
 		// every boss's numbers worked out once, then shared with the shared-items pass
 		Map<String, BossStats> cache = new HashMap<>();
+		List<RowStats> splitLeftovers = new ArrayList<>();
 		List<String> unsynced = new ArrayList<>();
 		for (BossDefinition boss : catalog.getBosses())
 		{
 			BossStats s = cachedStats(boss.getName(), raids, cache);
 			RowStats any = s.getAnyRow();
-			if (boss.getDrops().isEmpty() || s.getKillCount() <= 0)
+			boolean skipped = s.getDrops().isEmpty() || s.getKillCount() <= 0 || syncReminder(boss.getName()) != null;
+			if (skipped)
+			{
+				// a shared item split per boss still counts, as it did while shared
+				for (int i = boss.getDrops().size(); i < s.getDrops().size(); i++)
+				{
+					splitLeftovers.add(s.getRows().get(i));
+				}
+			}
+			if (s.getDrops().isEmpty() || s.getKillCount() <= 0)
 			{
 				continue;
 			}
@@ -2937,29 +3091,29 @@ public class Tracker
 			BossProgress progress = state.peek(boss.getName());
 			double driest = Double.NaN;
 			String driestItem = null;
-			for (int i = 0; i < boss.getDrops().size(); i++)
+			for (int i = 0; i < s.getDrops().size(); i++)
 			{
 				RowStats r = s.getRows().get(i);
 				double m = r.getStreakMultiple();
-				if (counts(boss, boss.getDrops().get(i), progress) && !Double.isNaN(m) && (Double.isNaN(driest) || m > driest))
+				if (counts(boss, s.getDrops().get(i), progress) && !Double.isNaN(m) && (Double.isNaN(driest) || m > driest))
 				{
 					driest = m;
 					driestItem = r.getLabel();
 				}
 			}
 			rows.add(bossRow.withDriest(driest, driestItem));
-			for (int i = 0; i < boss.getDrops().size(); i++)
+			for (int i = 0; i < s.getDrops().size(); i++)
 			{
-				if (counts(boss, boss.getDrops().get(i), progress))
+				if (counts(boss, s.getDrops().get(i), progress))
 				{
-					items.add(new ItemHighlight(boss.getName(), s.getRows().get(i), boss.getDrops().get(i).isPet()));
+					items.add(new ItemHighlight(boss.getName(), s.getRows().get(i), s.getDrops().get(i).isPet()));
 				}
 			}
 			if (prices != null)
 			{
-				for (int i = 0; i < boss.getDrops().size(); i++)
+				for (int i = 0; i < s.getDrops().size(); i++)
 				{
-					DropDefinition drop = boss.getDrops().get(i);
+					DropDefinition drop = s.getDrops().get(i);
 					RowStats row = s.getRows().get(i);
 					if (!counts(boss, drop, progress))
 					{
@@ -2985,6 +3139,21 @@ public class Tracker
 		// Items several bosses drop (dragon pickaxe, onyx...) have no row of their own here (they
 		// show on the page of each boss that drops them), but they count in the account verdict
 		// and GE value once On Rate knows the kills of every boss that drops them.
+		for (RowStats row : splitLeftovers)
+		{
+			expected += row.getCap() > 0 ? DropMath.expectedCapped(row.getExpected(), row.getCap()) : row.getExpected();
+			received += row.getReceived();
+			totalParts.add(row);
+			long price = prices == null ? 0 : Math.max(0, prices.applyAsLong(row.getIconItem()));
+			if (price > 0)
+			{
+				valueExpected.add(row.getExpected());
+				valuePrices.add(price);
+				valueCaps.add(row.getCap());
+				expectedValue += DropMath.expectedValue(row.getExpected(), row.getCap()) * price;
+				receivedValue += row.getReceived() * price;
+			}
+		}
 		for (SharedPool pool : sharedPools(raids, cache))
 		{
 			if (isPetItem(pool.getItemName()) && pool.isLogKnown() && pool.getExpected() > 0)
@@ -3072,6 +3241,11 @@ public class Tracker
 		List<SharedPool> result = new ArrayList<>();
 		for (Map.Entry<String, List<BossCatalog.PoolSource>> e : catalog.getPools().entrySet())
 		{
+			if (activeSplit(e.getKey()) != null)
+			{
+				// judged on each boss separately: those copies are rows on the bosses' own pages
+				continue;
+			}
 			Integer logTotal = state.sharedClog().get(e.getKey());
 			double expected = 0;
 			boolean once = false;
@@ -3124,7 +3298,8 @@ public class Tracker
 				got = Math.min(got, 1);
 			}
 			result.add(new SharedPool(label, itemName, expected, got, bosses, missing).withLogKnown(logTotal != null).withOnce(once)
-				.withAlsoFrom(alsoFrom));
+				.withAlsoFrom(alsoFrom).withKey(e.getKey())
+				.withSplit(canSplit(e.getKey()), olderCopies(e.getKey()), state.poolSplits().containsKey(e.getKey())));
 		}
 		return result;
 	}
