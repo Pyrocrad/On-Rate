@@ -146,9 +146,10 @@ public class ExpectedDropsPlugin extends Plugin
 	private long pricesRefreshedAt;
 	private static final long PRICE_REFRESH_MILLIS = 10 * 60_000;
 	private static final String HALBERD = "noxious halberd";
-	/** The fang can't be traded, but a chisel turns it into this, which can. */
+	/** The fang can't be traded; like the wiki, it's worth what it adds to an amulet of torture. */
 	private static final String FANG = "araxyte fang";
-	private static final String ETCHED_FANG = "etched araxyte fang";
+	private static final String RANCOUR = "amulet of rancour";
+	private static final String TORTURE = "amulet of torture";
 
 	@Provides
 	ExpectedDropsConfig provideConfig(ConfigManager configManager)
@@ -919,7 +920,8 @@ public class ExpectedDropsPlugin extends Plugin
 		}
 		Set<String> wanted = new HashSet<>(tracker.getCatalog().getAllItemNames());
 		wanted.add(HALBERD);
-		wanted.add(ETCHED_FANG);
+		wanted.add(RANCOUR);
+		wanted.add(TORTURE);
 		int count = client.getItemCount();
 		for (int id = 0; id < count; id++)
 		{
@@ -973,8 +975,9 @@ public class ExpectedDropsPlugin extends Plugin
 		Long price = prices.get(key);
 		if ((price == null || price <= 0) && FANG.equals(key))
 		{
-			Long etched = prices.get(ETCHED_FANG);
-			return etched == null ? 0 : etched;
+			Long rancour = prices.get(RANCOUR);
+			Long torture = prices.get(TORTURE);
+			return rancour == null || torture == null ? 0 : Math.max(0, rancour - torture);
 		}
 		if ((price == null || price <= 0) && DropMath.isHalberdPiece(key))
 		{
