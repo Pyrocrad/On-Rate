@@ -12,7 +12,7 @@ Unless a line says otherwise, rates come from the boss's page on the [Old School
 
 | Boss | Wiki page | Notes |
 |---|---|---|
-| Abyssal Sire | [Abyssal Sire](https://oldschool.runescape.wiki/w/Abyssal_Sire) | Unsired 1/100. The jar and pet come out of the Unsired, so their per-kill rates are worked out from it. |
+| Abyssal Sire | [Abyssal Sire](https://oldschool.runescape.wiki/w/Abyssal_Sire) | Unsired 1/100. The jar and pet come out of the Unsired, so their per-kill rates are worked out from it, and the Unsired itself is not counted as a unique. |
 | Alchemical Hydra | [Alchemical Hydra](https://oldschool.runescape.wiki/w/Alchemical_Hydra) | Dragon thrownaxes and knives (1/2,000 each) are left out: wyrms, drakes and hydras drop them too, and the collection log has one total for all of them, so the ones the Hydra did drop aren't counted either. |
 | Amoxliatl | [Amoxliatl](https://oldschool.runescape.wiki/w/Amoxliatl) | |
 | Araxxor | [Araxxor](https://oldschool.runescape.wiki/w/Araxxor) | 1/200 for any halberd piece, 1/600 for each one. You get no duplicate pieces until you have a full set, which this doesn't model. |

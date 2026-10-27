@@ -4,7 +4,7 @@
     {
       "name": "Abyssal Sire", "kc": ["Abyssal Sire"], "loot": ["Abyssal Sire"], "clog": ["Abyssal Sire"], "note": "Bludgeon pieces and the abyssal dagger come from Unsired, not from the kill itself.",
       "drops": [
-        {"name": "Unsired", "rate": "1/100"},
+        {"name": "Unsired", "rate": "1/100", "any": false},
         {"name": "Jar of miasma", "rate": "1/1000"},
         {"name": "Abyssal orphan", "rate": "1/2560", "pet": true}
       ]
