@@ -2230,6 +2230,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		List<Integer> itemCaps = new ArrayList<>();
 		double expected = 0;
 		long received = 0;
+		int pieces = 0;
+		long piecePrice = 0;
 		for (int i = 0; i < stats.getDrops().size(); i++)
 		{
 			DropDefinition drop = stats.getDrops().get(i);
@@ -2244,8 +2246,17 @@ public class ExpectedDropsPanel extends PluginPanel
 			itemCaps.add(row.getCap());
 			// at most the copies that count (a scroll you can only have once)
 			expected += DropMath.expectedValue(row.getExpected(), row.getCap()) * price;
-			received += row.getReceived() * price;
+			if (DropMath.isHalberdPiece(drop.getName()))
+			{
+				pieces += row.getReceived();
+				piecePrice = price;
+			}
+			else
+			{
+				received += row.getReceived() * price;
+			}
 		}
+		received += DropMath.pieceSetValue(pieces, piecePrice);
 		if (expected <= 0)
 		{
 			return null;

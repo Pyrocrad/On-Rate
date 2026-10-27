@@ -3217,6 +3217,8 @@ public class Tracker
 			}
 			if (prices != null)
 			{
+				int pieces = 0;
+				long piecePrice = 0;
 				for (int i = 0; i < s.getDrops().size(); i++)
 				{
 					DropDefinition drop = s.getDrops().get(i);
@@ -3234,8 +3236,17 @@ public class Tracker
 					valuePrices.add(price);
 					valueCaps.add(row.getCap());
 					expectedValue += DropMath.expectedValue(row.getExpected(), row.getCap()) * price;
-					receivedValue += row.getReceived() * price;
+					if (DropMath.isHalberdPiece(drop.getName()))
+					{
+						pieces += row.getReceived();
+						piecePrice = price;
+					}
+					else
+					{
+						receivedValue += row.getReceived() * price;
+					}
 				}
+				receivedValue += DropMath.pieceSetValue(pieces, piecePrice);
 			}
 			killCounts.put(boss.getName(), s.getKillCount());
 			expected += any.getExpected();

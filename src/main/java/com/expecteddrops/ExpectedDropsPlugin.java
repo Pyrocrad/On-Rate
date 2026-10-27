@@ -146,7 +146,6 @@ public class ExpectedDropsPlugin extends Plugin
 	private long pricesRefreshedAt;
 	private static final long PRICE_REFRESH_MILLIS = 10 * 60_000;
 	private static final String HALBERD = "noxious halberd";
-	private static final Set<String> HALBERD_PIECES = new HashSet<>(java.util.Arrays.asList("noxious point", "noxious blade", "noxious pommel"));
 
 	@Provides
 	ExpectedDropsConfig provideConfig(ConfigManager configManager)
@@ -968,11 +967,11 @@ public class ExpectedDropsPlugin extends Plugin
 	{
 		String key = BossCatalog.normalize(itemName);
 		Long price = prices.get(key);
-		if ((price == null || price <= 0) && HALBERD_PIECES.contains(key))
+		if ((price == null || price <= 0) && DropMath.isHalberdPiece(key))
 		{
 			// the pieces can't be traded; a full set makes a halberd, so each is worth a third of it
 			Long halberd = prices.get(HALBERD);
-			return halberd == null ? 0 : halberd / HALBERD_PIECES.size();
+			return halberd == null ? 0 : halberd / DropMath.halberdPieceCount();
 		}
 		return price == null ? 0 : price;
 	}

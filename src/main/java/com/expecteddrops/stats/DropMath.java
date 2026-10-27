@@ -557,6 +557,29 @@ public final class DropMath
 		return count;
 	}
 
+	/** Araxxor's halberd pieces: untradeable, and no duplicates drop until a full set is made. */
+	private static final java.util.Set<String> HALBERD_PIECES = new java.util.HashSet<>(
+		java.util.Arrays.asList("noxious point", "noxious blade", "noxious pommel"));
+
+	public static boolean isHalberdPiece(String itemName)
+	{
+		return itemName != null && HALBERD_PIECES.contains(itemName.toLowerCase(java.util.Locale.ROOT));
+	}
+
+	public static int halberdPieceCount()
+	{
+		return HALBERD_PIECES.size();
+	}
+
+	/**
+	 * GP the halberd pieces you have are worth: only full sets, since a piece alone can't be sold
+	 * and duplicates don't drop before the set is done. {@code piecePrice} is a third of a halberd.
+	 */
+	public static long pieceSetValue(int pieces, long piecePrice)
+	{
+		return (pieces / HALBERD_PIECES.size()) * HALBERD_PIECES.size() * piecePrice;
+	}
+
 	/** "1.24b", "345.6m", "12.3k" or "950" coins. */
 	public static String formatGp(double gp)
 	{
