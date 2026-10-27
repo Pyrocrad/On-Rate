@@ -36,6 +36,8 @@ public class RowStats
 		private double plain;
 		private final java.util.List<Double> cappedMeans = new java.util.ArrayList<>();
 		private final java.util.List<Integer> caps = new java.util.ArrayList<>();
+		/** Items sure on one kill for a player with none yet: {kills, rate, kill with the guarantee}. */
+		private final java.util.List<double[]> guaranteed = new java.util.ArrayList<>();
 
 		/** {@code count} copies that drop for certain. */
 		public Parts addSure(int count)
@@ -48,6 +50,16 @@ public class RowStats
 		public Parts addPlain(double expected)
 		{
 			plain += expected;
+			return this;
+		}
+
+		/**
+		 * An item rolled at {@code rate} per kill that is sure on kill {@code at} for a player with
+		 * none yet (Vorkath's head on the 50th), seen after {@code kills} kills.
+		 */
+		public Parts addGuaranteed(double kills, double rate, int at)
+		{
+			guaranteed.add(new double[]{kills, rate, at});
 			return this;
 		}
 
@@ -68,6 +80,7 @@ public class RowStats
 				plain += row.parts.plain;
 				cappedMeans.addAll(row.parts.cappedMeans);
 				caps.addAll(row.parts.caps);
+				guaranteed.addAll(row.parts.guaranteed);
 			}
 			else if (row.cap > 0)
 			{
@@ -83,7 +96,7 @@ public class RowStats
 		/** Expected copies that count. */
 		public double expected()
 		{
-			double total = sure + plain;
+			double total = sure + plain + guaranteedTotal();
 			for (int i = 0; i < caps.size(); i++)
 			{
 				total += DropMath.expectedCapped(cappedMeans.get(i), caps.get(i));
@@ -94,12 +107,35 @@ public class RowStats
 		/** Expected copies if nothing were capped: what the drop rates add up to. */
 		double uncapped()
 		{
-			double total = sure + plain;
+			double total = sure + plain + guaranteedTotal();
 			for (double m : cappedMeans)
 			{
 				total += m;
 			}
 			return total;
+		}
+
+		private double guaranteedTotal()
+		{
+			double total = 0;
+			for (double[] g : guaranteed)
+			{
+				total += DropMath.guaranteedExpected(g[0], g[1], (int) g[2]);
+			}
+			return total;
+		}
+
+		/** True once a player with none is bound to have one: some guaranteed kill has passed. */
+		private boolean certain()
+		{
+			for (double[] g : guaranteed)
+			{
+				if (g[0] >= g[2])
+				{
+					return true;
+				}
+			}
+			return sure > 0;
 		}
 
 		double[] shares(int received)
@@ -111,7 +147,7 @@ public class RowStats
 				means[i] = cappedMeans.get(i);
 				limits[i] = caps.get(i);
 			}
-			return DropMath.sharesSum(received, sure, plain, means, limits);
+			return DropMath.sharesSum(received, sure, plain, means, limits, guaranteed);
 		}
 	}
 
@@ -305,11 +341,11 @@ public class RowStats
 
 	/**
 	 * Chance of having had at least one by now. A cap doesn't change the chance of none, so
-	 * this goes by the uncapped expected; a sure copy makes it certain.
+	 * this goes by the uncapped expected; a sure copy, or a guaranteed kill passed, makes it certain.
 	 */
 	public double getChanceAtLeastOne()
 	{
-		if (parts != null && parts.sure > 0)
+		if (parts != null && parts.certain())
 		{
 			return 1;
 		}

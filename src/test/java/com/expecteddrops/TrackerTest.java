@@ -140,8 +140,8 @@ public class TrackerTest
 		assertTrue(stats.isKillCountKnown());
 		RowStats head = stats.getRows().get(0);
 		assertEquals("Vorkath's head", head.getLabel());
-		// 1/50 a kill, and the 50th kill always drops one
-		assertEquals(1233 / 50.0 + 1, head.getExpected(), 1e-9);
+		// 1/50 a kill, and the 50th kill drops one if you have none (only until the first head)
+		assertEquals(1234 / 50.0 + Math.pow(0.98, 50), head.getExpected(), 1e-9);
 	}
 
 	@Test
@@ -985,7 +985,7 @@ public class TrackerTest
 		// ...but having the pet at 9000 kc is roughly average, not dry
 		assertTrue(vorki.getLuck() > 0.45 && vorki.getLuck() < 0.55);
 		double withoutPet = stats.getAnyRow().getExpected() - (1 - Math.exp(-3.0));
-		assertEquals(9000 * (1 / 50.0 + 1 / 1000.0 + 1 / 3000.0 + 1 / 5000.0) + (1 - 1 / 50.0), withoutPet, 1e-9);
+		assertEquals(9000 * (1 / 50.0 + 1 / 1000.0 + 1 / 3000.0 + 1 / 5000.0) + Math.pow(0.98, 50), withoutPet, 1e-9);
 
 		tracker.onChatMessage("Your Royal Titan kill count is: <col=ff0000>600</col>.", now);
 		BossStats titans = tracker.stats("Royal Titans", RAIDS);
@@ -1338,10 +1338,10 @@ public class TrackerTest
 		assertEquals(Math.exp(-plain - pet), any.getLuck(), 1e-12);
 		assertEquals(1 - Math.exp(-plain - pet), any.getChanceAtLeastOne(), 1e-12);
 
-		// the 50th kill's head roll is a sure one: + 1 - 1/50, and nobody has none any more
+		// the 50th kill's head is sure for a player with none: + 0.98^50, and nobody has none any more
 		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>50</col>.", now);
 		any = tracker.stats("Vorkath", RAIDS).getAnyRow();
-		double lambda = 50 * (1 / 50.0 + 1 / 1000.0 + 1 / 3000.0 + 1 / 5000.0) + (1 - 1 / 50.0) + (1 - Math.exp(-50 / 3000.0));
+		double lambda = 50 * (1 / 50.0 + 1 / 1000.0 + 1 / 3000.0 + 1 / 5000.0) + Math.pow(0.98, 50) + (1 - Math.exp(-50 / 3000.0));
 		assertEquals(lambda, any.getExpected(), 1e-9);
 		assertEquals(0, any.getLuck(), 1e-12);
 		assertEquals(1, any.getChanceAtLeastOne(), 1e-12);
@@ -1400,10 +1400,92 @@ public class TrackerTest
 
 		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>50</col>.", now);
 		head = row(tracker.stats("Vorkath", RAIDS), "Vorkath's head");
-		assertEquals(50 / 50.0 + 1 - 1 / 50.0, head.getExpected(), 1e-12);
+		assertEquals(50 / 50.0 + Math.pow(0.98, 50), head.getExpected(), 1e-12);
 		assertEquals(1, head.getChanceAtLeastOne(), 1e-12);
-		// one sure head plus 49 rolls at 1/50: with none you'd be the only one
+		// nobody has none after the guaranteed kill, so with none you'd be the only one
 		assertEquals(0, head.getLuck(), 1e-12);
+	}
+
+	private double headExpectedAt(int kc, int heads)
+	{
+		tracker.onClogPage("Vorkath", Collections.singletonList("Vorkath kills: " + kc), Collections.singletonMap("Vorkath's head", heads));
+		return headExpected();
+	}
+
+	@Test
+	public void vorkathsHeadExpectedAndChanceAtTheEdges()
+	{
+		double pity = Math.pow(0.98, 50);
+		assertEquals(49 / 50.0, headExpectedAt(49, 0), 1e-12);
+		assertEquals(50 / 50.0 + pity, headExpectedAt(50, 1), 1e-12);
+		assertEquals(51 / 50.0 + pity, headExpectedAt(51, 1), 1e-12);
+		assertEquals(100 / 50.0 + pity, headExpectedAt(100, 1), 1e-12);
+		assertEquals(500 / 50.0 + pity, headExpectedAt(500, 1), 1e-12);
+		assertEquals(1.3642, headExpectedAt(50, 1), 1e-4);
+		assertEquals(2.3642, headExpectedAt(100, 1), 1e-4);
+		assertEquals(10.3642, headExpectedAt(500, 1), 1e-4);
+		for (int kc : new int[]{50, 51, 100, 500})
+		{
+			headExpectedAt(kc, 0);
+			assertEquals(1, row(tracker.stats("Vorkath", RAIDS), "Vorkath's head").getChanceAtLeastOne(), 0);
+		}
+		headExpectedAt(49, 0);
+		assertEquals(1 - Math.exp(-49 / 50.0), row(tracker.stats("Vorkath", RAIDS), "Vorkath's head").getChanceAtLeastOne(), 1e-9);
+	}
+
+	@Test
+	public void vorkathsHeadReceivedEarlierDoesNotChangeTheTypicalPlayer()
+	{
+		double none = headExpectedAt(300, 0);
+		double some = headExpectedAt(300, 1);
+		double many = headExpectedAt(300, 5);
+		assertEquals(none, some, 0);
+		assertEquals(none, many, 0);
+		assertEquals(300 / 50.0 + Math.pow(0.98, 50), none, 1e-12);
+	}
+
+	@Test
+	public void vorkathsHeadLuckMatchesSimulatedPlayers()
+	{
+		java.util.Random random = new java.util.Random(27);
+		int players = 200_000;
+		for (int kc : new int[]{49, 50, 75, 100, 500})
+		{
+			int[] count = new int[kc / 5 + 40];
+			for (int i = 0; i < players; i++)
+			{
+				int heads = 0;
+				for (int kill = 1; kill <= kc; kill++)
+				{
+					if (random.nextInt(50) == 0 || (kill == 50 && heads == 0))
+					{
+						heads++;
+					}
+				}
+				count[Math.min(heads, count.length - 1)]++;
+			}
+			for (int heads : new int[]{0, 1, 2, kc / 50, kc / 50 + 1, kc / 50 + 3})
+			{
+				headExpectedAt(kc, heads);
+				RowStats head = row(tracker.stats("Vorkath", RAIDS), "Vorkath's head");
+				double fewer = 0;
+				double same = 0;
+				for (int h = 0; h < count.length; h++)
+				{
+					if (h < heads)
+					{
+						fewer += count[h];
+					}
+					else if (h == heads)
+					{
+						same = count[h];
+					}
+				}
+				double[] exact = head.getShares();
+				assertEquals("fewer at " + kc + " kc, " + heads + " heads", fewer / players, exact[0], 0.005);
+				assertEquals("same at " + kc + " kc, " + heads + " heads", same / players, exact[1], 0.005);
+			}
+		}
 	}
 
 	@Test
@@ -1636,8 +1718,9 @@ public class TrackerTest
 		tracker.onClogPage("Vorkath", Collections.singletonList("Vorkath kills: 49"), Collections.singletonMap("Vorkath's head", 0));
 		assertEquals(49 / 50.0, headExpected(), 1e-9);
 		tracker.onClogPage("Vorkath", Collections.singletonList("Vorkath kills: 350"), Collections.singletonMap("Vorkath's head", 6));
-		// 349 kills at 1/50 and the 50th kill a sure one
-		assertEquals(349 / 50.0 + 1, headExpected(), 1e-9);
+		// 350 kills at 1/50, plus the 50th kill's guarantee for the 0.98^50 who have none by then
+		// (only until the first head: no repeat at 100, 150...)
+		assertEquals(350 / 50.0 + Math.pow(0.98, 50), headExpected(), 1e-9);
 	}
 
 	private double headExpected()

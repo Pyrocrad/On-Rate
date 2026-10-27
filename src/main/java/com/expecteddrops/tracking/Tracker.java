@@ -710,8 +710,9 @@ public class Tracker
 			}
 			if (drop.getGuaranteedAt() != null && drop.getGuaranteedAt() == kill.kc)
 			{
-				// this is the kill where the drop is guaranteed
-				rate = 1;
+				// the kill where a player with none gets one: the typical player has none with
+				// chance (1 - rate)^kc, so this kill gives rate + that, and no more pity after it
+				rate += Math.pow(1 - rate, kill.kc);
 			}
 			// like the totals: a team shares a kill's drops, except the ones each player rolls
 			expected += (drop.isNoShare() ? rate : rate * share) * weight.applyAsDouble(drop);
@@ -3002,8 +3003,9 @@ public class Tracker
 				Integer sure = drop.getGuaranteedAt();
 				if (sure != null && kc >= sure)
 				{
-					// that kill's roll was a sure drop instead of a chance
-					expected += 1 - effectiveRate(boss, drop, raids);
+					// that kill was a sure drop for a player with none, but only until the first
+					// head: no repeat at 100, 150... (the typical player, whatever you have)
+					expected = DropMath.guaranteedExpected(kc, rate, sure);
 					sureDropped = true;
 				}
 			}
@@ -3025,8 +3027,8 @@ public class Tracker
 			RowStats row = new RowStats(drop.getDisplayName(), drop.getName(), rate, expected, received, false);
 			if (sureDropped)
 			{
-				// one copy is certain, the rest is chance: nobody at this kill count has none
-				row.withParts(new RowStats.Parts().addSure(1).addPlain(Math.max(0, expected - 1)));
+				// nobody past the guaranteed kill has none, and the count is no Poisson
+				row.withParts(new RowStats.Parts().addGuaranteed(kc, rate, drop.getGuaranteedAt()));
 			}
 			// a split shared item has no dry streak: On Rate never saw when the older copies dropped
 			if (split == null && !(drop.getMax() > 0 && received >= drop.getMax()))

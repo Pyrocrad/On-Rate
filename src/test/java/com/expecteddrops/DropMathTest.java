@@ -358,6 +358,32 @@ public class DropMathTest
 	}
 
 	@Test
+	public void guaranteedKillOnlyHelpsAPlayerWithNone()
+	{
+		double q = 0.98;
+		// before the guaranteed kill it is a plain binomial
+		double[] early = DropMath.guaranteedPmf(49, 0.02, 50, 3);
+		assertEquals(Math.pow(q, 49), early[0], 1e-12);
+		// at the guaranteed kill nobody has none, and the mean is kills * rate + 0.98^50
+		double[] pmf = DropMath.guaranteedPmf(50, 0.02, 50, 60);
+		double sum = 0;
+		double mean = 0;
+		for (int k = 0; k < pmf.length; k++)
+		{
+			sum += pmf[k];
+			mean += k * pmf[k];
+		}
+		assertEquals(0, pmf[0], 0);
+		assertEquals(1, sum, 1e-12);
+		assertEquals(1 + Math.pow(q, 50), mean, 1e-12);
+		assertEquals(1 + Math.pow(q, 50), DropMath.guaranteedExpected(50, 0.02, 50), 1e-12);
+		assertEquals(49 / 50.0, DropMath.guaranteedExpected(49, 0.02, 50), 1e-12);
+		// exactly one head: none in 1-49 then a miss never happens; one in 1-49 and a miss at 50
+		double one = Math.pow(q, 49) + 49 * 0.02 * Math.pow(q, 48) * q;
+		assertEquals(one, pmf[1], 1e-12);
+	}
+
+	@Test
 	public void cappedPartsInASumAddUpExactly()
 	{
 		// a plain item plus a pet that counts once: P(total = 0) = e^-a * e^-b

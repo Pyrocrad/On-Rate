@@ -582,7 +582,7 @@
     },
     {
       "name": "Vorkath", "kc": ["Vorkath"], "loot": ["Vorkath"], "clog": ["Vorkath"],
-      "note": "Vorkath's head is 1/50, and your 50th kill always drops one, so from then on there's one more head expected.",
+      "note": "Vorkath's head is 1/50, and your 50th kill drops one if you have none yet. Once you have a head there's no more pity (no repeat at 100, 150...), so from kill 50 on a typical player is expected to have a little over a third of a head more than 1/50 per kill gives.",
       "drops": [
         {"name": "Vorkath's head", "rate": "1/50", "guaranteedAt": 50},
         {"name": "Dragonbone necklace", "rate": "1/1000"},

@@ -118,8 +118,19 @@ public final class DropMath
 	 */
 	public static double[] sharesSum(int received, int sure, double plain, double[] cappedMeans, int[] caps)
 	{
+		return sharesSum(received, sure, plain, cappedMeans, caps, null);
+	}
+
+	/**
+	 * As above, plus items that are sure on one kill only for a player with none yet (Vorkath's
+	 * head), each as {kills, rate per kill, kill with the guarantee}; see {@link #guaranteedPmf}.
+	 */
+	public static double[] sharesSum(int received, int sure, double plain, double[] cappedMeans, int[] caps,
+		java.util.List<double[]> guaranteed)
+	{
 		int n = cappedMeans == null ? 0 : cappedMeans.length;
-		if (n == 0 && sure <= 0)
+		int g = guaranteed == null ? 0 : guaranteed.size();
+		if (n == 0 && g == 0 && sure <= 0)
 		{
 			return shares(received, plain);
 		}
@@ -127,6 +138,11 @@ public final class DropMath
 		for (int i = 0; i < n; i++)
 		{
 			total += expectedCapped(cappedMeans[i], caps[i]);
+		}
+		for (int i = 0; i < g; i++)
+		{
+			double[] item = guaranteed.get(i);
+			total += guaranteedExpected(item[0], item[1], (int) item[2]);
 		}
 		if (!(total > 0))
 		{
@@ -167,12 +183,111 @@ public final class DropMath
 			}
 			pmf = next;
 		}
+		for (int i = 0; i < g; i++)
+		{
+			double[] item = guaranteed.get(i);
+			double[] own = guaranteedPmf(item[0], item[1], (int) item[2], r);
+			double[] next = new double[r + 1];
+			for (int a = 0; a <= r; a++)
+			{
+				for (int b = 0; a + b <= r; b++)
+				{
+					next[a + b] += pmf[a] * own[b];
+				}
+			}
+			pmf = next;
+		}
 		double below = 0;
 		for (int k = 0; k < r; k++)
 		{
 			below += pmf[k];
 		}
 		return new double[]{Math.min(1, below), Math.min(1, pmf[r])};
+	}
+
+	/**
+	 * Expected copies of an item rolled at {@code rate} per kill that is also sure on kill
+	 * {@code at} for a player who has none yet (Vorkath's head on the 50th): kills * rate, plus
+	 * the extra copy that kill gives, (1 - rate)^at, from then on.
+	 */
+	public static double guaranteedExpected(double kills, double rate, int at)
+	{
+		double expected = kills * rate;
+		return kills >= at ? expected + Math.pow(1 - rate, at) : expected;
+	}
+
+	/**
+	 * Exact probabilities of 0..{@code max} copies after {@code kills} kills at {@code rate}, when
+	 * kill {@code at} is a sure drop for a player with none from kills 1 to at - 1 and a plain
+	 * roll otherwise. Nobody who has been through kill {@code at} has none. The count is the
+	 * kills before it, the sure kill, and the kills after it, which is no Poisson.
+	 */
+	public static double[] guaranteedPmf(double kills, double rate, int at, int max)
+	{
+		int total = (int) Math.round(kills);
+		if (total < at)
+		{
+			return binomialPmf(total, rate, max);
+		}
+		double miss = 1 - rate;
+		double[] before = binomialPmf(at - 1, rate, max);
+		// kills 1 to at - 1, then kill at: sure with none so far, a plain roll with one or more
+		double[] upTo = new double[max + 1];
+		for (int k = 0; k <= max; k++)
+		{
+			if (k == 0)
+			{
+				if (max >= 1)
+				{
+					upTo[1] += before[0];
+				}
+				continue;
+			}
+			upTo[k] += before[k] * miss;
+			if (k + 1 <= max)
+			{
+				upTo[k + 1] += before[k] * rate;
+			}
+		}
+		double[] after = binomialPmf(total - at, rate, max);
+		double[] pmf = new double[max + 1];
+		for (int a = 0; a <= max; a++)
+		{
+			for (int b = 0; a + b <= max; b++)
+			{
+				pmf[a + b] += upTo[a] * after[b];
+			}
+		}
+		return pmf;
+	}
+
+	/** Binomial probabilities of 0..{@code max} successes in {@code n} tries at {@code p}. */
+	private static double[] binomialPmf(int n, double p, int max)
+	{
+		double[] pmf = new double[max + 1];
+		if (p <= 0)
+		{
+			pmf[0] = 1;
+			return pmf;
+		}
+		if (p >= 1)
+		{
+			if (n <= max)
+			{
+				pmf[n] = 1;
+			}
+			return pmf;
+		}
+		double logChoose = 0;
+		for (int k = 0; k <= Math.min(n, max); k++)
+		{
+			if (k > 0)
+			{
+				logChoose += Math.log((double) (n - k + 1) / k);
+			}
+			pmf[k] = Math.exp(logChoose + k * Math.log(p) + (n - k) * Math.log1p(-p));
+		}
+		return pmf;
 	}
 
 	/** Poisson probabilities of 0..{@code max} with this mean (all of it at 0 for a mean of 0). */
