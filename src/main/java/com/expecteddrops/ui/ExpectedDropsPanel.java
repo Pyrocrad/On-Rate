@@ -112,6 +112,8 @@ public class ExpectedDropsPanel extends PluginPanel
 	private final JLabel welcomeProgress = new JLabel();
 	private final TargetBar welcomeProgressBar = new TargetBar();
 	private final JLabel setupHeader = new JLabel();
+	/** One line, only when a log page was opened but could not be read. */
+	private final JLabel setupProblem = new JLabel();
 	private final JPanel setupList = new JPanel(new GridLayout(0, 1, 0, 2));
 	/** The space under the collection log line, hidden with it. */
 	private final java.awt.Component setupGap = spacer(Theme.M);
@@ -307,6 +309,16 @@ public class ExpectedDropsPanel extends PluginPanel
 			refresh();
 		});
 		top.add(setupHeader);
+		setupProblem.setFont(FontManager.getRunescapeSmallFont());
+		setupProblem.setForeground(Theme.TEXT_MUTED);
+		setupProblem.setIcon(Theme.infoIcon());
+		setupProblem.setToolTipText(Theme.wrap(Texts.SETUP_UNREADABLE_TIP, Theme.TIP_WIDE));
+		setupProblem.setVerticalTextPosition(SwingConstants.TOP);
+		setupProblem.setIconTextGap(Theme.S);
+		setupProblem.setBorder(new EmptyBorder(0, 0, Theme.M, 0));
+		setupProblem.setAlignmentX(LEFT_ALIGNMENT);
+		setupProblem.setVisible(false);
+		top.add(setupProblem);
 		setupList.setOpaque(false);
 		setupList.setAlignmentX(LEFT_ALIGNMENT);
 		setupList.setBorder(new EmptyBorder(Theme.S, Theme.M, 0, 0));
@@ -882,8 +894,17 @@ public class ExpectedDropsPanel extends PluginPanel
 			levelsLabel.setVisible(false);
 		}
 		String reminder = tracker.syncReminder(stats.getBoss().getName());
-		if (reminder != null)
+		if (tracker.logPageUnreadable(stats.getBoss().getName()))
 		{
+			// something is wrong with the read, not with the player: neutral text with an info mark
+			syncLabel.setText(Theme.wrap(Texts.LOG_PAGE_UNREADABLE, Theme.TEXT_WIDTH - 14));
+			syncLabel.setForeground(Theme.TEXT_MUTED);
+			syncLabel.setIcon(Theme.infoIcon());
+			syncLabel.setToolTipText(Theme.wrap(Texts.LOG_PAGE_UNREADABLE_TIP, Theme.TIP_WIDE));
+		}
+		else if (reminder != null)
+		{
+			syncLabel.setToolTipText(null);
 			syncLabel.setText(Theme.wrap(reminder, Theme.TEXT_WIDTH - 14));
 			// an instruction, not a warning: neutral text with an info mark
 			syncLabel.setForeground(Theme.TEXT_MUTED);
@@ -892,11 +913,13 @@ public class ExpectedDropsPanel extends PluginPanel
 		else if (stats.isClogSynced())
 		{
 			// all good: nothing to say
+			syncLabel.setToolTipText(null);
 			syncLabel.setText("");
 			syncLabel.setVisible(false);
 		}
 		else
 		{
+			syncLabel.setToolTipText(null);
 			syncLabel.setText("Counting uniques from your loot from now on");
 			syncLabel.setForeground(Theme.TEXT_MUTED);
 			syncLabel.setIcon(Theme.infoIcon());
@@ -4090,6 +4113,10 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		int done = checklist.size() - missing.size();
 		updateWelcomeProgress(checklist.size(), done, missing);
+
+		String problem = Texts.setupProblem(tracker.unreadablePages(), tracker.isHeaderUnreadable());
+		setupProblem.setText(problem == null ? "" : Theme.wrap(problem, Theme.TEXT_WIDTH - 14));
+		setupProblem.setVisible(problem != null);
 
 		setupList.removeAll();
 		// all loaded: nothing to say, so the line is gone; it only shows when something is missing

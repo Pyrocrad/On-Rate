@@ -4,6 +4,7 @@ import com.expecteddrops.data.BossCatalog;
 import com.expecteddrops.data.ValueFormula;
 import com.expecteddrops.raids.RaidPointsReader;
 import com.expecteddrops.stats.RaidSettings;
+import com.expecteddrops.tracking.ClogPage;
 import com.expecteddrops.tracking.Tracker;
 import com.expecteddrops.tracking.TrackerState;
 import com.expecteddrops.stats.BossStats;
@@ -22,7 +23,6 @@ import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.LinkedHashMap;
 import java.util.TreeMap;
 import java.util.List;
 import java.util.Map;
@@ -71,7 +71,6 @@ import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.ui.overlay.OverlayMenuEntry;
 import net.runelite.client.util.ImageUtil;
-import net.runelite.client.util.Text;
 
 @PluginDescriptor(
 	name = "On Rate",
@@ -701,6 +700,11 @@ public class ExpectedDropsPlugin extends Plugin
 		clientThread.invokeLater(this::readCollectionLogPage);
 	}
 
+	/** Log problems already warned about this session (a page title, or "header"), so each shows once. */
+	private final Set<String> clogReported = new HashSet<>();
+	/** Titles of log pages we don't cover already noted at debug level this session. */
+	private final Set<String> clogUncovered = new HashSet<>();
+
 	private void readCollectionLogPage()
 	{
 		if (tracker == null)
@@ -711,31 +715,20 @@ public class ExpectedDropsPlugin extends Plugin
 		Widget itemsWidget = client.getWidget(InterfaceID.Collection.ITEMS_CONTENTS);
 		if (header == null || itemsWidget == null)
 		{
+			// most likely the log was closed before the next tick; not worth telling the player
+			log.debug("Collection log page drawn but its widgets are gone (header {}, items {})",
+				header != null, itemsWidget != null);
 			return;
 		}
 		Widget[] headerLines = header.getDynamicChildren();
-		if (headerLines == null || headerLines.length == 0)
+		String rawTitle = headerLines == null || headerLines.length == 0 ? null : headerLines[0].getText();
+		List<String> rawCounters = new ArrayList<>();
+		for (int i = 1; headerLines != null && i < headerLines.length; i++)
 		{
-			return;
-		}
-		String rawTitle = headerLines[0].getText();
-		if (rawTitle == null || rawTitle.isEmpty())
-		{
-			return;
-		}
-		String title = Text.removeTags(rawTitle);
-
-		List<String> counters = new ArrayList<>();
-		for (int i = 1; i < headerLines.length; i++)
-		{
-			String text = headerLines[i].getText();
-			if (text != null && !text.isEmpty())
-			{
-				counters.add(Text.removeTags(text));
-			}
+			rawCounters.add(headerLines[i].getText());
 		}
 
-		Map<String, Integer> items = new LinkedHashMap<>();
+		List<ClogPage.Item> rawItems = new ArrayList<>();
 		Widget[] itemWidgets = itemsWidget.getDynamicChildren();
 		if (itemWidgets != null)
 		{
@@ -747,14 +740,42 @@ public class ExpectedDropsPlugin extends Plugin
 					continue;
 				}
 				String name = itemManager.getItemComposition(id).getName();
-				// Obtained items are drawn fully opaque; missing ones are faded out.
-				boolean obtained = w.getOpacity() == 0;
-				items.put(name, obtained ? Math.max(1, w.getItemQuantity()) : 0);
+				rawItems.add(new ClogPage.Item(name, w.getItemQuantity(), w.getOpacity()));
 				itemIds.putIfAbsent(BossCatalog.normalize(name), id);
 			}
 		}
 
-		Set<String> changed = tracker.onClogPage(title, counters, items);
+		ClogPage.Result page = ClogPage.parse(rawTitle, rawCounters, rawItems);
+		String title = page.getTitle();
+		ClogPage.Problem problem = page.getProblem();
+		if (problem == ClogPage.Problem.NO_TITLE || problem == ClogPage.Problem.TITLE_IS_A_COUNTER)
+		{
+			// not even the page is known: the header may have changed
+			unreadable(null, problem.toString());
+			return;
+		}
+		if (!tracker.coversPage(title))
+		{
+			// a page On Rate doesn't read (Clues, Minigames, ...): normal, nothing to say
+			if (clogUncovered.add(title))
+			{
+				log.debug("Collection log page \"{}\" is not one On Rate covers", title);
+			}
+			return;
+		}
+		if (problem != null)
+		{
+			unreadable(title, problem.toString());
+			return;
+		}
+		if (page.isAllFaded() && tracker.wouldZeroSaved(title, page.getItems()))
+		{
+			// the log never loses items, so this page was misread: keep what we have
+			unreadable(title, "every item read as not obtained, but drops are saved");
+			return;
+		}
+
+		Set<String> changed = tracker.onClogPage(title, page.getCounters(), page.getItems());
 		if (!changed.isEmpty())
 		{
 			save();
@@ -763,6 +784,26 @@ public class ExpectedDropsPlugin extends Plugin
 			{
 				SwingUtilities.invokeLater(() -> panel.showBoss(first));
 			}
+		}
+	}
+
+	/** A log page was opened but not read: nothing saved changes, the panel says so and it is logged once. */
+	private void unreadable(String title, String reason)
+	{
+		if (tracker.onClogPageUnreadable(title) && clogReported.add(title == null ? "header" : title))
+		{
+			if (title == null)
+			{
+				log.warn("Collection log opened but its header could not be read: {}", reason);
+			}
+			else
+			{
+				log.warn("Collection log page \"{}\" opened but not read: {}", title, reason);
+			}
+		}
+		if (panel != null)
+		{
+			SwingUtilities.invokeLater(panel::refresh);
 		}
 	}
 

@@ -3010,4 +3010,108 @@ public class TrackerTest
 		restored.setState(gson.fromJson("{\"sharedClog\":{\"dragon axe\":3}}", TrackerState.class));
 		assertNotNull(restored.sharedPools(RAIDS));
 	}
+
+	private Map<String, Integer> vorkathPage(int head, int vorki)
+	{
+		Map<String, Integer> items = new LinkedHashMap<>();
+		items.put("Vorkath's head", head);
+		items.put("Skeletal visage", 0);
+		items.put("Vorki", vorki);
+		return items;
+	}
+
+	@Test
+	public void anUnreadablePageChangesNothingSaved()
+	{
+		tracker.onClogPage("Vorkath", Collections.singletonList("Vorkath kills: 350"), vorkathPage(7, 1));
+		assertTrue(tracker.onClogPageUnreadable("Vorkath"));
+
+		BossStats stats = tracker.stats("Vorkath", RAIDS);
+		assertTrue(stats.isClogSynced());
+		assertEquals(350, stats.getKillCount());
+		assertEquals(7, row(stats, "Vorkath's head").getReceived());
+		assertEquals(1, row(stats, "Vorki").getReceived());
+		assertTrue(tracker.logPageUnreadable("Vorkath"));
+		assertEquals(Collections.singletonList("Vorkath"), tracker.unreadablePages());
+
+		// a boss never read stays "not synced": the failed read did not mark it
+		assertTrue(tracker.onClogPageUnreadable("Zulrah"));
+		assertFalse(tracker.stats("Zulrah", RAIDS).isClogSynced());
+		assertNotNull(tracker.syncReminder("Zulrah"));
+	}
+
+	@Test
+	public void pagesWeDontCoverAreNotAProblem()
+	{
+		assertFalse(tracker.coversPage("Clue scrolls (easy)"));
+		assertFalse(tracker.onClogPageUnreadable("Clue scrolls (easy)"));
+		assertTrue(tracker.unreadablePages().isEmpty());
+		assertFalse(tracker.isHeaderUnreadable());
+		assertTrue(tracker.coversPage("Vorkath"));
+	}
+
+	@Test
+	public void anUnknownTitleIsAHeaderProblemUntilAPageIsRead()
+	{
+		assertTrue(tracker.onClogPageUnreadable(null));
+		assertTrue(tracker.onClogPageUnreadable(""));
+		assertTrue(tracker.isHeaderUnreadable());
+		assertTrue(tracker.unreadablePages().isEmpty());
+
+		tracker.onClogPage("Vorkath", Collections.singletonList("Vorkath kills: 10"), vorkathPage(0, 0));
+		assertFalse(tracker.isHeaderUnreadable());
+	}
+
+	@Test
+	public void readingThePageAgainClearsItsProblem()
+	{
+		tracker.onClogPageUnreadable("Vorkath");
+		tracker.onClogPageUnreadable("Zulrah");
+		tracker.onClogPage("Vorkath", Collections.singletonList("Vorkath kills: 10"), vorkathPage(1, 0));
+		assertFalse(tracker.logPageUnreadable("Vorkath"));
+		assertTrue(tracker.logPageUnreadable("Zulrah"));
+	}
+
+	@Test
+	public void resettingABossClearsItsProblem()
+	{
+		tracker.onClogPageUnreadable("Vorkath");
+		tracker.reset("Vorkath");
+		assertFalse(tracker.logPageUnreadable("Vorkath"));
+	}
+
+	@Test
+	public void aNewProfileStartsWithoutProblems()
+	{
+		tracker.onClogPageUnreadable("Vorkath");
+		tracker.onClogPageUnreadable(null);
+		tracker.setState(null);
+		assertTrue(tracker.unreadablePages().isEmpty());
+		assertFalse(tracker.isHeaderUnreadable());
+	}
+
+	@Test
+	public void anAllFadedPageIsFlaggedOnlyWhenItWouldZeroSavedDrops()
+	{
+		Map<String, Integer> allFaded = vorkathPage(0, 0);
+		// a fresh account: nothing saved, so a page that is truly all faded is fine
+		assertFalse(tracker.wouldZeroSaved("Vorkath", allFaded));
+
+		// the loot tracker saw a head: the log can't show it as missing
+		tracker.onLoot("Vorkath", 1, Collections.singletonList(new Tracker.LootItem("Vorkath's head", 1)), now);
+		assertTrue(tracker.wouldZeroSaved("Vorkath", allFaded));
+		// one item owned: a real page
+		assertFalse(tracker.wouldZeroSaved("Vorkath", vorkathPage(1, 0)));
+		// nothing read at all is not "all faded"
+		assertFalse(tracker.wouldZeroSaved("Vorkath", new LinkedHashMap<>()));
+		// another page's items don't count
+		assertFalse(tracker.wouldZeroSaved("Zulrah", Collections.singletonMap("Tanzanite fang", 0)));
+	}
+
+	@Test
+	public void anAllFadedPageIsFlaggedAfterAnEarlierRead()
+	{
+		tracker.onClogPage("Vorkath", Collections.singletonList("Vorkath kills: 350"), vorkathPage(7, 0));
+		assertTrue(tracker.wouldZeroSaved("Vorkath", vorkathPage(0, 0)));
+	}
 }

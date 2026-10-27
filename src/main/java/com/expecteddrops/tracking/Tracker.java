@@ -68,6 +68,13 @@ public class Tracker
 	private static final int MAX_QUIET_JUMP = 5;
 
 	private final BossCatalog catalog;
+	/**
+	 * Collection log pages we cover that were opened but could not be read this session (normalized
+	 * title to the title shown). Never saved: it says nothing about the data, only about the last read.
+	 */
+	private final Map<String, String> unreadablePages = new LinkedHashMap<>();
+	/** A log page was opened whose header could not be read, so we don't know which page it was. */
+	private boolean headerUnreadable;
 	private final List<Note> outbox = new ArrayList<>();
 	private RaidSettings settings = raid -> 0;
 	private TrackerState state = new TrackerState();
@@ -1064,6 +1071,8 @@ public class Tracker
 	public synchronized void setState(TrackerState state)
 	{
 		this.state = state == null ? new TrackerState() : state;
+		unreadablePages.clear();
+		headerUnreadable = false;
 		killsChanged.clear();
 		raidsChanged.clear();
 		// another account: nothing of the last one's session carries over
@@ -2212,6 +2221,106 @@ public class Tracker
 		return boss.getName();
 	}
 
+	/** True when the collection log page with this title is one On Rate reads. */
+	public synchronized boolean coversPage(String pageTitle)
+	{
+		return !catalog.byClogPage(pageTitle).isEmpty();
+	}
+
+	/**
+	 * A collection log page was opened but could not be read. Changes no saved data. Pass a null or
+	 * empty title when not even the title could be read.
+	 *
+	 * @return true when this is worth telling the player: the page is one we cover, or the title is unknown
+	 */
+	public synchronized boolean onClogPageUnreadable(String pageTitle)
+	{
+		if (pageTitle == null || pageTitle.isEmpty())
+		{
+			headerUnreadable = true;
+			return true;
+		}
+		if (!coversPage(pageTitle))
+		{
+			return false;
+		}
+		unreadablePages.put(BossCatalog.normalize(pageTitle), pageTitle);
+		return true;
+	}
+
+	/** True when a log page of this boss was opened this session but could not be read. */
+	public synchronized boolean logPageUnreadable(String bossName)
+	{
+		BossDefinition boss = catalog.byName(bossName);
+		if (boss == null)
+		{
+			return false;
+		}
+		for (String page : boss.getClogPages())
+		{
+			if (unreadablePages.containsKey(BossCatalog.normalize(page)))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** Titles of the pages we cover that were opened but could not be read this session. */
+	public synchronized List<String> unreadablePages()
+	{
+		return new ArrayList<>(unreadablePages.values());
+	}
+
+	/** True when a log page was opened whose title could not be read. */
+	public synchronized boolean isHeaderUnreadable()
+	{
+		return headerUnreadable;
+	}
+
+	/**
+	 * True when applying this page would set a count we already hold above zero back to zero: every
+	 * item reads as not obtained, but a drop on the page is saved as received. The log never loses
+	 * items, so this is a page that was misread, not a player who lost drops. A fresh account whose
+	 * page is truly all faded has nothing saved and is not flagged.
+	 */
+	public synchronized boolean wouldZeroSaved(String pageTitle, Map<String, Integer> items)
+	{
+		if (items.isEmpty())
+		{
+			return false;
+		}
+		for (int quantity : items.values())
+		{
+			if (quantity > 0)
+			{
+				return false;
+			}
+		}
+		for (BossDefinition boss : catalog.byClogPage(pageTitle))
+		{
+			BossProgress progress = state.peek(boss.getName());
+			for (DropDefinition drop : boss.getDrops())
+			{
+				for (String name : drop.getAllNames())
+				{
+					String key = BossCatalog.normalize(name);
+					if (findQuantity(items, key) == null)
+					{
+						continue;
+					}
+					Integer saved = catalog.isClogShared(key) ? state.sharedClog().get(key)
+						: progress == null ? null : progress.received.get(key);
+					if (saved != null && saved > 0)
+					{
+						return true;
+					}
+				}
+			}
+		}
+		return false;
+	}
+
 	/**
 	 * Handles an opened collection log page.
 	 *
@@ -2343,6 +2452,12 @@ public class Tracker
 			startTracking(boss);
 			changed.add(boss.getName());
 		}
+		if (!bosses.isEmpty())
+		{
+			// a page we cover was read: it is no longer unreadable, and the header works
+			unreadablePages.remove(BossCatalog.normalize(pageTitle));
+			headerUnreadable = false;
+		}
 		return changed;
 	}
 
@@ -2471,6 +2586,14 @@ public class Tracker
 
 	public synchronized void reset(String bossName)
 	{
+		BossDefinition resetBoss = catalog.byName(bossName);
+		if (resetBoss != null)
+		{
+			for (String page : resetBoss.getClogPages())
+			{
+				unreadablePages.remove(BossCatalog.normalize(page));
+			}
+		}
 		if (state.bosses != null && state.bosses.remove(bossName) != null)
 		{
 			killsChanged.add(bossName);

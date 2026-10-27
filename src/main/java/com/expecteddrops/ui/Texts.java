@@ -15,6 +15,31 @@ final class Texts
 	{
 	}
 
+	/** Boss page: a log page of this boss was opened but could not be read. */
+	static final String LOG_PAGE_UNREADABLE = "Log page opened but not readable. The game may have changed; please report it.";
+
+	static final String LOG_PAGE_UNREADABLE_TIP = "On Rate could not read this page, so your numbers are unchanged. "
+		+ "A missing read does not mean zero drops. To clear this boss on purpose, use \"Reset this boss\u2026\". "
+		+ "You can report it on On Rate's GitHub page.";
+
+	static final String SETUP_UNREADABLE_TIP = "On Rate could not read it, so your numbers are unchanged. "
+		+ "A missing read does not mean zero drops. You can report it on On Rate's GitHub page.";
+
+	/**
+	 * The one line in the setup area when log pages were opened but could not be read, or null when
+	 * there is nothing to say (the normal case).
+	 */
+	static String setupProblem(List<String> pages, boolean headerUnreadable)
+	{
+		if (!headerUnreadable && pages.isEmpty())
+		{
+			return null;
+		}
+		String which = !headerUnreadable && pages.size() == 1 ? "The \"" + pages.get(0) + "\" log page"
+			: "A collection log page";
+		return which + " was opened but could not be read. The game may have changed; please report it.";
+	}
+
 	/** "today", "yesterday", "3 days ago" for a time in milliseconds. */
 	static String daysAgo(long time, long now)
 	{

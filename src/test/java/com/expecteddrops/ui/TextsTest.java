@@ -1,7 +1,11 @@
 package com.expecteddrops.ui;
 
 import com.expecteddrops.stats.DropMath;
+import java.util.Arrays;
+import java.util.Collections;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 /** The words under and behind each verdict. */
@@ -147,5 +151,27 @@ public class TextsTest
 			.withStreak(40, false);
 		assertEquals("Dry streak: at least 40 kills (20\u00d7 the drop rate or more). Your last one came before On Rate started tracking.",
 			Texts.streakNote(many, "kill"));
+	}
+
+	@Test
+	public void setupSaysNothingUnlessALogPageCouldNotBeRead()
+	{
+		// the normal case: no line at all
+		assertNull(Texts.setupProblem(Collections.emptyList(), false));
+		assertEquals("The \"Vorkath\" log page was opened but could not be read. The game may have changed; please report it.",
+			Texts.setupProblem(Collections.singletonList("Vorkath"), false));
+		// several pages, or a header that could not be read: still one line, naming none
+		String generic = "A collection log page was opened but could not be read. The game may have changed; please report it.";
+		assertEquals(generic, Texts.setupProblem(Arrays.asList("Vorkath", "Zulrah"), false));
+		assertEquals(generic, Texts.setupProblem(Collections.emptyList(), true));
+		assertEquals(generic, Texts.setupProblem(Collections.singletonList("Vorkath"), true));
+	}
+
+	@Test
+	public void unreadableWordingIsCalmAndPointsToReset()
+	{
+		assertEquals("Log page opened but not readable. The game may have changed; please report it.", Texts.LOG_PAGE_UNREADABLE);
+		assertTrue(Texts.LOG_PAGE_UNREADABLE_TIP.contains("does not mean zero drops"));
+		assertTrue(Texts.LOG_PAGE_UNREADABLE_TIP.contains("Reset this boss"));
 	}
 }
