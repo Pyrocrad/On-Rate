@@ -60,7 +60,7 @@ Unless a line says otherwise, rates come from the boss's page on the [Old School
 | Boss | Was | Now | Why |
 |---|---|---|---|
 | Grotesque Guardians | Gloves 1/500, ring 1/500, hammer 1/750, core 1/1,000 | 1/250, 1/250, 1/375, 1/500 | The Guardians roll their table twice per kill. The old numbers were per roll. |
-| Araxxor | Noxious point, blade and pommel 1/200 each | 1/600 each | 1/200 is the chance of any halberd piece; each piece is a third of that. |
+| Araxxor | Noxious point, blade and pommel 1/200 each | 1/600 each | 1/200 is the chance of any halberd piece; each piece is a third of that.  For GP value each piece counts as a third of a Noxious halberd. |
 | Tombs of Amascut | Osmumten's fang and Lightbearer weight 7 at every raid level | Weight drops from raid level 350 on (fang 6/4/4/3, Lightbearer 6/5/4/3.5 at 350/400/450/500) | The chest's item mix changes at high raid levels. |
 | The Mad Angel | Ardeaglais teleport 2/25 | 1/25, 2 at a time | Same expected number of teleports, but luck is now judged per drop rather than per teleport. |
 | Theatre of Blood | Lil' Zik 1/650 in Hard Mode | 1/500 | [Lil' Zik](https://oldschool.runescape.wiki/w/Lil%27_Zik): 1/650 at best in normal raids and 1/500 at best in Hard Mode, from your own performance. |

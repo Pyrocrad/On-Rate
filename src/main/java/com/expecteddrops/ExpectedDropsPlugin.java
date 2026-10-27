@@ -145,6 +145,8 @@ public class ExpectedDropsPlugin extends Plugin
 	private final Map<String, Long> prices = new ConcurrentHashMap<>();
 	private long pricesRefreshedAt;
 	private static final long PRICE_REFRESH_MILLIS = 10 * 60_000;
+	private static final String HALBERD = "noxious halberd";
+	private static final Set<String> HALBERD_PIECES = new HashSet<>(java.util.Arrays.asList("noxious point", "noxious blade", "noxious pommel"));
 
 	@Provides
 	ExpectedDropsConfig provideConfig(ConfigManager configManager)
@@ -913,7 +915,8 @@ public class ExpectedDropsPlugin extends Plugin
 		{
 			return;
 		}
-		Set<String> wanted = tracker.getCatalog().getAllItemNames();
+		Set<String> wanted = new HashSet<>(tracker.getCatalog().getAllItemNames());
+		wanted.add(HALBERD);
 		int count = client.getItemCount();
 		for (int id = 0; id < count; id++)
 		{
@@ -963,7 +966,14 @@ public class ExpectedDropsPlugin extends Plugin
 
 	long priceOf(String itemName)
 	{
-		Long price = prices.get(BossCatalog.normalize(itemName));
+		String key = BossCatalog.normalize(itemName);
+		Long price = prices.get(key);
+		if ((price == null || price <= 0) && HALBERD_PIECES.contains(key))
+		{
+			// the pieces can't be traded; a full set makes a halberd, so each is worth a third of it
+			Long halberd = prices.get(HALBERD);
+			return halberd == null ? 0 : halberd / HALBERD_PIECES.size();
+		}
 		return price == null ? 0 : price;
 	}
 
