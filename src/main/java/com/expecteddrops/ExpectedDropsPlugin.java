@@ -641,6 +641,11 @@ public class ExpectedDropsPlugin extends Plugin
 		{
 			changed(boss, true);
 		}
+		else if (tracker.onOtherLoot(event.getName(), items))
+		{
+			// a visage from a regular dragon, a chainbody from a smoke devil: noted as not from a boss
+			changed(null, false);
+		}
 		postNotes();
 	}
 

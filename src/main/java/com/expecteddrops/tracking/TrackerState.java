@@ -45,6 +45,18 @@ public class TrackerState
 	/** Shared items (pool key) the player chose to judge on each boss separately. Null in older saves. */
 	Map<String, PoolSplit> poolSplits = new HashMap<>();
 
+	/** Copies of shared items (pool key) On Rate saw drop from monsters other than their bosses. Null in older saves. */
+	Map<String, Integer> poolElsewhereSeen = new HashMap<>();
+
+	Map<String, Integer> poolElsewhereSeen()
+	{
+		if (poolElsewhereSeen == null)
+		{
+			poolElsewhereSeen = new HashMap<>();
+		}
+		return poolElsewhereSeen;
+	}
+
 	Map<String, PoolSplit> poolSplits()
 	{
 		if (poolSplits == null)

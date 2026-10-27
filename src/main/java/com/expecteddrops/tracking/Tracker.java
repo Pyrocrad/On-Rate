@@ -370,6 +370,91 @@ public class Tracker
 		return false;
 	}
 
+	/** Where older copies of a shared item go when they came from other monsters, not a boss. */
+	public static final String NOT_FROM_A_BOSS = "*not from a boss";
+
+	/** True when the log also counts this shared item from monsters other than its bosses. */
+	private boolean poolAlsoFrom(String key)
+	{
+		for (BossCatalog.PoolSource src : catalog.getPools().getOrDefault(key, Collections.emptyList()))
+		{
+			if (src.getDrop().getAlsoFrom() != null)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** Copies of a shared item On Rate saw drop from other monsters (a visage from a regular dragon). */
+	private int elsewhereSeen(String key)
+	{
+		Integer n = state.poolElsewhereSeen().get(key);
+		return n == null ? 0 : n;
+	}
+
+	/**
+	 * Loot from a monster that isn't one of the item's bosses: for a shared item the log also
+	 * counts from other monsters (draconic visage, dragon chainbody, uncut onyx), it is noted as
+	 * not from a boss and kept in the log total. True when something was noted.
+	 */
+	private boolean recordElsewhere(BossDefinition boss, String itemName)
+	{
+		String item = BossCatalog.normalize(itemName);
+		for (Map.Entry<String, List<BossCatalog.PoolSource>> e : catalog.getPools().entrySet())
+		{
+			if (!poolAlsoFrom(e.getKey()))
+			{
+				continue;
+			}
+			boolean named = false;
+			for (BossCatalog.PoolSource src : e.getValue())
+			{
+				if (src.getBoss() == boss)
+				{
+					// one of its own bosses: counted there, not here
+					named = false;
+					break;
+				}
+				for (String n : src.getDrop().getAllNames())
+				{
+					named |= BossCatalog.normalize(n).equals(item);
+				}
+			}
+			if (named)
+			{
+				state.poolElsewhereSeen().merge(e.getKey(), 1, Integer::sum);
+				if (state.sharedClog().containsKey(e.getKey()))
+				{
+					state.sharedClog().merge(e.getKey(), 1, Integer::sum);
+				}
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Loot from a monster On Rate doesn't track as a boss (a blue dragon, a smoke devil): only
+	 * looked at for the shared items the log also counts from them. True when the saved data changed.
+	 */
+	public synchronized boolean onOtherLoot(String source, Collection<LootItem> items)
+	{
+		if (catalog.byLootName(source) != null)
+		{
+			return false;
+		}
+		boolean changed = false;
+		for (LootItem item : items)
+		{
+			if (item.quantity > 0)
+			{
+				changed |= recordElsewhere(null, item.name);
+			}
+		}
+		return changed;
+	}
+
 	/** Copies of a shared item in the log that On Rate didn't see drop: from before it, or played elsewhere. */
 	private int olderCopies(String key)
 	{
@@ -378,7 +463,7 @@ public class Tracker
 		{
 			return 0;
 		}
-		int seen = 0;
+		int seen = elsewhereSeen(key);
 		for (BossCatalog.PoolSource src : catalog.getPools().getOrDefault(key, Collections.emptyList()))
 		{
 			seen += poolSeenAt(src.getBoss().getName(), key);
@@ -387,25 +472,16 @@ public class Tracker
 		return Math.max(0, (once ? Math.min(total, 1) : total) - (once ? Math.min(seen, 1) : seen));
 	}
 
-	/**
-	 * True when a shared item can be judged on each boss separately: its log total is known and
-	 * only the bosses drop it (the log also counts onyx from Zalcano, visages from other dragons...).
-	 */
+	/** True when a shared item can be judged on each boss separately: its log total is known. */
 	private boolean canSplit(String key)
 	{
-		List<BossCatalog.PoolSource> sources = catalog.getPools().get(key);
-		if (sources == null || !state.sharedClog().containsKey(key))
-		{
-			return false;
-		}
-		for (BossCatalog.PoolSource src : sources)
-		{
-			if (src.getDrop().getAlsoFrom() != null)
-			{
-				return false;
-			}
-		}
-		return true;
+		return catalog.getPools().containsKey(key) && state.sharedClog().containsKey(key);
+	}
+
+	/** Where older copies of this item can go: its bosses, and "not from a boss" when other monsters drop it too. */
+	private boolean validWhere(String key, String where)
+	{
+		return poolBosses(key).contains(where) || (NOT_FROM_A_BOSS.equals(where) && poolAlsoFrom(key));
 	}
 
 	/**
@@ -415,13 +491,16 @@ public class Tracker
 	private PoolSplit activeSplit(String key)
 	{
 		PoolSplit split = state.poolSplits().get(key);
-		if (split == null || !canSplit(key) || split.olderCopies != olderCopies(key))
+		if (split == null || split.older == null || !canSplit(key) || split.olderCopies() != olderCopies(key))
 		{
 			return null;
 		}
-		if (split.olderCopies > 0 && !poolBosses(key).contains(split.olderBoss))
+		for (Map.Entry<String, Integer> e : split.older.entrySet())
 		{
-			return null;
+			if (e.getValue() == null || e.getValue() < 0 || (e.getValue() > 0 && !validWhere(key, e.getKey())))
+			{
+				return null;
+			}
 		}
 		return split;
 	}
@@ -436,23 +515,46 @@ public class Tracker
 		return names;
 	}
 
+	/** See {@link #splitPool(String, Map)}, with every older copy from one place. */
+	public synchronized boolean splitPool(String key, String olderFrom)
+	{
+		int older = olderCopies(key);
+		return splitPool(key, older == 0 ? Collections.emptyMap() : Collections.singletonMap(olderFrom, older));
+	}
+
 	/**
 	 * Judges a shared item on each boss separately: the copies On Rate saw go to the boss that
-	 * dropped them, and the older ones (if any) all to {@code olderBoss}. Does nothing for an
-	 * item that can't be split (see {@link #canSplit}).
+	 * dropped them, and the older ones to the places given (boss names, or {@link #NOT_FROM_A_BOSS}
+	 * for an item other monsters drop too). They must add up to the older copies there are now.
+	 * False, and nothing changes, when they don't or the item can't be split yet.
 	 */
-	public synchronized void splitPool(String key, String olderBoss)
+	public synchronized boolean splitPool(String key, Map<String, Integer> older)
 	{
-		if (!canSplit(key))
+		if (!canSplit(key) || older == null)
 		{
-			return;
+			return false;
 		}
-		int older = olderCopies(key);
-		if (older > 0 && !poolBosses(key).contains(olderBoss))
+		Map<String, Integer> kept = new TreeMap<>();
+		int sum = 0;
+		for (Map.Entry<String, Integer> e : older.entrySet())
 		{
-			return;
+			int n = e.getValue() == null ? 0 : e.getValue();
+			if (n < 0 || (n > 0 && !validWhere(key, e.getKey())))
+			{
+				return false;
+			}
+			if (n > 0)
+			{
+				kept.put(e.getKey(), n);
+				sum += n;
+			}
 		}
-		state.poolSplits().put(key, new PoolSplit(older > 0 ? olderBoss : null, older));
+		if (sum != olderCopies(key))
+		{
+			return false;
+		}
+		state.poolSplits().put(key, new PoolSplit(kept));
+		return true;
 	}
 
 	/** Judges a shared item on all its bosses together again. */
@@ -1961,7 +2063,12 @@ public class Tracker
 				{
 					state.sharedClog().merge(pool, 1, Integer::sum);
 				}
-				if (pool != null)
+				if (pool == null)
+				{
+					// a shared item this boss isn't one of the bosses of (onyx from Zalcano)
+					recordElsewhere(boss, item.name);
+				}
+				else
 				{
 					// which boss it came from, for judging it per boss (see PoolSplit)
 					if (progress.poolSeen == null)
@@ -2836,8 +2943,7 @@ public class Tracker
 			if (split != null)
 			{
 				drops.add(e.getValue());
-				splitReceived.put(e.getValue(), poolSeenAt(boss.getName(), e.getKey())
-					+ (boss.getName().equals(split.olderBoss) ? split.olderCopies : 0));
+				splitReceived.put(e.getValue(), poolSeenAt(boss.getName(), e.getKey()) + split.olderAt(boss.getName()));
 			}
 		}
 		for (DropDefinition drop : drops)

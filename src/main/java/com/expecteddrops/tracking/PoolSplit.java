@@ -1,22 +1,41 @@
 package com.expecteddrops.tracking;
 
+import java.util.Map;
+import java.util.TreeMap;
+
 /**
- * The player's choice to judge a shared item (dragon axe, Virtus...) on each boss separately:
- * the copies On Rate saw drop go to the boss they dropped from, and the older ones it didn't
- * see all go to {@link #olderBoss}. Saved with how many older copies there were, so a copy the
- * log gains later without On Rate seeing it (played elsewhere) makes the item shared again
- * until the player answers once more.
+ * The player's choice to judge a shared item (dragon axe, draconic visage...) on each boss
+ * separately: the copies On Rate saw drop go to the boss they dropped from, and the older ones
+ * it didn't see go where the player said ({@link #older}). Saved with how many older copies
+ * there were, so a copy the log gains later without On Rate seeing it (played elsewhere) makes
+ * the item shared again until the player answers once more.
  */
 class PoolSplit
 {
-	/** The boss the older copies came from; null when there were none. */
-	String olderBoss;
-	/** How many older copies the choice was made for. */
-	int olderCopies;
+	/**
+	 * Older copies per boss name, or under {@link Tracker#NOT_FROM_A_BOSS} for the ones from
+	 * other monsters (a visage from a regular dragon).
+	 */
+	Map<String, Integer> older = new TreeMap<>();
 
-	PoolSplit(String olderBoss, int olderCopies)
+	PoolSplit(Map<String, Integer> older)
 	{
-		this.olderBoss = olderBoss;
-		this.olderCopies = olderCopies;
+		this.older.putAll(older);
+	}
+
+	int olderCopies()
+	{
+		int n = 0;
+		for (Integer v : older == null ? java.util.Collections.<Integer>emptyList() : older.values())
+		{
+			n += v == null ? 0 : v;
+		}
+		return n;
+	}
+
+	int olderAt(String where)
+	{
+		Integer n = older == null ? null : older.get(where);
+		return n == null ? 0 : n;
 	}
 }

@@ -45,7 +45,7 @@ The **?** at the top of the panel explains what you're looking at.
 ## Good to know
 
 - Rates are **solo base rates** from the [OSRS Wiki](https://oldschool.runescape.wiki), without diary, Combat Achievement or Slayer boosts. Where each one comes from: [docs/RATES.md](docs/RATES.md).
-- Items several bosses drop (dragon pickaxe, godsword shards, Virtus, onyx...) are judged on all those bosses' kills together, under **Shared with other bosses** on each boss page.
+- Items several bosses drop (dragon pickaxe, godsword shards, Virtus, onyx...) are judged on all those bosses' kills together, under **Shared with other bosses** on each boss page. Know where yours came from? **Right-click one to count it for that boss instead:** drops On Rate sees go to the boss that dropped them, and you say where the older ones came from (a visage from a regular dragon can count for no boss at all).
 - Pets and Royal Titans prayer scrolls count once, like in the collection log.
 - Raids without points (everything from before you installed On Rate) use an average purple chance, which you can change under **Raid purple chances** in the settings.
 - **Not covered:** team Nightmare and the collection log's Other tab.

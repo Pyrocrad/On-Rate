@@ -2813,16 +2813,80 @@ public class TrackerTest
 		assertEquals(4, row(tracker.stats("Dagannoth Kings", RAIDS), "Dragon axe").getReceived());
 	}
 
-	@Test
-	public void itemsTheLogAlsoCountsFromOtherMonstersCantBeSplit()
+	/** Vorkath with 2 visages in the log and King Black Dragon's kills known. */
+	private void vorkathWithVisages(int visages)
 	{
-		// uncut onyx: the log also counts Zalcano's and the Colosseum's
+		tracker.onClogPage("Vorkath", Collections.singletonList("Vorkath kills: 500"), Collections.singletonMap("Draconic visage", visages));
+		tracker.onChatMessage("Your King Black Dragon kill count is: <col=ff0000>300</col>.", now);
+	}
+
+	@Test
+	public void olderCopiesCanBeFromABossOrNotFromABoss()
+	{
+		vorkathWithVisages(2);
+		SharedPool visage = pool("Draconic visage");
+		assertTrue(visage.isSplittable());
+		assertEquals(2, visage.getOlderCopies());
+		AccountStats before = tracker.accountStats(RAIDS);
+
+		// one from Vorkath, one from a regular dragon
+		Map<String, Integer> older = new LinkedHashMap<>();
+		older.put("Vorkath", 1);
+		older.put(Tracker.NOT_FROM_A_BOSS, 1);
+		assertTrue(tracker.splitPool("draconic visage", older));
+		assertEquals(1, row(tracker.stats("Vorkath", RAIDS), "Draconic visage").getReceived());
+		assertEquals(0, row(tracker.stats("King Black Dragon", RAIDS), "Draconic visage").getReceived());
+		assertEquals(300 / 5000.0, row(tracker.stats("King Black Dragon", RAIDS), "Draconic visage").getExpected(), 1e-12);
+		// the one from a regular dragon counts for no boss, so the account has one fewer
+		AccountStats after = tracker.accountStats(RAIDS);
+		assertEquals(before.getTotal().getReceived() - 1, after.getTotal().getReceived());
+		assertEquals(before.getTotal().getExpected(), after.getTotal().getExpected(), 1e-9);
+	}
+
+	@Test
+	public void aSplitMustAddUpAndGoSomewhereValid()
+	{
+		vorkathWithVisages(2);
+		Map<String, Integer> tooFew = Collections.singletonMap("Vorkath", 1);
+		assertFalse(tracker.splitPool("draconic visage", tooFew));
+		assertFalse(tracker.splitPool("draconic visage", Collections.singletonMap("Zulrah", 2)));
+		assertFalse(tracker.splitPool("draconic visage", Collections.singletonMap("Vorkath", -2)));
+		assertFalse(hasRow(tracker.stats("Vorkath", RAIDS), "Draconic visage"));
+		// "not from a boss" only for items other monsters drop too
+		kingsWithThreeAxes(3);
+		assertFalse(tracker.splitPool("dragon axe", Tracker.NOT_FROM_A_BOSS));
+		assertFalse(hasRow(tracker.stats("Dagannoth Kings", RAIDS), "Dragon axe"));
+	}
+
+	@Test
+	public void dropsFromOtherMonstersAreNotedAsNotFromABoss()
+	{
+		vorkathWithVisages(2);
+		assertTrue(tracker.splitPool("draconic visage", "Vorkath"));
+		// a visage from a blue dragon: the log gains one, and it isn't a copy On Rate missed
+		assertTrue(tracker.onOtherLoot("Blue dragon", Collections.singletonList(new Tracker.LootItem("Draconic visage", 1))));
+		assertEquals(2, row(tracker.stats("Vorkath", RAIDS), "Draconic visage").getReceived());
+		assertEquals(0, pool("Uncut onyx").getOlderCopies());
+		// other loot from other monsters changes nothing
+		assertFalse(tracker.onOtherLoot("Blue dragon", Collections.singletonList(new Tracker.LootItem("Dragon bones", 1))));
+		// a boss's own loot isn't "other"
+		assertFalse(tracker.onOtherLoot("Vorkath", Collections.singletonList(new Tracker.LootItem("Draconic visage", 1))));
+		// after a log reread the blue dragon's one stays not from a boss: still split
+		vorkathWithVisages(3);
+		assertEquals(2, row(tracker.stats("Vorkath", RAIDS), "Draconic visage").getReceived());
+	}
+
+	@Test
+	public void onyxFromZalcanoIsNotFromOneOfItsBosses()
+	{
+		tracker.onClogPage("Zulrah", Collections.singletonList("Zulrah kills: 1000"), Collections.singletonMap("Uncut onyx", 1));
 		tracker.onClogPage("Skotizo", Collections.singletonList("Skotizo kills: 100"), Collections.singletonMap("Uncut onyx", 1));
+		assertEquals(1, pool("Uncut onyx").getOlderCopies());
+		tracker.onChatMessage("Your Zalcano kill count is: <col=ff0000>50</col>.", now);
+		tracker.onLoot("Zalcano", 1, Collections.singletonList(new Tracker.LootItem("Uncut onyx", 1)), now);
 		SharedPool onyx = pool("Uncut onyx");
-		assertFalse(onyx.isSplittable());
-		tracker.splitPool(onyx.getKey(), "Skotizo");
-		assertFalse(hasRow(tracker.stats("Skotizo", RAIDS), "Uncut onyx"));
-		assertNotNull(pool("Uncut onyx"));
+		assertEquals(2, onyx.getReceived());
+		assertEquals(1, onyx.getOlderCopies());
 	}
 
 	@Test
@@ -2844,7 +2908,7 @@ public class TrackerTest
 	{
 		kingsWithThreeAxes(0);
 		assertEquals(0, pool("Dragon axe").getOlderCopies());
-		tracker.splitPool("dragon axe", null);
+		assertTrue(tracker.splitPool("dragon axe", Collections.emptyMap()));
 		assertEquals(0, row(tracker.stats("Dagannoth Kings", RAIDS), "Dragon axe").getReceived());
 	}
 

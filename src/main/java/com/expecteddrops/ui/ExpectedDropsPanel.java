@@ -22,6 +22,7 @@ import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
@@ -2139,7 +2140,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		title.setAlignmentX(LEFT_ALIGNMENT);
 		title.setToolTipText("<html><body style='width: 240px'>These drop from other bosses too, and the collection log has "
 			+ "one total for all of them. So each is judged on all those bosses' kills together: the same numbers show on "
-			+ "every boss that drops it. Hover one to see which bosses.</body></html>");
+			+ "every boss that drops it. Hover one to see which bosses.<br><br>Know where yours came from? Right-click "
+			+ "one to judge it on each boss separately instead.</body></html>");
 		rowsPanel.add(title);
 		String page = stats.getBoss().getClogPages().isEmpty() ? stats.getBoss().getName() : stats.getBoss().getClogPages().get(0);
 		boolean headerAdded = false;
@@ -2463,9 +2465,12 @@ public class ExpectedDropsPanel extends PluginPanel
 			tip.note("Also drops from " + pool.getAlsoFrom() + ", and the collection log counts those too, "
 				+ "so this can look luckier than it is.");
 		}
-		else if (pool.isSplittable())
+		if (pool.isSplittable())
 		{
-			tip.note("Know which boss your older ones came from? Right-click to judge it on each boss separately.");
+			tip.note(pool.getAlsoFrom() != null
+				? "Know where yours came from? Right-click to judge it on each boss separately, with the ones from "
+					+ pool.getAlsoFrom() + " left out."
+				: "Know which boss yours came from? Right-click to judge it on each boss separately.");
 		}
 		return tip.wide();
 	}
@@ -2593,7 +2598,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		return "<html><body style='width: 240px'>" + how + "<br><br>Hover an item for its drop rate, your chances "
 			+ "and your dry streak. Right-click one to leave it out of the calculations (a drop you got elsewhere, "
-			+ "or jars you don't care about). Click \u21c4 next to ITEMS for another view."
+			+ "or jars you don't care about). Right-click a shared item to judge it on each boss separately. "
+			+ "Click \u21c4 next to ITEMS for another view."
 			+ "</body></html>";
 	}
 
@@ -2738,9 +2744,10 @@ public class ExpectedDropsPanel extends PluginPanel
 	}
 
 	/**
-	 * Adds the right-click menu to a shared item that only bosses drop: judge it on each boss
-	 * separately. The copies On Rate saw go to the boss that dropped them; the older ones it
-	 * didn't see all go to the boss picked here (only bosses with kills are offered).
+	 * Adds the right-click menu to a shared item: judge it on each boss separately. The copies
+	 * On Rate saw drop go to the boss that dropped them; the older ones it didn't see go where
+	 * the player says: a boss they have kills at, or "not from a boss" for an item other
+	 * monsters drop too (a visage from a regular dragon).
 	 */
 	private <T extends java.awt.Component> T withSplitMenu(T c, com.expecteddrops.stats.SharedPool pool)
 	{
@@ -2753,39 +2760,106 @@ public class ExpectedDropsPanel extends PluginPanel
 		if (older == 0)
 		{
 			JMenuItem item = new JMenuItem("Judge it on each boss separately");
-			item.addActionListener(e -> splitPool(pool, null));
+			item.addActionListener(e -> splitPool(pool, java.util.Collections.emptyMap()));
 			menu.add(item);
+			addPopup(c, menu);
+			return c;
 		}
-		else
+		Map<String, String> where = splitDestinations(pool);
+		if (where.isEmpty())
 		{
-			javax.swing.JMenu from = new javax.swing.JMenu(older == 1 ? "Judge per boss: my older one came from"
-				: "Judge per boss: my " + older + " older ones came from");
-			for (String boss : pool.getBosses())
-			{
-				com.expecteddrops.stats.BossStats s = tracker.stats(boss, raidSettings.get());
-				if (s == null || s.getKillCount() <= 0)
-				{
-					continue;
-				}
-				JMenuItem item = new JMenuItem(boss);
-				item.addActionListener(e -> splitPool(pool, boss));
-				from.add(item);
-			}
-			if (from.getItemCount() == 0)
-			{
-				return c;
-			}
-			menu.add(from);
+			return c;
+		}
+		javax.swing.JMenu all = new javax.swing.JMenu(older == 1 ? "Judge per boss: my older one came from"
+			: "Judge per boss: all " + older + " older ones came from");
+		for (Map.Entry<String, String> w : where.entrySet())
+		{
+			JMenuItem item = new JMenuItem(w.getValue());
+			item.addActionListener(e -> splitPool(pool, java.util.Collections.singletonMap(w.getKey(), older)));
+			all.add(item);
+		}
+		menu.add(all);
+		if (older > 1 && where.size() > 1)
+		{
+			JMenuItem some = new JMenuItem("Judge per boss: split my " + older + " older ones...");
+			some.addActionListener(e -> askSplit(pool, where));
+			menu.add(some);
 		}
 		addPopup(c, menu);
 		return c;
 	}
 
-	private void splitPool(com.expecteddrops.stats.SharedPool pool, String olderBoss)
+	/**
+	 * Where a shared item's older copies can go, key to menu text: the bosses that drop it that
+	 * have kills, then "Not from a boss" when the log also counts it from other monsters.
+	 */
+	private Map<String, String> splitDestinations(com.expecteddrops.stats.SharedPool pool)
 	{
-		tracker.splitPool(pool.getKey(), olderBoss);
-		save.run();
-		refresh();
+		Map<String, String> where = new java.util.LinkedHashMap<>();
+		for (String boss : pool.getBosses())
+		{
+			BossStats s = tracker.stats(boss, raidSettings.get());
+			if (s != null && s.getKillCount() > 0)
+			{
+				where.put(boss, boss);
+			}
+		}
+		if (pool.getAlsoFrom() != null)
+		{
+			where.put(Tracker.NOT_FROM_A_BOSS, "Not from a boss (" + pool.getAlsoFrom() + ")");
+		}
+		return where;
+	}
+
+	/** Asks how many older copies came from each place, and splits the item when they add up. */
+	private void askSplit(com.expecteddrops.stats.SharedPool pool, Map<String, String> where)
+	{
+		int older = pool.getOlderCopies();
+		JPanel form = new JPanel(new GridLayout(0, 2, Theme.M, Theme.S));
+		Map<String, javax.swing.JSpinner> counts = new java.util.LinkedHashMap<>();
+		for (Map.Entry<String, String> w : where.entrySet())
+		{
+			javax.swing.JSpinner spinner = new javax.swing.JSpinner(new javax.swing.SpinnerNumberModel(0, 0, older, 1));
+			counts.put(w.getKey(), spinner);
+			form.add(new JLabel(w.getValue()));
+			form.add(spinner);
+		}
+		JPanel content = new JPanel(new BorderLayout(0, Theme.M));
+		content.add(new JLabel("<html><body style='width: 260px'>Your collection log has " + older + " " + pool.getLabel()
+			+ " copies On Rate didn't see drop. Where did they come from? They need to add up to " + older
+			+ ".</body></html>"), BorderLayout.NORTH);
+		content.add(form, BorderLayout.CENTER);
+		while (true)
+		{
+			int answer = JOptionPane.showConfirmDialog(this, content, "Judge " + pool.getLabel() + " per boss",
+				JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+			if (answer != JOptionPane.OK_OPTION)
+			{
+				return;
+			}
+			Map<String, Integer> chosen = new java.util.LinkedHashMap<>();
+			for (Map.Entry<String, javax.swing.JSpinner> e : counts.entrySet())
+			{
+				chosen.put(e.getKey(), (Integer) e.getValue().getValue());
+			}
+			if (splitPool(pool, chosen))
+			{
+				return;
+			}
+			JOptionPane.showMessageDialog(this, "They need to add up to " + older + ".", "Judge " + pool.getLabel() + " per boss",
+				JOptionPane.WARNING_MESSAGE);
+		}
+	}
+
+	private boolean splitPool(com.expecteddrops.stats.SharedPool pool, Map<String, Integer> older)
+	{
+		boolean done = tracker.splitPool(pool.getKey(), older);
+		if (done)
+		{
+			save.run();
+			refresh();
+		}
+		return done;
 	}
 
 	/**
@@ -3889,6 +3963,8 @@ public class ExpectedDropsPanel extends PluginPanel
 			{"Searching:", "type part of a name, or a short one like cox, tob or toa."},
 			{"Left out:", "right-click an item to leave it out of the calculations, for example one you got "
 				+ "elsewhere. Right-click it again to count it."},
+			{"Shared items:", "items several bosses drop are judged on all of them together. Know where yours came "
+				+ "from? Right-click one to count it for that boss instead."},
 			{"History or raids empty", "out of the blue? On Rate couldn't read that saved data, started fresh and "
 				+ "kept a copy. Please tell us on Discord or in an issue."},
 		};
@@ -4306,16 +4382,17 @@ public class ExpectedDropsPanel extends PluginPanel
 				: String.format("Since On Rate: fastest drop after %,d %s, longest after %,d.", row.getFastest(),
 					unit + (row.getFastest() == 1 ? "" : "s"), row.getLongest()));
 		}
-		if (drop != null && drop.getAlsoFrom() != null)
+		boolean ownDrop = drop != null && stats.getBoss().getDrops().contains(drop);
+		if (ownDrop && drop.getAlsoFrom() != null)
 		{
 			tip.note("Also drops from " + drop.getAlsoFrom() + ", and the collection log counts those too. "
 				+ "Got yours there? Right-click to leave it out.");
 		}
-		if (drop != null && !stats.getBoss().getDrops().contains(drop))
+		if (drop != null && !ownDrop)
 		{
 			// a shared item the player split: their own choice of where the older copies came from
 			tip.note("Other bosses drop this too. You chose to judge it on each boss separately: the copies On Rate "
-				+ "saw drop count for the boss that dropped them, and the older ones for the boss you picked. "
+				+ "saw drop count for the boss that dropped them, and the older ones where you said. "
 				+ "Right-click to judge it with the other bosses again.");
 		}
 		if (multiple != null)
