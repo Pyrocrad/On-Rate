@@ -345,7 +345,7 @@ final class Texts
 		{
 			return "";
 		}
-		if (com.expecteddrops.stats.DropMath.VERDICTS.get(3).equals(com.expecteddrops.stats.DropMath.verdict(luck)))
+		if (com.expecteddrops.stats.DropMath.isOnRate(luck))
 		{
 			// "On rate": the same band as the verdict (a bit dry and a bit spooned get their 1 in N)
 			return "about average";

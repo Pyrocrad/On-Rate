@@ -2,6 +2,7 @@ package com.expecteddrops;
 
 import com.expecteddrops.stats.DropMath;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
@@ -108,7 +109,7 @@ public class DropMathTest
 		assertEquals("A bit spooned", DropMath.verdict(0.5501));
 		assertEquals("A bit spooned", DropMath.verdict(0.65));
 		assertEquals("Spooned", DropMath.verdict(0.6501));
-		// the outer bands are unchanged
+		// the 10% and 90% lines are unchanged
 		assertEquals("Very dry", DropMath.verdict(0.0999));
 		assertEquals("Dry", DropMath.verdict(0.10));
 		assertEquals("Spooned", DropMath.verdict(0.90));
@@ -374,7 +375,8 @@ public class DropMathTest
 	public void verdictBoundariesGoToTheSideNearerTheMiddle()
 	{
 		assertEquals("", DropMath.verdict(Double.NaN));
-		assertEquals("Very dry", DropMath.verdict(0.0));
+		assertEquals("Extremely dry", DropMath.verdict(0.0));
+		assertEquals("Very dry", DropMath.verdict(0.01));
 		assertEquals("Very dry", DropMath.verdict(0.0999));
 		assertEquals("Dry", DropMath.verdict(0.10));
 		assertEquals("Dry", DropMath.verdict(0.3499));
@@ -387,7 +389,40 @@ public class DropMathTest
 		assertEquals("Spooned", DropMath.verdict(0.6501));
 		assertEquals("Spooned", DropMath.verdict(0.90));
 		assertEquals("Very spooned", DropMath.verdict(0.9001));
-		assertEquals("Very spooned", DropMath.verdict(1.0));
+		assertEquals("Very spooned", DropMath.verdict(0.99));
+		assertEquals("Extremely spooned", DropMath.verdict(1.0));
+	}
+
+	@Test
+	public void extremeTiersSitOutsideOnePercent()
+	{
+		assertEquals("Extremely dry", DropMath.verdict(0.0));
+		assertEquals("Extremely dry", DropMath.verdict(0.0099));
+		assertEquals("Very dry", DropMath.verdict(0.01));
+		assertEquals("Very spooned", DropMath.verdict(0.99));
+		assertEquals("Extremely spooned", DropMath.verdict(0.9901));
+		assertEquals("Extremely spooned", DropMath.verdict(1.0));
+		assertEquals("", DropMath.verdict(Double.NaN));
+		for (double luck : new double[]{0.0, 0.0099, 0.01, 0.5, 0.99, 0.9901, 1.0})
+		{
+			assertTrue(DropMath.VERDICTS.contains(DropMath.verdict(luck)));
+		}
+		// real counts: none at 4.7 expected, and one at 0.005 expected
+		assertEquals("Extremely dry", DropMath.verdict(DropMath.luck(0, 4.7)));
+		assertEquals("Extremely spooned", DropMath.verdict(DropMath.luck(1, 0.005)));
+	}
+
+	@Test
+	public void onRateIsFoundByNameNotPlace()
+	{
+		assertTrue(DropMath.VERDICTS.contains(DropMath.ON_RATE));
+		assertEquals(DropMath.ON_RATE, DropMath.verdict(0.5));
+		assertTrue(DropMath.isOnRate(0.5));
+		assertFalse(DropMath.isOnRate(0.44));
+		assertFalse(DropMath.isOnRate(Double.NaN));
+		// the middle of the list, with as many words on each side
+		int middle = DropMath.VERDICTS.indexOf(DropMath.ON_RATE);
+		assertEquals(DropMath.VERDICTS.size() - 1 - middle, middle);
 	}
 
 	@Test

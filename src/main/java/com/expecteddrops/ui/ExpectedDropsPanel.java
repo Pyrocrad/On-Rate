@@ -103,7 +103,7 @@ public class ExpectedDropsPanel extends PluginPanel
 	private final JPanel welcomePanel = new JPanel();
 	/** The verdict words in the welcome guide's key, with the luck each stands for: recoloured with the palette. */
 	private final List<JLabel> welcomeVerdicts = new ArrayList<>();
-	private static final double[] WELCOME_VERDICT_LUCK = {0.05, 0.22, 0.40, 0.50, 0.60, 0.78, 0.95};
+	private static final double[] WELCOME_VERDICT_LUCK = {0.005, 0.05, 0.22, 0.40, 0.50, 0.60, 0.78, 0.95, 0.995};
 	/** The guide's reference part (verdict key, limits, odd moments): folded until "How to read it" is clicked. */
 	private final JPanel welcomeMore = new JPanel();
 	private boolean welcomeMoreOpen;
@@ -1121,7 +1121,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		// adds up every boss and keeps its verdicts)
 		boolean early = bossPage && tiles && any.getExpected() < Texts.TOO_EARLY_BELOW;
 		// "On rate" says little by itself: one notable fact under it, when there is one
-		String notable = !early && DropMath.VERDICTS.get(3).equals(DropMath.verdict(luck)) ? Texts.notableLine(items) : null;
+		String notable = !early && DropMath.isOnRate(luck) ? Texts.notableLine(items) : null;
 		notableText = notable;
 		notableLabel.setText(notable == null ? "" : "<html><body style='width: 165px'>" + html(notable) + "</body></html>");
 		notableLabel.setVisible(notable != null);
@@ -3768,7 +3768,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		// how the verdict words are drawn: your rank among 100 typical players
 		welcomeMore.add(welcomeHeading("Where the words come from",
 			"Your rank among 100 typical players with your kill counts, driest first."));
-		String[] ranks = {"1 to 10", "11 to 35", "36 to 45", "46 to 55", "56 to 65", "66 to 90", "91 to 100"};
+		String[] ranks = {"1", "2 to 10", "11 to 35", "36 to 45", "46 to 55", "56 to 65", "66 to 90", "91 to 99", "100"};
 		welcomeVerdicts.clear();
 		for (int i = 0; i < ranks.length; i++)
 		{
@@ -3777,7 +3777,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			row.setAlignmentX(LEFT_ALIGNMENT);
 			row.setBorder(BorderFactory.createCompoundBorder(
 				BorderFactory.createMatteBorder(1, 0, 0, 0, Theme.DIVIDER), new EmptyBorder(Theme.HAIR, 0, Theme.HAIR, 0)));
-			JLabel word = smallLabel(DropMath.VERDICTS.get(i), welcomeVerdictColor(i));
+			JLabel word = smallLabel(DropMath.verdict(WELCOME_VERDICT_LUCK[i]), welcomeVerdictColor(i));
 			welcomeVerdicts.add(word);
 			row.add(word, BorderLayout.WEST);
 			JLabel range = smallLabel(ranks[i], Theme.TEXT);
@@ -3842,7 +3842,7 @@ public class ExpectedDropsPanel extends PluginPanel
 	private static Color welcomeVerdictColor(int i)
 	{
 		double luck = WELCOME_VERDICT_LUCK[i];
-		return i == 3 ? Theme.TEXT : Palette.verdict(luck).brighter();
+		return DropMath.isOnRate(luck) ? Theme.TEXT : Palette.verdict(luck).brighter();
 	}
 
 	/** A wrapped grey line in the welcome guide with a thin line above, starting with an optional white lead. */
@@ -4277,7 +4277,7 @@ public class ExpectedDropsPanel extends PluginPanel
 	 */
 	static Color verdictWordColor(double luck)
 	{
-		if (!Double.isNaN(luck) && DropMath.VERDICTS.get(3).equals(DropMath.verdict(luck)))
+		if (!Double.isNaN(luck) && DropMath.isOnRate(luck))
 		{
 			return Theme.TEXT;
 		}

@@ -302,7 +302,17 @@ public final class DropMath
 	 * trip card and the luck graph all use (through {@link #verdict}).
 	 */
 	public static final java.util.List<String> VERDICTS = java.util.Collections.unmodifiableList(java.util.Arrays.asList(
-		"Very dry", "Dry", "A bit dry", "On rate", "A bit spooned", "Spooned", "Very spooned"));
+		"Extremely dry", "Very dry", "Dry", "A bit dry", "On rate", "A bit spooned", "Spooned", "Very spooned",
+		"Extremely spooned"));
+
+	/** The middle word of {@link #VERDICTS}: look it up by name, not by its place in the list. */
+	public static final String ON_RATE = "On rate";
+
+	/** True when {@code luck} reads "On rate" (false for NaN). */
+	public static boolean isOnRate(double luck)
+	{
+		return ON_RATE.equals(verdict(luck));
+	}
 
 	/** Below this luck it's dry, at or above it the middle band starts. */
 	public static final double DRY_BELOW = 0.35;
@@ -311,10 +321,11 @@ public final class DropMath
 
 	/**
 	 * A word for a luck percentile, from the player's point of view. Empty when there's
-	 * nothing to judge yet. Under 10% very dry, under 35% dry, under 45% a bit dry, 45% to 55%
-	 * on rate, up to 65% a bit spooned, up to 90% spooned, above that very spooned. A value
-	 * right on a line goes to the side nearer the middle (35% is a bit dry, 45% and 55% are on
-	 * rate, 65% is a bit spooned), as the dry and spooned lines always did.
+	 * nothing to judge yet. Under 1% extremely dry, under 10% very dry, under 35% dry, under 45% a
+	 * bit dry, 45% to 55% on rate, up to 65% a bit spooned, up to 90% spooned, up to 99% very
+	 * spooned, above that extremely spooned. A value right on a line goes to the side nearer the
+	 * middle (1% is very dry, 35% is a bit dry, 45% and 55% are on rate, 65% is a bit spooned,
+	 * 99% is very spooned), as the dry and spooned lines always did.
 	 */
 	public static String verdict(double luck)
 	{
@@ -323,33 +334,41 @@ public final class DropMath
 			return "";
 		}
 		int band;
-		if (luck < 0.10)
+		if (luck < 0.01)
 		{
 			band = 0;
 		}
-		else if (luck < DRY_BELOW)
+		else if (luck < 0.10)
 		{
 			band = 1;
 		}
-		else if (luck < 0.45)
+		else if (luck < DRY_BELOW)
 		{
 			band = 2;
 		}
-		else if (luck <= 0.55)
+		else if (luck < 0.45)
 		{
 			band = 3;
 		}
-		else if (luck <= SPOONED_ABOVE)
+		else if (luck <= 0.55)
 		{
 			band = 4;
 		}
-		else if (luck <= 0.90)
+		else if (luck <= SPOONED_ABOVE)
 		{
 			band = 5;
 		}
-		else
+		else if (luck <= 0.90)
 		{
 			band = 6;
+		}
+		else if (luck <= 0.99)
+		{
+			band = 7;
+		}
+		else
+		{
+			band = 8;
 		}
 		return VERDICTS.get(band);
 	}

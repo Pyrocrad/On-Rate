@@ -1,6 +1,6 @@
 # On Rate
 
-**Are you on rate?** On Rate is a RuneLite plugin that shows, for every boss and raid, how many uniques you *should* have by now at the drop rates and how many you actually got, with a plain verdict from *Very dry* to *Very spooned*.
+**Are you on rate?** On Rate is a RuneLite plugin that shows, for every boss and raid, how many uniques you *should* have by now at the drop rates and how many you actually got, with a plain verdict from *Extremely dry* to *Extremely spooned*.
 
 <p>
 <img src="docs/chambers-of-xeric.png" width="239" alt="Boss page: Chambers of Xeric, with the Uniques and GP value verdicts and every item against what you should have by now">
@@ -25,7 +25,7 @@
 ## Features
 
 - **Over 50 bosses and raids** from the Bosses and Raids tabs of the collection log, including Doom of Mokhaiotl per delve level (Fortis Colosseum, Tempoross and Wintertodt arrive with the next update; a few things are left out: see *Not covered* below).
-- **Two verdicts per boss**, from *Very dry* to *Very spooned*: how many uniques you got, and what they're worth in GP. Plus how common your result is among players at the same kill count, worked out from the drop rates.
+- **Two verdicts per boss**, from *Extremely dry* to *Extremely spooned*: how many uniques you got, and what they're worth in GP. Plus how common your result is among players at the same kill count, worked out from the drop rates.
 - **Account overview:** all your bosses added up, up to 15 of your driest and 15 of your luckiest items, each with got / expected, your pets, and what you killed and got today and this week.
 - **Hover any item** for its drop rate, your dry streak, how far past the drop rate you are and how many players at your kill count would have fewer or more (worked out from the drop rates).
 - **History** per boss: the kills On Rate saw and what they dropped.

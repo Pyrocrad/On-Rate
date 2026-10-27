@@ -15,7 +15,8 @@ class VerdictTile extends JPanel
 	private final JLabel word = new JLabel();
 	private final JLabel numbers = new JLabel();
 	private final JLabel luck = new JLabel();
-	/** The two small lines as set, before any wrapping (see {@link #doLayout}). */
+	/** The verdict word and the two small lines as set, before any wrapping (see {@link #doLayout}). */
+	private String wordText = "";
 	private String numbersText = "";
 	private String luckText = "";
 
@@ -40,13 +41,17 @@ class VerdictTile extends JPanel
 		add(luck);
 	}
 
-	/** Verdict size by default; smaller only when a long word ("Very spooned") doesn't fit the tile. */
+	/**
+	 * Verdict size by default; smaller only when a long word ("Very spooned") doesn't fit the tile.
+	 * A word too wide even at the smallest size ("Extremely spooned") goes back to full size on two lines.
+	 */
 	private static final float WORD_SIZE = 18f;
 	private static final float WORD_MIN_SIZE = 14f;
 
 	/**
 	 * The tile is about 98px wide for text when the panel has its scrollbar. Two things in it can be
-	 * wider: "Very spooned" in the full size needs 102, and "only 1 in 10,000 has none" needs 127. The
+	 * wider: "Very spooned" in the full size needs 102 ("Extremely spooned" 141, still 113 at the
+	 * smallest size, so it takes two lines), and "only 1 in 10,000 has none" needs 127. The
 	 * verdict word steps down a point at a time until it fits (and back up when it does); the small
 	 * lines wrap onto a second line instead of ending in "...".
 	 */
@@ -59,7 +64,7 @@ class VerdictTile extends JPanel
 		{
 			return;
 		}
-		String text = word.getText();
+		String text = wordText;
 		if (text != null && !text.isEmpty())
 		{
 			float size = WORD_SIZE;
@@ -68,9 +73,22 @@ class VerdictTile extends JPanel
 			{
 				size -= 1f;
 			}
+			boolean twoLines = word.getFontMetrics(base.deriveFont(size)).stringWidth(text) > room;
+			if (twoLines)
+			{
+				size = WORD_SIZE;
+			}
 			if (word.getFont().getSize2D() != size)
 			{
 				word.setFont(base.deriveFont(size));
+			}
+			if (twoLines)
+			{
+				wrapIfLong(word, text, room);
+			}
+			else if (!text.equals(word.getText()))
+			{
+				word.setText(text);
 			}
 		}
 		wrapIfLong(numbers, numbersText, room);
@@ -115,6 +133,7 @@ class VerdictTile extends JPanel
 	void set(String verdict, Color color, String numbersText, String luckText, String tip)
 	{
 		word.setText(verdict);
+		this.wordText = verdict;
 		word.setForeground(color);
 		this.numbersText = numbersText;
 		this.luckText = luckText;

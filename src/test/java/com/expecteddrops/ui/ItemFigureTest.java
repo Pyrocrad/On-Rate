@@ -92,7 +92,8 @@ public class ItemFigureTest
 		assertEquals("Very dry", DropMath.verdict(row(2.6, 0).getLuck()));
 		assertEquals("Very dry", DropMath.verdict(row(4.0, 1).getLuck()));
 		assertEquals("Spooned", DropMath.verdict(row(1.2, 3).getLuck()));
-		assertEquals("Very spooned", DropMath.verdict(row(3.0, 9).getLuck()));
+		// 9 of 3.0 expected is about 99.6%
+		assertEquals("Extremely spooned", DropMath.verdict(row(3.0, 9).getLuck()));
 		assertEquals("Dry", DropMath.verdict(row(2.0, 0).once(0).getLuck()));
 		assertEquals(0.135, row(2.0, 0).once(0).getLuck(), 0.001);
 		assertEquals("A bit dry", DropMath.verdict(row(2.0, 1).capped(3, 1).getLuck()));

@@ -59,7 +59,7 @@ public class QuietRowsTest
 			// ordinary items, pets (have it or not) and capped items (warm gloves, titan scrolls) alike
 			for (RowStats each : new RowStats[]{r, r.once(0), r.capped(3, 0)})
 			{
-				assertEquals("expected " + expected, DropMath.VERDICTS.get(3), DropMath.verdict(each.getLuck()));
+				assertEquals("expected " + expected, DropMath.ON_RATE, DropMath.verdict(each.getLuck()));
 			}
 		}
 	}
@@ -121,6 +121,29 @@ public class QuietRowsTest
 		tile.setSize(new Dimension(111, 80));
 		tile.doLayout();
 		assertEquals(normal.getSize2D(), tile.getComponent(1).getFont().getSize2D(), 0.001);
+		// the longest words fit too, scrollbar showing
+		for (String word : new String[]{"Extremely dry", "Extremely spooned"})
+		{
+			tile.set(word, java.awt.Color.GREEN, "9 / 1.2", "1 in 300 as lucky", null);
+			tile.setSize(new Dimension(104, 80));
+			tile.doLayout();
+			javax.swing.JLabel shown = (javax.swing.JLabel) tile.getComponent(1);
+			java.awt.FontMetrics fm = shown.getFontMetrics(shown.getFont());
+			// every line of it fits: one line shrunk, or two at full size, never cut off
+			for (String line : shown.getText().replaceAll("</?html>", "").split("<br>"))
+			{
+				assertTrue(word + ": " + line, fm.stringWidth(line) <= room);
+			}
+			assertEquals(word, shown.getText().replaceAll("</?html>", "").replace("<br>", " "));
+			assertTrue(word, shown.getPreferredSize().width <= room);
+		}
+		// "Extremely spooned" takes two lines at full size; back to one line for a shorter word
+		tile.set("Extremely spooned", java.awt.Color.GREEN, "9 / 1.2", "1 in 300 as lucky", null);
+		tile.doLayout();
+		assertEquals(normal.getSize2D(), tile.getComponent(1).getFont().getSize2D(), 0.001);
+		tile.set("Spooned", java.awt.Color.GREEN, "9 / 1.2", "1 in 3 as lucky", null);
+		tile.doLayout();
+		assertEquals("Spooned", ((javax.swing.JLabel) tile.getComponent(1)).getText());
 		// a short word never changes
 		tile.set("Dry", java.awt.Color.ORANGE, "1 / 3", "1 in 3 as dry", null);
 		tile.setSize(new Dimension(104, 80));

@@ -12,6 +12,7 @@ Updates come through the Plugin Hub. Each heading is the date of that update; **
 - **Calmer chat and clearer settings:** dry milestone messages start at 2x the drop rate instead of 1x, chat settings have their own section, and the team settings are in a clearer order, with clearer names.
 
 *Changes that affect your numbers*
+- **Two new verdict words at the far ends:** *Extremely dry* when fewer than 1% of players at your kill count have as few as you, and *Extremely spooned* when fewer than 1% have as many. Very dry is now 1% to 10% and Very spooned 90% to 99%; the extreme words share their colour. Only the word changes, not the numbers behind it.
 - **Pets:** a pet you can only have once no longer counts as if you could get several. This changes the top verdict of pages with a pet (TzKal-Zuk, Tempoross, Wintertodt, Royal Titans and, a little, every boss with a pet), the account total and "chance of one by now". The Chaos elemental pet is now judged as "have it or not".
 - **Verdict words:** the old "On rate" band (35% to 65%) is split into A bit dry, On rate and A bit spooned.
 - **Zalcano:** the crystal tool seed now counts the players around you, so its expected count and the trip card's "Unique value" change.
