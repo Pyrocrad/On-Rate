@@ -117,4 +117,23 @@ public class CatalogTest
 			}
 		}
 	}
+
+	@Test
+	public void everyValueFormulaParsesAndNamesItsItems()
+	{
+		int found = 0;
+		for (BossDefinition boss : catalog.getBosses())
+		{
+			for (DropDefinition drop : boss.getDrops())
+			{
+				if (drop.getValueFrom() != null)
+				{
+					found++;
+					assertFalse(drop.getName(), com.expecteddrops.data.ValueFormula.parse(drop.getValueFrom()).getItemNames().isEmpty());
+					assertNotNull(drop.getName(), catalog.getValueFormula(drop.getName()));
+				}
+			}
+		}
+		assertTrue(found >= 18);
+	}
 }

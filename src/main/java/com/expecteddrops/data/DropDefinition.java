@@ -37,6 +37,8 @@ public class DropDefinition
 	private Boolean noShare;
 	/** Other monsters that drop this item, whose drops the collection log counts here too. */
 	private String alsoFrom;
+	/** What an untradeable item is worth, from tradeable ones ("Noxious halberd / 3"). See {@link ValueFormula}. */
+	private String valueFrom;
 	/** Per-level rates for delve bosses, keyed "1".."9" (9 = level 8+). */
 	private Map<String, String> levelRates;
 	/** Per-part rates for combined pages, keyed by part name. */
@@ -182,6 +184,11 @@ public class DropDefinition
 	public boolean hasPartRates()
 	{
 		return partRates != null && !partRates.isEmpty();
+	}
+
+	public String getValueFrom()
+	{
+		return valueFrom;
 	}
 
 	public boolean countsTowardAny()

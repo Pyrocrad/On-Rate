@@ -1,5 +1,5 @@
 {
-  "_readme": "'once': true marks items you can only get once (pets count as once automatically). Items that drop from more than one boss are pooled: judged on all those bosses' kills together against their one collection log total. 'clogShared': true marks items that also drop from monsters outside the bosses: they are left out entirely (no row, and neither the collection log nor loot counts them), because the log total can't be credited to a boss. Rates are per kill/completion, solo or full contribution, base rates (no diary or CA boosts). 'rate' is a fraction string. Delve items use 'levelRates' per delve level (9 = 8+). Combined pages (Dagannoth Kings, Callisto and Artio...) list 'parts', each with its own kill-count names, and drops use 'partRates' per part. Raid modes are parts with a 'raid' key for their purple chance; 'partWeights' overrides an item's weight in one mode. Raid items use 'weight' (share of the purple, chance set in the plugin settings). 'match' lists extra item names that count for that row. 'any': false keeps a row out of the 'Any' total. 'kc' = chat kill-count names, 'loot' = loot tracker names, 'clog' = collection log page titles.",
+  "_readme": "'once': true marks items you can only get once (pets count as once automatically). Items that drop from more than one boss are pooled: judged on all those bosses' kills together against their one collection log total. 'clogShared': true marks items that also drop from monsters outside the bosses: they are left out entirely (no row, and neither the collection log nor loot counts them), because the log total can't be credited to a boss. Rates are per kill/completion, solo or full contribution, base rates (no diary or CA boosts). 'rate' is a fraction string. Delve items use 'levelRates' per delve level (9 = 8+). Combined pages (Dagannoth Kings, Callisto and Artio...) list 'parts', each with its own kill-count names, and drops use 'partRates' per part. Raid modes are parts with a 'raid' key for their purple chance; 'partWeights' overrides an item's weight in one mode. Raid items use 'weight' (share of the purple, chance set in the plugin settings). 'valueFrom' prices an untradeable item from tradeable ones (e.g. \"Noxious halberd / 3\"); it is only used when the item has no price of its own. 'match' lists extra item names that count for that row. 'any': false keeps a row out of the 'Any' total. 'kc' = chat kill-count names, 'loot' = loot tracker names, 'clog' = collection log page titles.",
   "bosses": [
     {
       "name": "Abyssal Sire", "kc": ["Abyssal Sire"], "loot": ["Abyssal Sire"], "clog": ["Abyssal Sire"], "note": "Bludgeon pieces and the abyssal dagger come from Unsired, not from the kill itself. Unsired is shown but not counted as a unique: the jar and pet come out of it, so counting both would count one drop twice.",
@@ -13,9 +13,9 @@
       "name": "Alchemical Hydra", "kc": ["Alchemical Hydra"], "loot": ["Alchemical Hydra"], "clog": ["Alchemical Hydra"],
       "note": "Dragon thrownaxes and knives are left out: wyrms, drakes and hydras drop them too, and the collection log has one total for all of them, so On Rate can't tell which came from the Hydra. That means the ones the Hydra did drop aren't counted either.",
       "drops": [
-        {"name": "Hydra's eye", "rate": "1/181", "alsoFrom": "hydras"},
-        {"name": "Hydra's fang", "rate": "1/181", "alsoFrom": "hydras"},
-        {"name": "Hydra's heart", "rate": "1/181", "alsoFrom": "hydras"},
+        {"name": "Hydra's eye", "valueFrom": "Brimstone ring / 3", "rate": "1/181", "alsoFrom": "hydras"},
+        {"name": "Hydra's fang", "valueFrom": "Brimstone ring / 3", "rate": "1/181", "alsoFrom": "hydras"},
+        {"name": "Hydra's heart", "valueFrom": "Brimstone ring / 3", "rate": "1/181", "alsoFrom": "hydras"},
         {"name": "Hydra tail", "rate": "1/513", "alsoFrom": "hydras"},
         {"name": "Hydra leather", "rate": "1/514"},
         {"name": "Hydra's claw", "rate": "1/1001"},
@@ -37,11 +37,11 @@
     {
       "name": "Araxxor", "kc": ["Araxxor"], "loot": ["Araxxor"], "clog": ["Araxxor"], "note": "Assumes you harvest every kill (destroying gives no uniques but doubles the pet rate). Any halberd piece is 1/200 per kill, so 1/600 for each piece.",
       "drops": [
-        {"name": "Noxious point", "rate": "1/600"},
-        {"name": "Noxious blade", "rate": "1/600"},
-        {"name": "Noxious pommel", "rate": "1/600"},
+        {"name": "Noxious point", "valueFrom": "Noxious halberd / 3", "rate": "1/600"},
+        {"name": "Noxious blade", "valueFrom": "Noxious halberd / 3", "rate": "1/600"},
+        {"name": "Noxious pommel", "valueFrom": "Noxious halberd / 3", "rate": "1/600"},
         {"name": "Araxyte head", "rate": "1/250", "alsoFrom": "araxytes"},
-        {"name": "Araxyte fang", "rate": "1/600"},
+        {"name": "Araxyte fang", "valueFrom": "Amulet of rancour - Amulet of torture", "rate": "1/600"},
         {"name": "Jar of venom", "rate": "1/1500"},
         {"name": "Nid", "rate": "1/3000", "pet": true}
       ]
@@ -201,7 +201,7 @@
     {
       "name": "Doom of Mokhaiotl", "kc": [], "loot": ["Doom of Mokhaiotl"], "clog": ["Doom of Mokhaiotl"], "delve": true, "note": "Rates depend on the delve level (8+ = each deep delve wave). Level completions are counted from the chat message; open the Doom scoreboard once to load your full history. Per-level rates from the Delve Calculator plugin by Speaax.",
       "drops": [
-        {"name": "Mokhaiotl cloth", "levelRates": {"2": "1/2500", "3": "1/2000", "4": "1/1350", "5": "1/810", "6": "1/765", "7": "1/720", "8": "1/630", "9": "1/540"}},
+        {"name": "Mokhaiotl cloth", "valueFrom": "Confliction gauntlets - Tormented bracelet - 10000 * Demon tear", "levelRates": {"2": "1/2500", "3": "1/2000", "4": "1/1350", "5": "1/810", "6": "1/765", "7": "1/720", "8": "1/630", "9": "1/540"}},
         {"name": "Eye of ayak (uncharged)", "levelRates": {"3": "1/2000", "4": "1/1350", "5": "1/810", "6": "1/765", "7": "1/720", "8": "1/630", "9": "1/540"}},
         {"name": "Avernic treads", "levelRates": {"4": "1/1350", "5": "1/810", "6": "1/765", "7": "1/720", "8": "1/630", "9": "1/540"}},
         {"name": "Dom", "pet": true, "levelRates": {"6": "1/1000", "7": "1/750", "8": "1/500", "9": "1/250"}}
@@ -210,8 +210,8 @@
     {
       "name": "Duke Sucellus", "kc": ["Duke Sucellus"], "loot": ["Duke Sucellus"], "clog": ["Duke Sucellus"], "note": "Normal mode rates. Awakened kills are not modelled separately.",
       "drops": [
-        {"name": "Magus vestige", "rate": "1/720"},
-        {"name": "Eye of the duke", "rate": "1/720"},
+        {"name": "Magus vestige", "valueFrom": "Magus ring - 3 * Chromium ingot", "rate": "1/720"},
+        {"name": "Eye of the duke", "valueFrom": "Soulreaper axe / 4", "rate": "1/720"},
         {"name": "Chromium ingot", "rate": "3/720"},
         {"name": "Virtus mask", "rate": "1/2160"},
         {"name": "Virtus robe top", "rate": "1/2160"},
@@ -244,7 +244,7 @@
     {
       "name": "Maggot King", "kc": ["Maggot King", "The Maggot King"], "loot": ["Maggot King", "The Maggot King"], "clog": ["Maggot King"], "estimate": true, "note": "The pet can also come from taking eggs, which On Rate can't count, so the pet row is a low estimate.",
       "drops": [
-        {"name": "Elder venator fang", "rate": "1/340"},
+        {"name": "Elder venator fang", "valueFrom": "Necklace of rupture - Necklace of anguish", "rate": "1/340"},
         {"name": "Crimson kisten", "rate": "1/520"},
         {"name": "Maggot marquess", "rate": "1/3500", "pet": true}
       ]
@@ -376,7 +376,7 @@
       "name": "Phantom Muspah", "kc": ["Phantom Muspah"], "loot": ["Phantom Muspah"], "clog": ["Phantom Muspah"],
       "drops": [
         {"name": "Frozen cache", "rate": "1/25", "any": false},
-        {"name": "Ancient icon", "rate": "1/50"},
+        {"name": "Ancient icon", "valueFrom": "5000 * Ancient essence", "rate": "1/50"},
         {"name": "Venator shard", "rate": "1/100"},
         {"name": "Muphin", "rate": "1/2500", "pet": true}
       ]
@@ -470,8 +470,8 @@
     {
       "name": "The Leviathan", "kc": ["The Leviathan", "Leviathan"], "loot": ["The Leviathan", "Leviathan"], "clog": ["The Leviathan"], "note": "Normal mode rates.",
       "drops": [
-        {"name": "Venator vestige", "rate": "1/768"},
-        {"name": "Leviathan's lure", "rate": "1/768"},
+        {"name": "Venator vestige", "valueFrom": "Venator ring - 3 * Chromium ingot", "rate": "1/768"},
+        {"name": "Leviathan's lure", "valueFrom": "Soulreaper axe / 4", "rate": "1/768"},
         {"name": "Chromium ingot", "rate": "3/768"},
         {"name": "Virtus mask", "rate": "1/2304"},
         {"name": "Virtus robe top", "rate": "1/2304"},
@@ -491,8 +491,8 @@
     {
       "name": "The Whisperer", "kc": ["The Whisperer", "Whisperer"], "loot": ["The Whisperer", "Whisperer"], "clog": ["The Whisperer"], "note": "Normal mode rates.",
       "drops": [
-        {"name": "Bellator vestige", "rate": "1/512"},
-        {"name": "Siren's staff", "rate": "1/512"},
+        {"name": "Bellator vestige", "valueFrom": "Bellator ring - 3 * Chromium ingot", "rate": "1/512"},
+        {"name": "Siren's staff", "valueFrom": "Soulreaper axe / 4", "rate": "1/512"},
         {"name": "Chromium ingot", "rate": "3/512"},
         {"name": "Virtus mask", "rate": "1/1536"},
         {"name": "Virtus robe top", "rate": "1/1536"},
@@ -551,8 +551,8 @@
     {
       "name": "Vardorvis", "kc": ["Vardorvis"], "loot": ["Vardorvis"], "clog": ["Vardorvis"], "note": "Normal mode rates.",
       "drops": [
-        {"name": "Ultor vestige", "rate": "1/1088"},
-        {"name": "Executioner's axe head", "rate": "1/1088"},
+        {"name": "Ultor vestige", "valueFrom": "Ultor ring - 3 * Chromium ingot", "rate": "1/1088"},
+        {"name": "Executioner's axe head", "valueFrom": "Soulreaper axe / 4", "rate": "1/1088"},
         {"name": "Chromium ingot", "rate": "3/1088"},
         {"name": "Virtus mask", "rate": "1/3264"},
         {"name": "Virtus robe top", "rate": "1/3264"},
