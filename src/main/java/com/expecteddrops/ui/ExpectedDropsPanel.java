@@ -121,6 +121,8 @@ public class ExpectedDropsPanel extends PluginPanel
 
 	private final HintField searchField = new HintField("Search bosses...");
 	private final JLabel accountLink = new JLabel("\u2039 Account");
+	/** "On Rate" at the top left; on a boss page the back link takes its place. */
+	private final JLabel titleLabel = new JLabel("On Rate");
 	private final JPanel headerRow = new JPanel(new BorderLayout(6, 0));
 	private final JComboBox<String> bossSelect = new JComboBox<>();
 	private final JLabel headerIcon = new JLabel();
@@ -242,7 +244,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
 		top.setOpaque(false);
 
-		JLabel title = new JLabel("On Rate");
+		JLabel title = titleLabel;
 		title.setFont(FontManager.getRunescapeBoldFont());
 		title.setForeground(Color.WHITE);
 		helpLabel.setFont(FontManager.getRunescapeBoldFont());
@@ -251,10 +253,17 @@ public class ExpectedDropsPanel extends PluginPanel
 		JPanel titleRow = new JPanel(new BorderLayout());
 		titleRow.setOpaque(false);
 		titleRow.setAlignmentX(LEFT_ALIGNMENT);
-		titleRow.add(title, BorderLayout.WEST);
-		// one click back to the account overview, wherever you are (only on a boss page)
+		// one click back to the account overview, wherever you are (only on a boss page): top left,
+		// where a back button is looked for, in place of the title
+		JPanel titleLeft = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 0, 0));
+		titleLeft.setOpaque(false);
+		titleLeft.add(title);
+		titleLeft.add(accountLink);
+		titleRow.add(titleLeft, BorderLayout.WEST);
 		accountLink.setFont(FontManager.getRunescapeBoldFont());
-		accountLink.setForeground(Theme.TEXT);
+		accountLink.setForeground(Theme.TEXT_MUTED);
+		// a bigger target than the text alone
+		accountLink.setBorder(new EmptyBorder(2, 0, 2, Theme.M));
 		accountLink.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 		accountLink.setToolTipText("Back to the account overview");
 		accountLink.addMouseListener(new MouseAdapter()
@@ -274,16 +283,15 @@ public class ExpectedDropsPanel extends PluginPanel
 			@Override
 			public void mouseExited(MouseEvent e)
 			{
-				accountLink.setForeground(Theme.TEXT);
+				accountLink.setForeground(Theme.TEXT_MUTED);
 			}
 		});
 		Activatable.install(accountLink, "Back to the account overview", () -> showBoss(ACCOUNT));
 		JPanel titleRight = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, Theme.M, 0));
 		titleRight.setOpaque(false);
-		titleRight.add(accountLink);
 		titleRight.add(helpLabel);
 		titleRow.add(titleRight, BorderLayout.EAST);
-		titleRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 18));
+		titleRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
 		top.add(titleRow);
 		top.add(spacer(Theme.M));
 
@@ -829,6 +837,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		styleTabs();
 		boolean account = ACCOUNT.equals(bossName);
 		accountLink.setVisible(!account);
+		titleLabel.setVisible(account);
 		// the luck graph belongs to the bosses list; the Items and Recent tabs get the room
 		// Luck over time sits with the bosses list; its title opens and closes it
 		graphPanel.setVisible(account && (accountTab == TAB_BOSSES || accountTab == TAB_ITEMS && !o.isTopItems()));
@@ -2193,7 +2202,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			else
 			{
 				rowsPanel.add(spacer(Theme.HAIR));
-				rowsPanel.add(withSplitMenu(targetRow(row, tip), pool));
+				rowsPanel.add(withSplitMenu(itemLuckRow(row, tip), pool));
 			}
 			if (pool.isSplitNeedsAnswer() && pool.isSplittable())
 			{
@@ -2694,16 +2703,16 @@ public class ExpectedDropsPanel extends PluginPanel
 				}
 				break;
 			default:
-				rowsPanel.add(itemsHeader("ITEMS", view, "bar = got \u00b7 line = expected",
-					"The bar is how many you got. The white line is how many you should have by now. "
-						+ "A bar short of the line is behind it; past the line is ahead. Rare items have their line near the start."));
+				rowsPanel.add(itemsHeader("ITEMS", view, "got / expected",
+					"The dot is your luck on each item: left of the middle tick is dry, right of it is spooned. "
+						+ "The numbers are how many you got and how many you should have by now."));
 				for (int i = 0; i < all.size(); i++)
 				{
 					if (i > 0)
 					{
 						rowsPanel.add(spacer(Theme.HAIR));
 					}
-					rowsPanel.add(withLeaveOutMenu(targetRow(all.get(i), tooltip(all.get(i), stats, unit)), bossName, all.get(i), false));
+					rowsPanel.add(withLeaveOutMenu(itemLuckRow(all.get(i), tooltip(all.get(i), stats, unit)), bossName, all.get(i), false));
 				}
 		}
 		if (!leftOut.isEmpty())
@@ -3203,60 +3212,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		return Texts.gotOfExpected(r);
 	}
 
-	/** Item row: name and "got / expected" on top, a bar with the expected marker below. */
-	private JPanel targetRow(RowStats r, String tip)
-	{
-		// nothing expected yet and none got: the row stays, but quietly, so the rows with something to read stand out
-		boolean quiet = Texts.isQuiet(r);
-		JPanel panel = new JPanel(new BorderLayout(0, 2));
-		panel.setBackground(Theme.SURFACE);
-		panel.setBorder(new EmptyBorder(Theme.HAIR, Theme.S, quiet ? Theme.HAIR : Theme.S, Theme.S));
-		panel.setAlignmentX(LEFT_ALIGNMENT);
-
-		JPanel line = new JPanel(new BorderLayout(4, 0));
-		line.setOpaque(false);
-		JLabel name;
-		if (r.isAny())
-		{
-			name = boldLabel("Any unique");
-		}
-		else
-		{
-			line.add(itemIcon(r.getIconItem(), r.getLabel(), SMALL_ICON), BorderLayout.WEST);
-			name = rowLabel(r.getShownLabel(), quiet ? Theme.TEXT_MUTED : Theme.TEXT);
-			if (quiet)
-			{
-				name.setFont(Theme.numberFont());
-			}
-		}
-		line.add(name, BorderLayout.CENTER);
-		boolean have = r.isComplete();
-		// the name is the bold one; the count is the regular weight, white once there is something to count
-		JLabel count = rowLabel(have ? Texts.haveText(r) : gotOfExpected(r),
-			r.isAny() || have || r.getReceived() > 0 ? Theme.TEXT : Theme.TEXT_MUTED);
-		count.setFont(Theme.numberFont());
-		line.add(count, BorderLayout.EAST);
-		panel.add(line, BorderLayout.CENTER);
-
-		TargetBar bar = new TargetBar();
-		bar.setQuiet(quiet);
-		if (have)
-		{
-			bar.set(1, -1, Palette.good());
-		}
-		else
-		{
-			// each bar has its own scale, so a rare item's line sits near the start: with 0 / 0.12
-			// you're not behind yet, and the bar shows that
-			double scale = Math.max(1, Math.max(r.getExpected(), r.getReceived())) * 1.25;
-			bar.set(r.getReceived() / scale, r.getExpected() / scale, luckColor(r.getLuck()));
-		}
-		panel.add(bar, BorderLayout.SOUTH);
-		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, panel.getPreferredSize().height));
-		setTip(panel, tip, null);
-		return panel;
-	}
-
 	/** Account row: boss picture, then a luck bar with the boss name and its verdict. */
 	private JPanel luckRow(RowStats r, String tip, Runnable onClick)
 	{
@@ -3323,6 +3278,12 @@ public class ExpectedDropsPanel extends PluginPanel
 		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, panel.getPreferredSize().height));
 		setTip(panel, tip, onClick);
 		return panel;
+	}
+
+	/** An item on a boss page: name and verdict, then the dot on the dry-to-spooned track beside "got / expected". */
+	private JPanel itemLuckRow(RowStats r, String tip)
+	{
+		return luckRow(r, tip, null, null, null, r.isComplete() ? Texts.haveText(r) : gotOfExpected(r));
 	}
 
 	/** Width of the "got / expected" column: "0 / 35.5" and "99 / 153" fit; the widest items need about 40. */
@@ -4365,6 +4326,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		if (!Double.isNaN(luck))
 		{
 			tip.row("Your result", "<b>" + DropMath.verdict(luck) + "</b>", luckColor(luck).brighter());
+			// the players at your kill count: fewer, as many as you (in your colour), more
+			tip.split(row.getShares(), row.getReceived(), luckColor(luck));
 			tip.line(capital(sharesLine(row.getShares(), row.getReceived())), Theme.TEXT_MUTED);
 		}
 

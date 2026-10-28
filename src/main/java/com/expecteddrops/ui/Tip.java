@@ -61,6 +61,39 @@ final class Tip
 		return row(label, "<font color='" + Theme.hex(color) + "'>" + value + "</font>");
 	}
 
+	/**
+	 * A thin bar split into the players with fewer, as many as you (in {@code you}, the verdict colour)
+	 * and more. Skipped when the split is unknown.
+	 */
+	Tip split(double[] shares, int received, Color you)
+	{
+		if (shares == null)
+		{
+			return this;
+		}
+		double fewer = received <= 0 ? 0 : shares[0];
+		double same = shares[1];
+		double more = Math.max(0, 1 - fewer - same);
+		StringBuilder sb = new StringBuilder("<table width='100%' cellpadding='0' cellspacing='0' style='margin-top: 3px'><tr>");
+		cell(sb, fewer, Theme.DIVIDER.brighter());
+		cell(sb, same, you);
+		cell(sb, more, Palette.blend(you, Color.WHITE, 0.5));
+		parts.add(sb.append("</tr></table>").toString());
+		return this;
+	}
+
+	/** One part of {@link #split}: at least 1% wide when there is any of it, so a sliver still shows. */
+	private static void cell(StringBuilder sb, double share, Color color)
+	{
+		if (share < 0.0005)
+		{
+			return;
+		}
+		int pct = Math.max(1, (int) Math.round(share * 100));
+		sb.append("<td width='").append(pct).append("%' bgcolor='").append(Theme.hex(color))
+			.append("' style='font-size: 4px'>&nbsp;</td>");
+	}
+
 	/** Grey text at the bottom: where a number comes from, or a caveat. */
 	Tip note(String html)
 	{
@@ -114,7 +147,7 @@ final class Tip
 				sb.append("</table>");
 				inTable = false;
 			}
-			else if (sb.length() > 0)
+			else if (sb.length() > 0 && !endsWithTable(sb))
 			{
 				sb.append("<br>");
 			}
