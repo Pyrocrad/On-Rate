@@ -34,6 +34,15 @@ class VerdictTile extends JPanel
 	};
 	private final JLabel numbers = new JLabel();
 	private final JLabel luck = new JLabel();
+	/** Where the verdict sits on the dry-to-spooned scale, between the numbers and the "1 in N" line. */
+	private final LuckStrip strip = new LuckStrip()
+	{
+		@Override
+		public java.awt.Dimension getMaximumSize()
+		{
+			return new java.awt.Dimension(Integer.MAX_VALUE, getPreferredSize().height);
+		}
+	};
 	/** The verdict word and the two small lines as set, before any wrapping (see {@link #doLayout}). */
 	private String wordText = "";
 	private String numbersText = "";
@@ -57,7 +66,10 @@ class VerdictTile extends JPanel
 		}
 		add(key);
 		add(word);
+		strip.setAlignmentX(LEFT_ALIGNMENT);
+		strip.setPreferredSize(new java.awt.Dimension(80, 12));
 		add(numbers);
+		add(strip);
 		add(luck);
 	}
 
@@ -150,6 +162,12 @@ class VerdictTile extends JPanel
 		}
 	}
 
+	/** The dot on the scale; NaN (too early, or not known) shows the scale without a dot, so both tiles keep one height. */
+	void setLuck(double value)
+	{
+		strip.setLuck(value);
+	}
+
 	void set(String verdict, Color color, String numbersText, String luckText, String tip)
 	{
 		word.setText(verdict);
@@ -162,7 +180,7 @@ class VerdictTile extends JPanel
 		setToolTipText(tip);
 		for (Component c : getComponents())
 		{
-			((JLabel) c).setToolTipText(tip);
+			((javax.swing.JComponent) c).setToolTipText(tip);
 		}
 		// the tile was taken out of its row while its text changed: drop the size it remembers
 		invalidate();

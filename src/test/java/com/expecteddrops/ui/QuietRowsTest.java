@@ -157,7 +157,7 @@ public class QuietRowsTest
 		tile.set("Very dry", java.awt.Color.RED, "0 / 3.4", "only 1 in 10,000 has none", null);
 		tile.setSize(new Dimension(104, 80));
 		tile.doLayout();
-		javax.swing.JLabel luck = (javax.swing.JLabel) tile.getComponent(3);
+		javax.swing.JLabel luck = (javax.swing.JLabel) tile.getComponent(4);
 		assertTrue(luck.getText(), luck.getText().startsWith("<html>") && luck.getText().contains("<br>"));
 		// every line fits the 98px the tile has, and the words are all still there
 		java.awt.FontMetrics fm = luck.getFontMetrics(luck.getFont());

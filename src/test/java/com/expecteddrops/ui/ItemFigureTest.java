@@ -316,7 +316,8 @@ public class ItemFigureTest
 		{
 			out.add((LuckStrip) c);
 		}
-		if (c instanceof java.awt.Container)
+		// the verdict tiles' scales are not list rows
+		if (c instanceof java.awt.Container && !(c instanceof VerdictTile))
 		{
 			for (java.awt.Component child : ((java.awt.Container) c).getComponents())
 			{

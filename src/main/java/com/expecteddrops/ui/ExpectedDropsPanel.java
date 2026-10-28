@@ -1192,6 +1192,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				.note("Counts " + what + ", not their value: a twisted bow counts like a prayer scroll.")
 				.note(estimateNote)
 				.wide());
+		uniquesTile.setLuck(early ? Double.NaN : luck);
 		verdictTiles.add(uniquesTile);
 		if (value != null)
 		{
@@ -1199,6 +1200,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				early ? Theme.TEXT_MUTED : (bossPage ? Palette.verdict(value[2]) : luckColor(value[2])).brighter(),
 				DropMath.formatGp(value[0]) + " / " + DropMath.formatGp(value[1]),
 				early ? "" : luckShort(value[2]), valueTip);
+			valueTile.setLuck(early ? Double.NaN : value[2]);
 			verdictTiles.add(valueTile);
 		}
 	}
