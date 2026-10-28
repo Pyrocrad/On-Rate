@@ -401,7 +401,7 @@ public class DropMathTest
 	public void verdictBoundariesGoToTheSideNearerTheMiddle()
 	{
 		assertEquals("", DropMath.verdict(Double.NaN));
-		assertEquals("Extremely dry", DropMath.verdict(0.0));
+		assertEquals("Mega dry", DropMath.verdict(0.0));
 		assertEquals("Very dry", DropMath.verdict(0.01));
 		assertEquals("Very dry", DropMath.verdict(0.0999));
 		assertEquals("Dry", DropMath.verdict(0.10));
@@ -416,26 +416,26 @@ public class DropMathTest
 		assertEquals("Spooned", DropMath.verdict(0.90));
 		assertEquals("Very spooned", DropMath.verdict(0.9001));
 		assertEquals("Very spooned", DropMath.verdict(0.99));
-		assertEquals("Extremely spooned", DropMath.verdict(1.0));
+		assertEquals("Mega spooned", DropMath.verdict(1.0));
 	}
 
 	@Test
 	public void extremeTiersSitOutsideOnePercent()
 	{
-		assertEquals("Extremely dry", DropMath.verdict(0.0));
-		assertEquals("Extremely dry", DropMath.verdict(0.0099));
+		assertEquals("Mega dry", DropMath.verdict(0.0));
+		assertEquals("Mega dry", DropMath.verdict(0.0099));
 		assertEquals("Very dry", DropMath.verdict(0.01));
 		assertEquals("Very spooned", DropMath.verdict(0.99));
-		assertEquals("Extremely spooned", DropMath.verdict(0.9901));
-		assertEquals("Extremely spooned", DropMath.verdict(1.0));
+		assertEquals("Mega spooned", DropMath.verdict(0.9901));
+		assertEquals("Mega spooned", DropMath.verdict(1.0));
 		assertEquals("", DropMath.verdict(Double.NaN));
 		for (double luck : new double[]{0.0, 0.0099, 0.01, 0.5, 0.99, 0.9901, 1.0})
 		{
 			assertTrue(DropMath.VERDICTS.contains(DropMath.verdict(luck)));
 		}
 		// real counts: none at 4.7 expected, and one at 0.005 expected
-		assertEquals("Extremely dry", DropMath.verdict(DropMath.luck(0, 4.7)));
-		assertEquals("Extremely spooned", DropMath.verdict(DropMath.luck(1, 0.005)));
+		assertEquals("Mega dry", DropMath.verdict(DropMath.luck(0, 4.7)));
+		assertEquals("Mega spooned", DropMath.verdict(DropMath.luck(1, 0.005)));
 	}
 
 	@Test

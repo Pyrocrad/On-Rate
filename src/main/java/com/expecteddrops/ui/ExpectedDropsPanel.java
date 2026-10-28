@@ -4325,6 +4325,32 @@ public class ExpectedDropsPanel extends PluginPanel
 		return panel;
 	}
 
+	/**
+	 * "You got 1 where 0.19 was expected. You're luckier than 83% of players.": the got / expected
+	 * and the comparison as one sentence at the top of an item's tooltip.
+	 */
+	static String summary(RowStats row)
+	{
+		String text = String.format("You got <b>%d</b> where %s was expected.", row.getReceived(),
+			formatExpected(row.getExpected()));
+		if (Double.isNaN(row.getLuck()))
+		{
+			return text;
+		}
+		String compared = luckPercent(row.getShares(), row.getReceived());
+		if (compared.startsWith("drier") || compared.startsWith("luckier"))
+		{
+			// "luckier than 99.4% (1 in 170 players)" already says who it's compared with
+			return text + " You're " + compared + (compared.contains("players") ? "." : " of players.");
+		}
+		if (compared.equals("about average"))
+		{
+			return text + " That's about average.";
+		}
+		// "64% have none" is in the split of players below
+		return text;
+	}
+
 	private static String tooltip(RowStats row, BossStats stats, String unit)
 	{
 		Tip tip = new Tip(row.isAny() ? "Any unique" : row.getLabel());
@@ -4333,17 +4359,12 @@ public class ExpectedDropsPanel extends PluginPanel
 		int kills = stats.getKillCount();
 		String units = kills == 1 ? unit : unit + "s";
 
-		// the verdict first, then the split of players it comes from
+		// one plain sentence first, then the verdict and the split of players it comes from
 		double luck = row.getLuck();
+		tip.line(summary(row));
 		if (!Double.isNaN(luck))
 		{
 			tip.row("Your result", "<b>" + DropMath.verdict(luck) + "</b>", luckColor(luck).brighter());
-			String compared = luckPercent(row.getShares(), row.getReceived());
-			// with none, "64% have none" is already in the line below
-			if (!compared.endsWith("have none"))
-			{
-				tip.row("Compared", capital(compared));
-			}
 			tip.line(capital(sharesLine(row.getShares(), row.getReceived())), Theme.TEXT_MUTED);
 		}
 
@@ -4352,7 +4373,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			tip.row("Drop rate", DropMath.formatRate(row.getRate()) + " per " + unit);
 		}
-		tip.row("Got / expected", String.format("%d / %s", row.getReceived(), formatExpected(row.getExpected())));
 		tip.row("Chance of one by now", formatPercent(row.getChanceAtLeastOne()));
 		String multiple = rateMultiple(row);
 		if (multiple != null)

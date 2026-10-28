@@ -417,8 +417,8 @@ public final class DropMath
 	 * trip card and the luck graph all use (through {@link #verdict}).
 	 */
 	public static final java.util.List<String> VERDICTS = java.util.Collections.unmodifiableList(java.util.Arrays.asList(
-		"Extremely dry", "Very dry", "Dry", "A bit dry", "On rate", "A bit spooned", "Spooned", "Very spooned",
-		"Extremely spooned"));
+		"Mega dry", "Very dry", "Dry", "A bit dry", "On rate", "A bit spooned", "Spooned", "Very spooned",
+		"Mega spooned"));
 
 	/** The middle word of {@link #VERDICTS}: look it up by name, not by its place in the list. */
 	public static final String ON_RATE = "On rate";
@@ -436,9 +436,9 @@ public final class DropMath
 
 	/**
 	 * A word for a luck percentile, from the player's point of view. Empty when there's
-	 * nothing to judge yet. Under 1% extremely dry, under 10% very dry, under 35% dry, under 45% a
+	 * nothing to judge yet. Under 1% mega dry, under 10% very dry, under 35% dry, under 45% a
 	 * bit dry, 45% to 55% on rate, up to 65% a bit spooned, up to 90% spooned, up to 99% very
-	 * spooned, above that extremely spooned. A value right on a line goes to the side nearer the
+	 * spooned, above that mega spooned. A value right on a line goes to the side nearer the
 	 * middle (1% is very dry, 35% is a bit dry, 45% and 55% are on rate, 65% is a bit spooned,
 	 * 99% is very spooned), as the dry and spooned lines always did.
 	 */

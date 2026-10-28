@@ -122,7 +122,7 @@ public class QuietRowsTest
 		tile.doLayout();
 		assertEquals(normal.getSize2D(), tile.getComponent(1).getFont().getSize2D(), 0.001);
 		// the longest words fit too, scrollbar showing
-		for (String word : new String[]{"Extremely dry", "Extremely spooned"})
+		for (String word : new String[]{"Mega dry", "Mega spooned"})
 		{
 			tile.set(word, java.awt.Color.GREEN, "9 / 1.2", "1 in 300 as lucky", null);
 			tile.setSize(new Dimension(104, 80));
@@ -137,13 +137,12 @@ public class QuietRowsTest
 			assertEquals(word, shown.getText().replaceAll("</?html>", "").replace("<br>", " "));
 			assertTrue(word, shown.getPreferredSize().width <= room);
 		}
-		// "Extremely spooned" takes two lines at full size; back to one line for a shorter word
-		tile.set("Extremely spooned", java.awt.Color.GREEN, "9 / 1.2", "1 in 300 as lucky", null);
-		tile.doLayout();
-		assertEquals(normal.getSize2D(), tile.getComponent(1).getFont().getSize2D(), 0.001);
+		// the word always takes two lines of room, so a short and a long verdict make the same tile
+		int tall = tile.getComponent(1).getPreferredSize().height;
 		tile.set("Spooned", java.awt.Color.GREEN, "9 / 1.2", "1 in 3 as lucky", null);
 		tile.doLayout();
 		assertEquals("Spooned", ((javax.swing.JLabel) tile.getComponent(1)).getText());
+		assertEquals(tall, tile.getComponent(1).getPreferredSize().height);
 		// a short word never changes
 		tile.set("Dry", java.awt.Color.ORANGE, "1 / 3", "1 in 3 as dry", null);
 		tile.setSize(new Dimension(104, 80));

@@ -12,7 +12,26 @@ import net.runelite.client.ui.FontManager;
 class VerdictTile extends JPanel
 {
 	private final JLabel key = new JLabel();
-	private final JLabel word = new JLabel();
+	/**
+	 * Always two lines tall, the word on the bottom one: both tiles stay the same size whether the
+	 * verdict is "Dry" or wraps, and the lines under it don't jump when the word changes.
+	 */
+	private final JLabel word = new JLabel()
+	{
+		@Override
+		public java.awt.Dimension getPreferredSize()
+		{
+			java.awt.Dimension d = super.getPreferredSize();
+			int twoLines = 2 * getFontMetrics(Theme.verdictFont()).getHeight();
+			return new java.awt.Dimension(d.width, Math.max(d.height, twoLines));
+		}
+
+		@Override
+		public java.awt.Dimension getMaximumSize()
+		{
+			return new java.awt.Dimension(Integer.MAX_VALUE, getPreferredSize().height);
+		}
+	};
 	private final JLabel numbers = new JLabel();
 	private final JLabel luck = new JLabel();
 	/** The verdict word and the two small lines as set, before any wrapping (see {@link #doLayout}). */
@@ -30,6 +49,7 @@ class VerdictTile extends JPanel
 		key.setForeground(Theme.TEXT_MUTED);
 		// the verdict is what On Rate is about: a size up from the lists
 		word.setFont(Theme.verdictFont());
+		word.setVerticalAlignment(JLabel.BOTTOM);
 		for (JLabel l : new JLabel[]{numbers, luck})
 		{
 			l.setFont(FontManager.getRunescapeSmallFont());
@@ -43,14 +63,14 @@ class VerdictTile extends JPanel
 
 	/**
 	 * Verdict size by default; smaller only when a long word ("Very spooned") doesn't fit the tile.
-	 * A word too wide even at the smallest size ("Extremely spooned") goes back to full size on two lines.
+	 * A word too wide even at the smallest size ("Mega spooned") goes back to full size on two lines.
 	 */
 	private static final float WORD_SIZE = 18f;
 	private static final float WORD_MIN_SIZE = 14f;
 
 	/**
 	 * The tile is about 98px wide for text when the panel has its scrollbar. Two things in it can be
-	 * wider: "Very spooned" in the full size needs 102 ("Extremely spooned" 141, still 113 at the
+	 * wider: "Very spooned" in the full size needs 102 ("Mega spooned" 141, still 113 at the
 	 * smallest size, so it takes two lines), and "only 1 in 10,000 has none" needs 127. The
 	 * verdict word steps down a point at a time until it fits (and back up when it does); the small
 	 * lines wrap onto a second line instead of ending in "...".
