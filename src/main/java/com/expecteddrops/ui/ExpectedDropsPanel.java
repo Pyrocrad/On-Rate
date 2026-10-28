@@ -238,6 +238,8 @@ public class ExpectedDropsPanel extends PluginPanel
 			}
 		});
 
+		keepTooltipsOpen();
+
 		JPanel top = new JPanel();
 		top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
 		top.setOpaque(false);
@@ -2602,7 +2604,7 @@ public class ExpectedDropsPanel extends PluginPanel
 
 	// ---------------------------------------------------------------- item views
 
-	private static final int SMALL_ICON = 20;
+	private static final int SMALL_ICON = 24;
 	/** Bosses with fewer uniques expected than this aren't listed in the account overview. */
 	private static final double MIN_EXPECTED_SHOWN = 0.05;
 
@@ -3149,6 +3151,56 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 	}
 
+	/** How long a tooltip stays while the mouse is over the panel: long enough to read the item details. */
+	static final int TOOLTIP_DISMISS_MS = 60_000;
+
+	/**
+	 * Tooltips in this panel stay up for a minute instead of Swing's 4 seconds. The delay is one setting
+	 * for all of RuneLite, so it's set while the mouse is over the panel and put back when it leaves.
+	 */
+	private void keepTooltipsOpen()
+	{
+		javax.swing.ToolTipManager tips = javax.swing.ToolTipManager.sharedInstance();
+		int[] usual = {tips.getDismissDelay()};
+		boolean[] inside = {false};
+		java.awt.Toolkit.getDefaultToolkit().addAWTEventListener(event ->
+		{
+			if (!(event instanceof MouseEvent) || !(event.getSource() instanceof java.awt.Component))
+			{
+				return;
+			}
+			int id = event.getID();
+			if (id != MouseEvent.MOUSE_ENTERED && id != MouseEvent.MOUSE_EXITED)
+			{
+				return;
+			}
+			java.awt.Component c = (java.awt.Component) event.getSource();
+			boolean over = id == MouseEvent.MOUSE_ENTERED && javax.swing.SwingUtilities.isDescendingFrom(c, this);
+			if (over && !inside[0])
+			{
+				usual[0] = tips.getDismissDelay();
+				tips.setDismissDelay(TOOLTIP_DISMISS_MS);
+				inside[0] = true;
+			}
+			else if (!over && inside[0] && id == MouseEvent.MOUSE_ENTERED)
+			{
+				tips.setDismissDelay(usual[0]);
+				inside[0] = false;
+			}
+			else if (inside[0] && id == MouseEvent.MOUSE_EXITED && !isMouseOverPanel())
+			{
+				tips.setDismissDelay(usual[0]);
+				inside[0] = false;
+			}
+		}, java.awt.AWTEvent.MOUSE_EVENT_MASK);
+	}
+
+	private boolean isMouseOverPanel()
+	{
+		java.awt.Point p = getMousePosition(true);
+		return p != null;
+	}
+
 	/** An item picture scaled to {@code size} pixels high, or its initials. */
 	private JLabel itemIcon(String item, String label, int size)
 	{
@@ -3392,7 +3444,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		else
 		{
-			panel.add(itemIcon(r.getIconItem(), r.getLabel(), 16), BorderLayout.WEST);
+			panel.add(itemIcon(r.getIconItem(), r.getLabel(), 20), BorderLayout.WEST);
 			panel.add(smallLabel(r.getShownLabel(), Texts.isQuiet(r) ? Theme.TEXT_MUTED : Color.WHITE), BorderLayout.CENTER);
 		}
 		JPanel right = new JPanel(new BorderLayout(6, 0));
@@ -3424,7 +3476,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		left.setOpaque(false);
 		if (!any)
 		{
-			left.add(itemIcon(item, label, 16), BorderLayout.WEST);
+			left.add(itemIcon(item, label, 20), BorderLayout.WEST);
 		}
 		left.add(any ? boldLabel(label) : smallLabel(label, quiet ? Theme.TEXT_MUTED : Theme.TEXT), BorderLayout.CENTER);
 		left.setPreferredSize(new Dimension(110, 18));
@@ -4325,6 +4377,32 @@ public class ExpectedDropsPanel extends PluginPanel
 		return panel;
 	}
 
+	/**
+	 * "You got 1 where 0.19 was expected. You're luckier than 83% of players.": the got / expected
+	 * and the comparison as one sentence at the top of an item's tooltip.
+	 */
+	static String summary(RowStats row)
+	{
+		String text = String.format("You got <b>%d</b> where %s was expected.", row.getReceived(),
+			formatExpected(row.getExpected()));
+		if (Double.isNaN(row.getLuck()))
+		{
+			return text;
+		}
+		String compared = luckPercent(row.getShares(), row.getReceived());
+		if (compared.startsWith("drier") || compared.startsWith("luckier"))
+		{
+			// "luckier than 99.4% (1 in 170 players)" already says who it's compared with
+			return text + " You're " + compared + (compared.contains("players") ? "." : " of players.");
+		}
+		if (compared.equals("about average"))
+		{
+			return text + " That's about average.";
+		}
+		// "64% have none" is in the split of players below
+		return text;
+	}
+
 	private static String tooltip(RowStats row, BossStats stats, String unit)
 	{
 		Tip tip = new Tip(row.isAny() ? "Any unique" : row.getLabel());
@@ -4333,17 +4411,14 @@ public class ExpectedDropsPanel extends PluginPanel
 		int kills = stats.getKillCount();
 		String units = kills == 1 ? unit : unit + "s";
 
-		// the verdict first, then the split of players it comes from
+		// one plain sentence first, then the verdict and the split of players it comes from
 		double luck = row.getLuck();
+		tip.line(summary(row));
 		if (!Double.isNaN(luck))
 		{
 			tip.row("Your result", "<b>" + DropMath.verdict(luck) + "</b>", luckColor(luck).brighter());
-			String compared = luckPercent(row.getShares(), row.getReceived());
-			// with none, "64% have none" is already in the line below
-			if (!compared.endsWith("have none"))
-			{
-				tip.row("Compared", capital(compared));
-			}
+			// the players at your kill count: fewer, as many as you (in your colour), more
+			tip.split(row.getShares(), row.getReceived(), luckColor(luck));
 			tip.line(capital(sharesLine(row.getShares(), row.getReceived())), Theme.TEXT_MUTED);
 		}
 
@@ -4352,7 +4427,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			tip.row("Drop rate", DropMath.formatRate(row.getRate()) + " per " + unit);
 		}
-		tip.row("Got / expected", String.format("%d / %s", row.getReceived(), formatExpected(row.getExpected())));
 		tip.row("Chance of one by now", formatPercent(row.getChanceAtLeastOne()));
 		String multiple = rateMultiple(row);
 		if (multiple != null)
