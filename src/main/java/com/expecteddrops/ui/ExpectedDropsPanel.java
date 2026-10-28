@@ -240,6 +240,8 @@ public class ExpectedDropsPanel extends PluginPanel
 			}
 		});
 
+		keepTooltipsOpen();
+
 		JPanel top = new JPanel();
 		top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
 		top.setOpaque(false);
@@ -2611,7 +2613,7 @@ public class ExpectedDropsPanel extends PluginPanel
 
 	// ---------------------------------------------------------------- item views
 
-	private static final int SMALL_ICON = 20;
+	private static final int SMALL_ICON = 24;
 	/** Bosses with fewer uniques expected than this aren't listed in the account overview. */
 	private static final double MIN_EXPECTED_SHOWN = 0.05;
 
@@ -3158,6 +3160,56 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 	}
 
+	/** How long a tooltip stays while the mouse is over the panel: long enough to read the item details. */
+	static final int TOOLTIP_DISMISS_MS = 60_000;
+
+	/**
+	 * Tooltips in this panel stay up for a minute instead of Swing's 4 seconds. The delay is one setting
+	 * for all of RuneLite, so it's set while the mouse is over the panel and put back when it leaves.
+	 */
+	private void keepTooltipsOpen()
+	{
+		javax.swing.ToolTipManager tips = javax.swing.ToolTipManager.sharedInstance();
+		int[] usual = {tips.getDismissDelay()};
+		boolean[] inside = {false};
+		java.awt.Toolkit.getDefaultToolkit().addAWTEventListener(event ->
+		{
+			if (!(event instanceof MouseEvent) || !(event.getSource() instanceof java.awt.Component))
+			{
+				return;
+			}
+			int id = event.getID();
+			if (id != MouseEvent.MOUSE_ENTERED && id != MouseEvent.MOUSE_EXITED)
+			{
+				return;
+			}
+			java.awt.Component c = (java.awt.Component) event.getSource();
+			boolean over = id == MouseEvent.MOUSE_ENTERED && javax.swing.SwingUtilities.isDescendingFrom(c, this);
+			if (over && !inside[0])
+			{
+				usual[0] = tips.getDismissDelay();
+				tips.setDismissDelay(TOOLTIP_DISMISS_MS);
+				inside[0] = true;
+			}
+			else if (!over && inside[0] && id == MouseEvent.MOUSE_ENTERED)
+			{
+				tips.setDismissDelay(usual[0]);
+				inside[0] = false;
+			}
+			else if (inside[0] && id == MouseEvent.MOUSE_EXITED && !isMouseOverPanel())
+			{
+				tips.setDismissDelay(usual[0]);
+				inside[0] = false;
+			}
+		}, java.awt.AWTEvent.MOUSE_EVENT_MASK);
+	}
+
+	private boolean isMouseOverPanel()
+	{
+		java.awt.Point p = getMousePosition(true);
+		return p != null;
+	}
+
 	/** An item picture scaled to {@code size} pixels high, or its initials. */
 	private JLabel itemIcon(String item, String label, int size)
 	{
@@ -3353,7 +3405,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		else
 		{
-			panel.add(itemIcon(r.getIconItem(), r.getLabel(), 16), BorderLayout.WEST);
+			panel.add(itemIcon(r.getIconItem(), r.getLabel(), 20), BorderLayout.WEST);
 			panel.add(smallLabel(r.getShownLabel(), Texts.isQuiet(r) ? Theme.TEXT_MUTED : Color.WHITE), BorderLayout.CENTER);
 		}
 		JPanel right = new JPanel(new BorderLayout(6, 0));
@@ -3385,7 +3437,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		left.setOpaque(false);
 		if (!any)
 		{
-			left.add(itemIcon(item, label, 16), BorderLayout.WEST);
+			left.add(itemIcon(item, label, 20), BorderLayout.WEST);
 		}
 		left.add(any ? boldLabel(label) : smallLabel(label, quiet ? Theme.TEXT_MUTED : Theme.TEXT), BorderLayout.CENTER);
 		left.setPreferredSize(new Dimension(110, 18));

@@ -5,6 +5,7 @@ Updates come through the Plugin Hub. Each heading is the date of that update; **
 **Next update**
 
 *Highlights*
+- **New look:** the far ends are now *Mega dry* and *Mega spooned*, both verdict tiles stay the same size, boss pages show each item as a dot on the dry-to-spooned track beside got / expected, "‹ Account" sits at the top left, item pictures are a little bigger, and an item's tooltip opens with a plain sentence and a bar of how many players have fewer, as many and more. Tooltips in the panel stay up for a minute while your mouse is on them.
 - **Three new pages:** Fortis Colosseum, Tempoross and Wintertodt.
 - **Clearer verdicts:** boss pages with less than half a unique expected say "Too early", and the middle of the scale has three words (A bit dry, On rate, A bit spooned).
 - **More careful counting:** pets, Zalcano and items several bosses drop are counted more accurately, and unreadable saved data is kept instead of overwritten.
