@@ -342,7 +342,7 @@ public class ExpectedDropsPlugin extends Plugin
 	ViewOptions viewOptions()
 	{
 		return new ViewOptions(config.itemView(), config.showGeValue(), config.showLuckGraph(),
-			config.showTrip(), config.colourBlind(), config.showTopItems());
+			config.showTrip(), !config.classicColours(), config.showTopItems());
 	}
 
 	/** Verdict, driest item and trip of the boss you are killing, for the overlay. */
@@ -360,7 +360,7 @@ public class ExpectedDropsPlugin extends Plugin
 			overlayInfo = null;
 			return;
 		}
-		Palette.setColourBlind(config.colourBlind());
+		Palette.setColourBlind(!config.classicColours());
 		String units = Tracker.unit(stats.getBoss());
 		String one = Tracker.unitOne(stats.getBoss());
 		RowStats any = stats.getAnyRow();

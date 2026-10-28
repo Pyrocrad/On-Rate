@@ -4,8 +4,8 @@ import java.awt.Color;
 import net.runelite.client.ui.ColorScheme;
 
 /**
- * Luck colours: red (dry) to yellow to green (spooned), or orange to grey to blue for
- * colour-blind players.
+ * Luck colours: orange (dry) to grey to blue (spooned), which colour-blind players can tell apart
+ * too, or the classic red to yellow to green when the setting asks for it.
  */
 public final class Palette
 {
@@ -17,7 +17,7 @@ public final class Palette
 	static final Color CB_MID = new Color(140, 140, 140);
 	static final Color CB_GOOD = new Color(40, 110, 200);
 
-	private static volatile boolean colourBlind;
+	private static volatile boolean colourBlind = true;
 
 	private Palette()
 	{

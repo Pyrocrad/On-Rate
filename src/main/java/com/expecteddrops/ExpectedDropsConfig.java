@@ -161,13 +161,13 @@ public interface ExpectedDropsConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "colourBlind",
-		name = "Colour-blind colours",
-		description = "Use orange to blue instead of red to green for dry to spooned",
+		keyName = "classicColours",
+		name = "Classic red / green colours",
+		description = "Use red to green for dry to spooned instead of orange to blue (harder to tell apart with colour blindness)",
 		position = 14,
 		section = displaySection
 	)
-	default boolean colourBlind()
+	default boolean classicColours()
 	{
 		return false;
 	}

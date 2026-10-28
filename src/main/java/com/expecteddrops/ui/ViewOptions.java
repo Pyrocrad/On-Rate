@@ -3,8 +3,8 @@ package com.expecteddrops.ui;
 /** The display settings the panel follows. */
 public class ViewOptions
 {
-	/** Plain defaults: target bars, GE value on, extras off. */
-	public static final ViewOptions DEFAULT = new ViewOptions(ItemView.TARGET_BARS, true, false, false, false);
+	/** Plain defaults: target bars, GE value on, extras off, orange to blue colours. */
+	public static final ViewOptions DEFAULT = new ViewOptions(ItemView.TARGET_BARS, true, false, false, true);
 
 	private final ItemView itemView;
 	private final boolean geValue;
