@@ -101,7 +101,7 @@ public class QuietRowsTest
 		}
 		finally
 		{
-			Palette.setColourBlind(true);
+			Palette.setColourBlind(false);
 		}
 	}
 
