@@ -3291,12 +3291,13 @@ public class TrackerTest
 		page.put("Steel ring", 1);
 		tracker.onClogPage("Deranged Archaeologist", Collections.singletonList("Deranged Archaeologist kills: 100"), page);
 		assertTrue(tracker.addPastDrop("Deranged Archaeologist", "Steel ring", 30));
-		// one copy in the log: a second entry would list a copy that isn't there, and nothing changes
-		assertFalse(tracker.addPastDrop("Deranged Archaeologist", "Steel ring", 50));
+		// one copy in the log and one entry added by hand: the new count corrects it, History still lists one
+		assertTrue(tracker.addPastDrop("Deranged Archaeologist", "Steel ring", 50));
 		assertEquals(1, savedUniques("Deranged Archaeologist").size());
-		assertEquals(70, (int) row(tracker.stats("Deranged Archaeologist", RAIDS), "Steel ring").getStreak());
+		assertEquals(50, ((KillEntry) savedUniques("Deranged Archaeologist").get(0)[0]).getKc());
+		assertEquals(50, (int) row(tracker.stats("Deranged Archaeologist", RAIDS), "Steel ring").getStreak());
 		// adding it at the same count again replaces it
-		assertTrue(tracker.addPastDrop("Deranged Archaeologist", "Steel ring", 30, true));
+		assertTrue(tracker.addPastDrop("Deranged Archaeologist", "Steel ring", 50, true));
 		assertEquals(1, savedUniques("Deranged Archaeologist").size());
 		// removing it from History also takes back the dry streak it set
 		Object[] saved = savedUniques("Deranged Archaeologist").get(0);
@@ -3305,6 +3306,19 @@ public class TrackerTest
 		// and it can be entered again at a corrected count
 		assertTrue(tracker.addPastDrop("Deranged Archaeologist", "Steel ring", 60));
 		assertEquals(40, (int) row(tracker.stats("Deranged Archaeologist", RAIDS), "Steel ring").getStreak());
+	}
+
+	@Test
+	public void aHandAddedDropIsRefusedWhenSeveralEntriesAlreadyFillTheCopies()
+	{
+		Map<String, Integer> page = new LinkedHashMap<>();
+		page.put("Steel ring", 2);
+		tracker.onClogPage("Deranged Archaeologist", Collections.singletonList("Deranged Archaeologist kills: 100"), page);
+		assertTrue(tracker.addPastDrop("Deranged Archaeologist", "Steel ring", 30));
+		assertTrue(tracker.addPastDrop("Deranged Archaeologist", "Steel ring", 50));
+		// two copies, two entries: which one a third replaces isn't clear, so nothing changes
+		assertFalse(tracker.addPastDrop("Deranged Archaeologist", "Steel ring", 70));
+		assertEquals(2, savedUniques("Deranged Archaeologist").size());
 	}
 
 	@Test
@@ -3328,5 +3342,25 @@ public class TrackerTest
 		KillEntry.DropEntry second = (KillEntry.DropEntry) savedUniques("Chambers of Xeric").stream()
 			.filter(o -> ((KillEntry) o[0]).getPartKc() == 102 && ((KillEntry.DropEntry) o[1]).isEntered()).findFirst().get()[1];
 		assertEquals((0.05 + 0.01) * 2 / 60, second.getMultiple(), 0.00005);
+	}
+
+	@Test
+	public void aSingleHandAddedEntryIsCorrectedWhenHistoryHoldsAllTheCopies()
+	{
+		tracker.setSettings(RAIDS);
+		Map<String, Integer> page = new LinkedHashMap<>();
+		page.put("Osmumten's fang", 1);
+		tracker.onClogPage("Tombs of Amascut", Arrays.asList("Tombs of Amascut: Entry Mode kills: 10",
+			"Tombs of Amascut kills: 250", "Tombs of Amascut: Expert Mode kills: 120"), page);
+		// saved wrongly at count 1 (the typed number wasn't read), in the wrong mode
+		assertTrue(tracker.addPastDrop("Tombs of Amascut", "Osmumten's fang", 1, true, "Entry Mode"));
+		// the corrected entry replaces it instead of being refused
+		assertTrue(tracker.addPastDrop("Tombs of Amascut", "Osmumten's fang", 200, true, "Normal"));
+		List<Object[]> saved = savedUniques("Tombs of Amascut");
+		assertEquals(1, saved.size());
+		assertEquals("Normal", ((KillEntry) saved.get(0)[0]).getPart());
+		assertEquals(200, (int) ((KillEntry) saved.get(0)[0]).getPartKc());
+		// the emptied entry is gone, not left behind as a kill
+		assertEquals(1, tracker.history("Tombs of Amascut").size());
 	}
 }

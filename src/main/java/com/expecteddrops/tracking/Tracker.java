@@ -1251,6 +1251,7 @@ public class Tracker
 		// History can't list more copies than the collection log shows
 		int listed = 0;
 		int replaceable = 0;
+		List<Object[]> enteredElsewhere = new ArrayList<>();
 		for (KillEntry k : progress.kills)
 		{
 			boolean sameSpot = inCounting(k, partName) && countOf(k, partName) == kc;
@@ -1269,12 +1270,31 @@ public class Tracker
 				{
 					return false;
 				}
+				else if (d.isEntered())
+				{
+					enteredElsewhere.add(new Object[]{k, d});
+				}
 			}
 		}
+		Object[] swap = null;
 		Integer copies = progress.received.get(BossCatalog.normalize(itemName));
 		if (progress.clogSynced && copies != null && copies >= 1 && listed - replaceable >= copies)
 		{
-			return false;
+			// History already lists every copy: when exactly one was added by hand, the new one corrects it
+			if (enteredElsewhere.size() != 1)
+			{
+				return false;
+			}
+			swap = enteredElsewhere.get(0);
+		}
+		if (swap != null)
+		{
+			KillEntry swapKill = (KillEntry) swap[0];
+			removeFromHistory(boss.getName(), swapKill, (KillEntry.DropEntry) swap[1]);
+			if (swapKill.drops == null && !swapKill.isDateKnown())
+			{
+				progress.kills.remove(swapKill);
+			}
 		}
 		// adding it again at the same kill count replaces what the player entered before (never a drop On Rate saw)
 		for (java.util.Iterator<KillEntry> kills = progress.kills.iterator(); kills.hasNext(); )

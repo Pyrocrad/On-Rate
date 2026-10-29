@@ -2963,8 +2963,25 @@ public class ExpectedDropsPanel extends PluginPanel
 		// a page with several modes or bosses: the count is that one's own, as the game's chat shows it
 		boolean hasParts = boss != null && boss.hasParts();
 		List<String> parts = tracker.pastDropParts(bossName, r.getIconItem());
-		int limit = hasParts ? (parts.isEmpty() ? 0 : tracker.pastDropLimit(bossName, parts.get(0)))
-			: tracker.pastDropLimit(bossName, null);
+		// the number box takes anything up to the biggest count of the parts: the part is checked when OK is pressed
+		int limit = 0;
+		String preselect = null;
+		int preselectKills = -1;
+		for (String name : parts)
+		{
+			int lim = tracker.pastDropLimit(bossName, name);
+			limit = Math.max(limit, lim);
+			int known = lim >= Tracker.UNKNOWN_PART_LIMIT ? 0 : lim;
+			if (known > preselectKills)
+			{
+				preselectKills = known;
+				preselect = name;
+			}
+		}
+		if (!hasParts)
+		{
+			limit = tracker.pastDropLimit(bossName, null);
+		}
 		if (limit < 1)
 		{
 			JOptionPane.showMessageDialog(this, "Open this boss's collection log page first, so On Rate knows your kill count.",
@@ -2991,15 +3008,10 @@ public class ExpectedDropsPanel extends PluginPanel
 		final javax.swing.JComboBox<String> partBox = hasParts ? new javax.swing.JComboBox<>(parts.toArray(new String[0])) : null;
 		if (partBox != null)
 		{
-			partBox.addActionListener(e ->
+			if (preselect != null)
 			{
-				int max = Math.max(1, tracker.pastDropLimit(bossName, (String) partBox.getSelectedItem()));
-				model.setMaximum(max);
-				if (model.getNumber().intValue() > max)
-				{
-					model.setValue(max);
-				}
-			});
+				partBox.setSelectedItem(preselect);
+			}
 			form.add(partBox);
 		}
 		form.add(spinner);
@@ -3031,6 +3043,13 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		int kc = ((Number) spinner.getValue()).intValue();
 		String part = partBox == null ? null : (String) partBox.getSelectedItem();
+		int partLimit = tracker.pastDropLimit(bossName, part);
+		if (hasParts && kc > partLimit)
+		{
+			JOptionPane.showMessageDialog(this, "Your " + part + " count is " + String.format("%,d", partLimit) + ", so "
+				+ String.format("%,d", kc) + " is too high for it.", "I got this at " + unit, JOptionPane.INFORMATION_MESSAGE);
+			return;
+		}
 		if (tracker.addPastDrop(bossName, r.getIconItem(), kc, only || first.isSelected(), part))
 		{
 			save.run();
