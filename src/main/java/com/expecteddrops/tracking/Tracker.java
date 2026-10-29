@@ -982,6 +982,12 @@ public class Tracker
 	 */
 	public synchronized String pastDropNotRankedReason(String bossName, String itemName, int kc)
 	{
+		return pastDropNotRankedReason(bossName, itemName, kc, null);
+	}
+
+	/** As above for a drop entered at a part of a combined page. */
+	public synchronized String pastDropNotRankedReason(String bossName, String itemName, int kc, String partName)
+	{
 		BossDefinition boss = catalog.byName(bossName);
 		BossProgress p = state.peek(bossName);
 		if (boss == null || p == null)
@@ -990,7 +996,7 @@ public class Tracker
 		}
 		for (KillEntry k : p.kills)
 		{
-			if (k.kc != kc)
+			if (!inCounting(k, partName) || countOf(k, partName) != kc)
 			{
 				continue;
 			}
@@ -1072,8 +1078,96 @@ public class Tracker
 	 */
 	public synchronized boolean addPastDrop(String bossName, String itemName, int kc, boolean first)
 	{
+		return addPastDrop(bossName, itemName, kc, first, null);
+	}
+
+	/** Kills in the counting a past drop is entered in: the part's own count, or the page's when it has no parts. */
+	private static boolean inCounting(KillEntry k, String part)
+	{
+		return part == null || part.equals(k.part) && k.partKc != null;
+	}
+
+	private static int countOf(KillEntry k, String part)
+	{
+		return part == null ? k.kc : k.partKc;
+	}
+
+	/** Most kills a past drop can be entered at: the page's kill count, or the part's own. 0 when unknown. */
+	public synchronized int pastDropLimit(String bossName, String partName)
+	{
 		BossDefinition boss = catalog.byName(bossName);
-		if (boss == null || kc < 1 || kc > currentKc(boss))
+		if (boss == null)
+		{
+			return 0;
+		}
+		if (partName == null)
+		{
+			return boss.hasParts() ? 0 : currentKc(boss);
+		}
+		BossStats s = stats(bossName, settings);
+		Integer n = s == null || s.getPartCounts() == null ? null : s.getPartCounts().get(partName);
+		return n == null ? 0 : n;
+	}
+
+	/**
+	 * The parts of a combined page a drop can be entered at: the ones the item drops from, that
+	 * you have kills at. Empty for a page without parts.
+	 */
+	public synchronized List<String> pastDropParts(String bossName, String itemName)
+	{
+		List<String> names = new ArrayList<>();
+		BossDefinition boss = catalog.byName(bossName);
+		if (boss == null || !boss.hasParts())
+		{
+			return names;
+		}
+		DropDefinition drop = null;
+		for (DropDefinition d : boss.getDrops())
+		{
+			if (d.getName().equals(itemName))
+			{
+				drop = d;
+			}
+		}
+		List<String> fallback = new ArrayList<>();
+		for (BossPart part : boss.getParts())
+		{
+			if (pastDropLimit(bossName, part.getName()) < 1)
+			{
+				continue;
+			}
+			fallback.add(part.getName());
+			if (drop != null && partRate(boss, part, drop, settings) > 0)
+			{
+				names.add(part.getName());
+			}
+		}
+		return names.isEmpty() ? fallback : names;
+	}
+
+	/**
+	 * As above for a page with parts: {@code partName} is the mode or boss ("Challenge Mode",
+	 * "Artio") and {@code kc} that part's own kill count, as the game's chat shows it. The wait and
+	 * its luck use that part's kills and drop rate. The item's dry streak counts the page's kills,
+	 * which aren't known for that moment, so it stays as it is. Null for a page without parts.
+	 */
+	public synchronized boolean addPastDrop(String bossName, String itemName, int kc, boolean first, String partName)
+	{
+		BossDefinition boss = catalog.byName(bossName);
+		if (boss == null || kc < 1)
+		{
+			return false;
+		}
+		BossPart part = null;
+		for (BossPart candidate : boss.getParts())
+		{
+			if (candidate.getName().equals(partName))
+			{
+				part = candidate;
+			}
+		}
+		if (boss.hasParts() != (part != null) || (partName != null && part == null)
+			|| kc > pastDropLimit(bossName, partName))
 		{
 			return false;
 		}
@@ -1095,7 +1189,7 @@ public class Tracker
 		for (java.util.Iterator<KillEntry> kills = progress.kills.iterator(); kills.hasNext(); )
 		{
 			KillEntry k = kills.next();
-			if (k.kc == kc && k.drops != null
+			if (inCounting(k, partName) && countOf(k, partName) == kc && k.drops != null
 				&& k.drops.removeIf(d -> d.isEntered() && d.getName().equals(shown)))
 			{
 				if (k.drops.isEmpty())
@@ -1111,28 +1205,45 @@ public class Tracker
 		}
 		KillEntry at = null;
 		int index = progress.kills.size();
+		boolean placed = false;
+		int firstDated = progress.kills.size();
 		int previousKc = 0;
 		for (int i = 0; i < progress.kills.size(); i++)
 		{
 			KillEntry k = progress.kills.get(i);
-			if (k.kc == kc && at == null)
+			if (k.isDateKnown() && firstDated == progress.kills.size())
+			{
+				firstDated = i;
+			}
+			if (!inCounting(k, partName))
+			{
+				continue;
+			}
+			int at0 = countOf(k, partName);
+			if (at0 == kc && at == null)
 			{
 				at = k;
 			}
-			if (k.kc > kc && index == progress.kills.size())
+			if (at0 > kc && !placed)
 			{
 				index = i;
+				placed = true;
 			}
-			if (k.kc < kc)
+			if (at0 < kc)
 			{
 				for (KillEntry.DropEntry d : k.getDrops())
 				{
 					if (d.getName().equals(shown))
 					{
-						previousKc = Math.max(previousKc, k.kc);
+						previousKc = Math.max(previousKc, at0);
 					}
 				}
 			}
+		}
+		if (!placed && part != null)
+		{
+			// no later kill of this part is saved: after the older entries without a date, before the dated ones
+			index = firstDated;
 		}
 		if (at != null)
 		{
@@ -1166,7 +1277,7 @@ public class Tracker
 		}
 		if (entry.since != null)
 		{
-			double rate = rateOf(boss, drop);
+			double rate = part == null ? rateOf(boss, drop) : partRate(boss, part, drop, settings);
 			if (rate > 0)
 			{
 				entry.multiple = Math.round(entry.since * rate * 100) / 100.0;
@@ -1185,6 +1296,11 @@ public class Tracker
 			at = new KillEntry();
 			at.kc = kc;
 			at.time = 0;
+			if (part != null)
+			{
+				at.part = partName;
+				at.partKc = kc;
+			}
 			progress.kills.add(index, at);
 			while (progress.kills.size() > MAX_KILLS)
 			{
@@ -1197,9 +1313,9 @@ public class Tracker
 		}
 		at.drops.add(entry);
 		killsChanged.add(boss.getName());
-		// the dry streak counts from the latest drop of any copy
+		// the dry streak counts from the latest drop of any copy (page kills: not known for a part)
 		Integer last = progress.lastDropKc.get(key);
-		if (last == null || kc > last)
+		if (part == null && (last == null || kc > last))
 		{
 			progress.lastDropKc.put(key, kc);
 			progress.milestone.remove(key);

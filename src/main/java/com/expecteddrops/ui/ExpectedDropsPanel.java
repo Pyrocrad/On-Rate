@@ -2847,20 +2847,41 @@ public class ExpectedDropsPanel extends PluginPanel
 	 */
 	private void askPastDrop(String bossName, RowStats r)
 	{
-		BossStats s = tracker.stats(bossName, raidSettings.get());
-		int now = s == null ? 0 : s.getKillCount();
+		BossDefinition boss = tracker.getCatalog().byName(bossName);
 		String unit = unitOneOf(bossName);
-		if (now < 1)
+		// a page with several modes or bosses: the count is that one's own, as the game's chat shows it
+		boolean hasParts = boss != null && boss.hasParts();
+		List<String> parts = tracker.pastDropParts(bossName, r.getIconItem());
+		int limit = hasParts ? (parts.isEmpty() ? 0 : tracker.pastDropLimit(bossName, parts.get(0)))
+			: tracker.pastDropLimit(bossName, null);
+		if (limit < 1)
 		{
 			JOptionPane.showMessageDialog(this, "Open this boss's collection log page first, so On Rate knows your kill count.",
 				"I got this at " + unit, JOptionPane.INFORMATION_MESSAGE);
 			return;
 		}
-		javax.swing.JSpinner spinner = new javax.swing.JSpinner(new javax.swing.SpinnerNumberModel(1, 1, now, 1));
+		javax.swing.SpinnerNumberModel model = new javax.swing.SpinnerNumberModel(1, 1, limit, 1);
+		javax.swing.JSpinner spinner = new javax.swing.JSpinner(model);
 		JPanel form = new JPanel(new GridLayout(0, 1, Theme.S, Theme.S));
-		form.add(new JLabel("<html><body style='width: 220px'>At which " + unit + " did you get your " + r.getLabel() + "?<br>"
-			+ "It is added to History without a date. Your counts and expected stay as they are; "
-			+ "your dry streak counts from it.</body></html>"));
+		form.add(new JLabel("<html><body style='width: 220px'>"
+			+ (hasParts ? "Which one, and at which " + unit + " of it" : "At which " + unit)
+			+ " did you get your " + r.getLabel() + "?<br>"
+			+ "It is added to History without a date. Your counts and expected stay as they are"
+			+ (hasParts ? "." : "; your dry streak counts from it.") + "</body></html>"));
+		final javax.swing.JComboBox<String> partBox = hasParts ? new javax.swing.JComboBox<>(parts.toArray(new String[0])) : null;
+		if (partBox != null)
+		{
+			partBox.addActionListener(e ->
+			{
+				int max = Math.max(1, tracker.pastDropLimit(bossName, (String) partBox.getSelectedItem()));
+				model.setMaximum(max);
+				if (model.getNumber().intValue() > max)
+				{
+					model.setValue(max);
+				}
+			});
+			form.add(partBox);
+		}
 		form.add(spinner);
 		// with one copy it can only be the first: no question. With more, ask.
 		boolean only = r.getReceived() == 1;
@@ -2879,10 +2900,11 @@ public class ExpectedDropsPanel extends PluginPanel
 			return;
 		}
 		int kc = ((Number) spinner.getValue()).intValue();
-		if (tracker.addPastDrop(bossName, r.getIconItem(), kc, only || first.isSelected()))
+		String part = partBox == null ? null : (String) partBox.getSelectedItem();
+		if (tracker.addPastDrop(bossName, r.getIconItem(), kc, only || first.isSelected(), part))
 		{
 			save.run();
-			String why = tracker.pastDropNotRankedReason(bossName, r.getIconItem(), kc);
+			String why = tracker.pastDropNotRankedReason(bossName, r.getIconItem(), kc, part);
 			if (why != null)
 			{
 				JOptionPane.showMessageDialog(this, "<html><body style='width: 240px'>Added to History. It isn't in Luckiest drops "
@@ -2892,7 +2914,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		else
 		{
 			JOptionPane.showMessageDialog(this, "Couldn't add it: History already has " + r.getLabel() + " at " + unit + " "
-				+ String.format("%,d", kc) + ", or is full of newer kills.", "I got this at " + unit, JOptionPane.INFORMATION_MESSAGE);
+				+ String.format("%,d", kc) + (part == null ? "" : " of " + part) + ", or is full of newer kills.",
+				"I got this at " + unit, JOptionPane.INFORMATION_MESSAGE);
 		}
 		refresh();
 	}

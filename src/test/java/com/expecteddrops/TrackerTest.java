@@ -3240,4 +3240,33 @@ public class TrackerTest
 		assertTrue(((KillEntry.DropEntry) savedUniques("Deranged Archaeologist").get(0)[1]).isFirst());
 		assertEquals(1, tracker.history("Deranged Archaeologist").size());
 	}
+
+	@Test
+	public void pastDropsOnACombinedPageUseThePartsOwnCount()
+	{
+		tracker.setSettings(RAIDS);
+		Map<String, Integer> page = new LinkedHashMap<>();
+		page.put("Twisted bow", 1);
+		tracker.onClogPage("Chambers of Xeric",
+			Arrays.asList("Chambers of Xeric kills: 300", "Chambers of Xeric Challenge Mode kills: 20"), page);
+		assertEquals(Arrays.asList("Normal", "Challenge Mode"), tracker.pastDropParts("Chambers of Xeric", "Twisted bow"));
+		assertEquals(300, tracker.pastDropLimit("Chambers of Xeric", "Normal"));
+		assertEquals(20, tracker.pastDropLimit("Chambers of Xeric", "Challenge Mode"));
+		// a part is needed on a combined page, and the count is limited to that part's own
+		assertFalse(tracker.addPastDrop("Chambers of Xeric", "Twisted bow", 115));
+		assertFalse(tracker.addPastDrop("Chambers of Xeric", "Twisted bow", 21, false, "Challenge Mode"));
+		assertFalse(tracker.addPastDrop("Chambers of Xeric", "Twisted bow", 5, false, "Nope"));
+		assertTrue(tracker.addPastDrop("Chambers of Xeric", "Twisted bow", 115, false, "Normal"));
+		KillEntry kill = tracker.history("Chambers of Xeric").get(0).getKill();
+		assertEquals("Normal", kill.getPart());
+		assertEquals(115, (int) kill.getPartKc());
+		assertTrue(kill.getDrops().get(0).isFirst());
+		assertNull(tracker.pastDropNotRankedReason("Chambers of Xeric", "Twisted bow", 115, "Normal"));
+		assertEquals(1, tracker.dropsByLuck(true, 5).size());
+		// the page's dry streak is left alone
+		assertFalse(row(tracker.stats("Chambers of Xeric", RAIDS), "Twisted bow").isStreakExact());
+		// again at the same count replaces it
+		assertTrue(tracker.addPastDrop("Chambers of Xeric", "Twisted bow", 115, true, "Normal"));
+		assertEquals(1, tracker.history("Chambers of Xeric").size());
+	}
 }
