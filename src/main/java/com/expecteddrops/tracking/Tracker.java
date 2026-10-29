@@ -301,6 +301,10 @@ public class Tracker
 		java.time.ZoneId zone = java.time.ZoneId.systemDefault();
 		for (KillEntry k : p.kills)
 		{
+			if (!k.isDateKnown())
+			{
+				continue;
+			}
 			long day = java.time.Instant.ofEpochMilli(k.time).atZone(zone).toLocalDate().toEpochDay();
 			if (day < fromDay || day > toDay)
 			{
@@ -829,7 +833,7 @@ public class Tracker
 	private void addDropToHistory(BossDefinition boss, BossProgress progress, int kc, KillEntry.DropEntry drop)
 	{
 		KillEntry latest = progress.kills.isEmpty() ? null : progress.kills.get(progress.kills.size() - 1);
-		if (latest == null || latest.kc != kc)
+		if (latest == null || latest.kc != kc || !latest.isDateKnown())
 		{
 			latest = addKill(boss, progress, lastKillMillis > 0 ? lastKillMillis : System.currentTimeMillis());
 			latest.kc = kc;
@@ -902,6 +906,11 @@ public class Tracker
 			}
 			for (KillEntry k : p.kills)
 			{
+				if (!k.isDateKnown())
+				{
+					// added by hand from memory: it has a kill count but no date, so it isn't "recent"
+					continue;
+				}
 				for (KillEntry.DropEntry d : k.getDrops())
 				{
 					// saved before the item was flagged clogShared (dragon thrownaxes and knives): kept,
@@ -964,6 +973,115 @@ public class Tracker
 			kill.drops = null;
 		}
 		killsChanged.add(bossName);
+		return true;
+	}
+
+	/**
+	 * Adds a unique the player remembers getting at a known kill count (before On Rate, or one it
+	 * missed) to History, e.g. "Twisted bow at raid 115". The entry has no date. Only History,
+	 * the item's dry streak and its "after N kills" text change: the received count already comes
+	 * from the collection log, so nothing is counted twice. Returns false when the boss or item is
+	 * unknown, the kill count is not between 1 and the current one, the item is already listed at
+	 * that kill count, or History is full of newer kills.
+	 */
+	public synchronized boolean addPastDrop(String bossName, String itemName, int kc)
+	{
+		BossDefinition boss = catalog.byName(bossName);
+		if (boss == null || kc < 1 || kc > currentKc(boss))
+		{
+			return false;
+		}
+		DropDefinition drop = null;
+		for (DropDefinition d : boss.getDrops())
+		{
+			if (d.getName().equals(itemName))
+			{
+				drop = d;
+			}
+		}
+		if (drop == null)
+		{
+			return false;
+		}
+		BossProgress progress = state.get(boss.getName());
+		String shown = drop.getDisplayName();
+		KillEntry at = null;
+		int index = progress.kills.size();
+		int previousKc = 0;
+		for (int i = 0; i < progress.kills.size(); i++)
+		{
+			KillEntry k = progress.kills.get(i);
+			if (k.kc == kc && at == null)
+			{
+				at = k;
+			}
+			if (k.kc > kc && index == progress.kills.size())
+			{
+				index = i;
+			}
+			if (k.kc < kc)
+			{
+				for (KillEntry.DropEntry d : k.getDrops())
+				{
+					if (d.getName().equals(shown))
+					{
+						previousKc = Math.max(previousKc, k.kc);
+					}
+				}
+			}
+		}
+		if (at != null)
+		{
+			for (KillEntry.DropEntry d : at.getDrops())
+			{
+				if (d.getName().equals(shown))
+				{
+					return false;
+				}
+			}
+		}
+		else if (index == 0 && progress.kills.size() >= MAX_KILLS)
+		{
+			return false;
+		}
+		KillEntry.DropEntry entry = new KillEntry.DropEntry();
+		entry.name = shown;
+		entry.pet = drop.isPet() ? Boolean.TRUE : null;
+		entry.entered = Boolean.TRUE;
+		if (previousKc > 0)
+		{
+			entry.since = kc - previousKc;
+			double rate = rateOf(boss, drop);
+			if (rate > 0)
+			{
+				entry.multiple = Math.round(entry.since * rate * 100) / 100.0;
+			}
+		}
+		if (at == null)
+		{
+			at = new KillEntry();
+			at.kc = kc;
+			at.time = 0;
+			progress.kills.add(index, at);
+			while (progress.kills.size() > MAX_KILLS)
+			{
+				progress.kills.remove(0);
+			}
+		}
+		if (at.drops == null)
+		{
+			at.drops = new ArrayList<>();
+		}
+		at.drops.add(entry);
+		killsChanged.add(boss.getName());
+		// the dry streak counts from the latest drop of any copy
+		String key = BossCatalog.normalize(itemName);
+		Integer last = progress.lastDropKc.get(key);
+		if (last == null || kc > last)
+		{
+			progress.lastDropKc.put(key, kc);
+			progress.milestone.remove(key);
+		}
 		return true;
 	}
 
@@ -2752,6 +2870,10 @@ public class Tracker
 			}
 			for (KillEntry k : p.kills)
 			{
+				if (!k.isDateKnown())
+				{
+					continue;
+				}
 				earliest = Math.min(earliest, k.time);
 				for (KillEntry.DropEntry d : k.getDrops())
 				{

@@ -174,4 +174,11 @@ public class TextsTest
 		assertTrue(Texts.LOG_PAGE_UNREADABLE_TIP.contains("does not mean zero drops"));
 		assertTrue(Texts.LOG_PAGE_UNREADABLE_TIP.contains("Reset this boss"));
 	}
+
+	@Test
+	public void aDropAddedByHandHasNoDate()
+	{
+		assertEquals("date unknown", Texts.daysAgo(0, 1_000_000));
+		assertEquals("today", Texts.daysAgo(1_000_000, 1_000_000));
+	}
 }

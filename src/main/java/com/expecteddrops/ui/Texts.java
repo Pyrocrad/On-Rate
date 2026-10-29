@@ -43,6 +43,11 @@ final class Texts
 	/** "today", "yesterday", "3 days ago" for a time in milliseconds. */
 	static String daysAgo(long time, long now)
 	{
+		if (time <= 0)
+		{
+			// added by hand from memory: the kill count is known, the date isn't
+			return "date unknown";
+		}
 		long days = java.time.temporal.ChronoUnit.DAYS.between(
 			java.time.Instant.ofEpochMilli(time).atZone(java.time.ZoneId.systemDefault()).toLocalDate(),
 			java.time.Instant.ofEpochMilli(now).atZone(java.time.ZoneId.systemDefault()).toLocalDate());
@@ -58,7 +63,7 @@ final class Texts
 		}
 		if (d.getSince() == null)
 		{
-			return "";
+			return d.isEntered() ? "added by you" : "";
 		}
 		if (d.isAtLeast())
 		{

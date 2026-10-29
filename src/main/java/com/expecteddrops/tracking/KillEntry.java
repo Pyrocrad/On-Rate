@@ -41,6 +41,12 @@ public class KillEntry
 		return kc;
 	}
 
+	/** False for a kill the player added by hand from memory: its kill count is known, its date isn't. */
+	public boolean isDateKnown()
+	{
+		return time > 0;
+	}
+
 	public Integer getPartKc()
 	{
 		return partKc;
@@ -96,6 +102,9 @@ public class KillEntry
 		Boolean atLeast;
 		@SerializedName("pt")
 		Boolean pet;
+		/** True when the player added this drop by hand ("I got this at kill 115"). */
+		@SerializedName("u")
+		Boolean entered;
 
 		public String getName()
 		{
@@ -125,6 +134,11 @@ public class KillEntry
 		public boolean isPet()
 		{
 			return pet != null && pet;
+		}
+
+		public boolean isEntered()
+		{
+			return entered != null && entered;
 		}
 	}
 }

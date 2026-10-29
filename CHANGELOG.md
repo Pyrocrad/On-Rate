@@ -6,6 +6,7 @@ Updates come through the Plugin Hub. Each heading is the date of that update; **
 
 *Highlights*
 - **Easier to read tooltips:** an item's tooltip opens with a plain sentence ("You got 1 where 0.19 was expected. You're luckier than 83% of players.") and a bar of how many players have fewer, as many and more. Tooltips in the panel stay up for a minute while your mouse is on them, and item pictures are a little bigger.
+- **Add a drop you remember:** right-click an item you have and choose "I got this at kill...", then type the kill count (a Twisted bow at raid 115). It goes into the boss's History without a date, and your dry streak counts from it. Your unique counts and expected don't change, and it doesn't show in Recent or Today.
 - **Three new pages:** Fortis Colosseum, Tempoross and Wintertodt.
 - **Clearer verdicts:** boss pages with less than half a unique expected say "Too early", and the middle of the scale has three words (A bit dry, On rate, A bit spooned).
 - **More careful counting:** pets, Zalcano and items several bosses drop are counted more accurately, and unreadable saved data is kept instead of overwritten.

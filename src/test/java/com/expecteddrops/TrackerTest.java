@@ -277,7 +277,7 @@ public class TrackerTest
 		tracker.onClogPage("Deranged Archaeologist", Collections.singletonList("Deranged Archaeologist kills: 40"), page);
 		assertTrue(tracker.recentDrops(10).isEmpty());
 		assertTrue(tracker.history("Deranged Archaeologist").isEmpty());
-		assertNull(tracker.lastUnique().item);
+		assertTrue(tracker.lastUnique() == null || tracker.lastUnique().item == null);
 		for (BossDays d : tracker.recentDays(1, now))
 		{
 			assertEquals(0, d.getUniques());
@@ -849,7 +849,7 @@ public class TrackerTest
 		{
 			assertEquals(0, d.getUniques());
 		}
-		assertNull(tracker.lastUnique().item);
+		assertTrue(tracker.lastUnique() == null || tracker.lastUnique().item == null);
 		// a real Hydra unique still counts
 		tracker.onLoot("Alchemical Hydra", 1, Collections.singletonList(new Tracker.LootItem("Hydra's claw", 1)), now);
 		assertEquals(1, tracker.stats("Alchemical Hydra", RAIDS).getAnyRow().getReceived());
@@ -2725,7 +2725,7 @@ public class TrackerTest
 		assertTrue(named);
 		// left out of the calculations: not the last unique any more
 		tracker.setLeftOut("Wintertodt", "Tome of fire", true);
-		assertNull(tracker.lastUnique().item);
+		assertTrue(tracker.lastUnique() == null || tracker.lastUnique().item == null);
 	}
 
 	@Test
@@ -3113,5 +3113,61 @@ public class TrackerTest
 	{
 		tracker.onClogPage("Vorkath", Collections.singletonList("Vorkath kills: 350"), vorkathPage(7, 0));
 		assertTrue(tracker.wouldZeroSaved("Vorkath", vorkathPage(0, 0)));
+	}
+
+	@Test
+	public void addPastDropKeepsCountsAndFixesTheDryStreak()
+	{
+		Map<String, Integer> page = new LinkedHashMap<>();
+		page.put("Steel ring", 1);
+		tracker.onClogPage("Deranged Archaeologist", Collections.singletonList("Deranged Archaeologist kills: 40"), page);
+		for (int kc = 41; kc <= 100; kc++)
+		{
+			tracker.onChatMessage("Your Deranged Archaeologist kill count is: <col=ff0000>" + kc + "</col>.", now + kc);
+		}
+		BossStats before = tracker.stats("Deranged Archaeologist", RAIDS);
+		RowStats ringBefore = row(before, "Steel ring");
+		assertFalse(ringBefore.isStreakExact());
+
+		assertFalse(tracker.addPastDrop("Deranged Archaeologist", "Steel ring", 0));
+		assertFalse(tracker.addPastDrop("Deranged Archaeologist", "Steel ring", 101));
+		assertFalse(tracker.addPastDrop("Deranged Archaeologist", "Not an item", 30));
+		assertFalse(tracker.addPastDrop("Nobody", "Steel ring", 30));
+		assertTrue(tracker.addPastDrop("Deranged Archaeologist", "Steel ring", 30));
+		// the same item at the same kill count is refused
+		assertFalse(tracker.addPastDrop("Deranged Archaeologist", "Steel ring", 30));
+
+		BossStats after = tracker.stats("Deranged Archaeologist", RAIDS);
+		RowStats ring = row(after, "Steel ring");
+		// counts and expected stay as they were; the dry streak now counts from kill 30
+		assertEquals(ringBefore.getReceived(), ring.getReceived());
+		assertEquals(ringBefore.getExpected(), ring.getExpected(), 1e-12);
+		assertEquals(70, (int) ring.getStreak());
+		assertTrue(ring.isStreakExact());
+
+		// in History at kill 30, without a date, marked as entered by hand
+		List<Object[]> saved = savedUniques("Deranged Archaeologist");
+		assertEquals(1, saved.size());
+		KillEntry kill = (KillEntry) saved.get(0)[0];
+		KillEntry.DropEntry drop = (KillEntry.DropEntry) saved.get(0)[1];
+		assertEquals(30, kill.getKc());
+		assertFalse(kill.isDateKnown());
+		assertTrue(drop.isEntered());
+		// but not in Recent, Today or Last unique: it has no date
+		assertTrue(tracker.recentDrops(10).isEmpty());
+		assertEquals(0, uniquesOn(tracker.recentDays(7, now + 1000), "Deranged Archaeologist"));
+		assertTrue(tracker.lastUnique() == null || tracker.lastUnique().item == null);
+
+		// a later one is listed after it and knows the gap
+		assertTrue(tracker.addPastDrop("Deranged Archaeologist", "Steel ring", 55));
+		List<Object[]> both = savedUniques("Deranged Archaeologist");
+		assertEquals(2, both.size());
+		assertEquals(55, ((KillEntry) both.get(0)[0]).getKc());
+		assertEquals(25, (int) ((KillEntry.DropEntry) both.get(0)[1]).getSince());
+		assertEquals(45, (int) row(tracker.stats("Deranged Archaeologist", RAIDS), "Steel ring").getStreak());
+		// an older one doesn't move the streak back
+		assertTrue(tracker.addPastDrop("Deranged Archaeologist", "Steel ring", 10));
+		assertEquals(45, (int) row(tracker.stats("Deranged Archaeologist", RAIDS), "Steel ring").getStreak());
+		assertEquals(10, ((KillEntry) savedUniques("Deranged Archaeologist").get(2)[0]).getKc());
 	}
 }

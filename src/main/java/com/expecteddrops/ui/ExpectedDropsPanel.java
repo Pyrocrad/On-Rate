@@ -2775,8 +2775,60 @@ public class ExpectedDropsPanel extends PluginPanel
 			refresh();
 		});
 		menu.add(item);
+		if (!leftOut && r.getReceived() > 0)
+		{
+			JMenuItem past = new JMenuItem("I got this at " + unitOneOf(bossName) + "...");
+			past.addActionListener(e -> askPastDrop(bossName, r));
+			menu.add(past);
+		}
 		addPopup(c, menu);
 		return c;
+	}
+
+	private String unitOneOf(String bossName)
+	{
+		BossDefinition boss = tracker.getCatalog().byName(bossName);
+		return boss == null ? "kill" : Tracker.unitOne(boss);
+	}
+
+	/**
+	 * Asks at which kill count a unique the player already has dropped, and adds it to History
+	 * (without a date) and to the item's dry streak.
+	 */
+	private void askPastDrop(String bossName, RowStats r)
+	{
+		BossStats s = tracker.stats(bossName, raidSettings.get());
+		int now = s == null ? 0 : s.getKillCount();
+		String unit = unitOneOf(bossName);
+		if (now < 1)
+		{
+			JOptionPane.showMessageDialog(this, "Open this boss's collection log page first, so On Rate knows your kill count.",
+				"I got this at " + unit, JOptionPane.INFORMATION_MESSAGE);
+			return;
+		}
+		javax.swing.JSpinner spinner = new javax.swing.JSpinner(new javax.swing.SpinnerNumberModel(1, 1, now, 1));
+		JPanel form = new JPanel(new GridLayout(0, 1, Theme.S, Theme.S));
+		form.add(new JLabel("<html><body style='width: 220px'>At which " + unit + " did you get your " + r.getLabel() + "?<br>"
+			+ "It is added to History without a date. Your counts and expected stay as they are; "
+			+ "your dry streak counts from it.</body></html>"));
+		form.add(spinner);
+		int answer = JOptionPane.showConfirmDialog(this, form, "I got this at " + unit, JOptionPane.OK_CANCEL_OPTION,
+			JOptionPane.PLAIN_MESSAGE);
+		if (answer != JOptionPane.OK_OPTION)
+		{
+			return;
+		}
+		int kc = ((Number) spinner.getValue()).intValue();
+		if (tracker.addPastDrop(bossName, r.getIconItem(), kc))
+		{
+			save.run();
+		}
+		else
+		{
+			JOptionPane.showMessageDialog(this, "Couldn't add it: History already has " + r.getLabel() + " at " + unit + " "
+				+ String.format("%,d", kc) + ", or is full of newer kills.", "I got this at " + unit, JOptionPane.INFORMATION_MESSAGE);
+		}
+		refresh();
 	}
 
 	/**
