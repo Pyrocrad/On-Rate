@@ -754,6 +754,11 @@ public class Tracker
 		for (int i = p.kills.size() - 1; i >= 0 && found < kills; i--)
 		{
 			KillEntry k = p.kills.get(i);
+			if (!k.isDateKnown())
+			{
+				// a drop added by hand, not a kill of this trip
+				continue;
+			}
 			if (k.time < trip.startMillis)
 			{
 				break;
@@ -971,6 +976,35 @@ public class Tracker
 		{
 			// saved like a kill that never had a unique
 			kill.drops = null;
+		}
+		if (drop.isEntered() && kill.part == null)
+		{
+			// a drop added by hand also moved the item's dry streak: put it back to the latest one left
+			DropDefinition def = rowOfSaved(boss, drop.getName());
+			String key = def == null ? null : BossCatalog.normalize(def.getName());
+			if (key != null && Integer.valueOf(kill.kc).equals(p.lastDropKc.get(key)))
+			{
+				Integer latest = null;
+				for (KillEntry k : p.kills)
+				{
+					for (KillEntry.DropEntry d : k.getDrops())
+					{
+						if (d.getName().equals(drop.getName()) && !(d.isEntered() && k.part != null)
+							&& k.kc < kill.kc && (latest == null || k.kc > latest))
+						{
+							latest = k.kc;
+						}
+					}
+				}
+				if (latest == null)
+				{
+					p.lastDropKc.remove(key);
+				}
+				else
+				{
+					p.lastDropKc.put(key, latest);
+				}
+			}
 		}
 		killsChanged.add(bossName);
 		return true;
@@ -1213,6 +1247,35 @@ public class Tracker
 		}
 		BossProgress progress = state.get(boss.getName());
 		String shown = drop.getDisplayName();
+		// check everything before changing anything: a drop On Rate saw at that count can't be replaced, and
+		// History can't list more copies than the collection log shows
+		int listed = 0;
+		int replaceable = 0;
+		for (KillEntry k : progress.kills)
+		{
+			boolean sameSpot = inCounting(k, partName) && countOf(k, partName) == kc;
+			for (KillEntry.DropEntry d : k.getDrops())
+			{
+				if (!d.getName().equals(shown))
+				{
+					continue;
+				}
+				listed++;
+				if (sameSpot && d.isEntered())
+				{
+					replaceable++;
+				}
+				else if (sameSpot)
+				{
+					return false;
+				}
+			}
+		}
+		Integer copies = progress.received.get(BossCatalog.normalize(itemName));
+		if (progress.clogSynced && copies != null && copies >= 1 && listed - replaceable >= copies)
+		{
+			return false;
+		}
 		// adding it again at the same kill count replaces what the player entered before (never a drop On Rate saw)
 		for (java.util.Iterator<KillEntry> kills = progress.kills.iterator(); kills.hasNext(); )
 		{
@@ -1801,7 +1864,12 @@ public class Tracker
 			return;
 		}
 		BossProgress progress = state.peek(bossName);
-		KillEntry latest = progress == null || progress.kills.isEmpty() ? null : progress.kills.get(progress.kills.size() - 1);
+		// the latest kill with a date: drops added by hand have none
+		KillEntry latest = null;
+		for (int i = progress == null ? -1 : progress.kills.size() - 1; i >= 0 && latest == null; i--)
+		{
+			latest = progress.kills.get(i).isDateKnown() ? progress.kills.get(i) : null;
+		}
 		DayCount day = dayCount(bossName, latest == null ? System.currentTimeMillis() : latest.time);
 		day.expected = Math.max(0, day.expected + change);
 	}

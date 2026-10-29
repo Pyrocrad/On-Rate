@@ -3020,8 +3020,10 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		else
 		{
-			JOptionPane.showMessageDialog(this, "Couldn't add it: History already has " + r.getLabel() + " at " + unit + " "
-				+ String.format("%,d", kc) + (part == null ? "" : " of " + part) + ", or is full of newer kills.",
+			JOptionPane.showMessageDialog(this, "<html><body style='width: 240px'>Couldn't add it. Either On Rate itself saw "
+				+ r.getLabel() + " at " + unit + " " + String.format("%,d", kc) + (part == null ? "" : " of " + part)
+				+ ", or History already lists all the copies of it the collection log shows (right-click an entry and choose "
+				+ "Remove from History to fix one), or History is full of newer kills.</body></html>",
 				"I got this at " + unit, JOptionPane.INFORMATION_MESSAGE);
 		}
 		refresh();

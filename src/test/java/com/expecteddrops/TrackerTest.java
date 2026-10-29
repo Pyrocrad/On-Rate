@@ -3119,7 +3119,7 @@ public class TrackerTest
 	public void addPastDropKeepsCountsAndFixesTheDryStreak()
 	{
 		Map<String, Integer> page = new LinkedHashMap<>();
-		page.put("Steel ring", 1);
+		page.put("Steel ring", 3);
 		tracker.onClogPage("Deranged Archaeologist", Collections.singletonList("Deranged Archaeologist kills: 40"), page);
 		for (int kc = 41; kc <= 100; kc++)
 		{
@@ -3282,5 +3282,28 @@ public class TrackerTest
 		assertEquals(Tracker.UNKNOWN_PART_LIMIT, tracker.pastDropLimit("Vet'ion and Calvar'ion", "Calvar'ion"));
 		assertTrue(tracker.addPastDrop("Vet'ion and Calvar'ion", "Skull of vet'ion", 40, false, "Calvar'ion"));
 		assertEquals("Calvar'ion", tracker.history("Vet'ion and Calvar'ion").get(0).getKill().getPart());
+	}
+
+	@Test
+	public void aHandAddedDropIsRefusedBeyondTheCopiesAndUndoneOnRemoval()
+	{
+		Map<String, Integer> page = new LinkedHashMap<>();
+		page.put("Steel ring", 1);
+		tracker.onClogPage("Deranged Archaeologist", Collections.singletonList("Deranged Archaeologist kills: 100"), page);
+		assertTrue(tracker.addPastDrop("Deranged Archaeologist", "Steel ring", 30));
+		// one copy in the log: a second entry would list a copy that isn't there, and nothing changes
+		assertFalse(tracker.addPastDrop("Deranged Archaeologist", "Steel ring", 50));
+		assertEquals(1, savedUniques("Deranged Archaeologist").size());
+		assertEquals(70, (int) row(tracker.stats("Deranged Archaeologist", RAIDS), "Steel ring").getStreak());
+		// adding it at the same count again replaces it
+		assertTrue(tracker.addPastDrop("Deranged Archaeologist", "Steel ring", 30, true));
+		assertEquals(1, savedUniques("Deranged Archaeologist").size());
+		// removing it from History also takes back the dry streak it set
+		Object[] saved = savedUniques("Deranged Archaeologist").get(0);
+		assertTrue(tracker.removeFromHistory("Deranged Archaeologist", (KillEntry) saved[0], (KillEntry.DropEntry) saved[1]));
+		assertFalse(row(tracker.stats("Deranged Archaeologist", RAIDS), "Steel ring").isStreakExact());
+		// and it can be entered again at a corrected count
+		assertTrue(tracker.addPastDrop("Deranged Archaeologist", "Steel ring", 60));
+		assertEquals(40, (int) row(tracker.stats("Deranged Archaeologist", RAIDS), "Steel ring").getStreak());
 	}
 }
