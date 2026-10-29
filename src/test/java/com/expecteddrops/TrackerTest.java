@@ -3306,4 +3306,27 @@ public class TrackerTest
 		assertTrue(tracker.addPastDrop("Deranged Archaeologist", "Steel ring", 60));
 		assertEquals(40, (int) row(tracker.stats("Deranged Archaeologist", RAIDS), "Steel ring").getStreak());
 	}
+
+	@Test
+	public void aRaidWaitUsesThePointsForCountedRaidsAndTheSettingForOlderOnes()
+	{
+		tracker.setSettings(RAIDS);
+		tracker.onChatMessage("Your completed Chambers of Xeric count is: <col=ff0000>100</col>.", now - 1_800_000);
+		// raid 101: 43,380 points solo = 5%; raid 102: 8,676 of 17,352 team points = 1%
+		tracker.onRaidRecord(RaidRecord.cox(43_380, 43_380, 1), now + 1000);
+		tracker.onChatMessage("Your completed Chambers of Xeric count is: <col=ff0000>101</col>.", now + 2000);
+		tracker.onChatMessage("Your completed Chambers of Xeric count is: <col=ff0000>102</col>.", now + 600_000);
+		tracker.onRaidRecord(RaidRecord.cox(8_676, 17_352, 2), now + 601_000);
+
+		// the first one came before On Rate counted points: 100 raids at the setting's 3.5%, twisted bow 2/60 of a purple
+		assertTrue(tracker.addPastDrop("Chambers of Xeric", "Twisted bow", 100, true, "Normal"));
+		KillEntry.DropEntry first = (KillEntry.DropEntry) savedUniques("Chambers of Xeric").stream()
+			.filter(o -> ((KillEntry) o[0]).getPartKc() == 100).findFirst().get()[1];
+		assertEquals(100 * 0.035 * 2 / 60, first.getMultiple(), 0.0005);
+		// the second one: raids 101 and 102 count at 5% and 1% from their points, not 3.5% each
+		assertTrue(tracker.addPastDrop("Chambers of Xeric", "Twisted bow", 102, false, "Normal"));
+		KillEntry.DropEntry second = (KillEntry.DropEntry) savedUniques("Chambers of Xeric").stream()
+			.filter(o -> ((KillEntry) o[0]).getPartKc() == 102 && ((KillEntry.DropEntry) o[1]).isEntered()).findFirst().get()[1];
+		assertEquals((0.05 + 0.01) * 2 / 60, second.getMultiple(), 0.00005);
+	}
 }

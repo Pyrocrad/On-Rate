@@ -145,6 +145,26 @@ final class Texts
 	}
 
 	/**
+	 * Where a saved kill happened, for hover rows: the page's boss, or for a page with several
+	 * bosses the one it was ("Corrupted Gauntlet", "Artio"), or a raid with its mode ("Tombs of Amascut, Expert Mode").
+	 */
+	static String whereName(BossDefinition boss, String bossName, com.expecteddrops.tracking.KillEntry kill)
+	{
+		if (boss != null && boss.hasParts() && kill.getPart() != null && kill.getPartKc() != null)
+		{
+			return boss.getRaid() == null ? kill.getPart() : bossName + ", " + kill.getPart();
+		}
+		return bossName;
+	}
+
+	/** The kill count of a saved kill as a number: the mode's or boss's own on a page with several, else the page's. */
+	static String killCount(BossDefinition boss, com.expecteddrops.tracking.KillEntry kill)
+	{
+		boolean own = boss != null && boss.hasParts() && kill.getPart() != null && kill.getPartKc() != null;
+		return String.format("%,d", own ? kill.getPartKc() : kill.getKc());
+	}
+
+	/**
 	 * The kill count of a saved kill without the boss, for hover rows: "437", or with the mode or
 	 * boss of a combined page and its own count ("Challenge Mode 12", "Artio 40").
 	 */

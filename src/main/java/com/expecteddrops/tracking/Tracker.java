@@ -1368,10 +1368,20 @@ public class Tracker
 		}
 		if (entry.since != null)
 		{
-			double rate = part == null ? rateOf(boss, drop) : partRate(boss, part, drop, settings);
-			if (rate > 0)
+			double expected;
+			if (part != null && part.getRaid() != null && !drop.hasPartRates())
 			{
-				entry.multiple = roundMultiple(entry.since * rate);
+				// a raid: each raid in the wait counts at its own purple chance (from its points when On Rate
+				// counted them), and at the settings' chance for the ones from before
+				expected = raidWaitExpected(boss, part, drop, progress, kc - entry.since, kc);
+			}
+			else
+			{
+				expected = entry.since * (part == null ? rateOf(boss, drop) : partRate(boss, part, drop, settings));
+			}
+			if (expected > 0)
+			{
+				entry.multiple = roundMultiple(expected);
 			}
 			// the same records a drop On Rate saw feeds
 			if (progress.fastestGap == null)
@@ -2267,6 +2277,33 @@ public class Tracker
 		countUniqueToday(boss, drop);
 		progress.lastDropKc.put(key, kc);
 		progress.milestone.remove(key);
+	}
+
+	/**
+	 * Uniques of this item you would expect from the raids of a mode after {@code fromKc} up to
+	 * and including {@code toKc} (that mode's own counts): raids On Rate counted use their own
+	 * purple chance (from the points), the others the chance from the settings.
+	 */
+	private double raidWaitExpected(BossDefinition boss, BossPart part, DropDefinition drop, BossProgress progress,
+		int fromKc, int toKc)
+	{
+		double perRaid = partRate(boss, part, drop, settings);
+		Map<Integer, RaidRecord> counted = new HashMap<>();
+		for (RaidRecord r : progress.raids)
+		{
+			if (part.getName().equals(r.part) && r.kc > fromKc && r.kc <= toKc)
+			{
+				counted.put(r.kc, r);
+			}
+		}
+		double sum = 0;
+		for (int raid = fromKc + 1; raid <= toKc; raid++)
+		{
+			RaidRecord r = counted.get(raid);
+			double chance = r == null ? Double.NaN : recordChance(r, part, settings);
+			sum += Double.isNaN(chance) ? perRaid : recordDropExpected(boss, part, drop, r, chance);
+		}
+		return sum;
 	}
 
 	/** A multiple of the drop rate to three significant digits (0.000412, 0.0732, 1.23, 45.6). */

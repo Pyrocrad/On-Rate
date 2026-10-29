@@ -1794,8 +1794,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, panel.getPreferredSize().height));
 		// left click opens the boss; right click is the Remove from History menu
 		Tip tip = new Tip(d.getName())
-			.row("Where", r.getBoss())
-			.row(capital(unit), killValue(boss, r.getKill()))
+			.row("Where", whereName(boss, r.getBoss(), r.getKill()))
+			.row(capital(unit) + " count", killCount(boss, r.getKill()))
 			.row("When", daysAgo(r.getKill().getTime(), now))
 			.row("Gap before it", gapText(d, unit));
 		if (!dropLuck(d).isEmpty())
@@ -1921,8 +1921,12 @@ public class ExpectedDropsPanel extends PluginPanel
 				for (com.expecteddrops.tracking.KillEntry.DropEntry d : k.getDrops())
 				{
 					String after = afterText(d, unit).replace("after ", "");
-					Tip dropTip = new Tip(d.getName())
-						.row(byPart ? k.getPart() : capital(unit), String.format("%,d", byPart ? k.getPartKc() : k.getKc()))
+					Tip dropTip = new Tip(d.getName());
+					if (byPart)
+					{
+						dropTip.row("Where", whereName(boss, boss.getName(), k));
+					}
+					dropTip.row(capital(unit) + " count", String.format("%,d", byPart ? k.getPartKc() : k.getKc()))
 						.row("When", daysAgo(k.getTime(), now))
 						.row("Gap before it", gapText(d, unit));
 					if (!dropLuck(d).isEmpty())
@@ -2969,6 +2973,15 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		javax.swing.SpinnerNumberModel model = new javax.swing.SpinnerNumberModel(1, 1, limit, 1);
 		javax.swing.JSpinner spinner = new javax.swing.JSpinner(model);
+		// a typed number counts at once, not only after Enter or leaving the field (OK would read the old value)
+		if (spinner.getEditor() instanceof javax.swing.JSpinner.DefaultEditor)
+		{
+			javax.swing.JFormattedTextField field = ((javax.swing.JSpinner.DefaultEditor) spinner.getEditor()).getTextField();
+			if (field.getFormatter() instanceof javax.swing.text.DefaultFormatter)
+			{
+				((javax.swing.text.DefaultFormatter) field.getFormatter()).setCommitsOnValidEdit(true);
+			}
+		}
 		JPanel form = new JPanel(new GridLayout(0, 1, Theme.S, Theme.S));
 		form.add(new JLabel("<html><body style='width: 220px'>"
 			+ (hasParts ? "Which one, and at which " + unit + " of it" : "At which " + unit)
@@ -3004,6 +3017,16 @@ public class ExpectedDropsPanel extends PluginPanel
 			JOptionPane.PLAIN_MESSAGE);
 		if (answer != JOptionPane.OK_OPTION)
 		{
+			return;
+		}
+		try
+		{
+			spinner.commitEdit();
+		}
+		catch (java.text.ParseException ex)
+		{
+			JOptionPane.showMessageDialog(this, "That isn't a number between 1 and " + String.format("%,d", model.getMaximum()) + ".",
+				"I got this at " + unit, JOptionPane.INFORMATION_MESSAGE);
 			return;
 		}
 		int kc = ((Number) spinner.getValue()).intValue();
