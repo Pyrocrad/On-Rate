@@ -39,6 +39,8 @@ public class BossDefinition
 	 * Its drops' level rates are per wave; a run claimed at wave W counts every wave up to W.
 	 */
 	private Integer waves;
+	/** True while content is prepared but not released to players: kept out of the catalog entirely. */
+	private Boolean hidden;
 
 	public BossDefinition()
 	{
@@ -56,6 +58,12 @@ public class BossDefinition
 	public String getName()
 	{
 		return name;
+	}
+
+	/** Prepared in bosses.json but not shown yet (no page, no tracking, no collection log sync). */
+	public boolean isHidden()
+	{
+		return Boolean.TRUE.equals(hidden);
 	}
 
 	public int getMinions()

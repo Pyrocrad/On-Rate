@@ -136,4 +136,20 @@ public class CatalogTest
 		}
 		assertTrue(found >= 18);
 	}
+
+	@Test
+	public void hiddenBossesStayOutOfTheCatalog()
+	{
+		assertEquals(1, catalog.getHiddenBosses().size());
+		BossDefinition archive = catalog.getHiddenBosses().get(0);
+		assertEquals("The Fractured Archive", archive.getName());
+		assertTrue(archive.isHidden());
+		assertEquals(15.0, archive.getTotalWeight(), 0.0001);
+		assertEquals(null, catalog.byName("The Fractured Archive"));
+		assertEquals(null, catalog.byKcName("The Fractured Archive"));
+		assertEquals(null, catalog.byLootName("The Fractured Archive"));
+		assertTrue(catalog.byClogPage("The Fractured Archive").isEmpty());
+		assertFalse(catalog.getBosses().contains(archive));
+		assertFalse(catalog.getAllItemNames().contains("rondache"));
+	}
 }

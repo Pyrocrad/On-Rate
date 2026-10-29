@@ -33,14 +33,21 @@ public class BossCatalog
 	private final Set<String> excludedBosses = new java.util.TreeSet<>();
 	private final Map<String, List<PoolSource>> pools = new java.util.TreeMap<>();
 	private final Set<String> minionLootNames = new HashSet<>();
+	/** Bosses marked hidden in the data: prepared for a release, not part of the catalog yet. */
+	private final List<BossDefinition> hiddenBosses = new ArrayList<>();
 
 	private static class FileFormat
 	{
 		List<BossDefinition> bosses;
 	}
 
-	public BossCatalog(List<BossDefinition> bosses)
+	public BossCatalog(List<BossDefinition> allBosses)
 	{
+		List<BossDefinition> bosses = new ArrayList<>();
+		for (BossDefinition boss : allBosses)
+		{
+			(boss.isHidden() ? hiddenBosses : bosses).add(boss);
+		}
 		// An item that several bosses drop has one collection log total for all of them,
 		// so that total can't be credited to any single boss.
 		Map<String, Integer> itemBossCount = new HashMap<>();
@@ -145,6 +152,12 @@ public class BossCatalog
 				}
 			}
 		}
+	}
+
+	/** Bosses prepared in the data but still hidden (for tests; nothing else sees them). */
+	public List<BossDefinition> getHiddenBosses()
+	{
+		return Collections.unmodifiableList(hiddenBosses);
 	}
 
 	/** One boss that drops a pooled (shared) item, with its drop definition. */

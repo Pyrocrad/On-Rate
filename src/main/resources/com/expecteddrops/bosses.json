@@ -1,5 +1,5 @@
 {
-  "_readme": "'once': true marks items you can only get once (pets count as once automatically). Items that drop from more than one boss are pooled: judged on all those bosses' kills together against their one collection log total. 'clogShared': true marks items that also drop from monsters outside the bosses: they are left out entirely (no row, and neither the collection log nor loot counts them), because the log total can't be credited to a boss. Rates are per kill/completion, solo or full contribution, base rates (no diary or CA boosts). 'rate' is a fraction string. Delve items use 'levelRates' per delve level (9 = 8+). Combined pages (Dagannoth Kings, Callisto and Artio...) list 'parts', each with its own kill-count names, and drops use 'partRates' per part. Raid modes are parts with a 'raid' key for their purple chance; 'partWeights' overrides an item's weight in one mode. Raid items use 'weight' (share of the purple, chance set in the plugin settings). 'valueFrom' prices an untradeable item from tradeable ones (e.g. \"Noxious halberd / 3\"); it is only used when the item has no price of its own. 'match' lists extra item names that count for that row. 'any': false keeps a row out of the 'Any' total. 'kc' = chat kill-count names, 'loot' = loot tracker names, 'clog' = collection log page titles.",
+  "_readme": "'once': true marks items you can only get once (pets count as once automatically). Items that drop from more than one boss are pooled: judged on all those bosses' kills together against their one collection log total. 'clogShared': true marks items that also drop from monsters outside the bosses: they are left out entirely (no row, and neither the collection log nor loot counts them), because the log total can't be credited to a boss. Rates are per kill/completion, solo or full contribution, base rates (no diary or CA boosts). 'rate' is a fraction string. Delve items use 'levelRates' per delve level (9 = 8+). Combined pages (Dagannoth Kings, Callisto and Artio...) list 'parts', each with its own kill-count names, and drops use 'partRates' per part. Raid modes are parts with a 'raid' key for their purple chance; 'partWeights' overrides an item's weight in one mode. Raid items use 'weight' (share of the purple, chance set in the plugin settings). 'valueFrom' prices an untradeable item from tradeable ones (e.g. \"Noxious halberd / 3\"); it is only used when the item has no price of its own. 'match' lists extra item names that count for that row. 'hidden': true keeps a prepared boss out of the plugin until it is released (remove the flag to show it). 'any': false keeps a row out of the 'Any' total. 'kc' = chat kill-count names, 'loot' = loot tracker names, 'clog' = collection log page titles.",
   "bosses": [
     {
       "name": "Abyssal Sire", "kc": ["Abyssal Sire"], "loot": ["Abyssal Sire"], "clog": ["Abyssal Sire"], "note": "Bludgeon pieces and the abyssal dagger come from Unsired, not from the kill itself. Unsired is shown but not counted as a unique: the jar and pet come out of it, so counting both would count one drop twice.",
@@ -632,6 +632,24 @@
         {"name": "Magma mutagen", "rate": "1/6554"},
         {"name": "Jar of swamp", "rate": "1/3000"},
         {"name": "Pet snakeling", "rate": "1/4000", "pet": true}
+      ]
+    },
+    {
+      "hidden": true, "raid": "fractured", "estimate": true,
+      "_todo": [
+        "Not released to players yet: remove 'hidden' when the numbers are known.",
+        "Unknown: how the team's points turn into the chance of the special (purple) chest. Add RaidChance.fractured(...), a 'fractured' case in ExpectedDropsPlugin.raidChance and a fallback % setting, like the other raids.",
+        "Unknown: the overall unique chance, any modes (parts), team size, Orion's rate (add a pet row with perUnique/rate) and the exact collection log, loot tracker and kill count names (assumed 'The Fractured Archive'). Check the unique item names against the collection log (Obligator, Zorya's tome and the Ascension crossbows may be named differently).",
+        "Weights are the wiki's Drop Rate Project split of one special chest (5, 4, 3, 2, 1 out of 15), not a per-raid rate."
+      ],
+      "name": "The Fractured Archive", "kc": ["The Fractured Archive"], "loot": ["The Fractured Archive"], "clog": ["The Fractured Archive"],
+      "note": "Each unique's share of a special (purple) chest, from the OSRS Wiki's Drop Rate Project. The chance of getting that chest is not known yet.",
+      "drops": [
+        {"name": "Rondache", "weight": 5},
+        {"name": "Zorya's tome (uncharged)", "weight": 4},
+        {"name": "Horn of Bran", "weight": 3},
+        {"name": "Ascension crossbows", "weight": 2, "match": ["Ascension crossbow"]},
+        {"name": "Obligator (uncharged)", "weight": 1}
       ]
     }
   ]
