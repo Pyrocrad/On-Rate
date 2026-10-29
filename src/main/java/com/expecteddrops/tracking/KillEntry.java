@@ -138,11 +138,12 @@ public class KillEntry
 
 		/**
 		 * How lucky this wait was: the share of players who would have had one by then at the
-		 * drop rate (1 - e^-multiple). Small is lucky, large is dry. NaN when the wait isn't known exactly.
+		 * drop rate (1 - e^-multiple). Small is lucky, large is dry. NaN when the wait isn't known
+		 * exactly. Drops saved by older versions with a multiple rounded to 0.00 count as 0.005.
 		 */
 		public double getLuck()
 		{
-			return multiple == null || isAtLeast() ? Double.NaN : 1 - Math.exp(-multiple);
+			return multiple == null || isAtLeast() ? Double.NaN : 1 - Math.exp(-(multiple == 0 ? 0.005 : multiple));
 		}
 
 		public boolean isEntered()

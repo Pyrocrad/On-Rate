@@ -1018,6 +1018,34 @@ public class Tracker
 	}
 
 	/**
+	 * The drops of one item at one boss in History (seen or added by hand) whose wait is known
+	 * exactly, luckiest first, for the item's hover.
+	 */
+	public synchronized List<RecentDrop> dropsOf(String bossName, String itemName)
+	{
+		List<RecentDrop> list = new ArrayList<>();
+		BossDefinition boss = catalog.byName(bossName);
+		BossProgress p = state.peek(bossName);
+		if (boss == null || p == null)
+		{
+			return list;
+		}
+		for (KillEntry k : p.kills)
+		{
+			for (KillEntry.DropEntry d : k.getDrops())
+			{
+				DropDefinition drop = rowOfSaved(boss, d.getName());
+				if (drop != null && drop.getName().equals(itemName) && d.getMultiple() != null && !d.isAtLeast())
+				{
+					list.add(new RecentDrop(bossName, k, d));
+				}
+			}
+		}
+		list.sort((a, b) -> Double.compare(a.getDrop().getMultiple(), b.getDrop().getMultiple()));
+		return list;
+	}
+
+	/**
 	 * Drops across every boss whose wait is known exactly and was lucky (shorter than the drop rate
 	 * gives on average) or dry (longer), best first: luckiest are ranked by the smallest multiple of
 	 * the drop rate, dry ones by the largest. Drops added by hand count; undated ones are fine.
@@ -1280,7 +1308,7 @@ public class Tracker
 			double rate = part == null ? rateOf(boss, drop) : partRate(boss, part, drop, settings);
 			if (rate > 0)
 			{
-				entry.multiple = Math.round(entry.since * rate * 100) / 100.0;
+				entry.multiple = roundMultiple(entry.since * rate);
 			}
 			// the same records a drop On Rate saw feeds
 			if (progress.fastestGap == null)
@@ -2164,13 +2192,24 @@ public class Tracker
 		}
 		if (entry.since != null && !entry.isAtLeast() && rate > 0)
 		{
-			// two decimals is all the panel shows, and it keeps the saved history short
-			entry.multiple = Math.round(entry.since * rate * 100) / 100.0;
+			// three significant digits: a very lucky drop (0.0004x) must not round to 0, and it keeps the history short
+			entry.multiple = roundMultiple(entry.since * rate);
 		}
 		addDropToHistory(boss, progress, kc, entry);
 		countUniqueToday(boss, drop);
 		progress.lastDropKc.put(key, kc);
 		progress.milestone.remove(key);
+	}
+
+	/** A multiple of the drop rate to three significant digits (0.000412, 0.0732, 1.23, 45.6). */
+	static double roundMultiple(double m)
+	{
+		if (m <= 0 || Double.isNaN(m) || Double.isInfinite(m))
+		{
+			return 0;
+		}
+		double scale = Math.pow(10, 2 - Math.floor(Math.log10(m)));
+		return Math.round(m * scale) / scale;
 	}
 
 	/** Average per-kill rate of a drop at this boss so far (works for raids, parts and delves). */

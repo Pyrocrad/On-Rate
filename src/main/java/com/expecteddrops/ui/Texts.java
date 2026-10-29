@@ -55,24 +55,47 @@ final class Texts
 	}
 
 	/**
-	 * How lucky one drop was, for its hover: "quicker than 96% of players" when it came before the
+	 * How lucky one drop was: "quicker than 99.9% of players (1 in 1,000)" when it came before the
 	 * drop rate says, "slower than 94% of players" when after, "" when the wait isn't known exactly.
+	 * The "1 in N" is how many players are as quick (or as slow) as you; it is left out when it is
+	 * under 1 in 10.
 	 */
 	static String dropLuck(com.expecteddrops.tracking.KillEntry.DropEntry d)
 	{
-		double q = d.getLuck();
-		if (Double.isNaN(q) || d.getMultiple() == null)
+		if (d.getMultiple() == null || d.isAtLeast())
 		{
 			return "";
 		}
-		if (d.getMultiple() == 1)
+		// older versions saved a multiple rounded to two decimals: 0.00 is only known to be under 0.005
+		boolean floor = d.getMultiple() == 0;
+		double m = floor ? 0.005 : d.getMultiple();
+		if (m == 1)
 		{
 			return "right on the drop rate";
 		}
-		boolean quick = d.getMultiple() < 1;
-		double share = quick ? 1 - q : q;
-		return (quick ? "quicker than " : "slower than ") + (share > 0.995 ? ">99%" : share < 0.005 ? "<1%" : String.format("%.0f%%", share * 100))
-			+ " of players";
+		boolean quick = m < 1;
+		// players slower than you (quick) or as slow as you (slow), and as quick as you or quicker
+		double behind = Math.exp(-m);
+		double oneIn = quick ? 1 / (1 - behind) : 1 / behind;
+		String text = (quick ? "quicker than " : "slower than ") + shareText(quick ? behind : 1 - behind) + " of players";
+		if (oneIn >= 10)
+		{
+			text += " (1 in " + (floor ? "200+" : oneInText(oneIn)) + ")";
+		}
+		return text;
+	}
+
+	private static String shareText(double share)
+	{
+		return share >= 0.9995 ? ">99.9%" : share >= 0.995 ? String.format("%.1f%%", share * 100)
+			: share < 0.005 ? "<1%" : String.format("%.0f%%", share * 100);
+	}
+
+	/** 3 significant digits: 25, 1,030, 41,200. */
+	private static String oneInText(double n)
+	{
+		double scale = Math.pow(10, Math.max(0, Math.floor(Math.log10(n)) - 2));
+		return String.format("%,.0f", Math.round(n / scale) * scale);
 	}
 
 	/** "after 7 kills (0.1x)", "your first one", or "" when the gap is unknown. */

@@ -181,4 +181,26 @@ public class TextsTest
 		assertEquals("date unknown", Texts.daysAgo(0, 1_000_000));
 		assertEquals("today", Texts.daysAgo(1_000_000, 1_000_000));
 	}
+
+	private static com.expecteddrops.tracking.KillEntry.DropEntry dropWith(double multiple)
+	{
+		return new com.google.gson.Gson().fromJson("{\"i\":\"x\",\"s\":10,\"x\":" + multiple + "}",
+			com.expecteddrops.tracking.KillEntry.DropEntry.class);
+	}
+
+	@Test
+	public void luckyDropsSayOneInN()
+	{
+		// 0.001 of the drop rate: 1 in 1,000 players is this quick
+		assertEquals("quicker than 99.9% of players (1 in 1,000)", Texts.dropLuck(dropWith(0.001)));
+		assertEquals("quicker than >99.9% of players (1 in 2,500)", Texts.dropLuck(dropWith(0.0004)));
+		assertEquals("quicker than 96% of players (1 in 26)", Texts.dropLuck(dropWith(0.04)));
+		// not that rare: no "1 in N"
+		assertEquals("quicker than 74% of players", Texts.dropLuck(dropWith(0.3)));
+		assertEquals("right on the drop rate", Texts.dropLuck(dropWith(1.0)));
+		// dry: slower than most, 1 in N players waits this long
+		assertEquals("slower than 95% of players (1 in 20)", Texts.dropLuck(dropWith(3.0)));
+		// saved rounded to 0.00 (older versions): only known to be under 0.005
+		assertEquals("quicker than 99.5% of players (1 in 200+)", Texts.dropLuck(dropWith(0.0)));
+	}
 }

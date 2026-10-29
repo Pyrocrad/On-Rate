@@ -1696,9 +1696,9 @@ public class ExpectedDropsPanel extends PluginPanel
 		what.setFont(FontManager.getRunescapeFont());
 		text.add(what);
 		String after = afterText(d, unit);
-		// the luck lists use the room for the multiple and the luck; the wait itself is in the hover
+		// the luck lists use the room for the luck; the wait and its multiple are in the hover
 		String second = ranked
-			? (d.getMultiple() == null ? "" : formatMultiple(d.getMultiple()) + " \u00b7 ") + dropLuck(d).replace(" of players", "")
+			? dropLuck(d).replace(" of players", "")
 			: daysAgo(r.getKill().getTime(), now) + (after.isEmpty() ? "" : " \u00b7 " + after);
 		text.add(smallLabel(second, multipleColor(d)));
 		panel.add(text, BorderLayout.CENTER);
@@ -2174,6 +2174,23 @@ public class ExpectedDropsPanel extends PluginPanel
 			{
 				itemTip.row("Your result", "<b>" + DropMath.verdict(luck) + "</b>", luckColor(luck).brighter())
 					.line(capital(sharesLine(r.getShares(), r.getReceived())), Theme.TEXT_MUTED);
+			}
+			if (h.getBoss() != null && r.getIconItem() != null)
+			{
+				List<com.expecteddrops.tracking.RecentDrop> drops = tracker.dropsOf(h.getBoss(), r.getIconItem());
+				BossDefinition dropBoss = tracker.getCatalog().byName(h.getBoss());
+				if (!drops.isEmpty())
+				{
+					itemTip.line("How lucky you were when you got it", Theme.TEXT_MUTED);
+					for (int i = 0; i < Math.min(3, drops.size()); i++)
+					{
+						itemTip.row(whereText(dropBoss, h.getBoss(), drops.get(i).getKill()), dropLuck(drops.get(i).getDrop()));
+					}
+					if (drops.size() > 3)
+					{
+						itemTip.line("+ " + (drops.size() - 3) + " more", Theme.TEXT_MUTED);
+					}
+				}
 			}
 			itemTip.row("Got / expected", String.format("%d / %s", r.getReceived(), formatExpected(r.getExpected())));
 			if (h.isPet() && !r.isComplete())
@@ -2720,7 +2737,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				rowsPanel.add(compactHeader("Item"));
 				for (RowStats r : all)
 				{
-					rowsPanel.add(withLeaveOutMenu(compactRow(r, tooltip(r, stats, unit), null), bossName, r, false));
+					rowsPanel.add(withLeaveOutMenu(compactRow(r, itemTooltip(r, stats, unit), null), bossName, r, false));
 				}
 				break;
 			case RINGS:
@@ -2729,7 +2746,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				grid.setAlignmentX(LEFT_ALIGNMENT);
 				for (RowStats r : all)
 				{
-					grid.add(withLeaveOutMenu(itemRing(r, tooltip(r, stats, unit)), bossName, r, false));
+					grid.add(withLeaveOutMenu(itemRing(r, itemTooltip(r, stats, unit)), bossName, r, false));
 				}
 				grid.setMaximumSize(new Dimension(Integer.MAX_VALUE, grid.getPreferredSize().height));
 				rowsPanel.add(grid);
@@ -2742,7 +2759,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				{
 					rowsPanel.add(spacer(Theme.HAIR));
 					rowsPanel.add(withLeaveOutMenu(stripRow(r.isAny() ? null : r.getIconItem(), r.isAny() ? "Any unique" : r.getLabel(),
-						r.isAny(), r.isComplete() ? 1.0 : r.getLuck(), tooltip(r, stats, unit), null, Texts.isQuiet(r)), bossName, r, false));
+						r.isAny(), r.isComplete() ? 1.0 : r.getLuck(), itemTooltip(r, stats, unit), null, Texts.isQuiet(r)), bossName, r, false));
 				}
 				break;
 			default:
@@ -2755,7 +2772,7 @@ public class ExpectedDropsPanel extends PluginPanel
 					{
 						rowsPanel.add(spacer(Theme.HAIR));
 					}
-					rowsPanel.add(withLeaveOutMenu(targetRow(all.get(i), tooltip(all.get(i), stats, unit)), bossName, all.get(i), false));
+					rowsPanel.add(withLeaveOutMenu(targetRow(all.get(i), itemTooltip(all.get(i), stats, unit)), bossName, all.get(i), false));
 				}
 		}
 		if (!leftOut.isEmpty())
@@ -4414,7 +4431,7 @@ public class ExpectedDropsPanel extends PluginPanel
 
 	private JPanel row(RowStats row, BossStats stats, String unit)
 	{
-		return buildRow(row, tooltip(row, stats, unit), null);
+		return buildRow(row, itemTooltip(row, stats, unit), null);
 	}
 
 	private JPanel buildRow(RowStats row, String tip, Runnable onClick)
@@ -4546,6 +4563,33 @@ public class ExpectedDropsPanel extends PluginPanel
 
 	private static String tooltip(RowStats row, BossStats stats, String unit)
 	{
+		return tooltip(row, stats, unit, java.util.Collections.emptyList());
+	}
+
+	/** The item hover with how lucky your drops of it were ({where, luck} per drop) under the verdict. */
+	private String itemTooltip(RowStats row, BossStats stats, String unit)
+	{
+		List<String[]> luck = new ArrayList<>();
+		if (!row.isAny() && row.getIconItem() != null)
+		{
+			String bossName = stats.getBoss().getName();
+			BossDefinition boss = stats.getBoss();
+			List<com.expecteddrops.tracking.RecentDrop> drops = tracker.dropsOf(bossName, row.getIconItem());
+			for (int i = 0; i < Math.min(3, drops.size()); i++)
+			{
+				com.expecteddrops.tracking.RecentDrop r = drops.get(i);
+				luck.add(new String[]{whereText(boss, bossName, r.getKill()), dropLuck(r.getDrop())});
+			}
+			if (drops.size() > 3)
+			{
+				luck.add(new String[]{"+ " + (drops.size() - 3) + " more", ""});
+			}
+		}
+		return tooltip(row, stats, unit, luck);
+	}
+
+	private static String tooltip(RowStats row, BossStats stats, String unit, List<String[]> dropLuck)
+	{
 		Tip tip = new Tip(row.isAny() ? "Any unique" : row.getLabel());
 		tip.line(stats.getBoss().getName(), Theme.TEXT_MUTED);
 		DropDefinition drop = row.isAny() ? null : findDrop(stats.getDrops(), row.getLabel());
@@ -4563,6 +4607,22 @@ public class ExpectedDropsPanel extends PluginPanel
 			tip.line(capital(sharesLine(row.getShares(), row.getReceived())), Theme.TEXT_MUTED);
 		}
 
+		if (!dropLuck.isEmpty())
+		{
+			// each drop on its own: how long it took against the drop rate, luckiest first
+			tip.line("How lucky you were when you got it", Theme.TEXT_MUTED);
+			for (String[] d : dropLuck)
+			{
+				if (d[1].isEmpty())
+				{
+					tip.line(d[0], Theme.TEXT_MUTED);
+				}
+				else
+				{
+					tip.row(d[0], d[1]);
+				}
+			}
+		}
 		boolean oneRate = !row.isAny() && (drop == null || (!drop.hasLevelRates() && !drop.hasPartRates()));
 		if (oneRate)
 		{
