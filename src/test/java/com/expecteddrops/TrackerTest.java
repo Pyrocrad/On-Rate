@@ -3207,4 +3207,22 @@ public class TrackerTest
 		assertEquals(1, other.dropsByLuck(true, 5).size());
 		assertEquals(0, other.dropsByLuck(false, 5).size());
 	}
+
+	@Test
+	public void aPastDropMarkedFirstIsRankedEvenWithMoreCopies()
+	{
+		Map<String, Integer> page = new LinkedHashMap<>();
+		page.put("Steel ring", 2);
+		tracker.onClogPage("Deranged Archaeologist", Collections.singletonList("Deranged Archaeologist kills: 400"), page);
+		assertTrue(tracker.addPastDrop("Deranged Archaeologist", "Steel ring", 5, true));
+		KillEntry.DropEntry first = (KillEntry.DropEntry) savedUniques("Deranged Archaeologist").get(0)[1];
+		assertTrue(first.isFirst());
+		assertEquals(5, (int) first.getSince());
+		assertEquals(1, tracker.dropsByLuck(true, 5).size());
+		// an earlier copy is listed: the gap since it is used, not "first"
+		assertTrue(tracker.addPastDrop("Deranged Archaeologist", "Steel ring", 50, true));
+		KillEntry.DropEntry later = (KillEntry.DropEntry) savedUniques("Deranged Archaeologist").get(0)[1];
+		assertFalse(later.isFirst());
+		assertEquals(45, (int) later.getSince());
+	}
 }

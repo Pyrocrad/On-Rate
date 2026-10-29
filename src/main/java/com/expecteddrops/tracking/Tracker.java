@@ -1027,6 +1027,16 @@ public class Tracker
 	 */
 	public synchronized boolean addPastDrop(String bossName, String itemName, int kc)
 	{
+		return addPastDrop(bossName, itemName, kc, false);
+	}
+
+	/**
+	 * As {@link #addPastDrop(String, String, int)}, with {@code first} true when the player says
+	 * this was their first copy: its wait is then its kill count, even when the collection log
+	 * shows more copies. Ignored when an earlier copy is already listed (the gap since it is used).
+	 */
+	public synchronized boolean addPastDrop(String bossName, String itemName, int kc, boolean first)
+	{
 		BossDefinition boss = catalog.byName(bossName);
 		if (boss == null || kc < 1 || kc > currentKc(boss))
 		{
@@ -1095,9 +1105,9 @@ public class Tracker
 		{
 			entry.since = kc - previousKc;
 		}
-		else if (progress.clogSynced && !catalog.isClogShared(key) && have != null && have == 1)
+		else if (first || progress.clogSynced && !catalog.isClogShared(key) && have != null && have == 1)
 		{
-			// the only copy the log shows is this one, so it was the first
+			// the player says it was the first, or the only copy the log shows is this one
 			entry.since = kc;
 			entry.first = Boolean.TRUE;
 		}
