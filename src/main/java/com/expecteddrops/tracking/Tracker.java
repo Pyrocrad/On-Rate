@@ -1091,6 +1091,24 @@ public class Tracker
 		}
 		BossProgress progress = state.get(boss.getName());
 		String shown = drop.getDisplayName();
+		// adding it again at the same kill count replaces what the player entered before (never a drop On Rate saw)
+		for (java.util.Iterator<KillEntry> kills = progress.kills.iterator(); kills.hasNext(); )
+		{
+			KillEntry k = kills.next();
+			if (k.kc == kc && k.drops != null
+				&& k.drops.removeIf(d -> d.isEntered() && d.getName().equals(shown)))
+			{
+				if (k.drops.isEmpty())
+				{
+					k.drops = null;
+					if (!k.isDateKnown())
+					{
+						kills.remove();
+					}
+				}
+				killsChanged.add(boss.getName());
+			}
+		}
 		KillEntry at = null;
 		int index = progress.kills.size();
 		int previousKc = 0;

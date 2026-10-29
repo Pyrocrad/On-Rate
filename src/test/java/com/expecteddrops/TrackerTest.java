@@ -3134,8 +3134,9 @@ public class TrackerTest
 		assertFalse(tracker.addPastDrop("Deranged Archaeologist", "Not an item", 30));
 		assertFalse(tracker.addPastDrop("Nobody", "Steel ring", 30));
 		assertTrue(tracker.addPastDrop("Deranged Archaeologist", "Steel ring", 30));
-		// the same item at the same kill count is refused
-		assertFalse(tracker.addPastDrop("Deranged Archaeologist", "Steel ring", 30));
+		// the same item at the same kill count replaces the one entered, it isn't listed twice
+		assertTrue(tracker.addPastDrop("Deranged Archaeologist", "Steel ring", 30));
+		assertEquals(1, savedUniques("Deranged Archaeologist").size());
 
 		BossStats after = tracker.stats("Deranged Archaeologist", RAIDS);
 		RowStats ring = row(after, "Steel ring");
@@ -3224,5 +3225,19 @@ public class TrackerTest
 		KillEntry.DropEntry later = (KillEntry.DropEntry) savedUniques("Deranged Archaeologist").get(0)[1];
 		assertFalse(later.isFirst());
 		assertEquals(45, (int) later.getSince());
+	}
+
+	@Test
+	public void addingAPastDropAgainReplacesTheOneEntered()
+	{
+		Map<String, Integer> page = new LinkedHashMap<>();
+		page.put("Steel ring", 2);
+		tracker.onClogPage("Deranged Archaeologist", Collections.singletonList("Deranged Archaeologist kills: 400"), page);
+		assertTrue(tracker.addPastDrop("Deranged Archaeologist", "Steel ring", 110));
+		assertTrue(tracker.dropsByLuck(true, 5).isEmpty());
+		assertTrue(tracker.addPastDrop("Deranged Archaeologist", "Steel ring", 110, true));
+		assertEquals(1, savedUniques("Deranged Archaeologist").size());
+		assertTrue(((KillEntry.DropEntry) savedUniques("Deranged Archaeologist").get(0)[1]).isFirst());
+		assertEquals(1, tracker.history("Deranged Archaeologist").size());
 	}
 }
