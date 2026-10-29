@@ -2877,6 +2877,12 @@ public class ExpectedDropsPanel extends PluginPanel
 		if (tracker.addPastDrop(bossName, r.getIconItem(), kc, first.isSelected()))
 		{
 			save.run();
+			String why = tracker.pastDropNotRankedReason(bossName, r.getIconItem(), kc);
+			if (why != null)
+			{
+				JOptionPane.showMessageDialog(this, "<html><body style='width: 240px'>Added to History. It isn't in Luckiest drops "
+					+ "or Longest waits: " + why + "</body></html>", "I got this at " + unit, JOptionPane.INFORMATION_MESSAGE);
+			}
 		}
 		else
 		{

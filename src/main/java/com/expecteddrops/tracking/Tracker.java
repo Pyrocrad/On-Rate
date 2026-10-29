@@ -977,6 +977,41 @@ public class Tracker
 	}
 
 	/**
+	 * Why a drop added by hand can't be ranked in Luckiest drops / Longest waits, or null when it can
+	 * (or isn't in History): its wait isn't known, or the boss's drop rate isn't.
+	 */
+	public synchronized String pastDropNotRankedReason(String bossName, String itemName, int kc)
+	{
+		BossDefinition boss = catalog.byName(bossName);
+		BossProgress p = state.peek(bossName);
+		if (boss == null || p == null)
+		{
+			return null;
+		}
+		for (KillEntry k : p.kills)
+		{
+			if (k.kc != kc)
+			{
+				continue;
+			}
+			for (KillEntry.DropEntry d : k.getDrops())
+			{
+				DropDefinition drop = rowOfSaved(boss, d.getName());
+				if (d.isEntered() && drop != null && drop.getName().equals(itemName))
+				{
+					if (d.getSince() == null)
+					{
+						return "On Rate can't tell how long it took: it doesn't know this was your first one. "
+							+ "Open this boss's collection log page, or remove it and add it again with \"This was my first one\" ticked.";
+					}
+					return d.getMultiple() == null ? "On Rate doesn't know this item's drop rate yet." : null;
+				}
+			}
+		}
+		return null;
+	}
+
+	/**
 	 * Drops across every boss whose wait is known exactly and was lucky (shorter than the drop rate
 	 * gives on average) or dry (longer), best first: luckiest are ranked by the smallest multiple of
 	 * the drop rate, dry ones by the largest. Drops added by hand count; undated ones are fine.
