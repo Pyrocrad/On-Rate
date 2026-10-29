@@ -1794,7 +1794,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, panel.getPreferredSize().height));
 		// left click opens the boss; right click is the Remove from History menu
 		Tip tip = new Tip(d.getName())
-			.row("Where", whereText(boss, r.getBoss(), r.getKill()))
+			.row("Where", r.getBoss())
+			.row(capital(unit), killValue(boss, r.getKill()))
 			.row("When", daysAgo(r.getKill().getTime(), now))
 			.row("Gap before it", gapText(d, unit));
 		if (!dropLuck(d).isEmpty())
@@ -2273,7 +2274,7 @@ public class ExpectedDropsPanel extends PluginPanel
 					itemTip.line("How lucky you were when you got it", Theme.TEXT_MUTED);
 					for (int i = 0; i < Math.min(3, drops.size()); i++)
 					{
-						itemTip.row(whereText(dropBoss, h.getBoss(), drops.get(i).getKill()), dropLuck(drops.get(i).getDrop()));
+						itemTip.row(killText(dropBoss, drops.get(i).getKill()), dropLuck(drops.get(i).getDrop()));
 					}
 					if (drops.size() > 3)
 					{
@@ -4667,7 +4668,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			for (int i = 0; i < Math.min(3, drops.size()); i++)
 			{
 				com.expecteddrops.tracking.RecentDrop r = drops.get(i);
-				luck.add(new String[]{whereText(boss, bossName, r.getKill()), dropLuck(r.getDrop())});
+				luck.add(new String[]{killText(boss, r.getKill()), dropLuck(r.getDrop())});
 			}
 			if (drops.size() > 3)
 			{

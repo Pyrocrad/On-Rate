@@ -144,6 +144,27 @@ final class Texts
 		return String.format("%s %,d", bossName, kill.getKc());
 	}
 
+	/**
+	 * The kill count of a saved kill without the boss, for hover rows: "437", or with the mode or
+	 * boss of a combined page and its own count ("Challenge Mode 12", "Artio 40").
+	 */
+	static String killValue(BossDefinition boss, com.expecteddrops.tracking.KillEntry kill)
+	{
+		if (boss != null && boss.hasParts() && kill.getPart() != null && kill.getPartKc() != null)
+		{
+			return String.format("%s %,d", kill.getPart(), kill.getPartKc());
+		}
+		return String.format("%,d", kill.getKc());
+	}
+
+	/** {@link #killValue} with what is counted in front when there is no mode: "Raid 115", "Kill 437". */
+	static String killText(BossDefinition boss, com.expecteddrops.tracking.KillEntry kill)
+	{
+		boolean mode = boss != null && boss.hasParts() && kill.getPart() != null && kill.getPartKc() != null;
+		return mode ? killValue(boss, kill)
+			: capital(boss == null ? "kill" : com.expecteddrops.tracking.Tracker.unitOne(boss)) + " " + killValue(boss, kill);
+	}
+
 	static String shortMode(String part)
 	{
 		switch (part)
