@@ -2862,11 +2862,16 @@ public class ExpectedDropsPanel extends PluginPanel
 			+ "It is added to History without a date. Your counts and expected stay as they are; "
 			+ "your dry streak counts from it.</body></html>"));
 		form.add(spinner);
-		javax.swing.JCheckBox first = new javax.swing.JCheckBox("This was my first one", r.getReceived() == 1);
-		first.setToolTipText("<html><body style='width: 220px'>Its wait is then its kill count, so it can show in "
-			+ "Luckiest drops or Longest waits. If you already added an earlier copy, the gap since it is used instead."
-			+ "</body></html>");
-		form.add(first);
+		// with one copy it can only be the first: no question. With more, ask.
+		boolean only = r.getReceived() == 1;
+		javax.swing.JCheckBox first = new javax.swing.JCheckBox("This was my first one", false);
+		if (!only)
+		{
+			first.setToolTipText("<html><body style='width: 220px'>Its wait is then its kill count, so it can show in "
+				+ "Luckiest drops or Longest waits. If you already added an earlier copy, the gap since it is used instead."
+				+ "</body></html>");
+			form.add(first);
+		}
 		int answer = JOptionPane.showConfirmDialog(this, form, "I got this at " + unit, JOptionPane.OK_CANCEL_OPTION,
 			JOptionPane.PLAIN_MESSAGE);
 		if (answer != JOptionPane.OK_OPTION)
@@ -2874,7 +2879,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			return;
 		}
 		int kc = ((Number) spinner.getValue()).intValue();
-		if (tracker.addPastDrop(bossName, r.getIconItem(), kc, first.isSelected()))
+		if (tracker.addPastDrop(bossName, r.getIconItem(), kc, only || first.isSelected()))
 		{
 			save.run();
 			String why = tracker.pastDropNotRankedReason(bossName, r.getIconItem(), kc);
