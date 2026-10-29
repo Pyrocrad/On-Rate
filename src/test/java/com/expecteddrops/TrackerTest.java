@@ -3269,4 +3269,18 @@ public class TrackerTest
 		assertTrue(tracker.addPastDrop("Chambers of Xeric", "Twisted bow", 115, true, "Normal"));
 		assertEquals(1, tracker.history("Chambers of Xeric").size());
 	}
+
+	@Test
+	public void aPartWithUnknownKillsCanStillBePicked()
+	{
+		tracker.setSettings(RAIDS);
+		Map<String, Integer> page = new LinkedHashMap<>();
+		page.put("Skull of vet'ion", 1);
+		tracker.onClogPage("Vet'ion and Calvar'ion", Collections.singletonList("Vet'ion kills: 300"), page);
+		assertEquals(Arrays.asList("Vet'ion", "Calvar'ion"), tracker.pastDropParts("Vet'ion and Calvar'ion", "Skull of vet'ion"));
+		assertEquals(300, tracker.pastDropLimit("Vet'ion and Calvar'ion", "Vet'ion"));
+		assertEquals(Tracker.UNKNOWN_PART_LIMIT, tracker.pastDropLimit("Vet'ion and Calvar'ion", "Calvar'ion"));
+		assertTrue(tracker.addPastDrop("Vet'ion and Calvar'ion", "Skull of vet'ion", 40, false, "Calvar'ion"));
+		assertEquals("Calvar'ion", tracker.history("Vet'ion and Calvar'ion").get(0).getKill().getPart());
+	}
 }

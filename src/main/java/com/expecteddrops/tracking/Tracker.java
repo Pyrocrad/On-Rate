@@ -1120,7 +1120,7 @@ public class Tracker
 		return part == null ? k.kc : k.partKc;
 	}
 
-	/** Most kills a past drop can be entered at: the page's kill count, or the part's own. 0 when unknown. */
+	/** Most kills a past drop can be entered at: the page's kill count, or the part's own. 0 for a page whose kills are unknown. */
 	public synchronized int pastDropLimit(String bossName, String partName)
 	{
 		BossDefinition boss = catalog.byName(bossName);
@@ -1134,12 +1134,16 @@ public class Tracker
 		}
 		BossStats s = stats(bossName, settings);
 		Integer n = s == null || s.getPartCounts() == null ? null : s.getPartCounts().get(partName);
-		return n == null ? 0 : n;
+		// the part's count isn't known (not in the log yet, no kills seen): the player knows better, so don't block them
+		return n == null || n < 1 ? UNKNOWN_PART_LIMIT : n;
 	}
 
+	/** Most a past drop can be entered at for a part whose kill count On Rate doesn't know. */
+	public static final int UNKNOWN_PART_LIMIT = 100_000;
+
 	/**
-	 * The parts of a combined page a drop can be entered at: the ones the item drops from, that
-	 * you have kills at. Empty for a page without parts.
+	 * The parts of a combined page a drop can be entered at: the ones the item drops from (all of
+	 * them when none has a known rate). Empty for a page without parts.
 	 */
 	public synchronized List<String> pastDropParts(String bossName, String itemName)
 	{
@@ -1160,10 +1164,6 @@ public class Tracker
 		List<String> fallback = new ArrayList<>();
 		for (BossPart part : boss.getParts())
 		{
-			if (pastDropLimit(bossName, part.getName()) < 1)
-			{
-				continue;
-			}
 			fallback.add(part.getName());
 			if (drop != null && partRate(boss, part, drop, settings) > 0)
 			{
