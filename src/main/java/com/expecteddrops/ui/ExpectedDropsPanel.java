@@ -1612,7 +1612,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		return after.startsWith("after ") ? after.substring("after ".length()) : after;
 	}
 
-	/** The account's Recent tab: the latest uniques across every boss. */
+	/** The account's Recent tab: the latest uniques across every boss, then your luckiest and longest-waited drops. */
 	private void renderRecentTab()
 	{
 		long nowMs = System.currentTimeMillis();
@@ -1623,13 +1623,15 @@ public class ExpectedDropsPanel extends PluginPanel
 			rowsPanel.add(spacer(Theme.M));
 		}
 		List<com.expecteddrops.tracking.RecentDrop> recent = tracker.recentDrops(10);
+		List<com.expecteddrops.tracking.RecentDrop> lucky = tracker.dropsByLuck(true, TOP_DROPS);
+		List<com.expecteddrops.tracking.RecentDrop> waited = tracker.dropsByLuck(false, TOP_DROPS);
 		if (!recent.isEmpty() && days)
 		{
 			JLabel latest = smallLabel("LATEST UNIQUES", ColorScheme.LIGHT_GRAY_COLOR);
 			latest.setAlignmentX(LEFT_ALIGNMENT);
 			rowsPanel.add(latest);
 		}
-		if (recent.isEmpty())
+		if (recent.isEmpty() && lucky.isEmpty() && waited.isEmpty())
 		{
 			JLabel none = smallLabel("<html><body style='width: 165px'>No uniques seen yet. They show up here from now on.</body></html>",
 				ColorScheme.LIGHT_GRAY_COLOR);
@@ -1641,34 +1643,78 @@ public class ExpectedDropsPanel extends PluginPanel
 		long now = System.currentTimeMillis();
 		for (com.expecteddrops.tracking.RecentDrop r : recent)
 		{
-			com.expecteddrops.tracking.KillEntry.DropEntry d = r.getDrop();
-			BossDefinition boss = tracker.getCatalog().byName(r.getBoss());
-			String unit = boss == null ? "kill" : com.expecteddrops.tracking.Tracker.unitOne(boss);
-			JPanel panel = new JPanel(new BorderLayout(6, 0));
-			panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-			panel.setBorder(new EmptyBorder(Theme.S, Theme.S, Theme.S, Theme.S));
-			panel.setAlignmentX(LEFT_ALIGNMENT);
-			JPanel text = new JPanel(new GridLayout(2, 1, 0, 0));
-			text.setOpaque(false);
-			JLabel what = smallLabel(d.getName() + "  \u00b7 " + whereText(boss, r.getBoss(), r.getKill()), Color.WHITE);
-			what.setFont(FontManager.getRunescapeFont());
-			text.add(what);
-			String after = afterText(d, unit);
-			JLabel second = smallLabel(daysAgo(r.getKill().getTime(), now) + (after.isEmpty() ? "" : " \u00b7 " + after),
-				multipleColor(d));
-			text.add(second);
-			panel.add(text, BorderLayout.CENTER);
-			panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, panel.getPreferredSize().height));
-			// left click opens the boss; right click is the Remove from History menu
-			setTip(panel, new Tip(d.getName())
-				.row("Where", whereText(boss, r.getBoss(), r.getKill()))
-				.row("When", daysAgo(r.getKill().getTime(), now))
-				.row("Gap before it", gapText(d, unit))
-				.wide(), () -> showBoss(r.getBoss()), true);
-			withRemoveMenu(panel, r.getBoss(), r.getKill(), java.util.Collections.singletonList(d));
 			rowsPanel.add(spacer(Theme.HAIR));
-			rowsPanel.add(panel);
+			rowsPanel.add(recentDropRow(r, now, false));
 		}
+		renderDropRanking("LUCKIEST DROPS", lucky, now,
+			"Single drops that came sooner than their drop rate gives on average, luckiest first. "
+				+ "Each is judged once, by how long that drop took, and stays that way. "
+				+ "The Items tab is different: it shows where you stand now, how many of an item you have against how many you'd expect by now.");
+		renderDropRanking("LONGEST WAITS", waited, now,
+			"Single drops that took longer than their drop rate gives on average, longest wait first. "
+				+ "Each is judged once, by how long that drop took. "
+				+ "The Items tab is different: it shows where you stand now, how many of an item you have against how many you'd expect by now.");
+	}
+
+	/** How many drops the Luckiest drops and Longest waits lists show. */
+	static final int TOP_DROPS = 5;
+
+	private void renderDropRanking(String heading, List<com.expecteddrops.tracking.RecentDrop> drops, long now, String help)
+	{
+		if (drops.isEmpty())
+		{
+			return;
+		}
+		rowsPanel.add(spacer(Theme.M));
+		JLabel title = smallLabel(heading, ColorScheme.LIGHT_GRAY_COLOR);
+		title.setAlignmentX(LEFT_ALIGNMENT);
+		title.setToolTipText("<html><body style='width: 240px'>" + help + "</body></html>");
+		rowsPanel.add(title);
+		for (com.expecteddrops.tracking.RecentDrop r : drops)
+		{
+			rowsPanel.add(spacer(Theme.HAIR));
+			rowsPanel.add(recentDropRow(r, now, true));
+		}
+	}
+
+	/**
+	 * One unique as a row: what and where on top, and underneath when and the wait before it. In
+	 * the luck lists the second line says how lucky the wait was instead of when it came.
+	 */
+	private JPanel recentDropRow(com.expecteddrops.tracking.RecentDrop r, long now, boolean ranked)
+	{
+		com.expecteddrops.tracking.KillEntry.DropEntry d = r.getDrop();
+		BossDefinition boss = tracker.getCatalog().byName(r.getBoss());
+		String unit = boss == null ? "kill" : com.expecteddrops.tracking.Tracker.unitOne(boss);
+		JPanel panel = new JPanel(new BorderLayout(6, 0));
+		panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		panel.setBorder(new EmptyBorder(Theme.S, Theme.S, Theme.S, Theme.S));
+		panel.setAlignmentX(LEFT_ALIGNMENT);
+		JPanel text = new JPanel(new GridLayout(2, 1, 0, 0));
+		text.setOpaque(false);
+		JLabel what = smallLabel(d.getName() + "  \u00b7 " + whereText(boss, r.getBoss(), r.getKill()), Color.WHITE);
+		what.setFont(FontManager.getRunescapeFont());
+		text.add(what);
+		String after = afterText(d, unit);
+		// the luck lists use the room for the multiple and the luck; the wait itself is in the hover
+		String second = ranked
+			? (d.getMultiple() == null ? "" : formatMultiple(d.getMultiple()) + " \u00b7 ") + dropLuck(d).replace(" of players", "")
+			: daysAgo(r.getKill().getTime(), now) + (after.isEmpty() ? "" : " \u00b7 " + after);
+		text.add(smallLabel(second, multipleColor(d)));
+		panel.add(text, BorderLayout.CENTER);
+		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, panel.getPreferredSize().height));
+		// left click opens the boss; right click is the Remove from History menu
+		Tip tip = new Tip(d.getName())
+			.row("Where", whereText(boss, r.getBoss(), r.getKill()))
+			.row("When", daysAgo(r.getKill().getTime(), now))
+			.row("Gap before it", gapText(d, unit));
+		if (!dropLuck(d).isEmpty())
+		{
+			tip.row("Luck", dropLuck(d));
+		}
+		setTip(panel, tip.wide(), () -> showBoss(r.getBoss()), true);
+		withRemoveMenu(panel, r.getBoss(), r.getKill(), java.util.Collections.singletonList(d));
+		return panel;
 	}
 
 	/**
@@ -1785,11 +1831,15 @@ public class ExpectedDropsPanel extends PluginPanel
 				for (com.expecteddrops.tracking.KillEntry.DropEntry d : k.getDrops())
 				{
 					String after = afterText(d, unit).replace("after ", "");
-					String tip = new Tip(d.getName())
+					Tip dropTip = new Tip(d.getName())
 						.row(byPart ? k.getPart() : capital(unit), String.format("%,d", byPart ? k.getPartKc() : k.getKc()))
 						.row("When", daysAgo(k.getTime(), now))
-						.row("Gap before it", gapText(d, unit))
-						.wide();
+						.row("Gap before it", gapText(d, unit));
+					if (!dropLuck(d).isEmpty())
+					{
+						dropTip.row("Luck", dropLuck(d));
+					}
+					String tip = dropTip.wide();
 					rowsPanel.add(withRemoveMenu(byPart
 						? historyTwoLines(String.format("%,d", k.getPartKc()), d.getName(), Color.WHITE,
 							k.getPart() + (after.isEmpty() ? "" : " \u00b7 " + after), multipleColor(d), tip)

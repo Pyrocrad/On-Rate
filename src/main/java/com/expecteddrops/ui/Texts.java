@@ -54,6 +54,27 @@ final class Texts
 		return days <= 0 ? "today" : days == 1 ? "yesterday" : String.format("%,d days ago", days);
 	}
 
+	/**
+	 * How lucky one drop was, for its hover: "quicker than 96% of players" when it came before the
+	 * drop rate says, "slower than 94% of players" when after, "" when the wait isn't known exactly.
+	 */
+	static String dropLuck(com.expecteddrops.tracking.KillEntry.DropEntry d)
+	{
+		double q = d.getLuck();
+		if (Double.isNaN(q) || d.getMultiple() == null)
+		{
+			return "";
+		}
+		if (d.getMultiple() == 1)
+		{
+			return "right on the drop rate";
+		}
+		boolean quick = d.getMultiple() < 1;
+		double share = quick ? 1 - q : q;
+		return (quick ? "quicker than " : "slower than ") + (share > 0.995 ? ">99%" : share < 0.005 ? "<1%" : String.format("%.0f%%", share * 100))
+			+ " of players";
+	}
+
 	/** "after 7 kills (0.1x)", "your first one", or "" when the gap is unknown. */
 	static String afterText(com.expecteddrops.tracking.KillEntry.DropEntry d, String unit)
 	{

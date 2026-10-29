@@ -136,6 +136,15 @@ public class KillEntry
 			return pet != null && pet;
 		}
 
+		/**
+		 * How lucky this wait was: the share of players who would have had one by then at the
+		 * drop rate (1 - e^-multiple). Small is lucky, large is dry. NaN when the wait isn't known exactly.
+		 */
+		public double getLuck()
+		{
+			return multiple == null || isAtLeast() ? Double.NaN : 1 - Math.exp(-multiple);
+		}
+
 		public boolean isEntered()
 		{
 			return entered != null && entered;

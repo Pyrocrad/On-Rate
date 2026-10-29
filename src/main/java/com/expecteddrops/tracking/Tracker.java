@@ -977,6 +977,47 @@ public class Tracker
 	}
 
 	/**
+	 * Drops across every boss whose wait is known exactly and was lucky (shorter than the drop rate
+	 * gives on average) or dry (longer), best first: luckiest are ranked by the smallest multiple of
+	 * the drop rate, dry ones by the largest. Drops added by hand count; undated ones are fine.
+	 */
+	public synchronized List<RecentDrop> dropsByLuck(boolean lucky, int limit)
+	{
+		List<RecentDrop> all = new ArrayList<>();
+		for (BossDefinition boss : catalog.getBosses())
+		{
+			BossProgress p = state.peek(boss.getName());
+			if (p == null)
+			{
+				continue;
+			}
+			for (KillEntry k : p.kills)
+			{
+				for (KillEntry.DropEntry d : k.getDrops())
+				{
+					Double m = d.getMultiple();
+					if (m == null || d.isAtLeast() || catalog.isUntracked(d.getName()) || (lucky ? m >= 1 : m <= 1))
+					{
+						continue;
+					}
+					DropDefinition drop = rowOfSaved(boss, d.getName());
+					if (drop != null && counts(boss, drop, p))
+					{
+						all.add(new RecentDrop(boss.getName(), k, d));
+					}
+				}
+			}
+		}
+		all.sort((a, b) ->
+		{
+			int byLuck = lucky ? Double.compare(a.getDrop().getMultiple(), b.getDrop().getMultiple())
+				: Double.compare(b.getDrop().getMultiple(), a.getDrop().getMultiple());
+			return byLuck != 0 ? byLuck : Long.compare(b.getKill().getTime(), a.getKill().getTime());
+		});
+		return all.size() > limit ? new ArrayList<>(all.subList(0, limit)) : all;
+	}
+
+	/**
 	 * Adds a unique the player remembers getting at a known kill count (before On Rate, or one it
 	 * missed) to History, e.g. "Twisted bow at raid 115". The entry has no date. Only History,
 	 * the item's dry streak and its "after N kills" text change: the received count already comes
@@ -1048,14 +1089,33 @@ public class Tracker
 		entry.name = shown;
 		entry.pet = drop.isPet() ? Boolean.TRUE : null;
 		entry.entered = Boolean.TRUE;
+		String key = BossCatalog.normalize(itemName);
+		Integer have = progress.received.get(key);
 		if (previousKc > 0)
 		{
 			entry.since = kc - previousKc;
+		}
+		else if (progress.clogSynced && !catalog.isClogShared(key) && have != null && have == 1)
+		{
+			// the only copy the log shows is this one, so it was the first
+			entry.since = kc;
+			entry.first = Boolean.TRUE;
+		}
+		if (entry.since != null)
+		{
 			double rate = rateOf(boss, drop);
 			if (rate > 0)
 			{
 				entry.multiple = Math.round(entry.since * rate * 100) / 100.0;
 			}
+			// the same records a drop On Rate saw feeds
+			if (progress.fastestGap == null)
+			{
+				progress.fastestGap = new HashMap<>();
+				progress.longestGap = new HashMap<>();
+			}
+			progress.fastestGap.merge(key, entry.since, Math::min);
+			progress.longestGap.merge(key, entry.since, Math::max);
 		}
 		if (at == null)
 		{
@@ -1075,7 +1135,6 @@ public class Tracker
 		at.drops.add(entry);
 		killsChanged.add(boss.getName());
 		// the dry streak counts from the latest drop of any copy
-		String key = BossCatalog.normalize(itemName);
 		Integer last = progress.lastDropKc.get(key);
 		if (last == null || kc > last)
 		{

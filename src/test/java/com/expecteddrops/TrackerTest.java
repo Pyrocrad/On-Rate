@@ -3170,4 +3170,41 @@ public class TrackerTest
 		assertEquals(45, (int) row(tracker.stats("Deranged Archaeologist", RAIDS), "Steel ring").getStreak());
 		assertEquals(10, ((KillEntry) savedUniques("Deranged Archaeologist").get(2)[0]).getKc());
 	}
+
+	@Test
+	public void pastDropsFeedRecordsAndTheLuckLists()
+	{
+		Map<String, Integer> page = new LinkedHashMap<>();
+		page.put("Steel ring", 2);
+		tracker.onClogPage("Deranged Archaeologist", Collections.singletonList("Deranged Archaeologist kills: 400"), page);
+		assertTrue(tracker.addPastDrop("Deranged Archaeologist", "Steel ring", 20));
+		assertTrue(tracker.addPastDrop("Deranged Archaeologist", "Steel ring", 380));
+		// two copies in the log: the first entered one can't be known to be the first
+		List<Object[]> saved = savedUniques("Deranged Archaeologist");
+		KillEntry.DropEntry second = (KillEntry.DropEntry) saved.get(0)[1];
+		KillEntry.DropEntry early = (KillEntry.DropEntry) saved.get(1)[1];
+		assertNull(early.getSince());
+		assertEquals(360, (int) second.getSince());
+		RowStats ring = row(tracker.stats("Deranged Archaeologist", RAIDS), "Steel ring");
+		assertEquals(Integer.valueOf(360), ring.getLongest());
+		assertEquals(Integer.valueOf(360), ring.getFastest());
+		assertTrue(second.getLuck() > 0 && second.getLuck() < 1);
+		// the long wait is on the dry list only if it is past the drop rate; never on both lists
+		boolean dry = second.getMultiple() > 1;
+		assertEquals(dry ? 1 : 0, tracker.dropsByLuck(false, 5).size());
+		assertEquals(dry ? 0 : 1, tracker.dropsByLuck(true, 5).size());
+
+		// a single copy entered is the first one: its wait is its kill count
+		Tracker other = new Tracker(catalog);
+		Map<String, Integer> one = new LinkedHashMap<>();
+		one.put("Steel ring", 1);
+		other.onClogPage("Deranged Archaeologist", Collections.singletonList("Deranged Archaeologist kills: 400"), one);
+		assertTrue(other.addPastDrop("Deranged Archaeologist", "Steel ring", 5));
+		KillEntry.DropEntry first = (KillEntry.DropEntry) other.history("Deranged Archaeologist").get(0).getKill().getDrops().get(0);
+		assertTrue(first.isFirst());
+		assertEquals(5, (int) first.getSince());
+		assertTrue(first.getLuck() < 0.5);
+		assertEquals(1, other.dropsByLuck(true, 5).size());
+		assertEquals(0, other.dropsByLuck(false, 5).size());
+	}
 }
