@@ -67,8 +67,14 @@ final class Texts
 			return "";
 		}
 		// older versions saved a multiple rounded to two decimals: 0.00 is only known to be under 0.005
-		boolean floor = d.getMultiple() == 0;
-		double m = floor ? 0.005 : d.getMultiple();
+		return waitLuck(d.getMultiple());
+	}
+
+	/** {@link #dropLuck} for a wait of {@code multiple} times the drop rate (also a wait still going on). */
+	static String waitLuck(double multiple)
+	{
+		boolean floor = multiple == 0;
+		double m = floor ? 0.005 : multiple;
 		if (m == 1)
 		{
 			return "right on the drop rate";

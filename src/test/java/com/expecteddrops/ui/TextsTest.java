@@ -203,4 +203,12 @@ public class TextsTest
 		// saved rounded to 0.00 (older versions): only known to be under 0.005
 		assertEquals("quicker than 99.5% of players (1 in 200+)", Texts.dropLuck(dropWith(0.0)));
 	}
+
+	@Test
+	public void aWaitStillGoingOnHasTheSameLuckWords()
+	{
+		// 5 times the drop rate without one: 1 in 148 players waits this long
+		assertEquals("slower than 99% of players (1 in 148)", Texts.waitLuck(5.0));
+		assertEquals(Texts.dropLuck(dropWith(3.0)), Texts.waitLuck(3.0));
+	}
 }

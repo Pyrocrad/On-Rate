@@ -1341,7 +1341,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		else if (tabs && accountTab == TAB_RECENT)
 		{
 			sortRow.setVisible(false);
-			renderRecentTab();
+			renderRecentTab(account);
 		}
 		else
 		{
@@ -1613,7 +1613,7 @@ public class ExpectedDropsPanel extends PluginPanel
 	}
 
 	/** The account's Recent tab: the latest uniques across every boss, then your luckiest and longest-waited drops. */
-	private void renderRecentTab()
+	private void renderRecentTab(AccountStats account)
 	{
 		long nowMs = System.currentTimeMillis();
 		boolean days = renderDays("Today", tracker.recentDays(1, nowMs));
@@ -1624,7 +1624,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		List<com.expecteddrops.tracking.RecentDrop> recent = tracker.recentDrops(10);
 		List<com.expecteddrops.tracking.RecentDrop> lucky = tracker.dropsByLuck(true, TOP_DROPS);
-		List<com.expecteddrops.tracking.RecentDrop> waited = tracker.dropsByLuck(false, TOP_DROPS);
+		List<Wait> waited = longestWaits(account);
 		if (!recent.isEmpty() && days)
 		{
 			JLabel latest = smallLabel("LATEST UNIQUES", ColorScheme.LIGHT_GRAY_COLOR);
@@ -1650,10 +1650,99 @@ public class ExpectedDropsPanel extends PluginPanel
 			"Single drops that came sooner than their drop rate gives on average, luckiest first. "
 				+ "Each is judged once, by how long that drop took, and stays that way. "
 				+ "The Items tab is different: it shows where you stand now, how many of an item you have against how many you'd expect by now.");
-		renderDropRanking("LONGEST WAITS", waited, now,
-			"Single drops that took longer than their drop rate gives on average, longest wait first. "
-				+ "Each is judged once, by how long that drop took. "
-				+ "The Items tab is different: it shows where you stand now, how many of an item you have against how many you'd expect by now.");
+		renderLongestWaits(waited, now);
+	}
+
+	/** A wait for the Longest waits list: a drop that took long, or an item you're still waiting for. */
+	private static final class Wait
+	{
+		final double multiple;
+		final com.expecteddrops.tracking.RecentDrop drop;
+		final com.expecteddrops.stats.ItemHighlight ongoing;
+
+		Wait(double multiple, com.expecteddrops.tracking.RecentDrop drop, com.expecteddrops.stats.ItemHighlight ongoing)
+		{
+			this.multiple = multiple;
+			this.drop = drop;
+			this.ongoing = ongoing;
+		}
+	}
+
+	/**
+	 * The {@link #TOP_DROPS} longest waits: drops that took longer than their drop rate, and items
+	 * you're still waiting for (dry for more than one drop rate since the last copy, or since the
+	 * start), ranked together by how many times the drop rate the wait is.
+	 */
+	private List<Wait> longestWaits(AccountStats account)
+	{
+		List<Wait> all = new ArrayList<>();
+		for (com.expecteddrops.tracking.RecentDrop d : tracker.dropsByLuck(false, TOP_DROPS))
+		{
+			all.add(new Wait(d.getDrop().getMultiple(), d, null));
+		}
+		for (com.expecteddrops.stats.ItemHighlight h : account.getItems())
+		{
+			RowStats r = h.getRow();
+			double m = r.getStreakMultiple();
+			if (!r.isAny() && !r.isComplete() && r.getStreak() != null && r.isStreakExact() && r.getRate() > 0
+				&& !Double.isNaN(m) && m > 1)
+			{
+				all.add(new Wait(m, null, h));
+			}
+		}
+		all.sort((a, b) -> Double.compare(b.multiple, a.multiple));
+		return all.size() > TOP_DROPS ? new ArrayList<>(all.subList(0, TOP_DROPS)) : all;
+	}
+
+	private void renderLongestWaits(List<Wait> waits, long now)
+	{
+		if (waits.isEmpty())
+		{
+			return;
+		}
+		rowsPanel.add(spacer(Theme.M));
+		JLabel title = smallLabel("LONGEST WAITS", ColorScheme.LIGHT_GRAY_COLOR);
+		title.setAlignmentX(LEFT_ALIGNMENT);
+		title.setToolTipText("<html><body style='width: 240px'>Single drops that took longer than their drop rate gives "
+			+ "on average, and items you are still waiting for, longest wait first (as a multiple of the drop rate). "
+			+ "Each drop is judged once, by how long it took. "
+			+ "The Items tab is different: it shows where you stand now, how many of an item you have against how many "
+			+ "you'd expect by now.</body></html>");
+		rowsPanel.add(title);
+		for (Wait w : waits)
+		{
+			rowsPanel.add(spacer(Theme.HAIR));
+			rowsPanel.add(w.drop != null ? recentDropRow(w.drop, now, true) : ongoingWaitRow(w.ongoing, w.multiple));
+		}
+	}
+
+	/** An item you're still waiting for: its boss on top, "still waiting" and how unlikely that is underneath. */
+	private JPanel ongoingWaitRow(com.expecteddrops.stats.ItemHighlight h, double multiple)
+	{
+		RowStats r = h.getRow();
+		BossDefinition boss = h.getBoss() == null ? null : tracker.getCatalog().byName(h.getBoss());
+		String unit = boss == null ? "kills" : com.expecteddrops.tracking.Tracker.unit(boss);
+		JPanel panel = new JPanel(new BorderLayout(6, 0));
+		panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		panel.setBorder(new EmptyBorder(Theme.S, Theme.S, Theme.S, Theme.S));
+		panel.setAlignmentX(LEFT_ALIGNMENT);
+		JPanel text = new JPanel(new GridLayout(2, 1, 0, 0));
+		text.setOpaque(false);
+		JLabel what = smallLabel(r.getLabel() + "  \u00b7 " + (h.getBoss() == null ? "several bosses" : h.getBoss()), Color.WHITE);
+		what.setFont(FontManager.getRunescapeFont());
+		text.add(what);
+		text.add(smallLabel("still waiting \u00b7 " + waitLuck(multiple).replace(" of players", ""),
+			luckColor(Math.exp(-multiple)).brighter()));
+		panel.add(text, BorderLayout.CENTER);
+		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, panel.getPreferredSize().height));
+		Tip tip = new Tip(r.getLabel())
+			.row("Where", h.getBoss() == null ? "several bosses" : h.getBoss())
+			.row("Without one", String.format("%,d %s, %s", r.getStreak(), unit, formatMultiple(multiple) + " the drop rate"))
+			.row("Luck", waitLuck(multiple));
+		setTip(panel, tip.note("Still going: each " + (unit.endsWith("s") ? unit.substring(0, unit.length() - 1) : unit)
+			+ " is its own roll, so a long wait doesn't make the next one more likely.").wide(),
+			h.getBoss() == null ? null : () -> showBoss(h.getBoss()), true);
+		return panel;
 	}
 
 	/** How many drops the Luckiest drops and Longest waits lists show. */
