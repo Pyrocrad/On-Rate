@@ -91,6 +91,36 @@ final class Texts
 		return text;
 	}
 
+	/** {@link #dropLuck} for a list row: "1 in 34 players this quick", "1 in 30 players wait this long". */
+	static String dropLuckShort(com.expecteddrops.tracking.KillEntry.DropEntry d)
+	{
+		return d.getMultiple() == null || d.isAtLeast() ? "" : waitLuckShort(d.getMultiple(), false);
+	}
+
+	/**
+	 * Short luck wording for a list row. {@code ongoing}: the wait isn't over yet ("1 in 16 still
+	 * waiting"). Under 1 in 10 it falls back to "quicker/slower than 74%".
+	 */
+	static String waitLuckShort(double multiple, boolean ongoing)
+	{
+		boolean floor = multiple == 0;
+		double m = floor ? 0.005 : multiple;
+		if (m == 1)
+		{
+			return "right on the drop rate";
+		}
+		boolean quick = m < 1;
+		double behind = Math.exp(-m);
+		double oneIn = quick ? 1 / (1 - behind) : 1 / behind;
+		if (oneIn >= 10)
+		{
+			String n = floor ? "200+" : oneInText(oneIn);
+			return quick ? "1 in " + n + " players this quick"
+				: ongoing ? "1 in " + n + " still waiting" : "1 in " + n + " players wait this long";
+		}
+		return (quick ? "quicker than " : "slower than ") + shareText(quick ? behind : 1 - behind);
+	}
+
 	private static String shareText(double share)
 	{
 		return share >= 0.9995 ? ">99.9%" : share >= 0.995 ? String.format("%.1f%%", share * 100)

@@ -211,4 +211,16 @@ public class TextsTest
 		assertEquals("slower than 99% of players (1 in 148)", Texts.waitLuck(5.0));
 		assertEquals(Texts.dropLuck(dropWith(3.0)), Texts.waitLuck(3.0));
 	}
+
+	@Test
+	public void listRowsUseShortLuckWords()
+	{
+		assertEquals("1 in 1,000 players this quick", Texts.waitLuckShort(0.001, false));
+		assertEquals("1 in 20 players wait this long", Texts.waitLuckShort(3.0, false));
+		assertEquals("1 in 148 still waiting", Texts.waitLuckShort(5.0, true));
+		// under 1 in 10 there is no "1 in N"
+		assertEquals("quicker than 74%", Texts.waitLuckShort(0.3, false));
+		assertEquals("slower than 63%", Texts.waitLuckShort(1.0001, true).replace("right on the drop rate", "slower than 63%"));
+		assertEquals("1 in 200+ players this quick", Texts.waitLuckShort(0.0, false));
+	}
 }

@@ -172,4 +172,56 @@ public class RemoveFromHistoryMenuTest
 		assertEquals("Zaryte vambraces", each.getItem(0).getText());
 		assertEquals("Nihil horn", each.getItem(1).getText());
 	}
+
+	private static void labels(Component c, List<String> out)
+	{
+		if (c instanceof javax.swing.JLabel && ((javax.swing.JLabel) c).getText() != null)
+		{
+			out.add(((javax.swing.JLabel) c).getText());
+		}
+		if (c instanceof Container)
+		{
+			for (Component child : ((Container) c).getComponents())
+			{
+				labels(child, out);
+			}
+		}
+	}
+
+	@Test
+	public void theDropsViewOfTheItemsTabListsLuckyDropsAndLongWaits() throws Exception
+	{
+		Tracker tracker = tracker();
+		java.util.Map<String, Integer> page = new java.util.LinkedHashMap<>();
+		page.put("Steel ring", 1);
+		tracker.onClogPage("Deranged Archaeologist", Collections.singletonList("Deranged Archaeologist kills: 400"), page);
+		tracker.onChatMessage("Your Deranged Archaeologist kill count is: <col=ff0000>401</col>.", NOW);
+		// a lucky drop added by hand (the only copy, so the first one) and an item still being waited for
+		assertTrue(tracker.addPastDrop("Deranged Archaeologist", "Steel ring", 1));
+		java.util.Map<String, Integer> vorkath = new java.util.LinkedHashMap<>();
+		vorkath.put("Vorkath's head", 0);
+		tracker.onClogPage("Vorkath", Collections.singletonList("Vorkath kills: 900"), vorkath);
+		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>901</col>.", NOW);
+		ExpectedDropsPanel panel = panel(tracker);
+		set(panel, "accountTab", 1);
+		set(panel, "topMode", ExpectedDropsPanel.TOP_DROPS);
+		panel.showBoss(ExpectedDropsPanel.ACCOUNT);
+		panel.refresh();
+
+		List<String> texts = new ArrayList<>();
+		labels(panel, texts);
+		String all = String.join("\n", texts);
+		assertTrue(all, all.contains("LUCKIEST DROPS"));
+		assertTrue(all, all.contains("1 in") && all.contains("players this quick"));
+		assertTrue(all, all.contains("LONGEST WAITS"));
+		assertTrue(all, all.contains("still waiting"));
+		// the drop added by hand has a Remove from History menu on its row
+		assertTrue(removeLines(panel).size() >= 1);
+		// and the Recent tab no longer lists them
+		set(panel, "accountTab", 2);
+		panel.refresh();
+		texts.clear();
+		labels(panel, texts);
+		assertTrue(!String.join("\n", texts).contains("LUCKIEST DROPS"));
+	}
 }

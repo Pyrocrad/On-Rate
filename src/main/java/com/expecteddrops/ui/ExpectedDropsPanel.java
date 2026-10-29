@@ -134,6 +134,8 @@ public class ExpectedDropsPanel extends PluginPanel
 	public static final int TOP_DRIEST = 0;
 	public static final int TOP_LUCKIEST = 1;
 	public static final int TOP_PETS = 2;
+	/** Items tab view of single drops: luckiest drops and longest waits. */
+	public static final int TOP_DROPS = 3;
 	/** Pets shown per group in the Items tab: the luckiest ones you have, the driest ones you don't. */
 	static final int TOP_PETS_SHOWN = 5;
 	/** Account overview: showing the Items tab (the top items) instead of the bosses. */
@@ -1341,7 +1343,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		else if (tabs && accountTab == TAB_RECENT)
 		{
 			sortRow.setVisible(false);
-			renderRecentTab(account);
+			renderRecentTab();
 		}
 		else
 		{
@@ -1491,8 +1493,14 @@ public class ExpectedDropsPanel extends PluginPanel
 	/** A gap in drop rates as a colour: well under the rate is lucky, well over it is dry. */
 	private static Color multipleColor(com.expecteddrops.tracking.KillEntry.DropEntry d)
 	{
+		return multipleColor(d, false);
+	}
+
+	/** Grey for a first drop (nothing to compare with) unless {@code evenFirst}: the Drops view colours every drop by its luck. */
+	private static Color multipleColor(com.expecteddrops.tracking.KillEntry.DropEntry d, boolean evenFirst)
+	{
 		Double m = d.getMultiple();
-		return d.isFirst() || m == null ? ColorScheme.LIGHT_GRAY_COLOR : luckColor(Math.exp(-m)).brighter();
+		return (d.isFirst() && !evenFirst) || m == null ? ColorScheme.LIGHT_GRAY_COLOR : luckColor(Math.exp(-m)).brighter();
 	}
 
 	/**
@@ -1612,8 +1620,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		return after.startsWith("after ") ? after.substring("after ".length()) : after;
 	}
 
-	/** The account's Recent tab: the latest uniques across every boss, then your luckiest and longest-waited drops. */
-	private void renderRecentTab(AccountStats account)
+	/** The account's Recent tab: today, the last 7 days and the latest uniques across every boss. */
+	private void renderRecentTab()
 	{
 		long nowMs = System.currentTimeMillis();
 		boolean days = renderDays("Today", tracker.recentDays(1, nowMs));
@@ -1623,15 +1631,13 @@ public class ExpectedDropsPanel extends PluginPanel
 			rowsPanel.add(spacer(Theme.M));
 		}
 		List<com.expecteddrops.tracking.RecentDrop> recent = tracker.recentDrops(10);
-		List<com.expecteddrops.tracking.RecentDrop> lucky = tracker.dropsByLuck(true, TOP_DROPS);
-		List<Wait> waited = longestWaits(account);
 		if (!recent.isEmpty() && days)
 		{
 			JLabel latest = smallLabel("LATEST UNIQUES", ColorScheme.LIGHT_GRAY_COLOR);
 			latest.setAlignmentX(LEFT_ALIGNMENT);
 			rowsPanel.add(latest);
 		}
-		if (recent.isEmpty() && lucky.isEmpty() && waited.isEmpty())
+		if (recent.isEmpty())
 		{
 			JLabel none = smallLabel("<html><body style='width: 165px'>No uniques seen yet. They show up here from now on.</body></html>",
 				ColorScheme.LIGHT_GRAY_COLOR);
@@ -1644,13 +1650,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		for (com.expecteddrops.tracking.RecentDrop r : recent)
 		{
 			rowsPanel.add(spacer(Theme.HAIR));
-			rowsPanel.add(recentDropRow(r, now, false));
+			rowsPanel.add(recentDropRow(r, now));
 		}
-		renderDropRanking("LUCKIEST DROPS", lucky, now,
-			"Single drops that came sooner than their drop rate gives on average, luckiest first. "
-				+ "Each is judged once, by how long that drop took, and stays that way. "
-				+ "The Items tab is different: it shows where you stand now, how many of an item you have against how many you'd expect by now.");
-		renderLongestWaits(waited, now);
 	}
 
 	/** A wait for the Longest waits list: a drop that took long, or an item you're still waiting for. */
@@ -1669,14 +1670,14 @@ public class ExpectedDropsPanel extends PluginPanel
 	}
 
 	/**
-	 * The {@link #TOP_DROPS} longest waits: drops that took longer than their drop rate, and items
+	 * Every long wait, longest first: drops that took longer than their drop rate, and items
 	 * you're still waiting for (dry for more than one drop rate since the last copy, or since the
 	 * start), ranked together by how many times the drop rate the wait is.
 	 */
-	private List<Wait> longestWaits(AccountStats account)
+	private List<Wait> allWaits(AccountStats account)
 	{
 		List<Wait> all = new ArrayList<>();
-		for (com.expecteddrops.tracking.RecentDrop d : tracker.dropsByLuck(false, TOP_DROPS))
+		for (com.expecteddrops.tracking.RecentDrop d : tracker.dropsByLuck(false, Integer.MAX_VALUE))
 		{
 			all.add(new Wait(d.getDrop().getMultiple(), d, null));
 		}
@@ -1691,52 +1692,131 @@ public class ExpectedDropsPanel extends PluginPanel
 			}
 		}
 		all.sort((a, b) -> Double.compare(b.multiple, a.multiple));
-		return all.size() > TOP_DROPS ? new ArrayList<>(all.subList(0, TOP_DROPS)) : all;
+		return all;
 	}
 
-	private void renderLongestWaits(List<Wait> waits, long now)
+	/** How many drops each list of the Drops view shows. */
+	static final int DROPS_SHOWN = 5;
+
+	/**
+	 * The Items tab's Drops view: your luckiest single drops and your longest waits (drops that
+	 * took long, and items you're still waiting for). Each drop is judged once, by how long it
+	 * took; the other views of the tab show where you stand now.
+	 */
+	private void renderDropLists(AccountStats account)
 	{
-		if (waits.isEmpty())
+		long now = System.currentTimeMillis();
+		List<com.expecteddrops.tracking.RecentDrop> lucky = tracker.dropsByLuck(true, Integer.MAX_VALUE);
+		List<Wait> waits = allWaits(account);
+		JLabel note = smallLabel("<html><body style='width: 190px'>Single drops, each judged once by how long it took. "
+			+ "Driest and Luckiest show where you stand now.</body></html>", Theme.TEXT_MUTED);
+		note.setAlignmentX(LEFT_ALIGNMENT);
+		rowsPanel.add(note);
+		if (lucky.isEmpty() && waits.isEmpty())
 		{
+			JLabel none = smallLabel("<html><body style='width: 190px'>No single drops with a known wait yet. They appear as you get "
+				+ "uniques. For one you got before, right-click the item and choose \"I got this at kill...\".</body></html>",
+				ColorScheme.LIGHT_GRAY_COLOR);
+			none.setAlignmentX(LEFT_ALIGNMENT);
+			none.setBorder(new EmptyBorder(Theme.M, 0, 0, 0));
+			rowsPanel.add(none);
 			return;
 		}
-		rowsPanel.add(spacer(Theme.M));
-		JLabel title = smallLabel("LONGEST WAITS", ColorScheme.LIGHT_GRAY_COLOR);
-		title.setAlignmentX(LEFT_ALIGNMENT);
-		title.setToolTipText("<html><body style='width: 240px'>Single drops that took longer than their drop rate gives "
-			+ "on average, and items you are still waiting for, longest wait first (as a multiple of the drop rate). "
-			+ "Each drop is judged once, by how long it took. "
-			+ "The Items tab is different: it shows where you stand now, how many of an item you have against how many "
-			+ "you'd expect by now.</body></html>");
-		rowsPanel.add(title);
-		for (Wait w : waits)
+		if (!lucky.isEmpty())
 		{
-			rowsPanel.add(spacer(Theme.HAIR));
-			rowsPanel.add(w.drop != null ? recentDropRow(w.drop, now, true) : ongoingWaitRow(w.ongoing, w.multiple));
+			dropListTitle("LUCKIEST DROPS", Math.min(DROPS_SHOWN, lucky.size()), lucky.size(),
+				"Single drops that came sooner than their drop rate gives on average, luckiest first. "
+					+ "Each is judged once, by how long that drop took, and stays that way.");
+			for (com.expecteddrops.tracking.RecentDrop r : lucky.subList(0, Math.min(DROPS_SHOWN, lucky.size())))
+			{
+				rowsPanel.add(spacer(Theme.HAIR));
+				rowsPanel.add(dropRow(r, now));
+			}
+		}
+		if (!waits.isEmpty())
+		{
+			dropListTitle("LONGEST WAITS", Math.min(DROPS_SHOWN, waits.size()), waits.size(),
+				"Single drops that took longer than their drop rate gives on average, and items you are still waiting "
+					+ "for, longest wait first (as a multiple of the drop rate). Each drop is judged once, by how long it took.");
+			for (Wait w : waits.subList(0, Math.min(DROPS_SHOWN, waits.size())))
+			{
+				rowsPanel.add(spacer(Theme.HAIR));
+				rowsPanel.add(w.drop != null ? dropRow(w.drop, now) : waitingRow(w.ongoing, w.multiple));
+			}
 		}
 	}
 
-	/** An item you're still waiting for: its boss on top, "still waiting" and how unlikely that is underneath. */
-	private JPanel ongoingWaitRow(com.expecteddrops.stats.ItemHighlight h, double multiple)
+	private void dropListTitle(String heading, int shown, int total, String help)
 	{
-		RowStats r = h.getRow();
-		BossDefinition boss = h.getBoss() == null ? null : tracker.getCatalog().byName(h.getBoss());
-		String unit = boss == null ? "kills" : com.expecteddrops.tracking.Tracker.unit(boss);
+		rowsPanel.add(spacer(Theme.M));
+		JPanel line = new JPanel(new BorderLayout());
+		line.setOpaque(false);
+		line.setAlignmentX(LEFT_ALIGNMENT);
+		JLabel title = smallLabel(heading, ColorScheme.LIGHT_GRAY_COLOR);
+		title.setToolTipText("<html><body style='width: 240px'>" + help + "</body></html>");
+		line.add(title, BorderLayout.WEST);
+		line.add(smallLabel(total > shown ? "top " + shown + " of " + total : String.valueOf(total), Theme.TEXT_MUTED), BorderLayout.EAST);
+		line.setMaximumSize(new Dimension(Integer.MAX_VALUE, line.getPreferredSize().height));
+		rowsPanel.add(line);
+	}
+
+	/**
+	 * A row of the Drops view: the item's picture, its name, where it dropped with the kill count,
+	 * and how lucky the wait was in the colour of its luck. {@code pill} is a small tag on the right.
+	 */
+	private JPanel threeLineRow(String item, String name, String where, String luck, Color luckColor, String pill)
+	{
 		JPanel panel = new JPanel(new BorderLayout(6, 0));
 		panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		panel.setBorder(new EmptyBorder(Theme.S, Theme.S, Theme.S, Theme.S));
 		panel.setAlignmentX(LEFT_ALIGNMENT);
-		JPanel text = new JPanel(new GridLayout(2, 1, 0, 0));
+		panel.add(itemIcon(item, name, 28), BorderLayout.WEST);
+		JPanel text = new JPanel(new GridLayout(3, 1, 0, 0));
 		text.setOpaque(false);
-		JLabel what = smallLabel(r.getLabel() + "  \u00b7 " + (h.getBoss() == null ? "several bosses" : h.getBoss()), Color.WHITE);
-		what.setFont(FontManager.getRunescapeFont());
-		text.add(what);
-		text.add(smallLabel("still waiting \u00b7 " + waitLuck(multiple).replace(" of players", ""),
-			luckColor(Math.exp(-multiple)).brighter()));
+		JLabel first = smallLabel(name, Color.WHITE);
+		first.setFont(FontManager.getRunescapeFont());
+		text.add(first);
+		text.add(smallLabel(where, ColorScheme.LIGHT_GRAY_COLOR));
+		text.add(smallLabel(luck, luckColor));
 		panel.add(text, BorderLayout.CENTER);
+		if (pill != null)
+		{
+			JLabel tag = smallLabel(pill, luckColor);
+			tag.setBorder(javax.swing.BorderFactory.createCompoundBorder(
+				javax.swing.BorderFactory.createLineBorder(luckColor), new EmptyBorder(0, Theme.S, 0, Theme.S)));
+			JPanel east = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 0, 0));
+			east.setOpaque(false);
+			east.add(tag);
+			panel.add(east, BorderLayout.EAST);
+		}
 		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, panel.getPreferredSize().height));
+		return panel;
+	}
+
+	/** A single drop in the Drops view. Left click opens the boss; right click is the Remove from History menu. */
+	private JPanel dropRow(com.expecteddrops.tracking.RecentDrop r, long now)
+	{
+		com.expecteddrops.tracking.KillEntry.DropEntry d = r.getDrop();
+		BossDefinition boss = tracker.getCatalog().byName(r.getBoss());
+		JPanel panel = threeLineRow(d.getName(), d.getName(), whereText(boss, r.getBoss(), r.getKill()),
+			dropLuckShort(d), multipleColor(d, true), null);
+		setTip(panel, dropTip(r, now), () -> showBoss(r.getBoss()), true);
+		withRemoveMenu(panel, r.getBoss(), r.getKill(), java.util.Collections.singletonList(d));
+		return panel;
+	}
+
+	/** An item you're still waiting for: tagged "waiting", with the kills so far and how unlikely that is. */
+	private JPanel waitingRow(com.expecteddrops.stats.ItemHighlight h, double multiple)
+	{
+		RowStats r = h.getRow();
+		BossDefinition boss = h.getBoss() == null ? null : tracker.getCatalog().byName(h.getBoss());
+		String unit = boss == null ? "kills" : com.expecteddrops.tracking.Tracker.unit(boss);
+		String where = h.getBoss() == null ? "several bosses" : h.getBoss();
+		JPanel panel = threeLineRow(r.getIconItem(), r.getLabel(), where,
+			String.format("%,d %s \u00b7 %s", r.getStreak(), unit, waitLuckShort(multiple, true)),
+			luckColor(Math.exp(-multiple)).brighter(), "waiting");
 		Tip tip = new Tip(r.getLabel())
-			.row("Where", h.getBoss() == null ? "several bosses" : h.getBoss())
+			.row("Where", where)
 			.row("Without one", String.format("%,d %s, %s", r.getStreak(), unit, formatMultiple(multiple) + " the drop rate"))
 			.row("Luck", waitLuck(multiple));
 		setTip(panel, tip.note("Still going: each " + (unit.endsWith("s") ? unit.substring(0, unit.length() - 1) : unit)
@@ -1745,32 +1825,26 @@ public class ExpectedDropsPanel extends PluginPanel
 		return panel;
 	}
 
-	/** How many drops the Luckiest drops and Longest waits lists show. */
-	static final int TOP_DROPS = 5;
-
-	private void renderDropRanking(String heading, List<com.expecteddrops.tracking.RecentDrop> drops, long now, String help)
+	/** The hover of a drop: where, the kill count, when, the gap before it and how lucky it was. */
+	private String dropTip(com.expecteddrops.tracking.RecentDrop r, long now)
 	{
-		if (drops.isEmpty())
+		com.expecteddrops.tracking.KillEntry.DropEntry d = r.getDrop();
+		BossDefinition boss = tracker.getCatalog().byName(r.getBoss());
+		String unit = boss == null ? "kill" : com.expecteddrops.tracking.Tracker.unitOne(boss);
+		Tip tip = new Tip(d.getName())
+			.row("Where", whereName(boss, r.getBoss(), r.getKill()))
+			.row(capital(unit) + " count", killCount(boss, r.getKill()))
+			.row("When", daysAgo(r.getKill().getTime(), now))
+			.row("Gap before it", gapText(d, unit));
+		if (!dropLuck(d).isEmpty())
 		{
-			return;
+			tip.row("Luck", dropLuck(d));
 		}
-		rowsPanel.add(spacer(Theme.M));
-		JLabel title = smallLabel(heading, ColorScheme.LIGHT_GRAY_COLOR);
-		title.setAlignmentX(LEFT_ALIGNMENT);
-		title.setToolTipText("<html><body style='width: 240px'>" + help + "</body></html>");
-		rowsPanel.add(title);
-		for (com.expecteddrops.tracking.RecentDrop r : drops)
-		{
-			rowsPanel.add(spacer(Theme.HAIR));
-			rowsPanel.add(recentDropRow(r, now, true));
-		}
+		return tip.wide();
 	}
 
-	/**
-	 * One unique as a row: what and where on top, and underneath when and the wait before it. In
-	 * the luck lists the second line says how lucky the wait was instead of when it came.
-	 */
-	private JPanel recentDropRow(com.expecteddrops.tracking.RecentDrop r, long now, boolean ranked)
+	/** One latest unique as a row: what and where on top, and underneath when and the wait before it. */
+	private JPanel recentDropRow(com.expecteddrops.tracking.RecentDrop r, long now)
 	{
 		com.expecteddrops.tracking.KillEntry.DropEntry d = r.getDrop();
 		BossDefinition boss = tracker.getCatalog().byName(r.getBoss());
@@ -1785,24 +1859,11 @@ public class ExpectedDropsPanel extends PluginPanel
 		what.setFont(FontManager.getRunescapeFont());
 		text.add(what);
 		String after = afterText(d, unit);
-		// the luck lists use the room for the luck; the wait and its multiple are in the hover
-		String second = ranked
-			? dropLuck(d).replace(" of players", "")
-			: daysAgo(r.getKill().getTime(), now) + (after.isEmpty() ? "" : " \u00b7 " + after);
-		text.add(smallLabel(second, multipleColor(d)));
+		text.add(smallLabel(daysAgo(r.getKill().getTime(), now) + (after.isEmpty() ? "" : " \u00b7 " + after), multipleColor(d)));
 		panel.add(text, BorderLayout.CENTER);
 		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, panel.getPreferredSize().height));
 		// left click opens the boss; right click is the Remove from History menu
-		Tip tip = new Tip(d.getName())
-			.row("Where", whereName(boss, r.getBoss(), r.getKill()))
-			.row(capital(unit) + " count", killCount(boss, r.getKill()))
-			.row("When", daysAgo(r.getKill().getTime(), now))
-			.row("Gap before it", gapText(d, unit));
-		if (!dropLuck(d).isEmpty())
-		{
-			tip.row("Luck", dropLuck(d));
-		}
-		setTip(panel, tip.wide(), () -> showBoss(r.getBoss()), true);
+		setTip(panel, dropTip(r, now), () -> showBoss(r.getBoss()), true);
 		withRemoveMenu(panel, r.getBoss(), r.getKill(), java.util.Collections.singletonList(d));
 		return panel;
 	}
@@ -2179,7 +2240,7 @@ public class ExpectedDropsPanel extends PluginPanel
 	private void renderItemsTab(AccountStats account, ItemView view)
 	{
 		// a segmented control, visibly a level below the Bosses / Items / Recent tabs
-		JPanel switcher = new JPanel(new GridLayout(1, 3, Theme.HAIR, 0));
+		JPanel switcher = new JPanel(new GridLayout(1, 4, Theme.HAIR, 0));
 		JPanel switcherRow = new JPanel(new BorderLayout(Theme.M, 0));
 		switcherRow.setOpaque(false);
 		switcherRow.setAlignmentX(LEFT_ALIGNMENT);
@@ -2189,6 +2250,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		switcher.add(topSwitch("Driest", topMode == TOP_DRIEST, TOP_DRIEST));
 		switcher.add(topSwitch("Luckiest", topMode == TOP_LUCKIEST, TOP_LUCKIEST));
 		switcher.add(topSwitch("Pets", topMode == TOP_PETS, TOP_PETS));
+		switcher.add(topSwitch("Drops", topMode == TOP_DROPS, TOP_DROPS));
 		switcher.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
 		switcherRow.add(switcher, BorderLayout.CENTER);
 		// this tab draws bars, or the table when that's the view; every other view shows as bars here
@@ -2199,6 +2261,11 @@ public class ExpectedDropsPanel extends PluginPanel
 		rowsPanel.add(switcherRow);
 		rowsPanel.add(spacer(Theme.S));
 
+		if (topMode == TOP_DROPS)
+		{
+			renderDropLists(account);
+			return;
+		}
 		List<com.expecteddrops.stats.ItemHighlight> top = topItems(account, topMode);
 		if (top.isEmpty())
 		{
