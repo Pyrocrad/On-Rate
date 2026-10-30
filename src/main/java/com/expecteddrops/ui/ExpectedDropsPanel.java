@@ -4571,6 +4571,8 @@ public class ExpectedDropsPanel extends PluginPanel
 				+ "page once."},
 			{"Team bosses:", "Royal Titans and Yama count as duo kills. Set them to Solo, or Some of each, "
 				+ "under Team bosses in the settings if that's how you kill them."},
+			{"Drops from before:", "remember the kill count you got an item at? Right-click the item on its boss page "
+				+ "and choose \"I got this at kill...\". Then Items > Drops shows how lucky or dry that single drop was."},
 			{"Searching:", "type part of a name, or a short one like cox, tob or toa."},
 			{"Left out:", "right-click an item to leave it out of the calculations, for example one you got "
 				+ "elsewhere. Right-click it again to count it."},

@@ -27,6 +27,7 @@
 - **Over 50 bosses and raids** from the Bosses and Raids tabs of the collection log, including Doom of Mokhaiotl per delve level (Fortis Colosseum, Tempoross and Wintertodt arrive with the next update; a few things are left out: see *Not covered* below).
 - **Two verdicts per boss**, from *Extremely dry* to *Extremely spooned*: how many uniques you got, and what they're worth in GP. Plus how common your result is among players at the same kill count, worked out from the drop rates.
 - **Account overview:** all your bosses added up, up to 15 of your driest and 15 of your luckiest items, each with got / expected, your pets, and what you killed and got today and this week.
+- **Luck of single drops:** the account's Items tab has a **Drops** view with your **Luckiest drops** and **Longest waits**: each single drop judged by how long it took against its drop rate. Know the kill count you got an old drop at? Right-click the item on its boss page and choose **I got this at kill...**, type the kill count, and it shows up there too. See *Good to know*.
 - **Hover any item** for its drop rate, your dry streak, how far past the drop rate you are and how many players at your kill count would have fewer or more (worked out from the drop rates).
 - **History** per boss: the kills On Rate saw and what they dropped.
 - **Uses your raid points** for each raid's purple chance, and **counts your team** at Nex, Yama, the Hueycoatl, Corp and Zalcano.
@@ -46,6 +47,7 @@ The **?** at the top of the panel explains what you're looking at.
 
 - Rates are **solo base rates** from the [OSRS Wiki](https://oldschool.runescape.wiki), without diary, Combat Achievement or Slayer boosts. Where each one comes from: [docs/RATES.md](docs/RATES.md).
 - Items several bosses drop (dragon pickaxe, godsword shards, Virtus, onyx...) are judged on all those bosses' kills together, under **Shared with other bosses** on each boss page. Know where yours came from? **Right-click one to count it for that boss instead:** drops On Rate sees go to the boss that dropped them, and you say where the older ones came from (a visage from a regular dragon can count for no boss at all).
+- **Drops from before On Rate:** On Rate only sees drops that happen while it runs, so older ones have no known wait. If you remember the kill count, right-click the item (one you have) on its boss page and choose **I got this at kill...** (or *raid*, *delve*...), then type the count. It is added to the boss's History without a date and your dry streak counts from it. Open **Items > Drops** on the account overview to see how lucky or dry that single drop was. Your unique counts and expected don't change. With several copies it asks if this was your first one; on pages with several modes or bosses (Chambers normal or Challenge Mode, Callisto or Artio...) it asks which one first.
 - Pets and Royal Titans prayer scrolls count once, like in the collection log.
 - Raids without points (everything from before you installed On Rate) use an average purple chance, which you can change under **Raid purple chances** in the settings.
 - **Not covered:** team Nightmare and the collection log's Other tab.
