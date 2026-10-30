@@ -121,6 +121,10 @@ public class ExpectedDropsPanel extends PluginPanel
 
 	private final HintField searchField = new HintField("Search bosses...");
 	private final JLabel accountLink = new JLabel("\u2039 Account");
+	/** Takes the account link's place on the account overview: back to the boss you were on. */
+	private final JLabel backLink = new JLabel("\u2039 Back");
+	/** The last boss page shown, for the back link. */
+	private String lastBoss;
 	private final JPanel headerRow = new JPanel(new BorderLayout(6, 0));
 	private final JComboBox<String> bossSelect = new JComboBox<>();
 	private final JLabel headerIcon = new JLabel();
@@ -257,34 +261,19 @@ public class ExpectedDropsPanel extends PluginPanel
 		titleRow.setAlignmentX(LEFT_ALIGNMENT);
 		titleRow.add(title, BorderLayout.WEST);
 		// one click back to the account overview, wherever you are (only on a boss page)
-		accountLink.setFont(FontManager.getRunescapeBoldFont());
-		accountLink.setForeground(Theme.TEXT);
-		accountLink.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-		accountLink.setToolTipText("Back to the account overview");
-		accountLink.addMouseListener(new MouseAdapter()
+		installTitleLink(accountLink, "Back to the account overview", () -> showBoss(ACCOUNT));
+		// on the account overview it becomes a way back to the boss you came from, in the same place
+		installTitleLink(backLink, "Back to the boss you were on", () ->
 		{
-			@Override
-			public void mouseClicked(MouseEvent e)
+			if (lastBoss != null)
 			{
-				showBoss(ACCOUNT);
-			}
-
-			@Override
-			public void mouseEntered(MouseEvent e)
-			{
-				accountLink.setForeground(Theme.ACCENT);
-			}
-
-			@Override
-			public void mouseExited(MouseEvent e)
-			{
-				accountLink.setForeground(Theme.TEXT);
+				showBoss(lastBoss);
 			}
 		});
-		Activatable.install(accountLink, "Back to the account overview", () -> showBoss(ACCOUNT));
 		JPanel titleRight = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, Theme.M, 0));
 		titleRight.setOpaque(false);
 		titleRight.add(accountLink);
+		titleRight.add(backLink);
 		titleRight.add(helpLabel);
 		titleRow.add(titleRight, BorderLayout.EAST);
 		titleRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 18));
@@ -816,6 +805,36 @@ public class ExpectedDropsPanel extends PluginPanel
 		setItemView = changer == null ? view -> { } : changer;
 	}
 
+	/** A link at the top right of the title row: hand cursor, accent on hover, works from the keyboard. */
+	private static void installTitleLink(JLabel link, String tip, Runnable action)
+	{
+		link.setFont(FontManager.getRunescapeBoldFont());
+		link.setForeground(Theme.TEXT);
+		link.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+		link.setToolTipText(tip);
+		link.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mouseClicked(MouseEvent e)
+			{
+				action.run();
+			}
+
+			@Override
+			public void mouseEntered(MouseEvent e)
+			{
+				link.setForeground(Theme.ACCENT);
+			}
+
+			@Override
+			public void mouseExited(MouseEvent e)
+			{
+				link.setForeground(Theme.TEXT);
+			}
+		});
+		Activatable.install(link, tip, action);
+	}
+
 	private void drawPage()
 	{
 		welcomePanel.setVisible(showWelcome.getAsBoolean());
@@ -833,6 +852,11 @@ public class ExpectedDropsPanel extends PluginPanel
 		styleTabs();
 		boolean account = ACCOUNT.equals(bossName);
 		accountLink.setVisible(!account);
+		backLink.setVisible(account && lastBoss != null);
+		if (!account && bossName != null)
+		{
+			lastBoss = bossName;
+		}
 		// the luck graph belongs to the bosses list; the Items and Recent tabs get the room
 		// Luck over time sits with the bosses list; its title opens and closes it
 		graphPanel.setVisible(account && (accountTab == TAB_BOSSES || accountTab == TAB_ITEMS && !o.isTopItems()));
@@ -2254,8 +2278,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		switcher.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
 		switcherRow.add(switcher, BorderLayout.CENTER);
 		// this tab draws bars, or the table when that's the view; every other view shows as bars here
-		switcherRow.add(viewSwitch(view, "On this tab the Compact table shows as a table; every other view shows as bars."),
-			BorderLayout.EAST);
+		switcherRow.add(viewSwitch(view, null), BorderLayout.EAST);
 		switcherRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
 		rowsPanel.add(spacer(Theme.S));
 		rowsPanel.add(switcherRow);
@@ -2309,12 +2332,20 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			rowsPanel.add(compactHeader("Item"));
 		}
+		if (view == ItemView.GAUGE && topMode != TOP_PETS)
+		{
+			LuckGauge gauge = new LuckGauge();
+			gauge.setLuck(account.getTotal().getLuck());
+			rowsPanel.add(gauge);
+		}
 		Boolean group = null;
+		JPanel ringGrid = null;
 		for (com.expecteddrops.stats.ItemHighlight h : top)
 		{
 			RowStats r = h.getRow();
 			if (topMode == TOP_PETS && (group == null || group != r.isComplete()))
 			{
+				ringGrid = null;
 				group = r.isComplete();
 				JLabel title = smallLabel(group ? "LUCKIEST PETS YOU HAVE" : "DRIEST PETS YOU DON'T HAVE", Theme.TEXT_MUTED);
 				title.setAlignmentX(LEFT_ALIGNMENT);
@@ -2365,6 +2396,29 @@ public class ExpectedDropsPanel extends PluginPanel
 			if (view == ItemView.COMPACT)
 			{
 				rowsPanel.add(compactRow(r, tip, open));
+			}
+			else if (view == ItemView.RINGS)
+			{
+				if (ringGrid == null)
+				{
+					ringGrid = new JPanel(new GridLayout(0, 3, 4, 8));
+					ringGrid.setOpaque(false);
+					ringGrid.setAlignmentX(LEFT_ALIGNMENT);
+					rowsPanel.add(ringGrid);
+				}
+				ringGrid.add(itemRing(r, tip, open));
+				// the grid grows a cell at a time, so keep its height in step
+				ringGrid.setMaximumSize(new Dimension(Integer.MAX_VALUE, ringGrid.getPreferredSize().height));
+			}
+			else if (view == ItemView.GAUGE)
+			{
+				rowsPanel.add(spacer(Theme.HAIR));
+				rowsPanel.add(stripRow(r.getIconItem(), r.getShownLabel(), false, r.isComplete() ? 1.0 : r.getLuck(), tip, open));
+			}
+			else if (view == ItemView.DELVE_BARS)
+			{
+				rowsPanel.add(spacer(Theme.HAIR));
+				rowsPanel.add(buildRow(r, tip, open));
 			}
 			else
 			{
@@ -3851,6 +3905,11 @@ public class ExpectedDropsPanel extends PluginPanel
 	/** Item ring: chance of having it by now, or of the next one once you have it. */
 	private JPanel itemRing(RowStats r, String tip)
 	{
+		return itemRing(r, tip, null);
+	}
+
+	private JPanel itemRing(RowStats r, String tip, Runnable onClick)
+	{
 		LuckRing ring = new LuckRing();
 		String sub;
 		boolean have = r.isComplete();
@@ -3882,7 +3941,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			ringPicture(ring, r.getIconItem(), r.getLabel());
 		}
-		return ringCell(ring, r.isAny() ? "Any unique" : r.getLabel(), sub, tip, null, Texts.isQuiet(r));
+		return ringCell(ring, r.isAny() ? "Any unique" : r.getLabel(), sub, tip, onClick, Texts.isQuiet(r));
 	}
 
 	/** Boss ring in the account overview: filled to your luck percentile. */
