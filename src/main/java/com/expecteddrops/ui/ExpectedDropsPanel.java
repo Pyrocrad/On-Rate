@@ -1721,6 +1721,9 @@ public class ExpectedDropsPanel extends PluginPanel
 
 	/** How many drops each list of the Drops view shows. */
 	static final int DROPS_SHOWN = 5;
+	/** The Drops view: show the whole Luckiest drops / Longest waits list instead of the top {@link #DROPS_SHOWN}. */
+	private boolean luckiestDropsAll;
+	private boolean longestWaitsAll;
 
 	/**
 	 * The Items tab's Drops view: your luckiest single drops and your longest waits (drops that
@@ -1748,10 +1751,11 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		if (!lucky.isEmpty())
 		{
-			dropListTitle("LUCKIEST DROPS", Math.min(DROPS_SHOWN, lucky.size()), lucky.size(),
+			int luckyShown = luckiestDropsAll ? lucky.size() : Math.min(DROPS_SHOWN, lucky.size());
+			dropListTitle("LUCKIEST DROPS", luckyShown, lucky.size(), () -> luckiestDropsAll = !luckiestDropsAll,
 				"Single drops that came sooner than their drop rate gives on average, luckiest first. "
 					+ "Each is judged once, by how long that drop took, and stays that way.");
-			for (com.expecteddrops.tracking.RecentDrop r : lucky.subList(0, Math.min(DROPS_SHOWN, lucky.size())))
+			for (com.expecteddrops.tracking.RecentDrop r : lucky.subList(0, luckyShown))
 			{
 				rowsPanel.add(spacer(Theme.HAIR));
 				rowsPanel.add(dropRow(r, now));
@@ -1759,10 +1763,11 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		if (!waits.isEmpty())
 		{
-			dropListTitle("LONGEST WAITS", Math.min(DROPS_SHOWN, waits.size()), waits.size(),
+			int waitsShown = longestWaitsAll ? waits.size() : Math.min(DROPS_SHOWN, waits.size());
+			dropListTitle("LONGEST WAITS", waitsShown, waits.size(), () -> longestWaitsAll = !longestWaitsAll,
 				"Single drops that took longer than their drop rate gives on average, and items you are still waiting "
 					+ "for, longest wait first (as a multiple of the drop rate). Each drop is judged once, by how long it took.");
-			for (Wait w : waits.subList(0, Math.min(DROPS_SHOWN, waits.size())))
+			for (Wait w : waits.subList(0, waitsShown))
 			{
 				rowsPanel.add(spacer(Theme.HAIR));
 				rowsPanel.add(w.drop != null ? dropRow(w.drop, now) : waitingRow(w.ongoing, w.multiple));
@@ -1770,7 +1775,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 	}
 
-	private void dropListTitle(String heading, int shown, int total, String help)
+	private void dropListTitle(String heading, int shown, int total, Runnable toggle, String help)
 	{
 		rowsPanel.add(spacer(Theme.M));
 		JPanel line = new JPanel(new BorderLayout());
@@ -1779,7 +1784,46 @@ public class ExpectedDropsPanel extends PluginPanel
 		JLabel title = smallLabel(heading, ColorScheme.LIGHT_GRAY_COLOR);
 		title.setToolTipText("<html><body style='width: 240px'>" + help + "</body></html>");
 		line.add(title, BorderLayout.WEST);
-		line.add(smallLabel(total > shown ? "top " + shown + " of " + total : String.valueOf(total), Theme.TEXT_MUTED), BorderLayout.EAST);
+		if (total > DROPS_SHOWN)
+		{
+			// click to see the whole list, and again to go back to the top few
+			boolean all = shown == total;
+			String text = all ? "all " + total + " \u00b7 show top " + DROPS_SHOWN : "top " + shown + " of " + total + " \u00b7 show all";
+			String tip = all ? "Show only the top " + DROPS_SHOWN : "Show all " + total;
+			JLabel more = smallLabel(text, ColorScheme.LIGHT_GRAY_COLOR);
+			more.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+			more.setToolTipText(tip);
+			Runnable flip = () ->
+			{
+				toggle.run();
+				refresh();
+			};
+			more.addMouseListener(new MouseAdapter()
+			{
+				@Override
+				public void mouseClicked(MouseEvent e)
+				{
+					flip.run();
+				}
+
+				@Override
+				public void mouseEntered(MouseEvent e)
+				{
+					more.setForeground(Color.WHITE);
+				}
+
+				@Override
+				public void mouseExited(MouseEvent e)
+				{
+					more.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+				}
+			});
+			line.add(Activatable.install(more, tip, flip), BorderLayout.EAST);
+		}
+		else
+		{
+			line.add(smallLabel(String.valueOf(total), Theme.TEXT_MUTED), BorderLayout.EAST);
+		}
 		line.setMaximumSize(new Dimension(Integer.MAX_VALUE, line.getPreferredSize().height));
 		rowsPanel.add(line);
 	}
