@@ -202,6 +202,8 @@ public class ExpectedDropsPlugin extends Plugin
 			config::showWelcome, this::dismissWelcome, this::priceOf, this::viewOptions);
 		panel.setGraphOpener(open -> configManager.setConfiguration(ExpectedDropsConfig.GROUP, "showLuckGraph", String.valueOf(open)));
 		panel.setItemViewChanger(view -> configManager.setConfiguration(ExpectedDropsConfig.GROUP, "itemView", view.name()));
+		panel.setAccountPageStore(config.accountPage(),
+			page -> configManager.setConfiguration(ExpectedDropsConfig.GROUP, "accountPage", page));
 		panel.setOverlayOffer(config::showOverlay,
 			() -> "true".equals(configManager.getRSProfileConfiguration(ExpectedDropsConfig.GROUP, OVERLAY_OFFER_KEY)),
 			() -> configManager.setRSProfileConfiguration(ExpectedDropsConfig.GROUP, OVERLAY_OFFER_KEY, "true"),

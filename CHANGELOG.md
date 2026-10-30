@@ -11,7 +11,7 @@ Updates come through the Plugin Hub. Each heading is the date of that update; **
 - **Three new pages:** Fortis Colosseum, Tempoross and Wintertodt.
 - **Clearer verdicts:** boss pages with less than half a unique expected say "Too early", and the middle of the scale has three words (A bit dry, On rate, A bit spooned).
 - **More careful counting:** pets, Zalcano and items several bosses drop are counted more accurately, and unreadable saved data is kept instead of overwritten.
-- **Back button and Items views:** on the account overview, "‹ Back" takes the place of "‹ Account" and returns to the boss you were on. The view switch on the Items tab now changes the view (bars, tabs, table, rings, gauge) instead of only the table. In the Drops view, "top 5 of 17" is clickable and shows the whole list.
+- **Back button and Items views:** on the account overview, "‹ Back" takes the place of "‹ Account" and returns to the boss you were on. The view switch on the Items tab now changes the view (bars, tabs, table, rings, gauge) instead of only the table. In the Drops view, "top 5 of 17" is clickable and shows the whole list. The account overview remembers the page you last had open (Bosses, Items or Recent, the sort order and the Items list), also after you restart RuneLite.
 - **Shorter welcome guide:** the guide opens with the intro, three steps, how many collection log pages are loaded (with the next one to open) and the settings button. The verdict key, what the numbers don't mean and the odd moments are folded under "How to read it".
 - **Calmer chat and clearer settings:** dry milestone messages start at 2x the drop rate instead of 1x, chat settings have their own section, and the team settings are in a clearer order, with clearer names.
 

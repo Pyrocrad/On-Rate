@@ -483,7 +483,11 @@ public class ExpectedDropsPanel extends PluginPanel
 		sortLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		sortRow.add(sortLabel, BorderLayout.WEST);
 		sortSelect.setFont(FontManager.getRunescapeSmallFont());
-		sortSelect.addActionListener(e -> refresh());
+		sortSelect.addActionListener(e ->
+		{
+			rememberAccountPage();
+			refresh();
+		});
 		sortRow.add(sortSelect, BorderLayout.CENTER);
 		// the view switch sits at the end of the sort line (filled in by refreshAccount)
 		sortViewSlot.setOpaque(false);
@@ -803,6 +807,61 @@ public class ExpectedDropsPanel extends PluginPanel
 	public void setItemViewChanger(java.util.function.Consumer<ItemView> changer)
 	{
 		setItemView = changer == null ? view -> { } : changer;
+	}
+
+	/** Where the account overview's page choice is kept between sessions ("tab,sort,top"); see {@link #setAccountPageStore}. */
+	private java.util.function.Consumer<String> saveAccountPage = page -> { };
+	private boolean restoringAccountPage;
+
+	/**
+	 * Remembers which account overview page was last open (Bosses, Items or Recent, the sort order
+	 * and the Items list), also after RuneLite is closed. Call once, right after the panel is made.
+	 */
+	public void setAccountPageStore(String saved, java.util.function.Consumer<String> saver)
+	{
+		saveAccountPage = saver == null ? page -> { } : saver;
+		String[] parts = saved == null ? new String[0] : saved.split(",");
+		restoringAccountPage = true;
+		try
+		{
+			if (parts.length == 3)
+			{
+				int tab = Integer.parseInt(parts[0].trim());
+				int top = Integer.parseInt(parts[2].trim());
+				if (tab >= TAB_BOSSES && tab <= TAB_RECENT)
+				{
+					accountTab = tab;
+				}
+				if (top >= TOP_DRIEST && top <= TOP_DROPS)
+				{
+					topMode = top;
+				}
+				for (Sort sort : Sort.values())
+				{
+					if (sort.name().equals(parts[1].trim()))
+					{
+						sortSelect.setSelectedItem(sort);
+					}
+				}
+			}
+		}
+		catch (NumberFormatException e)
+		{
+			// unreadable: keep the usual first page
+		}
+		finally
+		{
+			restoringAccountPage = false;
+		}
+		refresh();
+	}
+
+	private void rememberAccountPage()
+	{
+		if (!restoringAccountPage)
+		{
+			saveAccountPage.accept(accountTab + "," + ((Sort) sortSelect.getSelectedItem()).name() + "," + topMode);
+		}
 	}
 
 	/** A link at the top right of the title row: hand cursor, accent on hover, works from the keyboard. */
@@ -2293,6 +2352,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				public void mouseClicked(MouseEvent e)
 				{
 					accountTab = tab;
+					rememberAccountPage();
 					refresh();
 				}
 			});
@@ -2300,6 +2360,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		return Activatable.install(label, text + " tab" + (selected ? ", selected" : ""), () ->
 		{
 			accountTab = tab;
+			rememberAccountPage();
 			refresh();
 		});
 	}
@@ -2793,6 +2854,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				public void mouseClicked(MouseEvent e)
 				{
 					topMode = mode;
+					rememberAccountPage();
 					refresh();
 				}
 			});
@@ -2800,6 +2862,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		return Activatable.install(label, text + (selected ? ", selected" : ""), () ->
 		{
 			topMode = mode;
+			rememberAccountPage();
 			refresh();
 		});
 	}

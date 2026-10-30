@@ -99,6 +99,20 @@ public interface ExpectedDropsConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "accountPage",
+		name = "Account overview page",
+		description = "The account overview page that was open last (tab, sort order and Items list). "
+			+ "Changed from the panel, so it's not listed here",
+		position = 7,
+		section = displaySection,
+		hidden = true
+	)
+	default String accountPage()
+	{
+		return "";
+	}
+
+	@ConfigItem(
 		keyName = "showGeValue",
 		name = "GE value",
 		description = "Show the GP value tile: the GE value of your uniques, got vs expected, on boss pages and the account overview",
