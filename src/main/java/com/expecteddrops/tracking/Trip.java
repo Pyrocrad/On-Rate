@@ -12,6 +12,8 @@ class Trip
 	final double startExpected;
 	final int startReceived;
 	final Map<String, Integer> receivedPerRow;
+	/** Shared items (godsword shards...) this boss had dropped when the trip started, by pool key. */
+	Map<String, Integer> poolSeenStart = new java.util.HashMap<>();
 
 	Trip(String boss, long startMillis, int startKc, double startExpected, int startReceived,
 		Map<String, Integer> receivedPerRow)

@@ -643,6 +643,31 @@ public class TrackerTest
 	}
 
 	@Test
+	public void tripCardCountsSharedItemsTheBossDrops()
+	{
+		BossDefinition graardor = catalog.byName("General Graardor");
+		double perKill = 0;
+		for (DropDefinition drop : graardor.getDrops())
+		{
+			perKill += Tracker.effectiveRate(graardor, drop, RAIDS);
+		}
+		for (DropDefinition drop : catalog.poolsOf(graardor).values())
+		{
+			perKill += Tracker.effectiveRate(graardor, drop, RAIDS);
+		}
+		for (int kc = 100; kc <= 104; kc++)
+		{
+			now += 60_000;
+			tracker.onChatMessage("Your General Graardor kill count is: <col=ff0000>" + kc + "</col>.", now);
+			tracker.onLoot("General Graardor", 1, Collections.emptyList(), now);
+		}
+		TripStats trip = tracker.tripStats();
+		assertEquals(5, trip.getKills());
+		// godsword shards are shared items, but they drop here: the trip expects them too
+		assertEquals(5 * perKill, trip.getExpected(), 1e-9);
+	}
+
+	@Test
 	public void bodyguardLootCountsButIsNotAKill()
 	{
 		tracker.onChatMessage("Your General Graardor kill count is: <col=ff0000>10</col>.", now);
