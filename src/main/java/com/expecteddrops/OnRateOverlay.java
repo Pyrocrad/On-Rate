@@ -11,8 +11,7 @@ import net.runelite.client.ui.overlay.components.LineComponent;
 import net.runelite.client.ui.overlay.components.TitleComponent;
 
 /**
- * Small box on the game screen while you kill a boss: verdict, uniques, your driest item
- * and the current trip. Hidden 10 minutes after your last kill.
+ * Small box on the game screen while you kill a boss: this trip (kills, expected, luck), the account's verdict and your driest item. Hidden 10 minutes after your last kill.
  */
 class OnRateOverlay extends OverlayPanel
 {
@@ -28,7 +27,7 @@ class OnRateOverlay extends OverlayPanel
 		this.info = info;
 		setPosition(OverlayPosition.TOP_LEFT);
 		// wide enough for an item name and its dry streak on one line each
-		panelComponent.setPreferredSize(new Dimension(170, 0));
+		panelComponent.setPreferredSize(new Dimension(190, 0));
 	}
 
 	@Override
@@ -43,17 +42,15 @@ class OnRateOverlay extends OverlayPanel
 			.text("On Rate · " + i.boss)
 			.color(ColorScheme.BRAND_ORANGE)
 			.build());
-		panelComponent.getChildren().add(LineComponent.builder().left("Verdict").right(i.verdict).rightColor(i.verdictColor).build());
-		panelComponent.getChildren().add(LineComponent.builder().left("Uniques").right(i.uniques).build());
+		// this trip first (what you compare with a friend), then the account in two lines
+		panelComponent.getChildren().add(LineComponent.builder().left("This trip").right(i.trip).rightColor(Color.WHITE).build());
+		panelComponent.getChildren().add(LineComponent.builder().left("Expected").right(i.tripExpected).rightColor(Color.WHITE).build());
+		panelComponent.getChildren().add(LineComponent.builder().left("Trip luck").right(i.tripLuck).rightColor(i.tripLuckColor).build());
+		panelComponent.getChildren().add(LineComponent.builder().left("Account").right(i.account).rightColor(i.accountColor).build());
 		if (i.driest != null)
 		{
-			panelComponent.getChildren().add(LineComponent.builder().left("Driest").right(i.driestItem).build());
-			panelComponent.getChildren().add(LineComponent.builder().left("Dry for").right(i.driest)
+			panelComponent.getChildren().add(LineComponent.builder().left("Driest").right(i.driest)
 				.rightColor(i.driestColor).build());
-		}
-		if (i.trip != null)
-		{
-			panelComponent.getChildren().add(LineComponent.builder().left("Trip").right(i.trip).rightColor(Color.WHITE).build());
 		}
 		return super.render(graphics);
 	}

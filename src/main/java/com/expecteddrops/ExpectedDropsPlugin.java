@@ -383,27 +383,35 @@ public class ExpectedDropsPlugin extends Plugin
 			}
 		}
 		String driestText = null;
-		String driestItem = null;
 		java.awt.Color driestColor = java.awt.Color.WHITE;
 		if (driest != null)
 		{
 			double m = driest.getStreakMultiple();
-			driestItem = shortName(driest.getLabel());
-			driestText = String.format("%s%,d %s (%.1fx rate)", driest.isStreakExact() ? "" : "at least ", driest.getStreak(),
-				driest.getStreak() == 1 ? one : units, m);
+			driestText = String.format("%s \u00b7 %.1fx", shortName(driest.getLabel(), 13), m);
 			driestColor = Palette.luck(Math.exp(-m)).brighter();
 		}
 		String tripText = String.format("%,d %s \u00b7 %d unique%s", trip.getKills(), trip.getKills() == 1 ? one : units,
 			trip.getReceived(), trip.getReceived() == 1 ? "" : "s");
-		overlayInfo = new OverlayInfo(trip.getBoss(), verdict, Palette.luck(luck).brighter(),
-			String.format("%,d of %.1f expected", any.getReceived(), any.getExpected()), driestItem, driestText, driestColor,
-			tripText, trip.getLastMillis());
+		// this trip alone, as on the panel's trip card
+		double tripLuck = trip.getLuck();
+		String tripExpected = trip.getExpected() >= 10 ? String.format("%.1f", trip.getExpected())
+			: String.format("%.2f", trip.getExpected());
+		String account = String.format("%s \u00b7 %,d of %.1f", verdict, any.getReceived(), any.getExpected());
+		overlayInfo = new OverlayInfo(trip.getBoss(), tripText, tripExpected,
+			Double.isNaN(tripLuck) ? "Too early" : DropMath.verdict(tripLuck),
+			Double.isNaN(tripLuck) ? java.awt.Color.WHITE : Palette.luck(tripLuck).brighter(),
+			account, Palette.luck(luck).brighter(), driestText, driestColor, trip.getLastMillis());
 	}
 
 	/** Item names that fit the overlay: cut at a word, "Deadeye prayer scroll" becomes "Deadeye prayer...". */
 	static String shortName(String label)
 	{
-		final int max = 18;
+		return shortName(label, 18);
+	}
+
+	/** Same, cut to {@code max} characters (the overlay's driest line shares its row with the streak). */
+	static String shortName(String label, int max)
+	{
 		if (label.length() <= max)
 		{
 			return label;
