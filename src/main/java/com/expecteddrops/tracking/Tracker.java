@@ -3237,6 +3237,13 @@ public class Tracker
 		trip.poolSeenStart = poolSeenSnapshot(boss);
 	}
 
+	/** How long without a kill ends the current trip (0 when there is none). */
+	public synchronized long tripIdleLimitMillis()
+	{
+		BossDefinition boss = trip == null ? null : catalog.byName(trip.boss);
+		return boss == null ? 0 : tripIdleMillis(boss);
+	}
+
 	/** Forget the current trip; the next kill starts a new one. */
 	public synchronized void resetTrip()
 	{
@@ -3354,8 +3361,25 @@ public class Tracker
 		// them to this boss: the trip counts them as this boss's drops, expected and received.
 		BossDefinition tripBoss = catalog.byName(trip.boss);
 		BossProgress progress = state.peek(trip.boss);
+		double sharedExpected = 0;
+		int sharedReceived = 0;
+		List<String> sharedNames = new ArrayList<>();
 		if (tripBoss != null)
 		{
+			// shared items the player assigned to this boss are rows after the boss's own
+			List<DropDefinition> shown = s.getDrops();
+			for (int i = tripBoss.getDrops().size(); i < s.getRows().size() && i < shown.size(); i++)
+			{
+				RowStats row = s.getRows().get(i);
+				if (!counts(tripBoss, shown.get(i), progress))
+				{
+					continue;
+				}
+				Integer before = trip.receivedPerRow.get(row.getLabel());
+				sharedExpected += row.getRate() * kills;
+				sharedReceived += Math.max(0, row.getReceived() - (before == null ? 0 : before));
+				sharedNames.add(row.getLabel());
+			}
 			for (Map.Entry<String, DropDefinition> e : catalog.poolsOf(tripBoss).entrySet())
 			{
 				DropDefinition drop = e.getValue();
@@ -3363,17 +3387,22 @@ public class Tracker
 				{
 					continue; // already one of the boss's rows above, or left out of the total
 				}
-				expected += effectiveRate(tripBoss, drop, settings) * kills;
+				double poolExpected = effectiveRate(tripBoss, drop, settings) * kills;
+				expected += poolExpected;
+				sharedExpected += poolExpected;
+				sharedNames.add(drop.getDisplayName());
 				Integer start = trip.poolSeenStart.get(e.getKey());
 				int got = Math.max(0, poolSeenAt(trip.boss, e.getKey()) - (start == null ? 0 : start));
 				received += got;
+				sharedReceived += got;
 				for (int i = 0; i < got; i++)
 				{
 					drops.add(drop.getDisplayName());
 				}
 			}
 		}
-		return new TripStats(trip.boss, trip.startMillis, trip.lastMillis, kills, received, expected, drops);
+		return new TripStats(trip.boss, trip.startMillis, trip.lastMillis, kills, received, expected, drops,
+			sharedExpected, sharedReceived, sharedNames);
 	}
 
 	private void markKill(BossDefinition boss, long nowMillis)

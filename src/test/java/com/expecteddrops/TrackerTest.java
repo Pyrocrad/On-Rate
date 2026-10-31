@@ -665,6 +665,15 @@ public class TrackerTest
 		assertEquals(5, trip.getKills());
 		// godsword shards are shared items, but they drop here: the trip expects them too
 		assertEquals(5 * perKill, trip.getExpected(), 1e-9);
+		// shared items are told apart, and 0.1 expected is too early for a verdict
+		double sharedPerKill = 0;
+		for (DropDefinition drop : catalog.poolsOf(graardor).values())
+		{
+			sharedPerKill += Tracker.effectiveRate(graardor, drop, RAIDS);
+		}
+		assertEquals(5 * sharedPerKill, trip.getSharedExpected(), 1e-9);
+		assertTrue(trip.isTooEarly());
+		assertTrue(Double.isNaN(trip.getLuck()));
 	}
 
 	@Test

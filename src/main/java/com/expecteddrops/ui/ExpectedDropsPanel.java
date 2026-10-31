@@ -4169,7 +4169,13 @@ public class ExpectedDropsPanel extends PluginPanel
 
 	// ---------------------------------------------------------------- extras
 
-	/** "This trip" card: kills, uniques and expected since the trip started. */
+	/** Fewer kills than this and the value per hour is too rough to show. */
+	static final int VALUE_MIN_KILLS = 50;
+
+	/**
+	 * "This trip" card: the verdict first (or "Too early to call" with how far off it is), then kills,
+	 * uniques against expected, what the expected is made of (shared items included), and the trip's state.
+	 */
 	private void addTripCard(String bossName)
 	{
 		com.expecteddrops.tracking.TripStats trip = tracker.tripStats();
@@ -4184,6 +4190,8 @@ public class ExpectedDropsPanel extends PluginPanel
 			BorderFactory.createLineBorder(Theme.OUTLINE), new EmptyBorder(Theme.S, Theme.M, Theme.M, Theme.M)));
 		card.setAlignmentX(LEFT_ALIGNMENT);
 
+		BossDefinition tripBoss = tracker.getCatalog().byName(bossName);
+		String units = tripBoss == null ? "kills" : com.expecteddrops.tracking.Tracker.unit(tripBoss);
 		long minutes = Math.max(0, (trip.getLastMillis() - trip.getStartMillis()) / 60_000);
 		JPanel head = new JPanel(new BorderLayout());
 		head.setOpaque(false);
@@ -4194,29 +4202,84 @@ public class ExpectedDropsPanel extends PluginPanel
 		card.add(head);
 		card.add(spacer(Theme.S));
 
-		JPanel tiles = new JPanel(new GridLayout(1, 3, 4, 0));
+		// the verdict first, or how far off one is
+		double luck = trip.getLuck();
+		JLabel headline = new JLabel(Double.isNaN(luck) ? "Too early to call" : DropMath.verdict(luck));
+		headline.setFont(FontManager.getRunescapeBoldFont().deriveFont(16f));
+		headline.setForeground(Double.isNaN(luck) ? ColorScheme.LIGHT_GRAY_COLOR : luckColor(luck).brighter());
+		headline.setAlignmentX(LEFT_ALIGNMENT);
+		card.add(headline);
+		String sentence;
+		if (Double.isNaN(luck))
+		{
+			sentence = String.format("%s so far, %s expected. A verdict starts at %s expected.",
+				trip.getReceived() == 0 ? "No uniques" : trip.getReceived() == 1 ? "1 unique" : trip.getReceived() + " uniques",
+				formatExpected(trip.getExpected()), formatExpected(DropMath.TOO_EARLY_BELOW));
+		}
+		else
+		{
+			sentence = String.format("%s where %s %s expected. %s for a trip like this.",
+				trip.getReceived() == 0 ? "No uniques" : trip.getReceived() == 1 ? "1 unique" : trip.getReceived() + " uniques",
+				formatExpected(trip.getExpected()), trip.getExpected() == 1 ? "was" : "were",
+				capital(luckPercent(trip.getShares(), trip.getReceived())));
+		}
+		JLabel why = smallLabel(Theme.wrap(html(sentence), Theme.TEXT_WIDTH), Theme.TEXT);
+		why.setAlignmentX(LEFT_ALIGNMENT);
+		card.add(why);
+		card.add(spacer(Theme.S));
+		double[] shares = trip.getShares();
+		double fill = Double.isNaN(luck) ? Math.min(1.0, trip.getExpected() / DropMath.TOO_EARLY_BELOW)
+			: shares == null ? 0 : Math.min(1.0, trip.getReceived() <= 0 ? 0 : shares[0]);
+		card.add(progressBar(fill, Double.isNaN(luck) ? Theme.QUIET_MARK : luckColor(luck)));
+		card.add(spacer(Theme.S));
+
+		JPanel tiles = new JPanel(new GridLayout(1, 2, 4, 0));
 		tiles.setOpaque(false);
 		tiles.setAlignmentX(LEFT_ALIGNMENT);
-		BossDefinition tripBoss = tracker.getCatalog().byName(bossName);
-		String units = tripBoss == null ? "kills" : com.expecteddrops.tracking.Tracker.unit(tripBoss);
-		tiles.add(tile(Character.toUpperCase(units.charAt(0)) + units.substring(1), String.format("%,d", trip.getKills())));
-		tiles.add(tile("Uniques", String.valueOf(trip.getReceived())));
-		tiles.add(tile("Expected", formatExpected(trip.getExpected())));
+		double perHour = trip.getKillsPerHour();
+		String capUnits = Character.toUpperCase(units.charAt(0)) + units.substring(1);
+		tiles.add(tile(Double.isNaN(perHour) ? capUnits : capUnits + " \u00b7 per hour",
+			Double.isNaN(perHour) ? String.format("%,d", trip.getKills())
+				: String.format("%,d \u00b7 %.0f/h", trip.getKills(), perHour)));
+		tiles.add(tile("Uniques / expected", trip.getReceived() + " / " + formatExpected(trip.getExpected())));
 		card.add(tiles);
 		card.add(spacer(Theme.S));
 
-		double perHour = trip.getKillsPerHour();
-		if (!Double.isNaN(perHour))
+		if (!trip.getDrops().isEmpty())
 		{
-			card.add(cardRow("Per hour", String.format("%.1f %s", perHour, units), Color.WHITE, null));
+			java.util.Map<String, Integer> counts = new java.util.LinkedHashMap<>();
+			for (String d : trip.getDrops())
+			{
+				counts.merge(d, 1, Integer::sum);
+			}
+			java.util.List<String> parts = new java.util.ArrayList<>();
+			for (java.util.Map.Entry<String, Integer> e : counts.entrySet())
+			{
+				parts.add(e.getValue() > 1 ? e.getKey() + " \u00d7" + e.getValue() : e.getKey());
+			}
+			// a long list wraps under itself, right-aligned like the other values
+			card.add(cardRow("Drops", "<html><body style='width: " + (Theme.TEXT_WIDTH - 50) + "px'><div align='right'>"
+				+ html(String.join(", ", parts)) + "</div></body></html>", Color.WHITE, null));
 		}
-		// this trip's own kills (a delve level 1 trip is worth nothing), else the boss's average
+		// what the expected is made of: the boss's own uniques and the shared items it also drops
+		double ownExpected = Math.max(0, trip.getExpected() - trip.getSharedExpected());
+		int ownReceived = Math.max(0, trip.getReceived() - trip.getSharedReceived());
+		card.add(cardRow("Boss uniques", String.format("%d got \u00b7 %s", ownReceived, formatExpected(ownExpected)),
+			Color.WHITE, "Uniques only this boss drops, against what a typical player would have by now."));
+		if (!trip.getSharedNames().isEmpty())
+		{
+			card.add(cardRow("Shared items", String.format("%d got \u00b7 %s", trip.getSharedReceived(),
+				formatExpected(trip.getSharedExpected())), Color.WHITE,
+				"<html><body style='width: 240px'>Items other bosses drop too (" + html(String.join(", ", trip.getSharedNames()))
+				+ "). They can drop here, so the trip counts them.</body></html>"));
+		}
+
+		// value per hour: only once there are enough kills for it to mean something
 		double tripValue = options.get().isGeValue() ? tracker.tripValue(priceOf) : Double.NaN;
 		double perKill = !options.get().isGeValue() ? 0
 			: !Double.isNaN(tripValue) && trip.getKills() > 0 ? tripValue / trip.getKills() : uniqueValuePerKill(bossName);
-		// a trip worth nothing says so (delve level 1 has no uniques: 0 gp/h)
-		// (only when prices are known: the boss's uniques are worth something on average)
-		if (!Double.isNaN(perHour) && (perKill > 0 || !Double.isNaN(tripValue) && uniqueValuePerKill(bossName) > 0))
+		if (!Double.isNaN(perHour) && trip.getKills() >= VALUE_MIN_KILLS
+			&& (perKill > 0 || !Double.isNaN(tripValue) && uniqueValuePerKill(bossName) > 0))
 		{
 			String worthTip = String.format("<html><body style='width: 240px'>About %s per %s at this trip's speed. "
 				+ "Only uniques count: bones, hides and other loot aren't included, so this isn't your full GP per hour. "
@@ -4225,23 +4288,24 @@ public class ExpectedDropsPanel extends PluginPanel
 			card.add(cardRow("Unique value", String.format("~%s/h expected", DropMath.formatGp(perKill * perHour)),
 				Color.WHITE, worthTip));
 		}
-		double luck = trip.getLuck();
-		if (!Double.isNaN(luck))
-		{
-			card.add(cardRow("This trip", String.format("%s (%s)", DropMath.verdict(luck), luckShort(trip.getShares(), trip.getReceived())),
-				luckColor(luck).brighter(), capital(luckPercent(trip.getShares(), trip.getReceived())) + " for a trip like this"));
-		}
-		if (!trip.getDrops().isEmpty())
-		{
-			// a long list wraps under itself, right-aligned like the other values
-			card.add(cardRow("Uniques", "<html><body style='width: " + (Theme.TEXT_WIDTH - 50) + "px'><div align='right'>"
-				+ html(String.join(", ", trip.getDrops())) + "</div></body></html>", Color.WHITE, null));
-		}
+
+		// how long since the last kill, and when the trip ends by itself
+		long idleMinutes = Math.max(0, (System.currentTimeMillis() - trip.getLastMillis()) / 60_000);
+		long limitMinutes = tracker.tripIdleLimitMillis() / 60_000;
+		String idle = idleMinutes < 2 ? "Last kill just now"
+			: limitMinutes > idleMinutes ? String.format("Idle %d min \u00b7 ends in %d min", idleMinutes, limitMinutes - idleMinutes)
+			: String.format("Idle %d min", idleMinutes);
 		card.add(spacer(Theme.S));
-		JButton reset = new JButton("Start a new trip");
+		JPanel foot = new JPanel(new BorderLayout());
+		foot.setOpaque(false);
+		foot.setAlignmentX(LEFT_ALIGNMENT);
+		foot.add(smallLabel(idle, Theme.TEXT_MUTED), BorderLayout.WEST);
+		JButton reset = new JButton("New trip");
 		reset.setFont(FontManager.getRunescapeSmallFont());
 		reset.setFocusPainted(false);
-		reset.setAlignmentX(LEFT_ALIGNMENT);
+		reset.setBorderPainted(false);
+		reset.setContentAreaFilled(false);
+		reset.setForeground(Theme.TEXT_MUTED);
 		reset.setToolTipText("The next kill starts a new trip. A trip also ends after 30 minutes without a kill "
 			+ "(2 hours for raids, the Inferno and the Fight Caves).");
 		reset.addActionListener(e ->
@@ -4249,7 +4313,8 @@ public class ExpectedDropsPanel extends PluginPanel
 			tracker.resetTrip();
 			refresh();
 		});
-		card.add(reset);
+		foot.add(reset, BorderLayout.EAST);
+		card.add(foot);
 		if (trip.getKills() >= OVERLAY_OFFER_KILLS || minutes >= OVERLAY_OFFER_MINUTES)
 		{
 			addOverlayOffer(card);
@@ -4257,6 +4322,26 @@ public class ExpectedDropsPanel extends PluginPanel
 		card.setMaximumSize(new Dimension(Integer.MAX_VALUE, card.getPreferredSize().height));
 		rowsPanel.add(card);
 		rowsPanel.add(spacer(Theme.M));
+	}
+
+	/** A thin bar filled to {@code fraction} (0 to 1), for the trip card. */
+	private static JPanel progressBar(double fraction, Color color)
+	{
+		JPanel bar = new JPanel()
+		{
+			@Override
+			protected void paintComponent(java.awt.Graphics g)
+			{
+				super.paintComponent(g);
+				g.setColor(color);
+				g.fillRect(0, 0, (int) Math.round(getWidth() * Math.max(0, Math.min(1, fraction))), getHeight());
+			}
+		};
+		bar.setBackground(Theme.TRACK);
+		bar.setPreferredSize(new Dimension(10, 6));
+		bar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 6));
+		bar.setAlignmentX(LEFT_ALIGNMENT);
+		return bar;
 	}
 
 	/** The account overview's "Last unique 12 days ago: Vorkath's head." line, from History. */

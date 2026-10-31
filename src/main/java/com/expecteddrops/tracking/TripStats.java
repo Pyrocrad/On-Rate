@@ -14,9 +14,16 @@ public class TripStats
 	private final int received;
 	private final double expected;
 	private final List<String> drops;
+	private final double sharedExpected;
+	private final int sharedReceived;
+	private final List<String> sharedNames;
 
-	TripStats(String boss, long startMillis, long lastMillis, int kills, int received, double expected, List<String> drops)
+	TripStats(String boss, long startMillis, long lastMillis, int kills, int received, double expected, List<String> drops,
+		double sharedExpected, int sharedReceived, List<String> sharedNames)
 	{
+		this.sharedExpected = sharedExpected;
+		this.sharedReceived = sharedReceived;
+		this.sharedNames = Collections.unmodifiableList(sharedNames);
 		this.boss = boss;
 		this.startMillis = startMillis;
 		this.lastMillis = lastMillis;
@@ -62,10 +69,34 @@ public class TripStats
 		return drops;
 	}
 
-	/** Luck for this trip alone (NaN when nothing was expected yet). */
+	/** Expected from shared items (godsword shards...) the boss drops, part of {@link #getExpected()}. */
+	public double getSharedExpected()
+	{
+		return sharedExpected;
+	}
+
+	/** Shared items received this trip, part of {@link #getReceived()}. */
+	public int getSharedReceived()
+	{
+		return sharedReceived;
+	}
+
+	/** Names of the shared items counted in the shared figures. */
+	public List<String> getSharedNames()
+	{
+		return sharedNames;
+	}
+
+	/** True while too little is expected for a verdict (the same threshold as the boss page). */
+	public boolean isTooEarly()
+	{
+		return !(expected >= DropMath.TOO_EARLY_BELOW);
+	}
+
+	/** Luck for this trip alone (NaN while it is too early to call, see {@link #isTooEarly()}). */
 	public double getLuck()
 	{
-		return expected <= 0 ? Double.NaN : DropMath.luck(received, expected);
+		return isTooEarly() ? Double.NaN : DropMath.luck(received, expected);
 	}
 
 	/** Of players doing the same kills: {share with fewer uniques, share with as many}; null when nothing was expected. */
