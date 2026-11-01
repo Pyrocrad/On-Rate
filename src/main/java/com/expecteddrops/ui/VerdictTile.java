@@ -99,8 +99,9 @@ class VerdictTile extends JPanel
 		if (changed)
 		{
 			// a label that wrapped (or shrank) needs a different height: lay the tile and its row out again,
-			// or the second line is cut off
-			revalidate();
+			// or the second line is cut off. Later, not now: a revalidate made while the tile is being laid
+			// out is wiped when that layout pass ends (Swing marks the tile valid again afterwards)
+			javax.swing.SwingUtilities.invokeLater(this::revalidate);
 		}
 	}
 
