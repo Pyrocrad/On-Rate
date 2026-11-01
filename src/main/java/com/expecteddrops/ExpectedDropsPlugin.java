@@ -31,6 +31,10 @@ import java.util.HashSet;
 import javax.inject.Inject;
 import javax.swing.SwingUtilities;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import net.runelite.api.ChatMessageType;
@@ -106,6 +110,9 @@ public class ExpectedDropsPlugin extends Plugin
 	private ClientThread clientThread;
 
 	@Inject
+	private ScheduledExecutorService executor;
+
+	@Inject
 	private ClientToolbar clientToolbar;
 
 	@Inject
@@ -139,10 +146,11 @@ public class ExpectedDropsPlugin extends Plugin
 	/** Bosses we already reminded about this session, so the reminder shows once. */
 	private final Set<String> remindedThisSession = new HashSet<>();
 
-	private Tracker tracker;
-	private ExpectedDropsPanel panel;
+	// written on the client thread, read from Swing and the save thread
+	private volatile Tracker tracker;
+	private volatile ExpectedDropsPanel panel;
 	private NavigationButton navButton;
-	private ProfileStore store;
+	private volatile ProfileStore store;
 	private final Map<String, Integer> itemIds = new ConcurrentHashMap<>();
 	private boolean itemIdsResolved;
 	/** GE price per normalized item name, from RuneLite's own price list. Untradeables are 0. */
@@ -240,7 +248,7 @@ public class ExpectedDropsPlugin extends Plugin
 	protected void shutDown() throws Exception
 	{
 		recordHistoryPoint(true);
-		save();
+		saveNow();   // not later: the plugin is stopping
 		if (raidPoints != null)
 		{
 			eventBus.unregister(raidPoints);
@@ -636,7 +644,8 @@ public class ExpectedDropsPlugin extends Plugin
 	@Subscribe
 	public void onLootReceived(LootReceived event)
 	{
-		if (tracker == null)
+		Tracker t = tracker;
+		if (t == null)
 		{
 			return;
 		}
@@ -650,12 +659,12 @@ public class ExpectedDropsPlugin extends Plugin
 				items.add(new Tracker.LootItem(comp.getName(), stack.getQuantity()));
 			}
 		}
-		String boss = tracker.onLoot(event.getName(), event.getAmount(), items, System.currentTimeMillis());
+		String boss = t.onLoot(event.getName(), event.getAmount(), items, System.currentTimeMillis());
 		if (boss != null)
 		{
 			changed(boss, true);
 		}
-		else if (tracker.onOtherLoot(event.getName(), items))
+		else if (t.onOtherLoot(event.getName(), items))
 		{
 			// a visage from a regular dragon, a chainbody from a smoke devil: noted as not from a boss
 			changed(null, false);
@@ -672,6 +681,8 @@ public class ExpectedDropsPlugin extends Plugin
 		}
 	}
 
+	private static final Pattern NOT_A_DIGIT = Pattern.compile("[^0-9]");
+
 	private void readDoomScoreboard()
 	{
 		if (tracker == null)
@@ -686,8 +697,9 @@ public class ExpectedDropsPlugin extends Plugin
 			{
 				continue;
 			}
-			String digits = w.getText().replaceAll("[^0-9]", "");
-			if (!digits.isEmpty())
+			String digits = NOT_A_DIGIT.matcher(w.getText()).replaceAll("");
+			// up to nine digits always fit an int; anything longer isn't a kill count
+			if (!digits.isEmpty() && digits.length() <= 9)
 			{
 				levels.put(level, Integer.parseInt(digits));
 			}
@@ -940,12 +952,41 @@ public class ExpectedDropsPlugin extends Plugin
 		}
 	}
 
+	/** How long a save waits for more changes to arrive, so a burst of events is written once. */
+	private static final long SAVE_DELAY_MILLIS = 1500;
+	private final AtomicBoolean savePending = new AtomicBoolean();
+
+	/**
+	 * Asks for the data to be written soon. The work (turning everything into text, writing it
+	 * to the settings) runs on a background thread instead of the game's, and many requests
+	 * close together become one write.
+	 */
 	void save()
 	{
-		ProfileStore s = store;
-		if (s != null)
+		if (store != null && savePending.compareAndSet(false, true))
 		{
-			s.save(tracker);
+			try
+			{
+				executor.schedule(this::saveNow, SAVE_DELAY_MILLIS, TimeUnit.MILLISECONDS);
+			}
+			catch (RuntimeException e)
+			{
+				// the executor is gone (the client is closing): write now rather than lose it
+				saveNow();
+			}
+		}
+	}
+
+	/** Writes the data now, on the calling thread. Safe from any thread. */
+	private void saveNow()
+	{
+		savePending.set(false);
+		ProfileStore s = store;
+		Tracker t = tracker;
+		// never write one account's data into another's profile (a switch can land in between)
+		if (s != null && t != null && s.isLoaded(configManager.getRSProfileKey()))
+		{
+			s.save(t);
 		}
 	}
 

@@ -152,4 +152,19 @@ public class CatalogTest
 		assertFalse(catalog.getBosses().contains(archive));
 		assertFalse(catalog.getAllItemNames().contains("rondache"));
 	}
+
+	/** Settings keys drop everything but letters and digits, so two names must never reduce to the same. */
+	@Test
+	public void noTwoBossesShareASettingsKey()
+	{
+		Map<String, String> seen = new HashMap<>();
+		for (BossDefinition boss : catalog.getBosses())
+		{
+			String reduced = boss.getName().replaceAll("[^A-Za-z0-9]", "");
+			String clash = seen.put(reduced, boss.getName());
+			assertTrue(boss.getName() + " would share saved data with " + clash, clash == null);
+			assertEquals("kills." + reduced, ExpectedDropsPlugin.killsKey(boss.getName()));
+			assertEquals("raids." + reduced, ExpectedDropsPlugin.raidsKey(boss.getName()));
+		}
+	}
 }

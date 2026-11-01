@@ -142,6 +142,57 @@ public class ProfileStoreTest
 	}
 
 	@Test
+	public void theFirstUnreadableCopyIsTheOneKept()
+	{
+		current.values.put("kills.Vorkath", "[[[");
+		assertTrue(store.load("main", tracker));
+		// the same key goes bad again later: the original evidence must stay
+		current.values.put("kills.Vorkath", "second break");
+		store.forget();
+		assertTrue(store.load("main", tracker));
+		assertEquals("[[[", current.values.get("kills.Vorkath.corrupt"));
+	}
+
+	@Test
+	public void emptyEntriesInSavedHistoryAreDropped()
+	{
+		current.values.put("kills.Vorkath", "[null,{\"kc\":5,\"time\":1000},null]");
+		assertTrue(store.load("main", tracker));
+		assertEquals(1, tracker.history("Vorkath").size());
+	}
+
+	@Test
+	public void aSaveFromAnotherProfileIsNotWrittenIntoThisOne()
+	{
+		assertTrue(store.load("main", tracker));
+		assertTrue(store.isLoaded("main"));
+		assertFalse(store.isLoaded("other"));
+		assertFalse(store.isLoaded(null));
+	}
+
+	@Test
+	public void saveWritesTheFormatVersion()
+	{
+		assertTrue(store.load("main", tracker));
+		vorkathKill(11, false);
+		store.save(tracker);
+		assertTrue(current.values.get("progress").contains("\"version\":1"));
+	}
+
+	@Test
+	public void aSaveWithoutAVersionStillLoads()
+	{
+		assertTrue(store.load("main", tracker));
+		vorkathKill(10, false);
+		store.save(tracker);
+		current.values.put("progress", current.values.get("progress").replace("\"version\":1,", ""));
+		store.forget();
+		Tracker again = new Tracker(catalog);
+		assertTrue(store.load("main", again));
+		assertTrue(again.stats("Vorkath", RAIDS).getKillCount() > 0);
+	}
+
+	@Test
 	public void unreadableDataStartsFreshInsteadOfFailing()
 	{
 		vorkathKill(10, false);

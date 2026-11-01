@@ -10,6 +10,15 @@ import java.util.Map;
  */
 public class TrackerState
 {
+	/**
+	 * What this plugin writes. Saves from before the number existed read as 0; a save with a
+	 * higher number was written by a newer On Rate.
+	 */
+	static final int CURRENT_VERSION = 1;
+
+	/** Version of the plugin's save format that wrote this (see {@link #CURRENT_VERSION}). */
+	int version;
+
 	Map<String, BossProgress> bosses = new HashMap<>();
 	/**
 	 * Collection log totals of items that several bosses drop (godsword shards, Virtus...).
@@ -98,5 +107,34 @@ public class TrackerState
 			progress.ensureMaps();
 		}
 		return progress;
+	}
+
+	/** Whether a newer On Rate wrote this: it can hold things this version doesn't know. */
+	public boolean isFromNewerVersion()
+	{
+		return version > CURRENT_VERSION;
+	}
+
+	/**
+	 * Fixes what a damaged or hand-edited save can leave behind (null entries in maps and lists),
+	 * so later code never meets them on the Swing thread.
+	 */
+	void repair()
+	{
+		days();
+		sharedClog();
+		poolSplits();
+		poolElsewhereSeen();
+		history();
+		if (bosses == null)
+		{
+			bosses = new HashMap<>();
+		}
+		bosses.values().removeIf(b -> b == null);
+		history.removeIf(h -> h == null);
+		days.values().removeIf(d -> d == null);
+		sharedClog.values().removeIf(v -> v == null);
+		poolSplits.values().removeIf(v -> v == null);
+		poolElsewhereSeen.values().removeIf(v -> v == null);
 	}
 }

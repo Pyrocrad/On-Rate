@@ -133,6 +133,7 @@ public class Tracker
 	 */
 	public synchronized SaveData saveData(java.util.function.Function<Object, String> toJson)
 	{
+		state.version = TrackerState.CURRENT_VERSION;
 		SaveData data = new SaveData(toJson.apply(state));
 		for (String name : killsChanged)
 		{
@@ -188,6 +189,16 @@ public class Tracker
 			List<KillEntry> list = state.get(bossName).kills;
 			list.clear();
 			list.addAll(kills.subList(Math.max(0, kills.size() - MAX_KILLS), kills.size()));
+		}
+	}
+
+	/** Drops the oldest entries so at most {@code max} remain; one pass, however far over the list is. */
+	private static void trimToNewest(List<?> list, int max)
+	{
+		int excess = list.size() - max;
+		if (excess > 0)
+		{
+			list.subList(0, excess).clear();
 		}
 	}
 
@@ -838,10 +849,7 @@ public class Tracker
 		entry.time = nowMillis;
 		progress.kills.add(entry);
 		killsChanged.add(boss.getName());
-		while (progress.kills.size() > MAX_KILLS)
-		{
-			progress.kills.remove(0);
-		}
+		trimToNewest(progress.kills, MAX_KILLS);
 		return entry;
 	}
 
@@ -1434,10 +1442,7 @@ public class Tracker
 				at.partKc = kc;
 			}
 			progress.kills.add(index, at);
-			while (progress.kills.size() > MAX_KILLS)
-			{
-				progress.kills.remove(0);
-			}
+			trimToNewest(progress.kills, MAX_KILLS);
 		}
 		if (at.drops == null)
 		{
@@ -1559,6 +1564,7 @@ public class Tracker
 	public synchronized void setState(TrackerState state)
 	{
 		this.state = state == null ? new TrackerState() : state;
+		this.state.repair();
 		unreadablePages.clear();
 		headerUnreadable = false;
 		killsChanged.clear();
@@ -1880,10 +1886,7 @@ public class Tracker
 		List<RaidRecord> raids = state.get(bossName).raids;
 		raids.add(record);
 		raidsChanged.add(bossName);
-		while (raids.size() > MAX_RAID_RECORDS)
-		{
-			raids.remove(0);
-		}
+		trimToNewest(raids, MAX_RAID_RECORDS);
 		shiftToday(bossName, anyExpected(bossName) - before);
 	}
 
@@ -1940,10 +1943,7 @@ public class Tracker
 		{
 			history.add(point);
 		}
-		while (history.size() > MAX_HISTORY)
-		{
-			history.remove(0);
-		}
+		trimToNewest(history, MAX_HISTORY);
 		return true;
 	}
 

@@ -1,5 +1,6 @@
 package com.expecteddrops;
 
+import com.expecteddrops.data.BossDefinition;
 import com.expecteddrops.tracking.KillEntry;
 import com.expecteddrops.tracking.RaidRecord;
 import com.expecteddrops.tracking.SaveData;
@@ -8,6 +9,7 @@ import com.expecteddrops.tracking.TrackerState;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -60,61 +62,81 @@ final class ProfileStore
 		{
 			return false;
 		}
-		loadedProfile = profile;
-		TrackerState state = null;
-		String json = backend.get(ExpectedDropsPlugin.DATA_KEY);
-		if (json != null && !json.isEmpty())
+		TrackerState state = read(ExpectedDropsPlugin.DATA_KEY, TrackerState.class);
+		if (state != null && state.isFromNewerVersion())
 		{
-			try
-			{
-				state = gson.fromJson(json, TrackerState.class);
-			}
-			catch (Exception e)
-			{
-				log.warn("Could not read saved On Rate data, starting fresh", e);
-				backup(ExpectedDropsPlugin.DATA_KEY, json);
-			}
+			log.warn("This On Rate data was saved by a newer version; some of it may be ignored");
 		}
 		tracker.setState(state);
-		for (com.expecteddrops.data.BossDefinition boss : tracker.getCatalog().getBosses())
+		for (BossDefinition boss : tracker.getCatalog().getBosses())
 		{
-			String kills = backend.get(ExpectedDropsPlugin.killsKey(boss.getName()));
-			if (kills == null || kills.isEmpty())
+			String name = boss.getName();
+			List<KillEntry> kills = withoutNulls(read(ExpectedDropsPlugin.killsKey(name), KILLS_TYPE));
+			if (kills != null)
 			{
-				continue;
+				tracker.setKills(name, kills);
 			}
-			try
+			if (boss.getRaid() != null)
 			{
-				tracker.setKills(boss.getName(), gson.fromJson(kills, KILLS_TYPE));
-			}
-			catch (Exception e)
-			{
-				log.warn("Could not read the saved On Rate history of {}", boss.getName(), e);
-				backup(ExpectedDropsPlugin.killsKey(boss.getName()), kills);
+				List<RaidRecord> raids = withoutNulls(read(ExpectedDropsPlugin.raidsKey(name), RAIDS_TYPE));
+				if (raids != null)
+				{
+					tracker.setRaids(name, raids);
+				}
 			}
 		}
-		for (com.expecteddrops.data.BossDefinition boss : tracker.getCatalog().getBosses())
-		{
-			if (boss.getRaid() == null)
-			{
-				continue;
-			}
-			String raids = backend.get(ExpectedDropsPlugin.raidsKey(boss.getName()));
-			if (raids == null || raids.isEmpty())
-			{
-				continue;
-			}
-			try
-			{
-				tracker.setRaids(boss.getName(), gson.fromJson(raids, RAIDS_TYPE));
-			}
-			catch (Exception e)
-			{
-				log.warn("Could not read the saved On Rate raids of {}", boss.getName(), e);
-				backup(ExpectedDropsPlugin.raidsKey(boss.getName()), raids);
-			}
-		}
+		// only now: if anything above threw, the next call tries this profile again
+		loadedProfile = profile;
 		return true;
+	}
+
+	/** Whether this is the profile whose data the tracker holds (so a save can't land in another one). */
+	synchronized boolean isLoaded(String profile)
+	{
+		return profile != null && profile.equals(loadedProfile);
+	}
+
+	/** Reads one saved value. Unreadable data is backed up and read as absent (null). */
+	private <T> T read(String key, Type type)
+	{
+		String json = backend.get(key);
+		if (json == null || json.isEmpty())
+		{
+			return null;
+		}
+		try
+		{
+			return gson.fromJson(json, type);
+		}
+		catch (RuntimeException e)
+		{
+			log.warn("Could not read the saved On Rate data under {}", key, e);
+			backup(key, json);
+			return null;
+		}
+	}
+
+	private <T> T read(String key, Class<T> type)
+	{
+		return read(key, (Type) type);
+	}
+
+	/** The list without the null entries a damaged save can hold (they would fail later, on the Swing thread). */
+	private static <T> List<T> withoutNulls(List<T> list)
+	{
+		if (list == null)
+		{
+			return null;
+		}
+		List<T> clean = new ArrayList<>(list.size());
+		for (T t : list)
+		{
+			if (t != null)
+			{
+				clean.add(t);
+			}
+		}
+		return clean;
 	}
 
 	/** Writes what changed since the last save. Does nothing before a profile is loaded. */
@@ -145,10 +167,14 @@ final class ProfileStore
 		loadedProfile = null;
 	}
 
-	/** Keeps unreadable data under a ".corrupt" key, so the next save doesn't destroy it. */
+	/** Keeps unreadable data under a ".corrupt" key, so the next save doesn't destroy it (the first one only). */
 	private void backup(String key, String raw)
 	{
-		backend.set(key + BACKUP_SUFFIX, raw);
+		// the first unreadable value is the one worth keeping: a later failure must not replace it
+		if (backend.get(key + BACKUP_SUFFIX) == null)
+		{
+			backend.set(key + BACKUP_SUFFIX, raw);
+		}
 	}
 
 	private void write(String key, String json)
