@@ -9,7 +9,6 @@ import com.expecteddrops.tracking.Tracker;
 import com.google.gson.Gson;
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -31,18 +30,14 @@ public class AlsoFromNoteTest
 		}
 	}
 
-	private static String itemTip(RowStats row, BossStats stats) throws Exception
+	private static String itemTip(RowStats row, BossStats stats)
 	{
-		Method m = ExpectedDropsPanel.class.getDeclaredMethod("tooltip", RowStats.class, BossStats.class, String.class);
-		m.setAccessible(true);
-		return (String) m.invoke(null, row, stats, "kill");
+		return PanelTexts.tooltip(row, stats, "kill");
 	}
 
-	private static String poolTip(SharedPool pool) throws Exception
+	private static String poolTip(SharedPool pool)
 	{
-		Method m = ExpectedDropsPanel.class.getDeclaredMethod("poolTooltip", SharedPool.class, RowStats.class);
-		m.setAccessible(true);
-		return (String) m.invoke(null, pool, pool.toRow());
+		return PanelTexts.poolTooltip(pool, pool.toRow());
 	}
 
 	@Test
