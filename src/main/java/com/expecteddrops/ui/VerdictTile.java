@@ -64,6 +64,7 @@ class VerdictTile extends JPanel
 		{
 			return;
 		}
+		boolean changed = false;
 		String text = wordText;
 		if (text != null && !text.isEmpty())
 		{
@@ -81,18 +82,26 @@ class VerdictTile extends JPanel
 			if (word.getFont().getSize2D() != size)
 			{
 				word.setFont(base.deriveFont(size));
+				changed = true;
 			}
 			if (twoLines)
 			{
-				wrapIfLong(word, text, room);
+				changed |= wrapIfLong(word, text, room);
 			}
 			else if (!text.equals(word.getText()))
 			{
 				word.setText(text);
+				changed = true;
 			}
 		}
-		wrapIfLong(numbers, numbersText, room);
-		wrapIfLong(luck, luckText, room);
+		changed |= wrapIfLong(numbers, numbersText, room);
+		changed |= wrapIfLong(luck, luckText, room);
+		if (changed)
+		{
+			// a label that wrapped (or shrank) needs a different height: lay the tile and its row out again,
+			// or the second line is cut off
+			revalidate();
+		}
 	}
 
 	/**
@@ -100,11 +109,11 @@ class VerdictTile extends JPanel
 	 * The breaks are made here, from the label's own font: a CSS width in an HTML label is not in pixels
 	 * (it comes out about a third wider and varies with the screen).
 	 */
-	private static void wrapIfLong(JLabel label, String plain, int room)
+	private static boolean wrapIfLong(JLabel label, String plain, int room)
 	{
 		if (plain == null || plain.isEmpty())
 		{
-			return;
+			return false;
 		}
 		java.awt.FontMetrics fm = label.getFontMetrics(label.getFont());
 		StringBuilder shown = new StringBuilder();
@@ -127,7 +136,9 @@ class VerdictTile extends JPanel
 		if (!text.equals(label.getText()))
 		{
 			label.setText(text);
+			return true;
 		}
+		return false;
 	}
 
 	void set(String verdict, Color color, String numbersText, String luckText, String tip)
