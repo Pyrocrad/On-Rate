@@ -672,8 +672,7 @@ public class TrackerTest
 			sharedPerKill += Tracker.effectiveRate(graardor, drop, RAIDS);
 		}
 		assertEquals(5 * sharedPerKill, trip.getSharedExpected(), 1e-9);
-		assertTrue(trip.isTooEarly());
-		assertTrue(Double.isNaN(trip.getLuck()));
+		assertFalse(Double.isNaN(trip.getLuck()));
 	}
 
 	@Test

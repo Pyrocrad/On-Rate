@@ -87,16 +87,10 @@ public class TripStats
 		return sharedNames;
 	}
 
-	/** True while too little is expected for a verdict (the same threshold as the boss page). */
-	public boolean isTooEarly()
-	{
-		return !(expected >= DropMath.TOO_EARLY_BELOW);
-	}
-
-	/** Luck for this trip alone (NaN while it is too early to call, see {@link #isTooEarly()}). */
+	/** Luck for this trip alone, from the first kill on (NaN only when nothing is expected). */
 	public double getLuck()
 	{
-		return isTooEarly() ? Double.NaN : DropMath.luck(received, expected);
+		return DropMath.luck(received, expected);
 	}
 
 	/** Of players doing the same kills: {share with fewer uniques, share with as many}; null when nothing was expected. */

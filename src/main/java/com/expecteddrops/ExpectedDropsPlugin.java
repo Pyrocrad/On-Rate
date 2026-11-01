@@ -398,7 +398,7 @@ public class ExpectedDropsPlugin extends Plugin
 			: String.format("%.2f", trip.getExpected());
 		String account = String.format("%s \u00b7 %,d of %.1f", verdict, any.getReceived(), any.getExpected());
 		overlayInfo = new OverlayInfo(trip.getBoss(), tripText, tripExpected,
-			Double.isNaN(tripLuck) ? "Too early" : DropMath.verdict(tripLuck),
+			Double.isNaN(tripLuck) ? "-" : DropMath.verdict(tripLuck),
 			Double.isNaN(tripLuck) ? java.awt.Color.WHITE : Palette.luck(tripLuck).brighter(),
 			account, Palette.luck(luck).brighter(), driestText, driestColor, trip.getLastMillis());
 	}

@@ -4169,11 +4169,8 @@ public class ExpectedDropsPanel extends PluginPanel
 
 	// ---------------------------------------------------------------- extras
 
-	/** Fewer kills than this and the value per hour is too rough to show. */
-	static final int VALUE_MIN_KILLS = 50;
-
 	/**
-	 * "This trip" card: the verdict first (or "Too early to call" with how far off it is), then kills,
+	 * "This trip" card: the verdict first (or a dash only when nothing is expected), then kills,
 	 * uniques against expected, what the expected is made of (shared items included), and the trip's state.
 	 */
 	private void addTripCard(String bossName)
@@ -4204,7 +4201,7 @@ public class ExpectedDropsPanel extends PluginPanel
 
 		// the verdict first, or how far off one is
 		double luck = trip.getLuck();
-		JLabel headline = new JLabel(Double.isNaN(luck) ? "Too early to call" : DropMath.verdict(luck));
+		JLabel headline = new JLabel(Double.isNaN(luck) ? "\u2013" : DropMath.verdict(luck));
 		headline.setFont(FontManager.getRunescapeBoldFont().deriveFont(16f));
 		headline.setForeground(Double.isNaN(luck) ? ColorScheme.LIGHT_GRAY_COLOR : luckColor(luck).brighter());
 		headline.setAlignmentX(LEFT_ALIGNMENT);
@@ -4212,9 +4209,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		String sentence;
 		if (Double.isNaN(luck))
 		{
-			sentence = String.format("%s so far, %s expected. A verdict starts at %s expected.",
-				trip.getReceived() == 0 ? "No uniques" : trip.getReceived() == 1 ? "1 unique" : trip.getReceived() + " uniques",
-				formatExpected(trip.getExpected()), formatExpected(DropMath.TOO_EARLY_BELOW));
+			sentence = "Nothing to expect from this boss yet.";
 		}
 		else
 		{
@@ -4228,7 +4223,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		card.add(why);
 		card.add(spacer(Theme.S));
 		double[] shares = trip.getShares();
-		double fill = Double.isNaN(luck) ? Math.min(1.0, trip.getExpected() / DropMath.TOO_EARLY_BELOW)
+		double fill = Double.isNaN(luck) ? 0
 			: shares == null ? 0 : Math.min(1.0, trip.getReceived() <= 0 ? 0 : shares[0]);
 		card.add(progressBar(fill, Double.isNaN(luck) ? Theme.QUIET_MARK : luckColor(luck)));
 		card.add(spacer(Theme.S));
@@ -4278,7 +4273,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		double tripValue = options.get().isGeValue() ? tracker.tripValue(priceOf) : Double.NaN;
 		double perKill = !options.get().isGeValue() ? 0
 			: !Double.isNaN(tripValue) && trip.getKills() > 0 ? tripValue / trip.getKills() : uniqueValuePerKill(bossName);
-		if (!Double.isNaN(perHour) && trip.getKills() >= VALUE_MIN_KILLS
+		if (!Double.isNaN(perHour)
 			&& (perKill > 0 || !Double.isNaN(tripValue) && uniqueValuePerKill(bossName) > 0))
 		{
 			String worthTip = String.format("<html><body style='width: 240px'>About %s per %s at this trip's speed. "
