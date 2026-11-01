@@ -9,7 +9,6 @@ import com.expecteddrops.stats.SharedPool;
 import com.expecteddrops.stats.BossStats;
 import com.expecteddrops.stats.DropMath;
 import com.expecteddrops.stats.ItemHighlight;
-import com.expecteddrops.stats.RaidChance;
 import com.expecteddrops.stats.RaidSettings;
 import com.expecteddrops.stats.RowStats;
 import java.util.ArrayList;
@@ -190,6 +189,42 @@ public class Tracker
 			list.clear();
 			list.addAll(kills.subList(Math.max(0, kills.size() - MAX_KILLS), kills.size()));
 		}
+	}
+
+	/** See {@link RaidOdds#purpleChance}. */
+	public static double purpleChance(RaidRecord record)
+	{
+		return RaidOdds.purpleChance(record);
+	}
+
+	/** See {@link RaidOdds#partRate}. */
+	public static double partRate(BossDefinition boss, BossPart part, DropDefinition drop, RaidSettings raids)
+	{
+		return RaidOdds.partRate(boss, part, drop, raids);
+	}
+
+	/** See {@link RaidOdds#effectiveRate}. */
+	public static double effectiveRate(BossDefinition boss, DropDefinition drop, RaidSettings raids)
+	{
+		return RaidOdds.effectiveRate(boss, drop, raids);
+	}
+
+	/** See {@link RaidOdds#waveRate}. */
+	public static double waveRate(DropDefinition drop, int wave)
+	{
+		return RaidOdds.waveRate(drop, wave);
+	}
+
+	/** See {@link Units#unit}. */
+	public static String unit(BossDefinition boss)
+	{
+		return Units.unit(boss);
+	}
+
+	/** See {@link Units#unitOne}. */
+	public static String unitOne(BossDefinition boss)
+	{
+		return Units.unitOne(boss);
 	}
 
 	/** Drops the oldest entries so at most {@code max} remain; one pass, however far over the list is. */
@@ -711,7 +746,7 @@ public class Tracker
 					record = r;
 				}
 			}
-			chance = record == null ? Double.NaN : recordChance(record, part, settings);
+			chance = record == null ? Double.NaN : RaidOdds.recordChance(record, part, settings);
 		}
 		double expected = 0;
 		for (DropDefinition drop : boss.getDrops())
@@ -727,19 +762,19 @@ public class Tracker
 			}
 			else if (boss.getWaves() > 0)
 			{
-				rate = kill.level == null ? 0 : waveRate(drop, kill.level);
+				rate = kill.level == null ? 0 : RaidOdds.waveRate(drop, kill.level);
 			}
 			else if (part != null && !Double.isNaN(chance) && !drop.hasPartRates())
 			{
-				rate = recordDropExpected(boss, part, drop, record, chance);
+				rate = RaidOdds.recordDropExpected(boss, part, drop, record, chance);
 			}
 			else if (part != null)
 			{
-				rate = partRate(boss, part, drop, settings);
+				rate = RaidOdds.partRate(boss, part, drop, settings);
 			}
 			else
 			{
-				rate = effectiveRate(boss, drop, settings);
+				rate = RaidOdds.effectiveRate(boss, drop, settings);
 			}
 			if (drop.getGuaranteedAt() != null && drop.getGuaranteedAt() == kill.kc)
 			{
@@ -900,7 +935,7 @@ public class Tracker
 					{
 						if (part.getName().equals(match.part))
 						{
-							chance = recordChance(match, part, settings);
+							chance = RaidOdds.recordChance(match, part, settings);
 						}
 					}
 				}
@@ -1218,7 +1253,7 @@ public class Tracker
 		for (BossPart part : boss.getParts())
 		{
 			fallback.add(part.getName());
-			if (drop != null && partRate(boss, part, drop, settings) > 0)
+			if (drop != null && RaidOdds.partRate(boss, part, drop, settings) > 0)
 			{
 				names.add(part.getName());
 			}
@@ -1416,7 +1451,7 @@ public class Tracker
 			}
 			else
 			{
-				expected = entry.since * (part == null ? rateOf(boss, drop) : partRate(boss, part, drop, settings));
+				expected = entry.since * (part == null ? rateOf(boss, drop) : RaidOdds.partRate(boss, part, drop, settings));
 			}
 			if (expected > 0)
 			{
@@ -1537,7 +1572,7 @@ public class Tracker
 		int n = 0;
 		for (RaidRecord r : raidRecords(bossName))
 		{
-			double chance = purpleChance(r);
+			double chance = RaidOdds.purpleChance(r);
 			if ((part == null ? bossName : part).equals(r.part) && !Double.isNaN(chance))
 			{
 				sum += chance;
@@ -1953,97 +1988,13 @@ public class Tracker
 		return new ArrayList<>(state.history());
 	}
 
-	/** Your expected uniques for this raid from its points, or NaN when they are unknown. */
-	public static double purpleChance(RaidRecord record)
-	{
-		if (record == null || record.family == null)
-		{
-			return Double.NaN;
-		}
-		switch (record.family)
-		{
-			case "cox":
-				return RaidChance.cox(record.personalPoints, record.teamPoints);
-			case "toa":
-				return RaidChance.toa(record.personalPoints, record.partyPoints, record.teamPoints,
-					record.teamSize, record.raidLevel);
-			default:
-				return Double.NaN;
-		}
-	}
-
-	/**
-	 * Share of a purple that is this item at a raid level (ToA's weights shift towards the
-	 * rarer items at high raid levels). Falls back to {@code normal} without level weights.
-	 */
-	private static double levelShare(BossDefinition boss, DropDefinition drop, int raidLevel, double normal)
-	{
-		boolean any = false;
-		double total = 0;
-		for (DropDefinition d : boss.getDrops())
-		{
-			any |= d.hasLevelWeights();
-			Double w = d.getWeightAtLevel(raidLevel);
-			if (w != null)
-			{
-				total += w;
-			}
-		}
-		Double w = drop.getWeightAtLevel(raidLevel);
-		if (!any || w == null || total <= 0)
-		{
-			return normal;
-		}
-		return w / total;
-	}
-
-	/**
-	 * Your purple chance for one saved raid: from its points (CoX, ToA), or for ToB the
-	 * team chance from the settings split over that raid's real team size. NaN when
-	 * neither is known, so the setting is used.
-	 */
-	static double recordChance(RaidRecord record, BossPart part, RaidSettings raids)
-	{
-		double chance = purpleChance(record);
-		if (!Double.isNaN(chance))
-		{
-			return chance;
-		}
-		String key = part.getRaid();
-		if ("tob".equals(record.family) && record.teamSize > 0 && key != null && !"none".equals(key))
-		{
-			return raids.uniqueChance(key) * Math.max(1, raids.teamSize(key)) / record.teamSize;
-		}
-		return Double.NaN;
-	}
-
-	/**
-	 * What one saved raid adds to the expected count of a drop: its purple chance times the
-	 * item's share at that raid level. The Tombs of Amascut pet has its own formula.
-	 */
-	private static double recordDropExpected(BossDefinition boss, BossPart part, DropDefinition drop, RaidRecord r,
-		double chance)
-	{
-		if (drop.isPet() && "toa".equals(r.family))
-		{
-			double pet = RaidChance.toaPet(r.personalPoints, r.partyPoints, r.teamPoints, r.teamSize, r.raidLevel);
-			if (!Double.isNaN(pet))
-			{
-				return pet;
-			}
-		}
-		double share = partRate(boss, part, drop, key -> 1.0);
-		double itemShare = r.raidLevel >= 0 ? levelShare(boss, drop, r.raidLevel, share) : share;
-		return chance * itemShare * RaidChance.toaLevelFactor(r.raidLevel, drop.getMinRaidLevel());
-	}
-
 	/** Completions of this raid mode whose purple chance came from your points. */
 	public synchronized int measuredRaids(String bossName, String part)
 	{
 		int n = 0;
 		for (RaidRecord r : raidRecords(bossName))
 		{
-			if ((part == null ? bossName : part).equals(r.part) && !Double.isNaN(purpleChance(r)))
+			if ((part == null ? bossName : part).equals(r.part) && !Double.isNaN(RaidOdds.purpleChance(r)))
 			{
 				n++;
 			}
@@ -2189,49 +2140,6 @@ public class Tracker
 		}
 	}
 
-	/** Word for what is counted at this boss: kills, raids, chests or levels. */
-	/** "kills", "raids", "delves" (Doom) or "chests" (Barrows, Moons): what one completion is called. */
-	public static String unit(BossDefinition boss)
-	{
-		if (boss.getRollsPerKill() > 0)
-		{
-			return "rolls";
-		}
-		if (boss.getWaves() > 0)
-		{
-			return "runs";
-		}
-		if (boss.getRaid() != null)
-		{
-			return "raids";
-		}
-		if (boss.isDelve())
-		{
-			return "delves";
-		}
-		for (String kc : boss.getKcNames())
-		{
-			if (kc.toLowerCase(Locale.ROOT).contains("chest"))
-			{
-				return "chests";
-			}
-		}
-		return "kills";
-	}
-
-	/** {@link #unit} for one: "kill", "raid", "delve" or "chest". */
-	/** "1 kill", "5 kills": the unit of a boss for a count. */
-	private static String units(BossDefinition boss, int count)
-	{
-		return count == 1 ? unitOne(boss) : unit(boss);
-	}
-
-	public static String unitOne(BossDefinition boss)
-	{
-		String units = unit(boss);
-		return units.substring(0, units.length() - 1);
-	}
-
 	/**
 	 * A unique dropped: remember the kill count, and say how many kills it took.
 	 * Call before the received count goes up.
@@ -2245,7 +2153,7 @@ public class Tracker
 		Integer before = progress.received.get(key);
 		double rate = rateOf(boss, drop);
 
-		String unit = unit(boss);
+		String unit = Units.unit(boss);
 		String name = drop.getDisplayName().equals(drop.getName()) ? itemName : drop.getDisplayName();
 		// "first" is only certain when the collection log told us the history of this item
 		boolean historyKnown = progress.clogSynced && !catalog.isClogShared(key);
@@ -2253,16 +2161,16 @@ public class Tracker
 		if (previous != null && kc > previous)
 		{
 			int kills = kc - previous;
-			text = String.format("%s after %,d %s (%s the drop rate).", name, kills, units(boss, kills), multiple(kills * rate));
+			text = String.format("%s after %,d %s (%s the drop rate).", name, kills, Units.units(boss, kills), multiple(kills * rate));
 		}
 		else if (historyKnown && (before == null || before == 0) && kc > 0)
 		{
-			text = String.format("Your first %s, after %,d %s (%s the drop rate).", name, kc, units(boss, kc), multiple(kc * rate));
+			text = String.format("Your first %s, after %,d %s (%s the drop rate).", name, kc, Units.units(boss, kc), multiple(kc * rate));
 		}
 		else if (progress.trackingStartKc != null && kc > progress.trackingStartKc)
 		{
 			int kills = kc - progress.trackingStartKc;
-			text = String.format("%s after at least %,d %s.", name, kills, units(boss, kills));
+			text = String.format("%s after at least %,d %s.", name, kills, Units.units(boss, kills));
 		}
 		if (text != null && rate > 0)
 		{
@@ -2318,7 +2226,7 @@ public class Tracker
 	private double raidWaitExpected(BossDefinition boss, BossPart part, DropDefinition drop, BossProgress progress,
 		int fromKc, int toKc)
 	{
-		double perRaid = partRate(boss, part, drop, settings);
+		double perRaid = RaidOdds.partRate(boss, part, drop, settings);
 		Map<Integer, RaidRecord> counted = new HashMap<>();
 		for (RaidRecord r : progress.raids)
 		{
@@ -2331,8 +2239,8 @@ public class Tracker
 		for (int raid = fromKc + 1; raid <= toKc; raid++)
 		{
 			RaidRecord r = counted.get(raid);
-			double chance = r == null ? Double.NaN : recordChance(r, part, settings);
-			sum += Double.isNaN(chance) ? perRaid : recordDropExpected(boss, part, drop, r, chance);
+			double chance = r == null ? Double.NaN : RaidOdds.recordChance(r, part, settings);
+			sum += Double.isNaN(chance) ? perRaid : RaidOdds.recordDropExpected(boss, part, drop, r, chance);
 		}
 		return sum;
 	}
@@ -2428,13 +2336,13 @@ public class Tracker
 		{
 			return;
 		}
-		String unit = unit(boss);
+		String unit = Units.unit(boss);
 		if (names.size() == 1)
 		{
 			RowStats row = rowFor(s, names.get(0));
 			String streak = row.isStreakExact()
-				? String.format("%,d %s without one", row.getStreak(), units(boss, row.getStreak()))
-				: String.format("at least %,d %s since your last one", row.getStreak(), units(boss, row.getStreak()));
+				? String.format("%,d %s without one", row.getStreak(), Units.units(boss, row.getStreak()))
+				: String.format("at least %,d %s since your last one", row.getStreak(), Units.units(boss, row.getStreak()));
 			outbox.add(new Note(Note.Kind.MILESTONE, String.format("%s: %s, %dx the drop rate.",
 				names.get(0), streak, levels.get(0))));
 			return;
@@ -2627,20 +2535,6 @@ public class Tracker
 
 	/** Fortis Colosseum: the wave a claim right now would be for, from the last wave message. */
 	private Integer pendingWave;
-
-	/**
-	 * A drop's chance over a whole run claimed at {@code wave}: its chance on each wave up to
-	 * that one, added up (at most one unique per wave, so this is its expected count).
-	 */
-	public static double waveRate(DropDefinition drop, int wave)
-	{
-		double sum = 0;
-		for (int w = 1; w <= wave; w++)
-		{
-			sum += DropMath.parseRate(drop.getLevelRate(w));
-		}
-		return sum;
-	}
 
 	/** Tests and the plugin: the wave the next claim is for (a wave message was seen). */
 	public synchronized void onWaveCompleted(int wave)
@@ -3263,7 +3157,7 @@ public class Tracker
 			return;
 		}
 		BossDefinition boss = catalog.byName(t.getBoss());
-		String units = boss == null ? "kills" : unit(boss);
+		String units = boss == null ? "kills" : Units.unit(boss);
 		String uniques = t.getReceived() == 0 ? "no uniques"
 			: t.getReceived() == 1 ? "1 unique (" + String.join(", ", t.getDrops()) + ")"
 			: t.getReceived() + " uniques (" + String.join(", ", t.getDrops()) + ")";
@@ -3387,7 +3281,7 @@ public class Tracker
 				{
 					continue; // already one of the boss's rows above, or left out of the total
 				}
-				double poolExpected = effectiveRate(tripBoss, drop, settings) * kills;
+				double poolExpected = RaidOdds.effectiveRate(tripBoss, drop, settings) * kills;
 				expected += poolExpected;
 				sharedExpected += poolExpected;
 				sharedNames.add(drop.getDisplayName());
@@ -3425,142 +3319,6 @@ public class Tracker
 			}
 		}
 		return null;
-	}
-
-	/**
-	 * Rate of a drop for one part of a combined page (one boss, or one raid mode).
-	 * Explicit part rates win; raid modes use their own purple chance and weights.
-	 */
-	public static double partRate(BossDefinition boss, BossPart part, DropDefinition drop, RaidSettings raids)
-	{
-		if (drop.hasPartRates())
-		{
-			return DropMath.parseRate(drop.getPartRate(part.getName()));
-		}
-		if (part.getRaid() != null)
-		{
-			double unique = raids.uniqueChance(part.getRaid());
-			Double weight = drop.getWeight(part.getName());
-			if (weight != null)
-			{
-				double total = boss.getTotalWeight(part.getName());
-				return total > 0 ? unique * weight / total : 0;
-			}
-			if (drop.getPerUnique() != null)
-			{
-				return unique * DropMath.parseRate(drop.getPerUnique());
-			}
-		}
-		return DropMath.parseRate(drop.getRate());
-	}
-
-	/**
-	 * Expected count of a drop from one part. For raid modes, completions whose points
-	 * were read use their own purple chance; older ones use the setting.
-	 */
-	private static double partExpected(BossDefinition boss, BossPart part, DropDefinition drop, RaidSettings raids,
-		int completions, PartRaids known)
-	{
-		double perRaid = partRate(boss, part, drop, raids);
-		if (known == null || known.count == 0 || part.getRaid() == null || drop.hasPartRates())
-		{
-			return completions * perRaid;
-		}
-		double expected = (completions - known.count) * perRaid;
-		if (drop.isPet() && known.toa)
-		{
-			// the Tombs of Amascut pet has its own formula from the points
-			return expected + known.petSum;
-		}
-		double share = partRate(boss, part, drop, key -> 1.0);
-		for (Map.Entry<Integer, Double> e : known.chanceByLevel.entrySet())
-		{
-			int level = e.getKey();
-			double itemShare = level >= 0 ? levelShare(boss, drop, level, share) : share;
-			expected += e.getValue() * itemShare * RaidChance.toaLevelFactor(level, drop.getMinRaidLevel());
-		}
-		return expected;
-	}
-
-	/**
-	 * A raid mode's saved raids whose chance is known, added up once per calculation: the purple
-	 * chances per raid level (the item shares depend on the level) and the pet chances. Only the
-	 * latest {@code completions} raids count.
-	 */
-	static final class PartRaids
-	{
-		int count;
-		boolean toa;
-		double petSum;
-		final Map<Integer, Double> chanceByLevel = new HashMap<>();
-	}
-
-	private static PartRaids partRaids(BossPart part, RaidSettings raids, int completions, BossProgress progress)
-	{
-		if (progress == null || part.getRaid() == null || progress.raids.isEmpty() || completions <= 0)
-		{
-			return null;
-		}
-		List<RaidRecord> known = new ArrayList<>();
-		List<Double> chances = new ArrayList<>();
-		for (RaidRecord r : progress.raids)
-		{
-			if (!part.getName().equals(r.part))
-			{
-				continue;
-			}
-			double chance = recordChance(r, part, raids);
-			if (!Double.isNaN(chance))
-			{
-				known.add(r);
-				chances.add(chance);
-			}
-		}
-		PartRaids result = new PartRaids();
-		int from = Math.max(0, known.size() - completions);
-		for (int i = from; i < known.size(); i++)
-		{
-			RaidRecord r = known.get(i);
-			result.count++;
-			result.chanceByLevel.merge(r.raidLevel, chances.get(i), Double::sum);
-			if ("toa".equals(r.family))
-			{
-				result.toa = true;
-				double pet = RaidChance.toaPet(r.personalPoints, r.partyPoints, r.teamPoints, r.teamSize, r.raidLevel);
-				result.petSum += Double.isNaN(pet) ? 0 : pet;
-			}
-		}
-		return result;
-	}
-
-	/** Per-kill rate for a drop, taking raid settings into account. */
-	public static double effectiveRate(BossDefinition boss, DropDefinition drop, RaidSettings raids)
-	{
-		if (boss.getWaves() > 0)
-		{
-			// a whole run, claimed at the last wave
-			return waveRate(drop, boss.getWaves());
-		}
-		double rate = DropMath.parseRate(drop.getRate());
-		if (boss.getRaid() != null)
-		{
-			double unique = raids.uniqueChance(boss.getRaid());
-			if (drop.getWeight() != null)
-			{
-				double total = boss.getTotalWeight();
-				rate = total > 0 ? unique * drop.getWeight() / total : 0;
-			}
-			else if (drop.getPerUnique() != null)
-			{
-				rate = unique * DropMath.parseRate(drop.getPerUnique());
-			}
-		}
-		if (drop.getMinionRate() != null && boss.getMinions() > 0)
-		{
-			// God Wars bodyguards roll some of the general's uniques too
-			rate += boss.getMinions() * DropMath.parseRate(drop.getMinionRate());
-		}
-		return rate;
 	}
 
 	public synchronized BossStats stats(String bossName, RaidSettings raids)
@@ -3641,12 +3399,12 @@ public class Tracker
 		int anyReceived = 0;
 		RowStats.Parts anyParts = new RowStats.Parts();
 		// each raid mode's saved raids, added up once for all its items
-		Map<String, PartRaids> partRaids = new HashMap<>();
+		Map<String, RaidOdds.PartRaids> partRaids = new HashMap<>();
 		if (parts != null)
 		{
 			for (BossPart part : boss.getParts())
 			{
-				partRaids.put(part.getName(), partRaids(part, raids, parts.get(part.getName()), progress));
+				partRaids.put(part.getName(), RaidOdds.partRaids(part, raids, parts.get(part.getName()), progress));
 			}
 		}
 		// the boss's own uniques, then the shared items the player chose to judge per boss
@@ -3671,7 +3429,7 @@ public class Tracker
 				expected = 0;
 				for (BossPart part : boss.getParts())
 				{
-					expected += partExpected(boss, part, drop, raids, parts.get(part.getName()), partRaids.get(part.getName()));
+					expected += RaidOdds.partExpected(boss, part, drop, raids, parts.get(part.getName()), partRaids.get(part.getName()));
 				}
 				rate = kc > 0 ? expected / kc : 0;
 			}
@@ -3681,9 +3439,9 @@ public class Tracker
 				expected = 0;
 				for (Map.Entry<Integer, Integer> e : waveRuns.entrySet())
 				{
-					expected += e.getValue() * waveRate(drop, e.getKey());
+					expected += e.getValue() * RaidOdds.waveRate(drop, e.getKey());
 				}
-				rate = kc > 0 ? expected / kc : effectiveRate(boss, drop, raids);
+				rate = kc > 0 ? expected / kc : RaidOdds.effectiveRate(boss, drop, raids);
 			}
 			else if (levels != null)
 			{
@@ -3697,7 +3455,7 @@ public class Tracker
 			}
 			else
 			{
-				rate = effectiveRate(boss, drop, raids);
+				rate = RaidOdds.effectiveRate(boss, drop, raids);
 				if (boss.isDetectTeam() && !drop.isNoShare() && progress != null
 					&& (!progress.teamKills.isEmpty() || progress.olderShare != null))
 				{
@@ -4148,12 +3906,12 @@ public class Tracker
 				Integer kc = s.getPartCounts().get(part.getName());
 				if (kc != null)
 				{
-					expected += kc * partRate(boss, part, drop, raids);
+					expected += kc * RaidOdds.partRate(boss, part, drop, raids);
 				}
 			}
 			return expected;
 		}
-		double rate = effectiveRate(boss, drop, raids);
+		double rate = RaidOdds.effectiveRate(boss, drop, raids);
 		if (boss.getTeam() != null && !drop.isNoShare())
 		{
 			rate *= raids.contribution(boss.getTeam(), s.getKillCount());
