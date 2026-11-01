@@ -1,5 +1,6 @@
 package com.expecteddrops.ui;
 
+import static com.expecteddrops.ui.Widgets.*;
 import com.expecteddrops.data.BossDefinition;
 import com.expecteddrops.data.DropDefinition;
 import com.expecteddrops.stats.AccountStats;
@@ -864,36 +865,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 	}
 
-	/** A link at the top right of the title row: hand cursor, accent on hover, works from the keyboard. */
-	private static void installTitleLink(JLabel link, String tip, Runnable action)
-	{
-		link.setFont(FontManager.getRunescapeBoldFont());
-		link.setForeground(Theme.TEXT);
-		link.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-		link.setToolTipText(tip);
-		link.addMouseListener(new MouseAdapter()
-		{
-			@Override
-			public void mouseClicked(MouseEvent e)
-			{
-				action.run();
-			}
-
-			@Override
-			public void mouseEntered(MouseEvent e)
-			{
-				link.setForeground(Theme.ACCENT);
-			}
-
-			@Override
-			public void mouseExited(MouseEvent e)
-			{
-				link.setForeground(Theme.TEXT);
-			}
-		});
-		Activatable.install(link, tip, action);
-	}
-
 	private void drawPage()
 	{
 		welcomePanel.setVisible(showWelcome.getAsBoolean());
@@ -1520,15 +1491,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		return Activatable.install(link, "Feedback, opens Discord in your browser", () -> net.runelite.client.util.LinkBrowser.browse(DISCORD));
 	}
 
-	/** The quiet dot between footer links. */
-	private static JLabel footerDot(JLabel dot)
-	{
-		dot.setText("  \u00b7  ");
-		dot.setFont(FontManager.getRunescapeSmallFont());
-		dot.setForeground(Theme.TEXT_MUTED);
-		return dot;
-	}
-
 	/** Shows each footer link only where it applies, and a dot only between two links. */
 	private void updateFooter()
 	{
@@ -1734,21 +1696,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			rowsPanel.add(spacer(Theme.HAIR));
 			rowsPanel.add(recentDropRow(r, now));
-		}
-	}
-
-	/** A wait for the Longest waits list: a drop that took long, or an item you're still waiting for. */
-	private static final class Wait
-	{
-		final double multiple;
-		final com.expecteddrops.tracking.RecentDrop drop;
-		final com.expecteddrops.stats.ItemHighlight ongoing;
-
-		Wait(double multiple, com.expecteddrops.tracking.RecentDrop drop, com.expecteddrops.stats.ItemHighlight ongoing)
-		{
-			this.multiple = multiple;
-			this.drop = drop;
-			this.ongoing = ongoing;
 		}
 	}
 
@@ -3474,40 +3421,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		return item;
 	}
 
-	/** Shows the menu on a right-click anywhere on the component, its labels included. */
-	private static void addPopup(java.awt.Component c, JPopupMenu menu)
-	{
-		c.addMouseListener(new MouseAdapter()
-		{
-			@Override
-			public void mousePressed(MouseEvent e)
-			{
-				show(e);
-			}
-
-			@Override
-			public void mouseReleased(MouseEvent e)
-			{
-				show(e);
-			}
-
-			private void show(MouseEvent e)
-			{
-				if (e.isPopupTrigger())
-				{
-					menu.show(e.getComponent(), e.getX(), e.getY());
-				}
-			}
-		});
-		if (c instanceof java.awt.Container)
-		{
-			for (java.awt.Component child : ((java.awt.Container) c).getComponents())
-			{
-				addPopup(child, menu);
-			}
-		}
-	}
-
 	/** Short names of the item views, for the switch next to ITEMS. */
 	private static String viewName(ItemView view)
 	{
@@ -3753,23 +3666,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		return icon;
 	}
 
-	/** A label in the bold font: the "Any unique" row and section titles. */
-	private static JLabel boldLabel(String text)
-	{
-		JLabel label = new JLabel(text);
-		label.setFont(FontManager.getRunescapeBoldFont());
-		label.setForeground(Theme.TEXT);
-		return label;
-	}
-
-	private static JLabel smallLabel(String text, Color color)
-	{
-		JLabel l = new JLabel(text);
-		l.setFont(FontManager.getRunescapeSmallFont());
-		l.setForeground(color);
-		return l;
-	}
-
 	private static String gotOfExpected(RowStats r)
 	{
 		return Texts.gotOfExpected(r);
@@ -3918,15 +3814,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		double luck = Math.exp(-m);
 		return luck >= 0.35 ? Theme.TEXT : luckColor(luck).brighter();
-	}
-
-	/** A row's name or number, in the same font as the verdicts at the top ("On rate"). */
-	private static JLabel rowLabel(String text, Color color)
-	{
-		JLabel l = new JLabel(text);
-		l.setFont(Theme.rowFont());
-		l.setForeground(color);
-		return l;
 	}
 
 	private JPanel compactHeader(String first)
@@ -4104,69 +3991,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		return cell;
 	}
 
-	/** Tooltip (and click) on a row and everything in it. */
-	private static void setTip(JPanel panel, String tip, Runnable onClick)
-	{
-		setTip(panel, tip, onClick, false);
-	}
-
-	/**
-	 * {@link #setTip(JPanel, String, Runnable)}, where only a left click runs {@code onClick}
-	 * when {@code leftOnly}: for rows whose right click opens a menu.
-	 */
-	private static void setTip(JPanel panel, String tip, Runnable onClick, boolean leftOnly)
-	{
-		Color normal = panel.getBackground();
-		MouseAdapter click = onClick == null ? null : new MouseAdapter()
-		{
-			@Override
-			public void mouseClicked(MouseEvent e)
-			{
-				if (!leftOnly || javax.swing.SwingUtilities.isLeftMouseButton(e))
-				{
-					onClick.run();
-				}
-			}
-
-			// a clickable row lights up under the mouse, so "click to open" shows without a tooltip
-			@Override
-			public void mouseEntered(MouseEvent e)
-			{
-				panel.setBackground(Theme.SURFACE_RAISED);
-			}
-
-			@Override
-			public void mouseExited(MouseEvent e)
-			{
-				if (panel.getMousePosition(true) == null)
-				{
-					panel.setBackground(normal);
-				}
-			}
-		};
-		applyTip(panel, tip, click);
-	}
-
-	private static void applyTip(java.awt.Component c, String tip, MouseAdapter click)
-	{
-		if (c instanceof javax.swing.JComponent)
-		{
-			((javax.swing.JComponent) c).setToolTipText(tip);
-		}
-		if (click != null)
-		{
-			c.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-			c.addMouseListener(click);
-		}
-		if (c instanceof java.awt.Container)
-		{
-			for (java.awt.Component child : ((java.awt.Container) c).getComponents())
-			{
-				applyTip(child, tip, click);
-			}
-		}
-	}
-
 	// ---------------------------------------------------------------- extras
 
 	/**
@@ -4319,26 +4143,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		rowsPanel.add(spacer(Theme.M));
 	}
 
-	/** A thin bar filled to {@code fraction} (0 to 1), for the trip card. */
-	private static JPanel progressBar(double fraction, Color color)
-	{
-		JPanel bar = new JPanel()
-		{
-			@Override
-			protected void paintComponent(java.awt.Graphics g)
-			{
-				super.paintComponent(g);
-				g.setColor(color);
-				g.fillRect(0, 0, (int) Math.round(getWidth() * Math.max(0, Math.min(1, fraction))), getHeight());
-			}
-		};
-		bar.setBackground(Theme.TRACK);
-		bar.setPreferredSize(new Dimension(10, 6));
-		bar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 6));
-		bar.setAlignmentX(LEFT_ALIGNMENT);
-		return bar;
-	}
-
 	/** The account overview's "Last unique 12 days ago: Vorkath's head." line, from History. */
 	private void showLastUnique()
 	{
@@ -4444,48 +4248,6 @@ public class ExpectedDropsPanel extends PluginPanel
 			value += price * stats.getRows().get(i).getExpected() / stats.getKillCount();
 		}
 		return value;
-	}
-
-	/**
-	 * A grey label on the left and its value on the right, with a thin line above: the same rows
-	 * as in the hovers ({@link Tip#row}). For the trip card.
-	 */
-	private static JPanel cardRow(String label, String value, Color valueColor, String tip)
-	{
-		JPanel row = new JPanel(new BorderLayout(Theme.M, 0));
-		row.setOpaque(false);
-		row.setAlignmentX(LEFT_ALIGNMENT);
-		row.setBorder(BorderFactory.createCompoundBorder(
-			BorderFactory.createMatteBorder(1, 0, 0, 0, Theme.DIVIDER), new EmptyBorder(Theme.HAIR, 0, Theme.HAIR, 0)));
-		JLabel name = smallLabel(label, Theme.TEXT_MUTED);
-		name.setVerticalAlignment(SwingConstants.TOP);
-		row.add(name, BorderLayout.WEST);
-		JLabel shown = smallLabel(value, valueColor);
-		shown.setHorizontalAlignment(SwingConstants.RIGHT);
-		shown.setVerticalAlignment(SwingConstants.TOP);
-		row.add(shown, BorderLayout.CENTER);
-		for (javax.swing.JComponent c : new javax.swing.JComponent[]{row, name, shown})
-		{
-			c.setToolTipText(tip);
-		}
-		row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height));
-		return row;
-	}
-
-	private static JPanel tile(String title, String value)
-	{
-		JPanel t = new JPanel(new BorderLayout());
-		t.setBackground(Theme.SURFACE_RAISED);
-		t.setBorder(new EmptyBorder(Theme.HAIR, Theme.HAIR, Theme.S, Theme.HAIR));
-		JLabel a = smallLabel(title, ColorScheme.LIGHT_GRAY_COLOR);
-		a.setHorizontalAlignment(SwingConstants.CENTER);
-		JLabel b = new JLabel(value);
-		b.setFont(FontManager.getRunescapeBoldFont());
-		b.setForeground(Color.WHITE);
-		b.setHorizontalAlignment(SwingConstants.CENTER);
-		t.add(a, BorderLayout.NORTH);
-		t.add(b, BorderLayout.CENTER);
-		return t;
 	}
 
 	private void buildWelcome()
@@ -5236,13 +4998,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		});
 	}
 
-	private static javax.swing.border.Border tabBorder(boolean selected)
-	{
-		return BorderFactory.createCompoundBorder(
-			BorderFactory.createMatteBorder(0, 0, 2, 0, selected ? Theme.ACCENT : ColorScheme.MEDIUM_GRAY_COLOR),
-			new EmptyBorder(Theme.S, 0, Theme.HAIR, 0));
-	}
-
 	private void resetSelected()
 	{
 		String bossName = (String) bossSelect.getSelectedItem();
@@ -5261,56 +5016,4 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 	}
 
-	/** A folding heading lights up under the mouse, like the other clickable lines. */
-	private static void brightenOnHover(JLabel heading)
-	{
-		heading.addMouseListener(new MouseAdapter()
-		{
-			@Override
-			public void mouseEntered(MouseEvent e)
-			{
-				heading.setForeground(Theme.TEXT);
-			}
-
-			@Override
-			public void mouseExited(MouseEvent e)
-			{
-				heading.setForeground(Theme.TEXT_MUTED);
-			}
-		});
-	}
-
-	private static JPanel spacer(int height)
-	{
-		JPanel p = new JPanel();
-		p.setOpaque(false);
-		p.setAlignmentX(LEFT_ALIGNMENT);
-		p.setPreferredSize(new Dimension(1, height));
-		p.setMaximumSize(new Dimension(Integer.MAX_VALUE, height));
-		return p;
-	}
-
-	/** Text field that shows a grey hint while it's empty. */
-	private static class HintField extends JTextField
-	{
-		private final String hint;
-
-		HintField(String hint)
-		{
-			this.hint = hint;
-		}
-
-		@Override
-		protected void paintComponent(Graphics g)
-		{
-			super.paintComponent(g);
-			if (getText().isEmpty())
-			{
-				g.setColor(ColorScheme.MEDIUM_GRAY_COLOR.brighter());
-				g.setFont(getFont());
-				java.awt.Insets in = getInsets();
-				g.drawString(hint, in.left + 2, (getHeight() + g.getFontMetrics().getAscent()) / 2 - 2);
-			}
-		}
-	}
 }
