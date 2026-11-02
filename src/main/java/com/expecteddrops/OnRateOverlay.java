@@ -11,7 +11,7 @@ import net.runelite.client.ui.overlay.components.LineComponent;
 import net.runelite.client.ui.overlay.components.TitleComponent;
 
 /**
- * Small box on the game screen while you kill a boss: this trip (kills, expected, luck), the account's verdict and your driest item. Hidden 10 minutes after your last kill.
+ * Small box on the game screen while you kill a boss: this trip only (kills, expected, luck). Hidden 10 minutes after your last kill.
  */
 class OnRateOverlay extends OverlayPanel
 {
@@ -26,7 +26,7 @@ class OnRateOverlay extends OverlayPanel
 		this.config = config;
 		this.info = info;
 		setPosition(OverlayPosition.TOP_LEFT);
-		// wide enough for an item name and its dry streak on one line each
+		// wide enough for the trip line
 		panelComponent.setPreferredSize(new Dimension(190, 0));
 	}
 
@@ -42,16 +42,10 @@ class OnRateOverlay extends OverlayPanel
 			.text("On Rate · " + i.boss)
 			.color(ColorScheme.BRAND_ORANGE)
 			.build());
-		// this trip first (what you compare with a friend), then the account in two lines
+		// this trip only, never the account total
 		panelComponent.getChildren().add(LineComponent.builder().left("This trip").right(i.trip).rightColor(Color.WHITE).build());
 		panelComponent.getChildren().add(LineComponent.builder().left("Expected").right(i.tripExpected).rightColor(Color.WHITE).build());
 		panelComponent.getChildren().add(LineComponent.builder().left("Trip luck").right(i.tripLuck).rightColor(i.tripLuckColor).build());
-		panelComponent.getChildren().add(LineComponent.builder().left("Account").right(i.account).rightColor(i.accountColor).build());
-		if (i.driest != null)
-		{
-			panelComponent.getChildren().add(LineComponent.builder().left("Driest").right(i.driest)
-				.rightColor(i.driestColor).build());
-		}
 		return super.render(graphics);
 	}
 }

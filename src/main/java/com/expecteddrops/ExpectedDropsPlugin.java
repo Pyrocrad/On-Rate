@@ -9,7 +9,6 @@ import com.expecteddrops.tracking.Tracker;
 import com.expecteddrops.tracking.TrackerState;
 import com.expecteddrops.stats.BossStats;
 import com.expecteddrops.stats.DropMath;
-import com.expecteddrops.stats.RowStats;
 import com.expecteddrops.tracking.TripStats;
 import com.expecteddrops.ui.ExpectedDropsPanel;
 import com.expecteddrops.ui.Palette;
@@ -347,7 +346,7 @@ public class ExpectedDropsPlugin extends Plugin
 			config.showTrip(), config.colourBlind(), config.showTopItems());
 	}
 
-	/** Verdict, driest item and trip of the boss you are killing, for the overlay. */
+	/** This trip at the boss you are killing, for the overlay. */
 	private void updateOverlayInfo()
 	{
 		TripStats trip = tracker.tripStats();
@@ -365,42 +364,15 @@ public class ExpectedDropsPlugin extends Plugin
 		Palette.setColourBlind(config.colourBlind());
 		String units = Tracker.unit(stats.getBoss());
 		String one = Tracker.unitOne(stats.getBoss());
-		RowStats any = stats.getAnyRow();
-		double luck = any.getLuck();
-		// the panel's words for a verdict that can't be read yet
-		String verdict = !Double.isNaN(luck) ? DropMath.verdict(luck)
-			: any.getExpected() < DropMath.TOO_EARLY_BELOW ? "Too early" : "Not synced";
-		RowStats driest = null;
-		for (RowStats row : stats.getRows())
-		{
-			if (row.getStreak() == null || row.getRate() <= 0 || row.isComplete())
-			{
-				continue;
-			}
-			if (driest == null || row.getStreakMultiple() > driest.getStreakMultiple())
-			{
-				driest = row;
-			}
-		}
-		String driestText = null;
-		java.awt.Color driestColor = java.awt.Color.WHITE;
-		if (driest != null)
-		{
-			double m = driest.getStreakMultiple();
-			driestText = String.format("%s \u00b7 %.1fx", shortName(driest.getLabel(), 13), m);
-			driestColor = Palette.luck(Math.exp(-m)).brighter();
-		}
 		String tripText = String.format("%,d %s \u00b7 %d unique%s", trip.getKills(), trip.getKills() == 1 ? one : units,
 			trip.getReceived(), trip.getReceived() == 1 ? "" : "s");
-		// this trip alone, as on the panel's trip card
 		double tripLuck = trip.getLuck();
 		String tripExpected = trip.getExpected() >= 10 ? String.format("%.1f", trip.getExpected())
 			: String.format("%.2f", trip.getExpected());
-		String account = String.format("%s \u00b7 %,d of %.1f", verdict, any.getReceived(), any.getExpected());
 		overlayInfo = new OverlayInfo(trip.getBoss(), tripText, tripExpected,
 			Double.isNaN(tripLuck) ? "-" : DropMath.verdict(tripLuck),
 			Double.isNaN(tripLuck) ? java.awt.Color.WHITE : Palette.luck(tripLuck).brighter(),
-			account, Palette.luck(luck).brighter(), driestText, driestColor, trip.getLastMillis());
+			trip.getLastMillis());
 	}
 
 	/** Item names that fit the overlay: cut at a word, "Deadeye prayer scroll" becomes "Deadeye prayer...". */

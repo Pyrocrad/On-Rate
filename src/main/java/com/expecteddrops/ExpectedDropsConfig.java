@@ -165,7 +165,7 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigItem(
 		keyName = "showOverlay",
 		name = "In-game overlay",
-		description = "Show a small box on the game screen with your verdict, driest item and trip while you kill a boss",
+		description = "Show a small box on the game screen with this trip's kills, expected drops and luck while you kill a boss",
 		position = 13,
 		section = displaySection
 	)
