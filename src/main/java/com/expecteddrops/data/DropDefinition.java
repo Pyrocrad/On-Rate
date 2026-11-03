@@ -39,6 +39,8 @@ public class DropDefinition
 	private String alsoFrom;
 	/** What an untradeable item is worth, from tradeable ones ("Noxious halberd / 3"). See {@link ValueFormula}. */
 	private String valueFrom;
+	/** A line for the item's hover about how it drops (e.g. no repeats until you have all four). */
+	private String note;
 	/** Per-level rates for delve bosses, keyed "1".."9" (9 = level 8+). */
 	private Map<String, String> levelRates;
 	/** Per-part rates for combined pages, keyed by part name. */
@@ -189,6 +191,11 @@ public class DropDefinition
 	public String getValueFrom()
 	{
 		return valueFrom;
+	}
+
+	public String getNote()
+	{
+		return note;
 	}
 
 	public boolean countsTowardAny()

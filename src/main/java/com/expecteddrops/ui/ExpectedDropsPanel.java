@@ -1099,7 +1099,18 @@ public class ExpectedDropsPanel extends PluginPanel
 					modes.append(" for the team of ").append(team);
 				}
 			}
-			note.append("Purple chance for raids without points: ").append(modes).append(". Change these under <i>Raid purple chances</i> in the settings.");
+			if ("fractured".equals(stats.getBoss().getRaid()))
+			{
+				int team = Math.max(1, raidSettings.get().teamSize("fractured"));
+				note.append(String.format("Raids On Rate didn't follow use a team of %d (<i>TFA team size</i>) with an even share of the damage: "
+					+ "%.2f%% each. Your team rolls %.2f%%: 1 in 14 for a solo or duo, +4%% of that per player beyond two. "
+					+ "Change these under <i>Raids</i> and <i>Raid purple chances</i> in the settings.",
+					team, raidSettings.get().uniqueChance("fractured") * 100, raidSettings.get().uniqueChance("fractured") * team * 100));
+			}
+			else
+			{
+				note.append("Purple chance for raids without points: ").append(modes).append(". Change these under <i>Raid purple chances</i> in the settings.");
+			}
 			note.append(raidPointsNote(stats.getBoss()));
 		}
 		else if (raid)
@@ -2093,9 +2104,19 @@ public class ExpectedDropsPanel extends PluginPanel
 				{
 					com.expecteddrops.tracking.RaidRecord r = h.getRaid();
 					String mode = k.getPart() != null && !"Normal".equals(k.getPart()) ? shortMode(k.getPart()) + " " : "";
+					boolean archive = "fractured".equals(boss.getRaid());
+					String chance = Double.isNaN(h.getPurpleChance()) ? "" : String.format(" \u00b7 %.1f%%", h.getPurpleChance() * 100);
 					if (r == null)
 					{
-						middle = mode + "no points";
+						middle = mode + (archive ? "not followed" : "no points");
+					}
+					else if (archive)
+					{
+						// your estimated contribution when On Rate saw every fight, else the team it counted
+						middle = (r.getContribution() >= 0 ? String.format("%.0f contrib", r.getContribution())
+							: r.getTeamSize() > 0 ? "team " + r.getTeamSize() : "team ?")
+							+ (r.getDeaths() > 0 ? " \u00b7 " + r.getDeaths() + " death" + (r.getDeaths() == 1 ? "" : "s") : "")
+							+ chance;
 					}
 					else if (r.getPersonalPoints() > 0)
 					{
@@ -2182,7 +2203,8 @@ public class ExpectedDropsPanel extends PluginPanel
 				{
 					if (!summary)
 					{
-						JLabel heading = smallLabel("Average purple chance from points", ColorScheme.LIGHT_GRAY_COLOR);
+						JLabel heading = smallLabel("fractured".equals(boss.getRaid()) ? "Average purple chance from your damage"
+							: "Average purple chance from points", ColorScheme.LIGHT_GRAY_COLOR);
 						heading.setAlignmentX(LEFT_ALIGNMENT);
 						heading.setBorder(new EmptyBorder(Theme.S, 0, 0, 0));
 						rowsPanel.add(heading);
@@ -2244,9 +2266,31 @@ public class ExpectedDropsPanel extends PluginPanel
 			{
 				tip.row("Mode", k.getPart());
 			}
+			boolean archive = "fractured".equals(boss.getRaid());
 			if (r == null)
 			{
-				tip.row("Points", "not recorded");
+				tip.row(archive ? "Contribution" : "Points", "not recorded");
+				if (archive)
+				{
+					tip.note("On Rate didn't follow this raid, so it uses the TFA team size and team purple chance from the settings.");
+				}
+			}
+			else if (archive)
+			{
+				tip.row("Your contribution", r.getContribution() < 0 ? "unknown: even share assumed"
+					: String.format("%.0f of 700 (estimated)", r.getContribution()));
+				tip.row("Team", r.getTeamSize() > 0 ? String.valueOf(r.getTeamSize()) : "not counted: TFA team size used");
+				if (r.getDeaths() > 0)
+				{
+					tip.row("Deaths", r.getDeaths() + " (-10% of your expected contribution each)");
+				}
+				if (!Double.isNaN(h.getPurpleChance()))
+				{
+					tip.row("Purple chance", String.format("%.2f%%", h.getPurpleChance() * 100));
+				}
+				tip.note(r.getContribution() < 0
+					? "On Rate missed a fight of this raid, so it assumes an even share of the damage."
+					: "Estimated from your share of the damage in each fight (Ocellus counts 300, the others 100). The game doesn't show it.");
 			}
 			else
 			{
@@ -2792,10 +2836,11 @@ public class ExpectedDropsPanel extends PluginPanel
 			default:
 				advice = "Set your usual chance under <i>Raid purple chances</i> in the settings.";
 		}
-		lastHintTip = String.format("<html><body style='width: 240px'>%,d of your %,d raids have no points On Rate could read "
+		String own = "fractured".equals(boss.getRaid()) ? "share of the damage" : "points";
+		lastHintTip = String.format("<html><body style='width: 240px'>%,d of your %,d raids have no %s On Rate could read "
 			+ "(raids from before you installed it, for example), so they use an average purple chance from the settings. "
-			+ "Raids from now on use your own points. What your raids with points averaged is under History.<br><br>%s</body></html>",
-			fromSettings, stats.getKillCount(), advice);
+			+ "Raids from now on use your own %s. What your raids with %s averaged is under History.<br><br>%s</body></html>",
+			fromSettings, stats.getKillCount(), own, own, own, advice);
 		return String.format("%,d of %,d raids use an average purple chance.", fromSettings, stats.getKillCount());
 	}
 
@@ -3249,11 +3294,13 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		JPanel form = new JPanel(new GridLayout(0, 1, Theme.S, Theme.S));
 		form.add(new JLabel("<html><body style='width: 220px'>"
-			+ (hasParts ? "Which one, and at which " + unit + " of it" : "At which " + unit)
+			+ (hasParts && parts.size() > 1 ? "Which one, and at which " + unit + " of it" : "At which " + unit)
 			+ " did you get your " + r.getLabel() + "?<br>"
 			+ "It is added to History without a date. Your counts and expected stay as they are"
 			+ (hasParts ? "." : "; your dry streak counts from it.") + "</body></html>"));
-		final javax.swing.JComboBox<String> partBox = hasParts ? new javax.swing.JComboBox<>(parts.toArray(new String[0])) : null;
+		// a raid with one mode (The Fractured Archive) has nothing to choose
+		final javax.swing.JComboBox<String> partBox = hasParts && parts.size() > 1
+			? new javax.swing.JComboBox<>(parts.toArray(new String[0])) : null;
 		if (partBox != null)
 		{
 			if (preselect != null)
@@ -3290,7 +3337,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			return;
 		}
 		int kc = ((Number) spinner.getValue()).intValue();
-		String part = partBox == null ? null : (String) partBox.getSelectedItem();
+		String part = partBox != null ? (String) partBox.getSelectedItem() : hasParts ? parts.get(0) : null;
 		int partLimit = tracker.pastDropLimit(bossName, part);
 		if (hasParts && kc > partLimit)
 		{
@@ -5097,6 +5144,11 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			tip.row("Drop rate", DropMath.formatRate(row.getRate()) + " per " + unit);
 		}
+		String purpleShare = purpleShare(stats.getBoss(), drop);
+		if (purpleShare != null)
+		{
+			tip.row("Share of a purple", purpleShare);
+		}
 		tip.row("Chance of one by now", formatPercent(row.getChanceAtLeastOne()));
 		String multiple = rateMultiple(row);
 		if (multiple != null)
@@ -5157,6 +5209,10 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 
 		tip.note(streakNote(row, unit));
+		if (drop != null && drop.getNote() != null)
+		{
+			tip.note(drop.getNote());
+		}
 		if (row.getFastest() != null)
 		{
 			tip.note(row.getFastest().equals(row.getLongest())
@@ -5183,6 +5239,39 @@ public class ExpectedDropsPanel extends PluginPanel
 			tip.note(String.format("Each %s is its own roll. Going without one does not make the next more likely.", unit));
 		}
 		return tip.wide();
+	}
+
+	/**
+	 * A raid unique's share of a purple ("5 of 15"), or null when it isn't one or the share
+	 * changes with the mode or raid level (CoX prayer scrolls, ToA's high levels).
+	 */
+	static String purpleShare(BossDefinition boss, DropDefinition drop)
+	{
+		if (boss == null || drop == null || boss.getRaid() == null || drop.getWeight() == null || drop.hasLevelWeights())
+		{
+			return null;
+		}
+		String share = null;
+		for (com.expecteddrops.data.BossPart part : boss.getParts())
+		{
+			if (part.getRaid() == null || "none".equals(part.getRaid()))
+			{
+				continue;
+			}
+			Double weight = drop.getWeight(part.getName());
+			String s = weight == null ? null : formatWeight(weight) + " of " + formatWeight(boss.getTotalWeight(part.getName()));
+			if (share != null && !share.equals(s))
+			{
+				return null;
+			}
+			share = s;
+		}
+		return share;
+	}
+
+	private static String formatWeight(double w)
+	{
+		return w == Math.rint(w) ? String.format("%,d", (long) w) : String.format("%.1f", w);
 	}
 
 	/** See {@link Texts#plainLuck}. */

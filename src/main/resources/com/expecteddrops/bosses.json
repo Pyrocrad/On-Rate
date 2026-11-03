@@ -641,16 +641,16 @@
         "The game doesn't show contribution: FracturedContribution estimates it from hitsplats per room (NPC IDs from the OSRS Wiki). The soft cap on minion damage and Ocellus's split between phases aren't published.",
         "Rates as of the loot mechanics post two weeks after release; Jagex said some numbers change in the following game update."
       ],
-      "note": "Each room hands out 100 contribution (Ocellus 300), split by damage. The team's chance of a purple is 1 in 14 for a solo or duo with no deaths, +4% of that per player beyond two, and it goes to a player with their share of the contribution, so a duo with even damage is 1 in 28 each. A death takes 10% of your expected contribution. The pet, folio and fragments roll for everyone at a flat rate, whatever your contribution. Fragments never repeat until you have all four.",
+      "note": "Each room hands out 100 contribution (Ocellus 300), split by damage. The team's chance of a purple is 1 in 14 for a solo or duo with no deaths, +4% of that per player beyond two, and it goes to a player with their share of the contribution, so a duo with even damage is 1 in 28 each. A death takes 10% of your expected contribution. The pet, folio and fragments roll for everyone at a flat rate, whatever your contribution. Fragments never repeat until you have all four. Elite clues (1/10) aren't on the collection log page, so they aren't counted.",
       "drops": [
         {"name": "Rondache", "weight": 5},
         {"name": "Zorya's tome (uncharged)", "weight": 4, "match": ["Zorya's tome"]},
         {"name": "Horn of Bran", "weight": 3},
         {"name": "Ascension crossbows", "weight": 2, "match": ["Ascension crossbow"]},
         {"name": "Obligator (uncharged)", "weight": 1, "match": ["Obligator"]},
-        {"name": "Orion", "rate": "1/750", "pet": true},
-        {"name": "Archivist's folio (inert)", "rate": "1/15", "any": false, "match": ["Archivist's folio"]},
-        {"name": "Fragment of living earth", "label": "Elemental fragments", "rate": "1/20", "max": 4, "any": false, "match": ["Fragment of deep water", "Fragment of whispering wind", "Fragment of burning fire"]}
+        {"name": "Orion", "rate": "1/750", "pet": true, "note": "Rolled for everyone at the end of each raid, whatever your contribution or team."},
+        {"name": "Archivist's folio (inert)", "rate": "1/15", "any": false, "match": ["Archivist's folio"], "note": "Rolled for everyone at the end of each raid, whatever your contribution or team. Not counted as a unique."},
+        {"name": "Fragment of living earth", "label": "Elemental fragments", "rate": "1/20", "max": 4, "any": false, "match": ["Fragment of deep water", "Fragment of whispering wind", "Fragment of burning fire"], "note": "Four fragments (earth, water, wind, fire). Each raid has a 1/20 chance of one you don't have yet, so no repeats until you have all four: one specific fragment goes 1/80, 1/60, 1/40, 1/20. Rolled for everyone, whatever your contribution. Not counted as a unique."}
       ]
     }
   ]

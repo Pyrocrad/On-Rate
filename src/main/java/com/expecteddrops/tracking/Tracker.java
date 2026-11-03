@@ -1534,9 +1534,15 @@ public class Tracker
 	{
 		double sum = 0;
 		int n = 0;
+		BossDefinition boss = catalog.byName(bossName);
 		for (RaidRecord r : raidRecords(bossName))
 		{
 			double chance = purpleChance(r);
+			if (!Double.isNaN(chance) && "fractured".equals(r.family) && boss != null && boss.hasParts())
+			{
+				// the Fractured Archive's base chance follows the setting
+				chance = recordChance(r, boss.getParts().get(0), settings);
+			}
 			if ((part == null ? bossName : part).equals(r.part) && !Double.isNaN(chance))
 			{
 				sum += chance;

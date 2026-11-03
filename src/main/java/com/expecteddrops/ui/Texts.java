@@ -182,7 +182,12 @@ final class Texts
 	{
 		if (boss != null && boss.hasParts() && kill.getPart() != null && kill.getPartKc() != null)
 		{
-			return boss.getRaid() == null ? kill.getPart() : bossName + ", " + kill.getPart();
+			if (boss.getRaid() == null)
+			{
+				return kill.getPart();
+			}
+			// a raid with one mode needs no "Normal"
+			return boss.getParts().size() == 1 ? bossName : bossName + ", " + kill.getPart();
 		}
 		return bossName;
 	}
