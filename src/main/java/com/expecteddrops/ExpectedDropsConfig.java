@@ -86,12 +86,10 @@ public interface ExpectedDropsConfig extends Config
 
 	@ConfigItem(
 		keyName = "itemView",
-		name = "Luck view",
-		description = "How your luck per item (and per boss in the account overview) is shown. Changed with the "
-			+ "switch next to ITEMS in the panel, so it's not listed here",
+		name = "Item view",
+		description = "How items (and bosses in the account overview) are drawn: bars, tabs, a table, rings or a gauge",
 		position = 7,
-		section = displaySection,
-		hidden = true
+		section = displaySection
 	)
 	default ItemView itemView()
 	{
@@ -196,8 +194,8 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigItem(
 		keyName = "detectTeamSize",
 		name = "Count your team",
-		description = "At Nex, Yama, the Hueycoatl, the Corporeal Beast and Zalcano, count the players around you at each kill "
-			+ "and give you an even share of the kill (a quarter with four players). Also counts your team at the end of each "
+		description = "At Nex, Yama, the Hueycoatl and the Corporeal Beast, count the players who hit the boss with you; at Zalcano, "
+			+ "the players around you. You get an even share of the kill (a quarter with four players). Also counts your team at the end of each "
 			+ "Fractured Archive raid. Kills from before use the first team On Rate counted (Yama: the setting below).",
 		position = 50,
 		section = teamSection

@@ -33,16 +33,19 @@ import javax.swing.SwingUtilities;
 import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import net.runelite.api.Actor;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.ItemComposition;
 import net.runelite.api.MenuAction;
+import net.runelite.api.NPC;
 import net.runelite.api.Player;
 import net.runelite.api.ScriptID;
 import net.runelite.api.WorldView;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.api.events.GameTick;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.VarbitChanged;
@@ -197,11 +200,10 @@ public class ExpectedDropsPlugin extends Plugin
 			}
 		}, gson);
 		tracker.setSettings(raidSettings());
-		tracker.setTeamSizeDetector(() -> config.detectTeamSize() ? playersAround() : 0);
+		tracker.setTeamSizeDetectorFor(boss -> config.detectTeamSize() ? teamSizeFor(boss) : 0);
 		panel = new ExpectedDropsPanel(tracker, itemManager, this::raidSettings, this::itemIdFor, this::save,
 			config::showWelcome, this::dismissWelcome, this::priceOf, this::viewOptions);
 		panel.setGraphOpener(open -> configManager.setConfiguration(ExpectedDropsConfig.GROUP, "showLuckGraph", String.valueOf(open)));
-		panel.setItemViewChanger(view -> configManager.setConfiguration(ExpectedDropsConfig.GROUP, "itemView", view.name()));
 		panel.setAccountPageStore(config.accountPage(),
 			page -> configManager.setConfiguration(ExpectedDropsConfig.GROUP, "accountPage", page));
 		panel.setOverlayOffer(config::showOverlay,
@@ -259,6 +261,7 @@ public class ExpectedDropsPlugin extends Plugin
 		store = null;
 		itemIds.clear();
 		itemIdsResolved = false;
+		spotter.clearAll();
 		prices.clear();
 		pricesRefreshedAt = 0;
 	}
@@ -302,6 +305,50 @@ public class ExpectedDropsPlugin extends Plugin
 	/** Players within this many tiles of you at a group boss kill count as your team. */
 	private static final int TEAM_RADIUS_TILES = 15;
 	private static final int LOCAL_UNITS_PER_TILE = 128;
+
+	/** Who has been seen hitting Nex, Yama, the Hueycoatl and the Corporeal Beast with you. */
+	private final TeamSpotter spotter = new TeamSpotter();
+
+	/**
+	 * Your team at a kill: you plus the players who hit this boss with you. Zalcano and the
+	 * Fractured Archive can't be told that way (mining and smithing count there, and the raid is
+	 * an instance), so they use the players around you.
+	 */
+	private int teamSizeFor(String bossName)
+	{
+		String fight = TeamSpotter.fightOf(bossName);
+		return fight == null ? playersAround() : 1 + spotter.others(fight, System.currentTimeMillis());
+	}
+
+	/** Notes who is hitting a group boss, each game tick. */
+	@Subscribe
+	public void onGameTick(GameTick event)
+	{
+		if (tracker == null || !config.detectTeamSize())
+		{
+			return;
+		}
+		Player me = client.getLocalPlayer();
+		WorldView view = client.getTopLevelWorldView();
+		if (me == null || view == null)
+		{
+			return;
+		}
+		long now = System.currentTimeMillis();
+		for (Player p : view.players())
+		{
+			if (p == null || p == me || p.getName() == null)
+			{
+				continue;
+			}
+			Actor target = p.getInteracting();
+			String fight = target instanceof NPC ? TeamSpotter.fightOf(target.getName()) : null;
+			if (fight != null)
+			{
+				spotter.onHitting(fight, p.getName(), now);
+			}
+		}
+	}
 
 	/** You plus the players around you (called on the client thread, from the kill message). */
 	private int playersAround()
@@ -625,6 +672,12 @@ public class ExpectedDropsPlugin extends Plugin
 		String boss = t.onChatMessage(event.getMessage(), System.currentTimeMillis());
 		if (boss != null)
 		{
+			String fight = TeamSpotter.fightOf(boss);
+			if (fight != null)
+			{
+				// this kill is counted: the next one starts with nobody seen
+				spotter.clear(fight);
+			}
 			changed(boss, true);
 		}
 		postNotes();
@@ -909,6 +962,7 @@ public class ExpectedDropsPlugin extends Plugin
 			return;
 		}
 		remindedThisSession.clear();
+		spotter.clearAll();
 		if (panel != null)
 		{
 			// Open on the account overview: how dry or spooned the account is overall.

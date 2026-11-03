@@ -211,7 +211,7 @@ public class RemoveFromHistoryMenuTest
 		List<String> texts = new ArrayList<>();
 		labels(panel, texts);
 		String all = String.join("\n", texts);
-		assertTrue(all, all.contains("LUCKIEST DROPS"));
+		assertTrue(all, all.contains("LUCKIEST SINGLE DROPS"));
 		assertTrue(all, all.contains("1 in") && all.contains("players this quick"));
 		assertTrue(all, all.contains("LONGEST WAITS"));
 		assertTrue(all, all.contains("still waiting"));
@@ -222,6 +222,6 @@ public class RemoveFromHistoryMenuTest
 		panel.refresh();
 		texts.clear();
 		labels(panel, texts);
-		assertTrue(!String.join("\n", texts).contains("LUCKIEST DROPS"));
+		assertTrue(!String.join("\n", texts).contains("LUCKIEST SINGLE DROPS"));
 	}
 }

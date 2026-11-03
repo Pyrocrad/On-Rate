@@ -386,15 +386,31 @@ public class ItemFigureTest
 	}
 
 	@Test
+	public void showAllListsEveryDryOrLuckyItemInTheSameOrder() throws Exception
+	{
+		AccountStats account = account();
+		for (int mode : new int[]{ExpectedDropsPanel.TOP_DRIEST, ExpectedDropsPanel.TOP_LUCKIEST})
+		{
+			List<String> top = labels(ExpectedDropsPanel.topItems(account, mode));
+			List<String> all = labels(ExpectedDropsPanel.topItems(account, mode, Integer.MAX_VALUE));
+			assertEquals(ExpectedDropsPanel.TOP_ITEMS, top.size());
+			assertTrue("show all has more than the top " + top.size() + ": " + all.size(), all.size() > top.size());
+			// the short list is the start of the long one
+			assertEquals(top, all.subList(0, top.size()));
+		}
+	}
+
+	@Test
 	public void theDotsLineUpAndTheRowsAreNoTallerWithTheFigure() throws Exception
 	{
 		Tracker tracker = seededTracker();
+		// the Items page lists the driest and the luckiest items, a few of each
 		for (int mode : new int[]{ExpectedDropsPanel.TOP_DRIEST, ExpectedDropsPanel.TOP_LUCKIEST})
 		{
 			ExpectedDropsPanel panel = laidOut(tracker, 1, mode);
 			List<LuckStrip> strips = new ArrayList<>();
 			strips(panel, strips);
-			assertEquals(ExpectedDropsPanel.TOP_ITEMS, strips.size());
+			assertEquals(2 * ExpectedDropsPanel.DROPS_SHOWN, strips.size());
 			int width = strips.get(0).getWidth();
 			int x = javax.swing.SwingUtilities.convertPoint(strips.get(0), 0, 0, panel).x;
 			assertTrue("a track wide enough to read: " + width, width >= 110);

@@ -117,13 +117,19 @@ public class Tracker
 		return catalog;
 	}
 
-	/** Players around you right now (you included), or 0 when unknown or turned off. */
-	private java.util.function.IntSupplier teamSize = () -> 0;
+	/** Your team at a boss kill (you included), by boss name; 0 when unknown or turned off. */
+	private java.util.function.ToIntFunction<String> teamSize = boss -> 0;
 
-	/** How to count the players around you at a group boss kill (see BossDefinition#isDetectTeam). */
+	/** How to count your team at a group boss kill, whichever the boss (see BossDefinition#isDetectTeam). */
 	public synchronized void setTeamSizeDetector(java.util.function.IntSupplier teamSize)
 	{
-		this.teamSize = teamSize == null ? () -> 0 : teamSize;
+		this.teamSize = teamSize == null ? boss -> 0 : boss -> teamSize.getAsInt();
+	}
+
+	/** The same, told which boss it is for: each boss can count its team its own way. */
+	public synchronized void setTeamSizeDetectorFor(java.util.function.ToIntFunction<String> teamSize)
+	{
+		this.teamSize = teamSize == null ? boss -> 0 : teamSize;
 	}
 
 	/** Bosses whose History changed since the last save (it is saved per boss, see {@link #changedKills()}). */
@@ -1519,7 +1525,7 @@ public class Tracker
 			p.olderShare = share / seen;
 			return;
 		}
-		int size = teamSize.getAsInt();
+		int size = teamSize.applyAsInt(boss.getName());
 		if (size > 0)
 		{
 			p.olderShare = 1.0 / size;
@@ -1661,7 +1667,7 @@ public class Tracker
 			Integer team = null;
 			if (boss.isDetectTeam() && (previous == null || kc > previous))
 			{
-				int size = teamSize.getAsInt();
+				int size = teamSize.applyAsInt(boss.getName());
 				if (size > 0)
 				{
 					progress.teamKills.merge(size, 1, Integer::sum);
@@ -1868,7 +1874,7 @@ public class Tracker
 			RaidRecord record = pending ? pendingRecord : RaidRecord.fractured(0, -1, -1);
 			pendingRecord = null;
 			lastRaidBoss = null;
-			int size = teamSize.getAsInt();
+			int size = teamSize.applyAsInt(boss.getName());
 			if (size > 0)
 			{
 				record.teamSize = Math.min(size, RaidChance.TFA_MAX_TEAM);
