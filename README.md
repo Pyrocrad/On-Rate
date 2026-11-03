@@ -3,13 +3,15 @@
 **Are you on rate?** On Rate is a RuneLite plugin that shows, for every boss and raid, how many uniques you *should* have by now at the drop rates and how many you actually got, with a plain verdict from *Extremely dry* to *Extremely spooned*.
 
 <p>
-<img src="docs/chambers-of-xeric.png" width="239" alt="Boss page: Chambers of Xeric, with the Uniques and GP value verdicts and every item against what you should have by now">
-<img src="docs/account-bosses.png" width="225" alt="Account overview: your whole account's verdicts, luck over time and every boss sorted driest first">
-<img src="docs/account-items.png" width="238" alt="Account overview, Items tab: your driest items across every boss, each with its verdict and got / expected">
+<img src="docs/chambers-of-xeric.png" width="246" alt="Boss page: Chambers of Xeric, with the Uniques and GP value verdicts and every item against what you should have by now">
+<img src="docs/account-bosses.png" width="238" alt="Account overview: your whole account's verdicts, luck over time and every boss sorted driest first">
+<img src="docs/account-items.png" width="247" alt="Account overview, Items tab: your driest and luckiest items across every boss, each with its verdict and got / expected">
 </p>
 
 <p>
-<img src="docs/item-hover.png" width="346" alt="Hovering an item: your result, how it compares with other players, the drop rate, got / expected, your chance by now and your dry streak">
+<img src="docs/account-drops.png" width="232" alt="Account overview, Items tab, Single drops: your luckiest single drops and longest waits, each judged by how long it took against its drop rate">
+<img src="docs/trip-card.png" width="231" alt="Boss page: Doom of Mokhaiotl, with the This trip card showing kills, uniques expected, delves per hour and unique value per hour">
+<img src="docs/item-hover.png" width="310" alt="Hovering an item: your result, how it compares with other players, how lucky each drop was, the drop rate, your chance by now and your dry streak">
 </p>
 
 **How to read it:** on each item, the bar is what you got and the white line is what you should have by now. On the Items tab each row also says *got / expected* (for example `0 / 2.60`): what you have against the average for a typical player at your kill count. That is an average, not drops you were owed. Figures like "luckier than 83% of players" come from the drop-rate maths for a typical player at your kill count, not from other players' accounts: On Rate has no player data.
