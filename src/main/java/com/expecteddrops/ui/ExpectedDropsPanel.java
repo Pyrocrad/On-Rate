@@ -71,6 +71,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		EXPECTED("Most expected"),
 		DRIEST("Driest first"),
 		LUCKIEST("Luckiest first"),
+		VALUE("Luckiest by GP value"),
 		STREAK("Longest dry streak");
 
 		private final String label;
@@ -153,6 +154,8 @@ public class ExpectedDropsPanel extends PluginPanel
 	private final LuckGraph graph = new LuckGraph();
 	private final JLabel graphHint = new JLabel();
 	private final JComboBox<Sort> sortSelect = new JComboBox<>(Sort.values());
+	/** True while the sort list gains or loses its GP value option, so that is not taken for a click. */
+	private boolean sortOptionsUpdating;
 	private final JPanel sortRow = new JPanel(new BorderLayout(4, 0));
 	private final JLabel kcLabel = new JLabel();
 	private final JLabel syncLabel = new JLabel();
@@ -479,6 +482,10 @@ public class ExpectedDropsPanel extends PluginPanel
 		sortSelect.setFont(FontManager.getRunescapeSmallFont());
 		sortSelect.addActionListener(e ->
 		{
+			if (sortOptionsUpdating)
+			{
+				return;
+			}
 			rememberAccountPage();
 			refresh();
 		});
@@ -1417,7 +1424,31 @@ public class ExpectedDropsPanel extends PluginPanel
 				rows.add(row);
 			}
 		}
-		rows.sort(comparator((Sort) sortSelect.getSelectedItem(), account));
+		showValueSort(o.isGeValue());
+		Sort sort = (Sort) sortSelect.getSelectedItem();
+		// "Luckiest by GP value": each boss's GP value verdict orders the list and replaces the word and dot
+		java.util.Map<String, double[]> byValue = null;
+		if (sort == Sort.VALUE && o.isGeValue())
+		{
+			byValue = new java.util.HashMap<>();
+			for (RowStats row : rows)
+			{
+				BossStats bossStats = tracker.stats(row.getLabel(), raidSettings.get());
+				double[] value = bossStats == null ? null : bossValueOf(bossStats);
+				if (value != null && value[1] >= 1)
+				{
+					byValue.put(row.getLabel(), value);
+				}
+			}
+			java.util.Map<String, double[]> valued = byValue;
+			// bosses with nothing of value expected (pet-only) go last
+			rows.sort(Comparator.comparingDouble((RowStats r) -> valued.containsKey(r.getLabel()) ? -valued.get(r.getLabel())[2] : 2)
+				.thenComparing(r -> r.getLabel().toLowerCase(Locale.ROOT)));
+		}
+		else
+		{
+			rows.sort(comparator(sort, account));
+		}
 		boolean tabs = !account.getRows().isEmpty();
 		if (accountTab == TAB_ITEMS && !o.isTopItems())
 		{
@@ -1439,7 +1470,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		else
 		{
-			renderAccountItems(account, total, rows, o.getItemView());
+			renderAccountItems(account, total, rows, o.getItemView(), byValue);
 			addAccountFootnote(account, hidden, account.getRows().isEmpty() ? java.util.Collections.emptyList() : unsynced);
 		}
 
@@ -2714,6 +2745,24 @@ public class ExpectedDropsPanel extends PluginPanel
 	/** {received GP, expected GP, luck} of this boss's uniques, or null without prices. Sets {@link #lastValueTip}. */
 	private double[] bossValue(BossStats stats)
 	{
+		double[] value = bossValueOf(stats);
+		if (value == null)
+		{
+			return null;
+		}
+		lastValueTip = new Tip("GP value \u00b7 " + DropMath.verdict(value[2]))
+			.row("Got", DropMath.formatGp((long) value[0]))
+			.row("Expected", DropMath.formatGp((long) value[1]))
+			.row("By value", capital(luckPercent(value[2])) + " for your kill count")
+			.note("The Uniques tile counts how many you got; this one weighs them by GE price. "
+				+ "Pets and most jars count as 0 GP.")
+			.wide();
+		return value;
+	}
+
+	/** The same numbers without touching the hover text, so a list can ask for every boss. */
+	private double[] bossValueOf(BossStats stats)
+	{
 		List<Double> lambdas = new ArrayList<>();
 		List<Long> itemPrices = new ArrayList<>();
 		List<Integer> itemCaps = new ArrayList<>();
@@ -2764,13 +2813,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			return null;
 		}
-		lastValueTip = new Tip("GP value \u00b7 " + DropMath.verdict(luck))
-			.row("Got", DropMath.formatGp(received))
-			.row("Expected", DropMath.formatGp((long) expected))
-			.row("By value", capital(luckPercent(luck)) + " for your kill count")
-			.note("The Uniques tile counts how many you got; this one weighs them by GE price. "
-				+ "Pets and most jars count as 0 GP.")
-			.wide();
 		return new double[]{received, expected, luck};
 	}
 
@@ -3038,6 +3080,12 @@ public class ExpectedDropsPanel extends PluginPanel
 
 	private String accountTooltip(RowStats row, AccountStats account)
 	{
+		return accountTooltip(row, account, null);
+	}
+
+	/** The same; {@code byValue} (when the list is sorted by GP value) adds the boss's GP value verdict. */
+	private String accountTooltip(RowStats row, AccountStats account, java.util.Map<String, double[]> byValue)
+	{
 		Tip tip = new Tip(row.isAny() ? "Whole account" : row.getShownLabel());
 		if (row.isAny())
 		{
@@ -3052,6 +3100,19 @@ public class ExpectedDropsPanel extends PluginPanel
 		if (!Double.isNaN(luck))
 		{
 			tip.row("Luck", DropMath.verdict(luck) + ": " + luckPercent(row.getShares(), row.getReceived()), luckColor(luck).brighter());
+		}
+		if (byValue != null && !row.isAny())
+		{
+			double[] value = byValue.get(row.getLabel());
+			if (value == null)
+			{
+				tip.row("By value", "nothing of value expected");
+			}
+			else
+			{
+				tip.row("By value", DropMath.verdict(value[2]) + ": " + luckPercent(value[2]), luckColor(value[2]).brighter());
+				tip.row("GP value", DropMath.formatGp(value[0]) + " / " + DropMath.formatGp(value[1]));
+			}
 		}
 		if (!row.isAny() && row.getDriestItem() != null)
 		{
@@ -3609,7 +3670,63 @@ public class ExpectedDropsPanel extends PluginPanel
 		return panel;
 	}
 
-	private void renderAccountItems(AccountStats account, RowStats total, List<RowStats> rows, ItemView view)
+	/** The option shows only while the GP value setting is on; a saved choice of it falls back to Luckiest first. */
+	private void showValueSort(boolean on)
+	{
+		boolean has = false;
+		for (int i = 0; i < sortSelect.getItemCount(); i++)
+		{
+			has |= sortSelect.getItemAt(i) == Sort.VALUE;
+		}
+		if (on == has)
+		{
+			return;
+		}
+		sortOptionsUpdating = true;
+		try
+		{
+			if (on)
+			{
+				int at = 0;
+				for (int i = 0; i < sortSelect.getItemCount(); i++)
+				{
+					at = sortSelect.getItemAt(i) == Sort.LUCKIEST ? i + 1 : at;
+				}
+				sortSelect.insertItemAt(Sort.VALUE, at);
+			}
+			else
+			{
+				boolean selected = sortSelect.getSelectedItem() == Sort.VALUE;
+				if (selected)
+				{
+					sortSelect.setSelectedItem(Sort.LUCKIEST);
+				}
+				sortSelect.removeItem(Sort.VALUE);
+				if (selected)
+				{
+					rememberAccountPage();
+				}
+			}
+		}
+		finally
+		{
+			sortOptionsUpdating = false;
+		}
+	}
+
+	/** The row as the list shows it: with the GP value verdict as its luck when the list is sorted by value. */
+	private static RowStats shownRow(RowStats row, java.util.Map<String, double[]> byValue)
+	{
+		if (byValue == null)
+		{
+			return row;
+		}
+		double[] value = byValue.get(row.getLabel());
+		return row.withDisplayLuck(value == null ? Double.NaN : value[2]);
+	}
+
+	private void renderAccountItems(AccountStats account, RowStats total, List<RowStats> rows, ItemView view,
+		java.util.Map<String, double[]> byValue)
 	{
 		if (rows.isEmpty())
 		{
@@ -3623,14 +3740,14 @@ public class ExpectedDropsPanel extends PluginPanel
 				for (RowStats row : rows)
 				{
 					rowsPanel.add(spacer(Theme.HAIR));
-					rowsPanel.add(buildRow(row, accountTooltip(row, account), () -> showBoss(row.getLabel())));
+					rowsPanel.add(buildRow(shownRow(row, byValue), accountTooltip(row, account, byValue), () -> showBoss(row.getLabel())));
 				}
 				break;
 			case COMPACT:
 				rowsPanel.add(compactHeader("Boss"));
 				for (RowStats row : rows)
 				{
-					rowsPanel.add(compactRow(row, accountTooltip(row, account), () -> showBoss(row.getLabel())));
+					rowsPanel.add(compactRow(shownRow(row, byValue), accountTooltip(row, account, byValue), () -> showBoss(row.getLabel())));
 				}
 				break;
 			case RINGS:
@@ -3639,7 +3756,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				grid.setAlignmentX(LEFT_ALIGNMENT);
 				for (RowStats row : rows)
 				{
-					grid.add(bossRing(row, accountTooltip(row, account)));
+					grid.add(bossRing(shownRow(row, byValue), accountTooltip(row, account, byValue)));
 				}
 				grid.setMaximumSize(new Dimension(Integer.MAX_VALUE, grid.getPreferredSize().height));
 				rowsPanel.add(grid);
@@ -3651,8 +3768,8 @@ public class ExpectedDropsPanel extends PluginPanel
 				for (RowStats row : rows)
 				{
 					rowsPanel.add(spacer(Theme.HAIR));
-					rowsPanel.add(stripRow(row.getIconItem(), row.getShownLabel(), false, row.getLuck(),
-						accountTooltip(row, account), () -> showBoss(row.getLabel())));
+					rowsPanel.add(stripRow(row.getIconItem(), row.getShownLabel(), false, shownRow(row, byValue).getLuck(),
+						accountTooltip(row, account, byValue), () -> showBoss(row.getLabel())));
 				}
 				break;
 			default:
@@ -3664,7 +3781,7 @@ public class ExpectedDropsPanel extends PluginPanel
 						rowsPanel.add(spacer(Theme.HAIR));
 					}
 					boolean streak = sortSelect.getSelectedItem() == Sort.STREAK;
-					rowsPanel.add(luckRow(row, accountTooltip(row, account), () -> showBoss(row.getLabel()),
+					rowsPanel.add(luckRow(shownRow(row, byValue), accountTooltip(row, account, byValue), () -> showBoss(row.getLabel()),
 						streak ? streakText(row) : null, streak ? streakColor(row) : null));
 				}
 		}

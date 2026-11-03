@@ -23,6 +23,8 @@ public class RowStats
 	private String mark = "";
 	/** How the expected count is made up (see {@link Parts}), or null for a single plain count. */
 	private Parts parts;
+	/** Set on a copy made for a list ordered by something else (see {@link #withDisplayLuck}). */
+	private Double luckOverride;
 
 	/**
 	 * What a total (the "Any" row, the account, a drop with a sure copy) is made of: copies that
@@ -184,6 +186,28 @@ public class RowStats
 		copy.fastest = fastest;
 		copy.longest = longest;
 		copy.parts = parts;
+		return copy;
+	}
+
+	/**
+	 * A copy that reports {@code luck} (NaN for none) as its luck, for a list ordered by something
+	 * other than uniques (GP value): its word, dot and colour then follow that. The row's numbers
+	 * and the shares behind its hover stay its own.
+	 */
+	public RowStats withDisplayLuck(double luck)
+	{
+		RowStats copy = new RowStats(label, iconItem, rate, expected, received, any);
+		copy.once = once;
+		copy.cap = cap;
+		copy.streak = streak;
+		copy.streakExact = streakExact;
+		copy.fastest = fastest;
+		copy.longest = longest;
+		copy.driestMultiple = driestMultiple;
+		copy.driestItem = driestItem;
+		copy.mark = mark;
+		copy.parts = parts;
+		copy.luckOverride = luck;
 		return copy;
 	}
 
@@ -358,6 +382,10 @@ public class RowStats
 	 */
 	public double getLuck()
 	{
+		if (luckOverride != null)
+		{
+			return luckOverride;
+		}
 		double[] s = getShares();
 		return s == null ? Double.NaN : DropMath.tieAware(s[0], s[1]);
 	}
