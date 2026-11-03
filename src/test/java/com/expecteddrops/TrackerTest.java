@@ -648,9 +648,17 @@ public class TrackerTest
 	{
 		BossDefinition graardor = catalog.byName("General Graardor");
 		double perKill = 0;
+		double petPerKill = 0;
 		for (DropDefinition drop : graardor.getDrops())
 		{
-			perKill += Tracker.effectiveRate(graardor, drop, RAIDS);
+			if (drop.isPet())
+			{
+				petPerKill += Tracker.effectiveRate(graardor, drop, RAIDS);
+			}
+			else
+			{
+				perKill += Tracker.effectiveRate(graardor, drop, RAIDS);
+			}
 		}
 		for (DropDefinition drop : catalog.poolsOf(graardor).values())
 		{
@@ -664,8 +672,12 @@ public class TrackerTest
 		}
 		TripStats trip = tracker.tripStats();
 		assertEquals(5, trip.getKills());
-		// godsword shards are shared items, but they drop here: the trip expects them too
-		assertEquals(5 * perKill, trip.getExpected(), 1e-9);
+		// godsword shards are shared items, but they drop here: the trip expects them too.
+		// A pet can only drop once, so the trip expects a little less of it than five raw rolls
+		// (the chance you still have none at this kill count), but never more.
+		double petExpected = trip.getExpected() - 5 * perKill;
+		assertTrue("pet part " + petExpected, petExpected <= 5 * petPerKill + 1e-12);
+		assertTrue("pet part " + petExpected, petExpected >= 5 * petPerKill * (1 - 104 * petPerKill) - 1e-12);
 		// shared items are told apart, and 0.1 expected is too early for a verdict
 		double sharedPerKill = 0;
 		for (DropDefinition drop : catalog.poolsOf(graardor).values())

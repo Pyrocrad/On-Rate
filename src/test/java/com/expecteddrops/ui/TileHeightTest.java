@@ -2,7 +2,6 @@ package com.expecteddrops.ui;
 
 import static org.junit.Assert.assertTrue;
 
-import java.awt.Dimension;
 import java.awt.GridLayout;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -11,26 +10,44 @@ import org.junit.Test;
 public class TileHeightTest
 {
 	@Test
-	public void wrappedWordGetsItsHeight()
+	public void wrappedWordGetsItsHeight() throws Exception
 	{
-		VerdictTile a = new VerdictTile("UNIQUES");
-		VerdictTile b = new VerdictTile("GP VALUE");
-		a.set("On rate", java.awt.Color.ORANGE, "100 / 102", "about average", null);
-		b.set("Extremely spooned", java.awt.Color.GREEN, "4.03b / 1.24b", "1 in 139 as lucky", null);
-		JPanel row = new JPanel(new GridLayout(1, 2, 4, 0));
-		row.add(a);
-		row.add(b);
+		// Swing lays components out on the UI thread, and a tile that wraps its text asks to be laid out
+		// again once the current pass is over. So each pass is its own UI-thread task, which is also how the
+		// panel gets its passes; run on any other thread the order would be a matter of timing.
+		VerdictTile[] tiles = new VerdictTile[2];
+		JPanel[] row = new JPanel[1];
+		javax.swing.SwingUtilities.invokeAndWait(() ->
+		{
+			tiles[0] = new VerdictTile("UNIQUES");
+			tiles[1] = new VerdictTile("GP VALUE");
+			tiles[0].set("On rate", java.awt.Color.ORANGE, "100 / 102", "about average", null);
+			tiles[1].set("Extremely spooned", java.awt.Color.GREEN, "4.03b / 1.24b", "1 in 139 as lucky", null);
+			row[0] = new JPanel(new GridLayout(1, 2, 4, 0));
+			row[0].add(tiles[0]);
+			row[0].add(tiles[1]);
+		});
 		for (int i = 0; i < 4; i++)
 		{
-			row.setSize(225, row.getPreferredSize().height);
-			row.doLayout();
-			a.doLayout();
-			b.doLayout();
-			row.doLayout();
+			javax.swing.SwingUtilities.invokeAndWait(() ->
+			{
+				row[0].setSize(225, row[0].getPreferredSize().height);
+				row[0].doLayout();
+				tiles[0].doLayout();
+				tiles[1].doLayout();
+				row[0].doLayout();
+			});
 		}
-		JLabel w = (JLabel) b.getComponent(1);
-		System.out.println("TEXT " + w.getText() + " h=" + w.getHeight() + " pref=" + w.getPreferredSize() + " tile=" + b.getSize() + " rowPref=" + row.getPreferredSize());
-		assertTrue("word label too short: " + w.getHeight() + " vs " + w.getPreferredSize().height, w.getHeight() >= w.getPreferredSize().height);
-		assertTrue(row.getPreferredSize().height >= b.getPreferredSize().height);
+		int[] heights = new int[4];
+		javax.swing.SwingUtilities.invokeAndWait(() ->
+		{
+			JLabel w = (JLabel) tiles[1].getComponent(1);
+			heights[0] = w.getHeight();
+			heights[1] = w.getPreferredSize().height;
+			heights[2] = row[0].getPreferredSize().height;
+			heights[3] = tiles[1].getPreferredSize().height;
+		});
+		assertTrue("word label too short: " + heights[0] + " vs " + heights[1], heights[0] >= heights[1]);
+		assertTrue(heights[2] >= heights[3]);
 	}
 }
