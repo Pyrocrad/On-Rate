@@ -138,18 +138,17 @@ public class CatalogTest
 	}
 
 	@Test
-	public void hiddenBossesStayOutOfTheCatalog()
+	public void fracturedArchiveIsOneRaidModeWithFlatRateExtras()
 	{
-		assertEquals(1, catalog.getHiddenBosses().size());
-		BossDefinition archive = catalog.getHiddenBosses().get(0);
-		assertEquals("The Fractured Archive", archive.getName());
-		assertTrue(archive.isHidden());
+		assertTrue(catalog.getHiddenBosses().isEmpty());
+		BossDefinition archive = catalog.byName("The Fractured Archive");
+		assertNotNull(archive);
+		assertEquals("fractured", archive.getRaid());
+		assertEquals(1, archive.getParts().size());
+		assertEquals("fractured", archive.getParts().get(0).getRaid());
+		// Rondache 5, tome 4, horn 3, crossbows 2, Obligator 1
 		assertEquals(15.0, archive.getTotalWeight(), 0.0001);
-		assertEquals(null, catalog.byName("The Fractured Archive"));
-		assertEquals(null, catalog.byKcName("The Fractured Archive"));
-		assertEquals(null, catalog.byLootName("The Fractured Archive"));
-		assertTrue(catalog.byClogPage("The Fractured Archive").isEmpty());
-		assertFalse(catalog.getBosses().contains(archive));
-		assertFalse(catalog.getAllItemNames().contains("rondache"));
+		assertEquals(archive, catalog.byKcName("The Fractured Archive"));
+		assertTrue(catalog.getAllItemNames().contains("rondache"));
 	}
 }

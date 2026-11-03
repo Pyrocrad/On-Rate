@@ -19,6 +19,15 @@ public interface RaidSettings
 	}
 
 	/**
+	 * The Fractured Archive: the team's unique chance for a duo with no deaths (before the bonus
+	 * for bigger teams), which raids with a known team size scale from.
+	 */
+	default double tfaBaseChance()
+	{
+		return RaidChance.TFA_BASE_CHANCE;
+	}
+
+	/**
 	 * Your average share of the drops at a team boss over {@code kills} kills: 1 when you
 	 * did everything solo, 0.5 for all duos. Pets that don't scale are not affected.
 	 */

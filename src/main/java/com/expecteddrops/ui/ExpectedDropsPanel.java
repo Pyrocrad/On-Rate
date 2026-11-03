@@ -1209,6 +1209,22 @@ public class ExpectedDropsPanel extends PluginPanel
 				+ "ToB has no points to read, so these use the team chance from the settings split over each raid's real team size.",
 				boards, boards == 1 ? "" : "s", mvps, deaths, deaths == 1 ? "" : "s"));
 		}
+		int archives = 0;
+		int players = 0;
+		for (com.expecteddrops.tracking.RaidRecord r : records)
+		{
+			if ("fractured".equals(r.getFamily()) && r.getTeamSize() > 0)
+			{
+				archives++;
+				players += r.getTeamSize();
+			}
+		}
+		if (archives > 0)
+		{
+			sb.append(String.format("<br><br>%,d raid%s used the team On Rate counted around you at the end (%.1f players on average). "
+				+ "Your contribution can't be read yet, so each assumes an even share of the damage and no deaths.",
+				archives, archives == 1 ? "" : "s", players / (double) archives));
+		}
 		return sb.toString();
 	}
 
@@ -2746,9 +2762,9 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			measured += tracker.measuredRaids(boss.getName(), part.getName());
 		}
-		if ("tob".equals(boss.getRaid()))
+		if ("tob".equals(boss.getRaid()) || "fractured".equals(boss.getRaid()))
 		{
-			// ToB has no points; raids with the end-of-raid board use their real team size
+			// ToB and the Fractured Archive have no points; raids with a known team size use it
 			measured = 0;
 			for (com.expecteddrops.tracking.RaidRecord r : tracker.raidRecords(boss.getName()))
 			{
@@ -2768,6 +2784,9 @@ public class ExpectedDropsPanel extends PluginPanel
 				break;
 			case "tob":
 				advice = "Check <i>ToB team size</i> in the settings.";
+				break;
+			case "fractured":
+				advice = "Check <i>TFA team size</i> in the settings.";
 				break;
 			default:
 				advice = "Set your usual chance under <i>Raid purple chances</i> in the settings.";

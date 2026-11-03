@@ -635,21 +635,22 @@
       ]
     },
     {
-      "hidden": true, "raid": "fractured", "estimate": true,
+      "name": "The Fractured Archive", "loot": ["The Fractured Archive"], "clog": ["The Fractured Archive"], "raid": "fractured", "parts": [{"name": "Normal", "kc": ["The Fractured Archive", "Fractured Archive"], "raid": "fractured"}],
       "_todo": [
-        "Not released to players yet: remove 'hidden' when the numbers are known.",
-        "Unknown: how the team's points turn into the chance of the special (purple) chest. Add RaidChance.fractured(...), a 'fractured' case in ExpectedDropsPlugin.raidChance and a fallback % setting, like the other raids.",
-        "Unknown: the overall unique chance, any modes (parts), team size, Orion's rate (add a pet row with perUnique/rate) and the exact collection log, loot tracker and kill count names (assumed 'The Fractured Archive'). Check the unique item names against the collection log (Obligator, Zorya's tome and the Ascension crossbows may be named differently).",
-        "Weights are the wiki's Drop Rate Project split of one special chest (5, 4, 3, 2, 1 out of 15), not a per-raid rate."
+        "Kill count and loot tracker names are assumed to be 'The Fractured Archive': check them against the game's chat message.",
+        "Contribution isn't read from the game yet (no known varp or end-of-raid board): raids save the team size On Rate counts around you, and assume an even share with no deaths. RaidRecord.fractured takes a contribution and deaths once they can be read.",
+        "Rates as of the loot mechanics post two weeks after release; Jagex said some numbers change in the following game update."
       ],
-      "name": "The Fractured Archive", "kc": ["The Fractured Archive"], "loot": ["The Fractured Archive"], "clog": ["The Fractured Archive"],
-      "note": "Each unique's share of a special (purple) chest, from the OSRS Wiki's Drop Rate Project. The chance of getting that chest is not known yet.",
+      "note": "Each room hands out 100 contribution (Ocellus 300), split by damage. The team's chance of a purple is 1 in 14 for a solo or duo with no deaths, +4% of that per player beyond two, and it goes to a player with their share of the contribution, so a duo with even damage is 1 in 28 each. A death takes 10% of your expected contribution. The pet, folio and fragments roll for everyone at a flat rate, whatever your contribution. Fragments never repeat until you have all four.",
       "drops": [
         {"name": "Rondache", "weight": 5},
-        {"name": "Zorya's tome (uncharged)", "weight": 4},
+        {"name": "Zorya's tome (uncharged)", "weight": 4, "match": ["Zorya's tome"]},
         {"name": "Horn of Bran", "weight": 3},
         {"name": "Ascension crossbows", "weight": 2, "match": ["Ascension crossbow"]},
-        {"name": "Obligator (uncharged)", "weight": 1}
+        {"name": "Obligator (uncharged)", "weight": 1, "match": ["Obligator"]},
+        {"name": "Orion", "rate": "1/750", "pet": true},
+        {"name": "Archivist's folio (inert)", "rate": "1/15", "any": false, "match": ["Archivist's folio"]},
+        {"name": "Fragment of living earth", "label": "Elemental fragments", "rate": "1/20", "max": 4, "any": false, "match": ["Fragment of deep water", "Fragment of whispering wind", "Fragment of burning fire"]}
       ]
     }
   ]

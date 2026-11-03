@@ -18,8 +18,76 @@ public final class RaidChance
 	/** Uniques rolled below their minimum raid level are kept 1 time in 50. */
 	public static final double TOA_LOW_LEVEL_KEEP = 1 / 50.0;
 
+	/** The Fractured Archive: the team's chance of a unique in a solo or duo raid with no deaths, 1 in 14. */
+	public static final double TFA_BASE_CHANCE = 1 / 14.0;
+	/** Each player beyond two adds 4% of the base chance (3: x1.04, 5: x1.12, 8: x1.24). */
+	public static final double TFA_BONUS_PER_PLAYER = 0.04;
+	/** Contribution a whole raid hands out: 100 per room, 300 for Ocellus, split by damage. */
+	public static final double TFA_RAID_CONTRIBUTION = 700;
+	/** A death takes 10% of your expected contribution (the raid's total over the team size). */
+	public static final double TFA_DEATH_PENALTY = 0.10;
+	/** The raid takes 1 to 8 players. */
+	public static final int TFA_MAX_TEAM = 8;
+
 	private RaidChance()
 	{
+	}
+
+	/**
+	 * The Fractured Archive's team-size multiplier on the base chance: 1 up to two players, then
+	 * +4% of the base per extra player. Jagex's examples (x1.12 for five, x1.24 for eight) add the
+	 * 4%s rather than compound them.
+	 */
+	public static double tfaTeamMultiplier(int teamSize)
+	{
+		int team = Math.max(1, Math.min(TFA_MAX_TEAM, teamSize));
+		return 1 + TFA_BONUS_PER_PLAYER * Math.max(0, team - 2);
+	}
+
+	/** Contribution an even share of the raid gives you: 700 solo, 350 in a duo, 175 in a four. */
+	public static double tfaExpectedContribution(int teamSize)
+	{
+		return TFA_RAID_CONTRIBUTION / Math.max(1, Math.min(TFA_MAX_TEAM, teamSize));
+	}
+
+	/** Your contribution after deaths: each takes 10% of your expected contribution, never below 0. */
+	public static double tfaContributionAfterDeaths(double contribution, int teamSize, int deaths)
+	{
+		double penalty = TFA_DEATH_PENALTY * tfaExpectedContribution(teamSize) * Math.max(0, deaths);
+		return Math.max(0, contribution - penalty);
+	}
+
+	/**
+	 * Your chance of the unique for one Fractured Archive raid. The team rolls the base chance times
+	 * the team-size multiplier, scaled by how much of the raid's 700 contribution the team kept (deaths
+	 * shrink it), and the unique goes to a player with their share of the team's contribution. Those
+	 * two shares cancel, so your chance only depends on your own contribution:
+	 * base x multiplier x your contribution / 700.
+	 *
+	 * @param contribution your contribution after deaths (0 to 700)
+	 * @param baseChance   the team's chance for a duo with no deaths (1/14 at release)
+	 * @return NaN when the contribution is unknown (negative)
+	 */
+	public static double tfa(double contribution, int teamSize, double baseChance)
+	{
+		if (contribution < 0 || Double.isNaN(contribution))
+		{
+			return Double.NaN;
+		}
+		double share = Math.min(contribution, TFA_RAID_CONTRIBUTION) / TFA_RAID_CONTRIBUTION;
+		return Math.max(0, baseChance) * tfaTeamMultiplier(teamSize) * share;
+	}
+
+	/**
+	 * Your chance when only the team size (and maybe your deaths) is known: you are assumed to do
+	 * an even share of the damage. A duo with no deaths gets 1/28 each.
+	 *
+	 * @param deaths your deaths, or a negative number when unknown (counted as none)
+	 */
+	public static double tfaEven(int teamSize, int deaths, double baseChance)
+	{
+		double contribution = tfaContributionAfterDeaths(tfaExpectedContribution(teamSize), teamSize, deaths);
+		return tfa(contribution, teamSize, baseChance);
 	}
 
 	/**

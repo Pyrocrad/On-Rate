@@ -1836,6 +1836,20 @@ public class Tracker
 		{
 			return;
 		}
+		if ("fractured".equals(family) && (pendingRecord == null || !"fractured".equals(pendingRecord.family)))
+		{
+			// no contribution to read yet: save the team around you at the end, for its multiplier and share
+			int size = teamSize.getAsInt();
+			if (size > 0)
+			{
+				RaidRecord record = RaidRecord.fractured(Math.min(size, RaidChance.TFA_MAX_TEAM), -1, -1);
+				record.savedMillis = nowMillis;
+				saveRecord(boss.getName(), part, kc, record);
+			}
+			pendingRecord = null;
+			lastRaidBoss = null;
+			return;
+		}
 		if (pendingRecord != null && nowMillis - pendingRecordMillis <= matchWindow(pendingRecord.family)
 			&& family.startsWith(pendingRecord.family))
 		{
@@ -1967,6 +1981,9 @@ public class Tracker
 			case "toa":
 				return RaidChance.toa(record.personalPoints, record.partyPoints, record.teamPoints,
 					record.teamSize, record.raidLevel);
+			case "fractured":
+				// only a measured contribution counts as "from your points"; a team size alone doesn't
+				return record.contribution < 0 ? Double.NaN : fracturedChance(record, RaidChance.TFA_BASE_CHANCE);
 			default:
 				return Double.NaN;
 		}
@@ -2004,6 +2021,11 @@ public class Tracker
 	 */
 	static double recordChance(RaidRecord record, BossPart part, RaidSettings raids)
 	{
+		if ("fractured".equals(record.family) && record.teamSize > 0)
+		{
+			// the base chance follows the setting, so a balancing change applies to every raid
+			return fracturedChance(record, raids.tfaBaseChance());
+		}
 		double chance = purpleChance(record);
 		if (!Double.isNaN(chance))
 		{
@@ -2018,12 +2040,42 @@ public class Tracker
 	}
 
 	/**
+	 * The Fractured Archive: your chance from your contribution (or an even share of the team when
+	 * it is unknown) after your deaths.
+	 */
+	private static double fracturedChance(RaidRecord record, double baseChance)
+	{
+		int team = Math.max(1, record.teamSize);
+		if (record.contribution < 0)
+		{
+			return RaidChance.tfaEven(team, record.deaths, baseChance);
+		}
+		double kept = RaidChance.tfaContributionAfterDeaths(record.contribution, team, record.deaths);
+		return RaidChance.tfa(kept, team, baseChance);
+	}
+
+	/**
+	 * True when a raid drop comes out of the purple (a weight or a share per unique). Other raid
+	 * drops, like The Fractured Archive's pet, folio and fragments, roll on their own at a flat rate
+	 * per completion, whatever the points or contribution.
+	 */
+	static boolean fromPurple(BossPart part, DropDefinition drop)
+	{
+		return drop.getWeight(part.getName()) != null || drop.getPerUnique() != null;
+	}
+
+	/**
 	 * What one saved raid adds to the expected count of a drop: its purple chance times the
-	 * item's share at that raid level. The Tombs of Amascut pet has its own formula.
+	 * item's share at that raid level. The Tombs of Amascut pet has its own formula, and drops
+	 * that don't come from the purple keep their flat rate.
 	 */
 	private static double recordDropExpected(BossDefinition boss, BossPart part, DropDefinition drop, RaidRecord r,
 		double chance)
 	{
+		if (!fromPurple(part, drop))
+		{
+			return partRate(boss, part, drop, key -> 1.0);
+		}
 		if (drop.isPet() && "toa".equals(r.family))
 		{
 			double pet = RaidChance.toaPet(r.personalPoints, r.partyPoints, r.teamPoints, r.teamSize, r.raidLevel);
@@ -3462,7 +3514,7 @@ public class Tracker
 		int completions, PartRaids known)
 	{
 		double perRaid = partRate(boss, part, drop, raids);
-		if (known == null || known.count == 0 || part.getRaid() == null || drop.hasPartRates())
+		if (known == null || known.count == 0 || part.getRaid() == null || drop.hasPartRates() || !fromPurple(part, drop))
 		{
 			return completions * perRaid;
 		}

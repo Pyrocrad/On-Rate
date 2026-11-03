@@ -3,6 +3,7 @@ package com.expecteddrops;
 import com.expecteddrops.data.BossCatalog;
 import com.expecteddrops.data.ValueFormula;
 import com.expecteddrops.raids.RaidPointsReader;
+import com.expecteddrops.stats.RaidChance;
 import com.expecteddrops.stats.RaidSettings;
 import com.expecteddrops.tracking.ClogPage;
 import com.expecteddrops.tracking.Tracker;
@@ -405,7 +406,17 @@ public class ExpectedDropsPlugin extends Plugin
 			@Override
 			public int teamSize(String raid)
 			{
-				return raid.startsWith("tob") ? tobTeamSize() : 1;
+				if (raid.startsWith("tob"))
+				{
+					return tobTeamSize();
+				}
+				return "fractured".equals(raid) ? tfaTeamSize() : 1;
+			}
+
+			@Override
+			public double tfaBaseChance()
+			{
+				return ExpectedDropsPlugin.this.tfaBaseChance();
 			}
 
 			@Override
@@ -446,6 +457,17 @@ public class ExpectedDropsPlugin extends Plugin
 	private int tobTeamSize()
 	{
 		return Math.max(1, Math.min(5, config.tobTeamSize()));
+	}
+
+	private int tfaTeamSize()
+	{
+		return Math.max(1, Math.min(RaidChance.TFA_MAX_TEAM, config.tfaTeamSize()));
+	}
+
+	/** The Fractured Archive's team chance for a duo with no deaths, from the settings. */
+	private double tfaBaseChance()
+	{
+		return Math.max(0, Math.min(100, config.tfaTeamChance())) / 100.0;
 	}
 
 	private static boolean isDuoTeam(String team)
@@ -498,6 +520,9 @@ public class ExpectedDropsPlugin extends Plugin
 			case "toaExpert":
 				percent = config.toaExpertUniqueChance();
 				break;
+			case "fractured":
+				// an even share of the damage, no deaths, at the usual team size
+				return RaidChance.tfaEven(tfaTeamSize(), 0, tfaBaseChance());
 			default:
 				percent = 0;
 		}

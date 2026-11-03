@@ -101,4 +101,47 @@ public class RaidChanceTest
 		assertEquals(1.0, RaidChance.toaLevelFactor(150, 150), 0);
 		assertEquals(1.0, RaidChance.toaLevelFactor(0, null), 0);
 	}
+
+	@Test
+	public void fracturedArchiveTeamBonusAddsFourPercentPerPlayerBeyondTwo()
+	{
+		// Jagex's loot post: 3-man x1.04, 5-man x1.12, 8-man x1.24 (added, not compounded)
+		assertEquals(1.0, RaidChance.tfaTeamMultiplier(1), 1e-12);
+		assertEquals(1.0, RaidChance.tfaTeamMultiplier(2), 1e-12);
+		assertEquals(1.04, RaidChance.tfaTeamMultiplier(3), 1e-12);
+		assertEquals(1.12, RaidChance.tfaTeamMultiplier(5), 1e-12);
+		assertEquals(1.24, RaidChance.tfaTeamMultiplier(8), 1e-12);
+		assertEquals(1.24, RaidChance.tfaTeamMultiplier(12), 1e-12);
+		// the wiki's 8-man team chance: 8.86%
+		assertEquals(0.0886, RaidChance.tfa(700, 8, RaidChance.TFA_BASE_CHANCE), 0.00005);
+	}
+
+	@Test
+	public void fracturedArchiveSplitsTheUniqueByContribution()
+	{
+		double base = RaidChance.TFA_BASE_CHANCE;
+		// a duo with even damage: 1 in 14 for the team, half each
+		assertEquals(1 / 28.0, RaidChance.tfaEven(2, 0, base), 1e-12);
+		assertEquals(1 / 14.0, RaidChance.tfaEven(1, 0, base), 1e-12);
+		// 30% of the contribution is 30% of the team's purples
+		assertEquals(0.3 / 14, RaidChance.tfa(0.3 * 700, 2, base), 1e-12);
+		// a four with even damage: 1.08 / 14 for the team, a quarter each
+		assertEquals(1.08 / 14 / 4, RaidChance.tfaEven(4, 0, base), 1e-12);
+		assertTrue(Double.isNaN(RaidChance.tfa(-1, 2, base)));
+		assertEquals(base, RaidChance.tfa(900, 2, base), 1e-12);
+	}
+
+	@Test
+	public void fracturedArchiveDeathTakesTenPercentOfExpectedContribution()
+	{
+		// "In a duo, your expected contribution is 350 out of 700, so a death would subtract 35"
+		assertEquals(350, RaidChance.tfaExpectedContribution(2), 1e-12);
+		assertEquals(315, RaidChance.tfaContributionAfterDeaths(350, 2, 1), 1e-12);
+		// the same 35 whoever carried more damage
+		assertEquals(565, RaidChance.tfaContributionAfterDeaths(600, 2, 1), 1e-12);
+		assertEquals(0, RaidChance.tfaContributionAfterDeaths(20, 2, 1), 1e-12);
+		// unknown deaths count as none
+		assertEquals(350, RaidChance.tfaContributionAfterDeaths(350, 2, -1), 1e-12);
+		assertEquals(315 / 700.0 / 14, RaidChance.tfaEven(2, 1, RaidChance.TFA_BASE_CHANCE), 1e-12);
+	}
 }

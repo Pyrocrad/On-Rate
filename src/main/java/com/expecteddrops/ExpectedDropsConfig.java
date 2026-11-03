@@ -198,7 +198,7 @@ public interface ExpectedDropsConfig extends Config
 		name = "Count your team",
 		description = "At Nex, Yama, the Hueycoatl, the Corporeal Beast and Zalcano, count the players around you at each kill "
 			+ "and give you that share of the kill (a quarter with four players). Earlier kills use the team of "
-			+ "the first kill On Rate counted (Yama: as set below).",
+			+ "the first kill On Rate counted (Yama: as set below). Also counts your team at the end of each Fractured Archive raid.",
 		position = 50,
 		section = teamSection
 	)
@@ -380,5 +380,32 @@ public interface ExpectedDropsConfig extends Config
 	default double toaExpertUniqueChance()
 	{
 		return 5.0;
+	}
+
+	@ConfigItem(
+		keyName = "tfaTeamSize",
+		name = "TFA team size",
+		description = "How many players you usually do The Fractured Archive with (1 to 8), for raids where On Rate couldn't count your team. "
+			+ "You get the unique with your share of the damage, assumed to be an even share. Raids from now on use the players around you at the end.",
+		position = 45,
+		section = raidsSection
+	)
+	@Range(min = 1, max = 8)
+	default int tfaTeamSize()
+	{
+		return 2;
+	}
+
+	@ConfigItem(
+		keyName = "tfaTeamChance",
+		name = "TFA team purple chance (%)",
+		description = "The team's chance of a unique per Fractured Archive raid for a solo or duo with no deaths, in percent: 1 in 14 (7.14%). "
+			+ "Each player beyond two adds 4% of it (x1.24 for eight), and you get your share of the damage. Every raid uses it, also the ones where On Rate counted your team.",
+		position = 46,
+		section = raidChancesSection
+	)
+	default double tfaTeamChance()
+	{
+		return 100 / 14.0;
 	}
 }

@@ -30,7 +30,7 @@
 - **Luck of single drops:** the account's Items tab has a **Drops** view with your **Luckiest drops** and **Longest waits**: each single drop judged by how long it took against its drop rate. Know the kill count you got an old drop at? Right-click the item on its boss page and choose **I got this at kill...**, type the kill count, and it shows up there too. See *Good to know*.
 - **Hover any item** for its drop rate, your dry streak, how far past the drop rate you are and how many players at your kill count would have fewer or more (worked out from the drop rates).
 - **History** per boss: the kills On Rate saw and what they dropped.
-- **Uses your raid points** for each raid's purple chance, and **counts your team** at Nex, Yama, the Hueycoatl, Corp and Zalcano.
+- **Uses your raid points** for each raid's purple chance (The Fractured Archive: your team size, with an even share of the contribution), and **counts your team** at Nex, Yama, the Hueycoatl, Corp and Zalcano.
 - **Imports your past drops** from the collection log, then updates by itself after every kill.
 - **Quiet:** no web requests and no files. Everything is saved in RuneLite's own settings, per account.
 

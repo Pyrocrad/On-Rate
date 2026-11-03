@@ -7,7 +7,7 @@ package com.expecteddrops.tracking;
  */
 public class RaidRecord
 {
-	/** "cox", "toa" or "tob": the start of the raid setting keys. */
+	/** "cox", "toa", "tob" or "fractured": the start of the raid setting keys. */
 	String family;
 	/** Mode, matched from the completion count message, e.g. "Challenge Mode". */
 	String part;
@@ -28,6 +28,11 @@ public class RaidRecord
 	int deaths = -1;
 	int teamDeaths = -1;
 	Boolean mvp;
+	/**
+	 * The Fractured Archive: your contribution out of the raid's 700 before deaths, or -1 when
+	 * unknown (then an even share of the team size is assumed).
+	 */
+	double contribution = -1;
 	/** When it was saved (epoch millis), to match the board or a party message to it. */
 	long savedMillis;
 
@@ -76,6 +81,25 @@ public class RaidRecord
 		r.teamDeaths = teamDeaths;
 		r.mvp = mvp;
 		return r;
+	}
+
+	/**
+	 * A Fractured Archive raid. {@code deaths} -1 and {@code contribution} -1 when unknown: the
+	 * chance then assumes an even share of the damage and no deaths.
+	 */
+	public static RaidRecord fractured(int teamSize, int deaths, double contribution)
+	{
+		RaidRecord r = new RaidRecord();
+		r.family = "fractured";
+		r.teamSize = teamSize;
+		r.deaths = deaths;
+		r.contribution = contribution;
+		return r;
+	}
+
+	public double getContribution()
+	{
+		return contribution;
 	}
 
 	public String getFamily()

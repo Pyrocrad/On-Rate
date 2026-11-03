@@ -55,6 +55,7 @@ public class TrackerTest
 		RAID_CHANCES.put("toaEntry", 0.0075);
 		RAID_CHANCES.put("toa", 0.025);
 		RAID_CHANCES.put("toaExpert", 0.05);
+		RAID_CHANCES.put("fractured", 1 / 28.0);
 	}
 	private static final RaidSettings RAIDS = raid -> RAID_CHANCES.getOrDefault(raid, 0.0);
 
@@ -1535,6 +1536,44 @@ public class TrackerTest
 		// without it: the 37% who don't have it either, like any pet row, not "On rate"
 		assertEquals(Math.exp(-1), row.getLuck(), 1e-12);
 		assertEquals(1 - Math.exp(-1), row.getChanceAtLeastOne(), 1e-12);
+	}
+
+	@Test
+	public void fracturedArchiveUsesTheTeamAtTheEndAndKeepsFlatRatesFlat()
+	{
+		double base = RaidChance.TFA_BASE_CHANCE;
+		RaidSettings duo = raid -> "fractured".equals(raid) ? RaidChance.tfaEven(2, 0, base) : 0;
+		int[] around = {0};
+		tracker.setTeamSizeDetector(() -> around[0]);
+		// raids where On Rate couldn't count the team use the setting: a duo, 1 in 28 each
+		tracker.onChatMessage("Your completed The Fractured Archive count is: <col=ff0000>10</col>.", now);
+		BossStats before = tracker.stats("The Fractured Archive", duo);
+		assertEquals(10, before.getKillCount());
+		assertEquals(10 / 28.0 * 5 / 15, row(before, "Rondache").getExpected(), 1e-12);
+		assertEquals(10 / 750.0, row(before, "Orion").getExpected(), 1e-12);
+
+		// a raid with four players around you: x1.08 for the team, a quarter each
+		around[0] = 4;
+		tracker.onChatMessage("Your completed The Fractured Archive count is: <col=ff0000>11</col>.", now + 60_000);
+		List<RaidRecord> raids = tracker.raidRecords("The Fractured Archive");
+		assertEquals(1, raids.size());
+		assertEquals(4, raids.get(0).getTeamSize());
+		BossStats after = tracker.stats("The Fractured Archive", duo);
+		double four = 1.08 / 14 / 4;
+		assertEquals((10 / 28.0 + four) * 5 / 15, row(after, "Rondache").getExpected(), 1e-12);
+		assertEquals((10 / 28.0 + four) * 1 / 15, row(after, "Obligator (uncharged)").getExpected(), 1e-12);
+		// the pet and folio don't depend on the purple or the team
+		assertEquals(11 / 750.0, row(after, "Orion").getExpected(), 1e-12);
+		assertEquals(11 / 15.0, row(after, "Archivist's folio (inert)").getExpected(), 1e-12);
+	}
+
+	@Test
+	public void fracturedArchiveContributionAndDeathsSetTheChance()
+	{
+		RaidRecord carried = RaidRecord.fractured(2, 1, 420);
+		// 420 - 35 for the death, out of 700, of the duo's 1 in 14
+		assertEquals(385 / 700.0 / 14, Tracker.purpleChance(carried), 1e-12);
+		assertTrue(Double.isNaN(Tracker.purpleChance(RaidRecord.fractured(2, 0, -1))));
 	}
 
 	private static RowStats row(BossStats stats, String label)
