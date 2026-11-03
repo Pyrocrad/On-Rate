@@ -701,17 +701,17 @@ public final class DropMath
 		double abs = Math.abs(gp);
 		if (abs >= 1_000_000_000)
 		{
-			return String.format("%.2fb", gp / 1_000_000_000);
+			return String.format(java.util.Locale.ROOT, "%.2fb", gp / 1_000_000_000);
 		}
 		if (abs >= 1_000_000)
 		{
-			return String.format("%.1fm", gp / 1_000_000);
+			return String.format(java.util.Locale.ROOT, "%.1fm", gp / 1_000_000);
 		}
 		if (abs >= 1_000)
 		{
-			return String.format("%.1fk", gp / 1_000);
+			return String.format(java.util.Locale.ROOT, "%.1fk", gp / 1_000);
 		}
-		return String.format("%.0f", gp);
+		return String.format(java.util.Locale.ROOT, "%.0f", gp);
 	}
 
 	/** "1/181" style text for a per-kill rate. */
@@ -724,12 +724,12 @@ public final class DropMath
 		double inverse = 1.0 / rate;
 		if (inverse < 10)
 		{
-			return String.format("1/%.2f", inverse);
+			return String.format(java.util.Locale.ROOT, "1/%.2f", inverse);
 		}
 		if (Math.abs(inverse - Math.rint(inverse)) < 0.05 || inverse >= 1000)
 		{
-			return String.format("1/%,d", Math.round(inverse));
+			return String.format(java.util.Locale.ROOT, "1/%,d", Math.round(inverse));
 		}
-		return String.format("1/%,.1f", inverse);
+		return String.format(java.util.Locale.ROOT, "1/%,.1f", inverse);
 	}
 }

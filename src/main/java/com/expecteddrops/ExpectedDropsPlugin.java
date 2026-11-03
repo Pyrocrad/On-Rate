@@ -413,11 +413,11 @@ public class ExpectedDropsPlugin extends Plugin
 		Palette.setColourBlind(config.colourBlind());
 		String units = Tracker.unit(stats.getBoss());
 		String one = Tracker.unitOne(stats.getBoss());
-		String tripText = String.format("%,d %s \u00b7 %d unique%s", trip.getKills(), trip.getKills() == 1 ? one : units,
+		String tripText = String.format(java.util.Locale.ROOT, "%,d %s \u00b7 %d unique%s", trip.getKills(), trip.getKills() == 1 ? one : units,
 			trip.getReceived(), trip.getReceived() == 1 ? "" : "s");
 		double tripLuck = trip.getLuck();
-		String tripExpected = trip.getExpected() >= 10 ? String.format("%.1f", trip.getExpected())
-			: String.format("%.2f", trip.getExpected());
+		String tripExpected = trip.getExpected() >= 10 ? String.format(java.util.Locale.ROOT, "%.1f", trip.getExpected())
+			: String.format(java.util.Locale.ROOT, "%.2f", trip.getExpected());
 		overlayInfo = new OverlayInfo(trip.getBoss(), tripText, tripExpected,
 			Double.isNaN(tripLuck) ? "-" : DropMath.verdict(tripLuck),
 			Double.isNaN(tripLuck) ? java.awt.Color.WHITE : Palette.luck(tripLuck).brighter(),
@@ -495,7 +495,7 @@ public class ExpectedDropsPlugin extends Plugin
 					return "Counted as duo kills: about half the uniques of a solo kill (the pet chance stays the same). "
 						+ "If you solo, change it under Team bosses in the settings.";
 				}
-				return String.format("Counted as %,d solo and %,d duo kills (a duo gives about half the uniques).",
+				return String.format(java.util.Locale.ROOT, "Counted as %,d solo and %,d duo kills (a duo gives about half the uniques).",
 					kills - duo, duo);
 			}
 		};

@@ -65,7 +65,7 @@ public final class Theme
 	/** {@code #rrggbb} for a colour, for use inside HTML text. */
 	public static String hex(Color c)
 	{
-		return String.format("#%06x", c.getRGB() & 0xFFFFFF);
+		return String.format(java.util.Locale.ROOT, "#%06x", c.getRGB() & 0xFFFFFF);
 	}
 
 	/** A small "i" in a circle, in front of information lines (not warnings, not luck). */

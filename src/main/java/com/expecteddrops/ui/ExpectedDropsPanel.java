@@ -953,15 +953,15 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		else if (delve)
 		{
-			kcLabel.setText(String.format("Total delves: %,d", stats.getKillCount()));
+			kcLabel.setText(String.format(java.util.Locale.ROOT, "Total delves: %,d", stats.getKillCount()));
 			levelsLabel.setText(levelTable(stats.getLevelCounts()));
 			levelsLabel.setVisible(true);
 		}
 		else
 		{
 			kcLabel.setText(stats.isKillCountKnown()
-				? String.format("%,d %s", stats.getKillCount(), com.expecteddrops.tracking.Tracker.unit(stats.getBoss()))
-				: String.format("%,d %s tracked", stats.getKillCount(), com.expecteddrops.tracking.Tracker.unit(stats.getBoss())));
+				? String.format(java.util.Locale.ROOT, "%,d %s", stats.getKillCount(), com.expecteddrops.tracking.Tracker.unit(stats.getBoss()))
+				: String.format(java.util.Locale.ROOT, "%,d %s tracked", stats.getKillCount(), com.expecteddrops.tracking.Tracker.unit(stats.getBoss())));
 			levelsLabel.setVisible(false);
 		}
 		String reminder = tracker.syncReminder(stats.getBoss().getName());
@@ -1015,7 +1015,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			verdictLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 			verdictLabel.setToolTipText("<html><body style='width: 240px'>On Rate knows your kill count, but not the drops "
 				+ "you got before you installed it. Open the page below once and your verdict shows up.</body></html>");
-			summaryLabel.setText(any.getExpected() < 0.005 ? "" : String.format("%s %s expected by now",
+			summaryLabel.setText(any.getExpected() < 0.005 ? "" : String.format(java.util.Locale.ROOT, "%s %s expected by now",
 				formatExpected(any.getExpected()), raid ? "purples" : "uniques"));
 		}
 		else
@@ -1086,7 +1086,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			if ("fractured".equals(stats.getBoss().getRaid()))
 			{
 				int team = Math.max(1, raidSettings.get().teamSize("fractured"));
-				note.append(String.format("Raids On Rate didn't track use a team of %d (<i>TFA team size</i>) and an even share of the damage: "
+				note.append(String.format(java.util.Locale.ROOT, "Raids On Rate didn't track use a team of %d (<i>TFA team size</i>) and an even share of the damage: "
 					+ "%.2f%% each. The team rolls %.2f%% (%.2f%% for a solo or duo, +4%% of that per player beyond two). "
 					+ "Change these under <i>Raids</i> and <i>Raid purple chances</i> in the settings.",
 					team, raidSettings.get().uniqueChance("fractured") * 100, raidSettings.get().uniqueChance("fractured") * team * 100,
@@ -1100,7 +1100,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		else if (raid)
 		{
-			note.append(String.format("Assumes a %.1f%% chance of a purple per raid (change it under Raid purple chances in the settings).",
+			note.append(String.format(java.util.Locale.ROOT, "Assumes a %.1f%% chance of a purple per raid (change it under Raid purple chances in the settings).",
 				stats.getRaidUniqueChance() * 100));
 		}
 		String teamNote = stats.getBoss().getTeam() == null || stats.getBoss().isDetectTeam() ? null
@@ -1127,7 +1127,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				// fixed when On Rate started counting: the team it saw first
 				Double share = tracker.olderShare(stats.getBoss().getName());
 				olderNote = share == null || share <= 0 ? null
-					: String.format("Counted at the team On Rate first saw (%.1f players).", 1 / share);
+					: String.format(java.util.Locale.ROOT, "Counted at the team On Rate first saw (%.1f players).", 1 / share);
 			}
 			note.append(teamSizeNote(seen, stats.getKillCount(), olderNote));
 		}
@@ -1184,7 +1184,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			{
 				String what = "toa".equals(boss.getRaid()) ? "estimated points"
 					: "fractured".equals(boss.getRaid()) ? "share of the damage (On Rate's estimate)" : "points";
-				sb.append(String.format("<br><br>%,d %s raid%s used your %s instead of the setting.",
+				sb.append(String.format(java.util.Locale.ROOT, "<br><br>%,d %s raid%s used your %s instead of the setting.",
 					measured, part.getName(), measured == 1 ? "" : "s", what));
 			}
 		}
@@ -1198,7 +1198,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		if (boards > 0)
 		{
-			sb.append(String.format("<br><br>%,d raid%s used the real team size from the end-of-raid board instead of the setting. "
+			sb.append(String.format(java.util.Locale.ROOT, "<br><br>%,d raid%s used the real team size from the end-of-raid board instead of the setting. "
 				+ "ToB has no points: the team chance from the settings is divided by that team size.",
 				boards, boards == 1 ? "" : "s"));
 		}
@@ -1214,7 +1214,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		if (archives > 0)
 		{
-			sb.append(String.format("<br><br>%,d raid%s used the team On Rate counted around you at the end (%.1f players on average). "
+			sb.append(String.format(java.util.Locale.ROOT, "<br><br>%,d raid%s used the team On Rate counted around you at the end (%.1f players on average). "
 				+ "On Rate didn't see every fight of those raids, so each assumes an even share of the damage and no deaths.",
 				archives, archives == 1 ? "" : "s", players / (double) archives));
 		}
@@ -1257,8 +1257,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		verdictTiles.removeAll();
 		verdictTiles.setLayout(new GridLayout(1, showValue ? 2 : 1, 4, 0));
 		String verdict = early ? "Too early" : DropMath.verdict(luck);
-		Tip uniquesTip = new Tip(String.format("Uniques \u00b7 %s", verdict))
-			.row("Got", String.format("%,d %s", any.getReceived(),
+		Tip uniquesTip = new Tip(String.format(java.util.Locale.ROOT, "Uniques \u00b7 %s", verdict))
+			.row("Got", String.format(java.util.Locale.ROOT, "%,d %s", any.getReceived(),
 				any.getReceived() == 1 ? what.substring(0, what.length() - 1) : what))
 			.row("Expected by now", formatExpected(any.getExpected()));
 		if (early)
@@ -1273,7 +1273,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		uniquesTile.set(verdict,
 			early ? Theme.TEXT_MUTED : (bossPage ? Palette.verdict(luck) : luckColor(luck)).brighter(),
-			String.format("%,d / %s%s", any.getReceived(), formatExpected(any.getExpected()), estimateNote == null ? "" : " est."),
+			String.format(java.util.Locale.ROOT, "%,d / %s%s", any.getReceived(), formatExpected(any.getExpected()), estimateNote == null ? "" : " est."),
 			early ? "Too few " + (what.equals("purples") ? "raids" : "kills") : luckShort(any.getShares(), any.getReceived()),
 			uniquesTip
 				.note("Counts " + what + ", not their value: a twisted bow counts like a prayer scroll.")
@@ -1301,14 +1301,14 @@ public class ExpectedDropsPanel extends PluginPanel
 			verdictLabel.setText("No kills yet");
 			verdictLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 			summaryLabel.setText(any.getReceived() == 0 && any.getExpected() <= 0 ? ""
-				: String.format("%,d unique%s \u00b7 %s expected", any.getReceived(), any.getReceived() == 1 ? "" : "s",
+				: String.format(java.util.Locale.ROOT, "%,d unique%s \u00b7 %s expected", any.getReceived(), any.getReceived() == 1 ? "" : "s",
 				formatExpected(any.getExpected())));
 			return;
 		}
 		verdictLabel.setText(verdict);
 		verdictLabel.setForeground(luckColor(luck).brighter());
 		verdictLabel.setToolTipText(capital(sharesLine(any.getShares(), any.getReceived())) + ".");
-		summaryLabel.setText(String.format("<html>%,d unique%s \u00b7 %s expected<br>%s</html>",
+		summaryLabel.setText(String.format(java.util.Locale.ROOT, "<html>%,d unique%s \u00b7 %s expected<br>%s</html>",
 			any.getReceived(), any.getReceived() == 1 ? "" : "s", formatExpected(any.getExpected()),
 			capital(luckShort(any.getShares(), any.getReceived()))));
 	}
@@ -1480,14 +1480,14 @@ public class ExpectedDropsPanel extends PluginPanel
 			return "Your team size is counted from your next kill on (the players fighting with you). "
 				+ (olderNote == null ? "Until then every kill counts as solo." : "Until then: " + lowerFirst(olderNote));
 		}
-		String text = String.format("On Rate saw %,d of your kills, with %.1f players on average, "
+		String text = String.format(java.util.Locale.ROOT, "On Rate saw %,d of your kills, with %.1f players on average, "
 			+ "and gives you that share of each kill.", seen, players / seen);
 		int older = Math.max(0, kc - seen);
 		if (older > 0)
 		{
 			text += olderNote == null
-				? String.format(" Your %,d earlier kill%s count as solo.", older, older == 1 ? "" : "s")
-				: String.format(" Your %,d earlier kill%s: %s", older, older == 1 ? "" : "s", lowerFirst(olderNote));
+				? String.format(java.util.Locale.ROOT, " Your %,d earlier kill%s count as solo.", older, older == 1 ? "" : "s")
+				: String.format(java.util.Locale.ROOT, " Your %,d earlier kill%s: %s", older, older == 1 ? "" : "s", lowerFirst(olderNote));
 		}
 		return text;
 	}
@@ -1554,14 +1554,14 @@ public class ExpectedDropsPanel extends PluginPanel
 		StringBuilder tip = new StringBuilder("<html><body style='width: 240px'>");
 		if (!unsynced.isEmpty())
 		{
-			parts.add(String.format("%d boss%s not loaded yet", unsynced.size(), unsynced.size() == 1 ? "" : "es"));
+			parts.add(String.format(java.util.Locale.ROOT, "%d boss%s not loaded yet", unsynced.size(), unsynced.size() == 1 ? "" : "es"));
 			tip.append("<b>Not loaded yet</b>, so not counted: ").append(String.join(", ", unsynced))
 				.append(". On Rate knows the kill count but not your drops from before; open their collection log page once.<br><br>");
 		}
 		if (!hidden.isEmpty())
 		{
 			java.util.Collections.sort(hidden);
-			parts.add(String.format("+ %d boss%s too early to list", hidden.size(), hidden.size() == 1 ? "" : "es"));
+			parts.add(String.format(java.util.Locale.ROOT, "+ %d boss%s too early to list", hidden.size(), hidden.size() == 1 ? "" : "es"));
 			tip.append("<b>Too early to judge</b> (under 0.05 uniques expected), so not listed: ")
 				.append(String.join(", ", hidden)).append(". They still count in your account total.");
 		}
@@ -1627,16 +1627,16 @@ public class ExpectedDropsPanel extends PluginPanel
 				name.setBorder(new EmptyBorder(0, Theme.M, 0, 0));
 			}
 			line.add(name, BorderLayout.CENTER);
-			String color = String.format("#%06x", uniquesColor.getRGB() & 0xFFFFFF);
-			JLabel numbers = smallLabel(String.format("<html>%,d %s \u00b7 <font color='%s'>%,d%s</font></html>", d.getKills(),
+			String color = String.format(java.util.Locale.ROOT, "#%06x", uniquesColor.getRGB() & 0xFFFFFF);
+			JLabel numbers = smallLabel(String.format(java.util.Locale.ROOT, "<html>%,d %s \u00b7 <font color='%s'>%,d%s</font></html>", d.getKills(),
 				unitsHere,
 				color, d.getUniques(), isTotal ? (d.getUniques() == 1 ? " unique" : " uniques") : ""),
 				ColorScheme.LIGHT_GRAY_COLOR);
 			numbers.setFont(FontManager.getRunescapeFont());
 			line.add(numbers, BorderLayout.EAST);
 			Tip dayTip = new Tip((isTotal ? "All bosses" : d.getBoss()) + ", " + title.toLowerCase(Locale.ROOT))
-				.row(capital(units), String.format("%,d", d.getKills()))
-				.row("Uniques", String.format("%,d", d.getUniques()))
+				.row(capital(units), String.format(java.util.Locale.ROOT, "%,d", d.getKills()))
+				.row("Uniques", String.format(java.util.Locale.ROOT, "%,d", d.getUniques()))
 				.row("Expected", "about " + formatExpected(d.getExpected()));
 			if (!Double.isNaN(luck) && d.getExpected() > 0)
 			{
@@ -1942,11 +1942,11 @@ public class ExpectedDropsPanel extends PluginPanel
 		String unit = boss == null ? "kills" : com.expecteddrops.tracking.Tracker.unit(boss);
 		String where = h.getBoss() == null ? "several bosses" : h.getBoss();
 		JPanel panel = threeLineRow(r.getIconItem(), r.getLabel(), where,
-			String.format("%,d %s \u00b7 %s", r.getStreak(), unit, waitLuckShort(multiple, true)),
+			String.format(java.util.Locale.ROOT, "%,d %s \u00b7 %s", r.getStreak(), unit, waitLuckShort(multiple, true)),
 			luckColor(Math.exp(-multiple)).brighter(), "waiting");
 		Tip tip = new Tip(r.getLabel())
 			.row("Where", where)
-			.row("Without one", String.format("%,d %s, %s", r.getStreak(), unit, formatMultiple(multiple) + " the drop rate"))
+			.row("Without one", String.format(java.util.Locale.ROOT, "%,d %s, %s", r.getStreak(), unit, formatMultiple(multiple) + " the drop rate"))
 			.row("Luck", waitLuck(multiple));
 		setTip(panel, tip.note("Still going: each " + (unit.endsWith("s") ? unit.substring(0, unit.length() - 1) : unit)
 			+ " is its own roll, so a long wait doesn't make the next one more likely.").wide(),
@@ -2054,7 +2054,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			for (com.expecteddrops.tracking.KillEntry.DropEntry d : k.getDrops())
 			{
 				int at = k.getPartKc() != null && boss.hasParts() ? k.getPartKc() : k.getKc();
-				dropNames.add(new String[]{d.getName(), String.format("%s%s %,d",
+				dropNames.add(new String[]{d.getName(), String.format(java.util.Locale.ROOT, "%s%s %,d",
 					boss.hasParts() && k.getPart() != null && boss.getRaid() == null ? k.getPart() + " " : "", unit, at)});
 			}
 			if (shown >= 10 || (dropsOnly && k.getDrops().isEmpty()))
@@ -2072,13 +2072,13 @@ public class ExpectedDropsPanel extends PluginPanel
 			}
 			else
 			{
-				first = String.format("%,d", k.getPartKc() != null && raid ? k.getPartKc() : k.getKc());
+				first = String.format(java.util.Locale.ROOT, "%,d", k.getPartKc() != null && raid ? k.getPartKc() : k.getKc());
 				if (raid)
 				{
 					com.expecteddrops.tracking.RaidRecord r = h.getRaid();
 					String mode = k.getPart() != null && !"Normal".equals(k.getPart()) ? shortMode(k.getPart()) + " " : "";
 					boolean archive = "fractured".equals(boss.getRaid());
-					String chance = Double.isNaN(h.getPurpleChance()) ? "" : String.format(" \u00b7 %.1f%%", h.getPurpleChance() * 100);
+					String chance = Double.isNaN(h.getPurpleChance()) ? "" : String.format(java.util.Locale.ROOT, " \u00b7 %.1f%%", h.getPurpleChance() * 100);
 					if (r == null)
 					{
 						middle = mode + (archive ? "not tracked" : "no points");
@@ -2086,7 +2086,7 @@ public class ExpectedDropsPanel extends PluginPanel
 					else if (archive)
 					{
 						// your estimated contribution when On Rate saw every fight, else the team it counted
-						middle = (r.getContribution() >= 0 ? String.format("share %.0f/700", r.getContribution())
+						middle = (r.getContribution() >= 0 ? String.format(java.util.Locale.ROOT, "share %.0f/700", r.getContribution())
 							: r.getTeamSize() > 0 ? "team of " + r.getTeamSize() : "team unknown")
 							+ (r.getDeaths() > 0 ? " \u00b7 " + r.getDeaths() + " death" + (r.getDeaths() == 1 ? "" : "s") : "")
 							+ chance;
@@ -2094,7 +2094,7 @@ public class ExpectedDropsPanel extends PluginPanel
 					else if (r.getPersonalPoints() > 0)
 					{
 						middle = mode + formatPoints(r.getPersonalPoints()) + " points"
-							+ (Double.isNaN(h.getPurpleChance()) ? "" : String.format(" \u00b7 %.1f%%", h.getPurpleChance() * 100));
+							+ (Double.isNaN(h.getPurpleChance()) ? "" : String.format(java.util.Locale.ROOT, " \u00b7 %.1f%%", h.getPurpleChance() * 100));
 					}
 					else
 					{
@@ -2125,7 +2125,7 @@ public class ExpectedDropsPanel extends PluginPanel
 					{
 						dropTip.row("Where", whereName(boss, boss.getName(), k));
 					}
-					dropTip.row(capital(unit) + " count", String.format("%,d", byPart ? k.getPartKc() : k.getKc()))
+					dropTip.row(capital(unit) + " count", String.format(java.util.Locale.ROOT, "%,d", byPart ? k.getPartKc() : k.getKc()))
 						.row("When", daysAgo(k.getTime(), now))
 						.row("Gap before it", gapText(d, unit));
 					if (!dropLuck(d).isEmpty())
@@ -2134,7 +2134,7 @@ public class ExpectedDropsPanel extends PluginPanel
 					}
 					String tip = dropTip.wide();
 					rowsPanel.add(withRemoveMenu(byPart
-						? historyTwoLines(String.format("%,d", k.getPartKc()), d.getName(), Color.WHITE,
+						? historyTwoLines(String.format(java.util.Locale.ROOT, "%,d", k.getPartKc()), d.getName(), Color.WHITE,
 							k.getPart() + (after.isEmpty() ? "" : " \u00b7 " + after), multipleColor(d), tip)
 						: historyLine(first, d.getName(), after, Color.WHITE, multipleColor(d), tip),
 						boss.getName(), k, java.util.Collections.singletonList(d)));
@@ -2184,17 +2184,17 @@ public class ExpectedDropsPanel extends PluginPanel
 						rowsPanel.add(spacer(Theme.HAIR));
 						summary = true;
 					}
-					rowsPanel.add(cardRow(part.getName(), String.format("%.1f%%", a * 100), Color.WHITE, tip));
+					rowsPanel.add(cardRow(part.getName(), String.format(java.util.Locale.ROOT, "%.1f%%", a * 100), Color.WHITE, tip));
 				}
 			}
 		}
 		else if (!delve)
 		{
 			rowsPanel.add(spacer(Theme.S));
-			rowsPanel.add(cardRow("Seen", String.format("last %,d %s%s", seen, unit, seen == 1 ? "" : "s"), Color.WHITE, tip));
+			rowsPanel.add(cardRow("Seen", String.format(java.util.Locale.ROOT, "last %,d %s%s", seen, unit, seen == 1 ? "" : "s"), Color.WHITE, tip));
 			// a boss whose drops are all shared has no expected of its own
-			rowsPanel.add(cardRow("Uniques", boss.getDrops().isEmpty() ? String.format("%,d", drops)
-				: String.format("%,d (%s expected)", drops, formatExpected(stats.getAnyRow().getRate() * seen)), Color.WHITE, tip));
+			rowsPanel.add(cardRow("Uniques", boss.getDrops().isEmpty() ? String.format(java.util.Locale.ROOT, "%,d", drops)
+				: String.format(java.util.Locale.ROOT, "%,d (%s expected)", drops, formatExpected(stats.getAnyRow().getRate() * seen)), Color.WHITE, tip));
 		}
 		if (seen >= com.expecteddrops.tracking.Tracker.MAX_KILLS)
 		{
@@ -2229,7 +2229,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		else
 		{
-			title = String.format("%s %,d", capital(unit), k.getPartKc() != null && boss.getRaid() != null ? k.getPartKc() : k.getKc());
+			title = String.format(java.util.Locale.ROOT, "%s %,d", capital(unit), k.getPartKc() != null && boss.getRaid() != null ? k.getPartKc() : k.getKc());
 		}
 		Tip tip = new Tip(title);
 		if (boss.getRaid() != null)
@@ -2251,7 +2251,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			else if (archive)
 			{
 				tip.row("Your contribution", r.getContribution() < 0 ? "unknown: even share assumed"
-					: String.format("%.0f of 700 (estimated)", r.getContribution()));
+					: String.format(java.util.Locale.ROOT, "%.0f of 700 (estimated)", r.getContribution()));
 				tip.row("Team", r.getTeamSize() > 0 ? String.valueOf(r.getTeamSize()) : "not counted: TFA team size used");
 				if (r.getDeaths() > 0)
 				{
@@ -2259,7 +2259,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				}
 				if (!Double.isNaN(h.getPurpleChance()))
 				{
-					tip.row("Purple chance", String.format("%.2f%%", h.getPurpleChance() * 100));
+					tip.row("Purple chance", String.format(java.util.Locale.ROOT, "%.2f%%", h.getPurpleChance() * 100));
 				}
 				tip.note(r.getContribution() < 0
 					? "On Rate missed a fight of this raid, so it assumes an even share of the damage."
@@ -2269,11 +2269,11 @@ public class ExpectedDropsPanel extends PluginPanel
 			{
 				if (r.getPersonalPoints() > 0)
 				{
-					tip.row("Your points", String.format("%,d", r.getPersonalPoints()));
+					tip.row("Your points", String.format(java.util.Locale.ROOT, "%,d", r.getPersonalPoints()));
 				}
 				if (!Double.isNaN(h.getPurpleChance()))
 				{
-					tip.row("Purple chance", String.format("%.1f%%", h.getPurpleChance() * 100));
+					tip.row("Purple chance", String.format(java.util.Locale.ROOT, "%.1f%%", h.getPurpleChance() * 100));
 				}
 				tip.row("Team", String.valueOf(r.getTeamSize()));
 				if (r.getDeaths() > 0)
@@ -2511,7 +2511,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				have += h.getRow().isComplete() ? 1 : 0;
 			}
 		}
-		JLabel count = smallLabel(String.format("You have %d of the %d pets at your bosses", have, all), ColorScheme.LIGHT_GRAY_COLOR);
+		JLabel count = smallLabel(String.format(java.util.Locale.ROOT, "You have %d of the %d pets at your bosses", have, all), ColorScheme.LIGHT_GRAY_COLOR);
 		count.setAlignmentX(LEFT_ALIGNMENT);
 		rowsPanel.add(count);
 		Boolean group = null;
@@ -2568,7 +2568,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				}
 			}
 		}
-		itemTip.row("Got / expected", String.format("%d / %s", r.getReceived(), formatExpected(r.getExpected())));
+		itemTip.row("Got / expected", String.format(java.util.Locale.ROOT, "%d / %s", r.getReceived(), formatExpected(r.getExpected())));
 		if (h.isPet() && !r.isComplete())
 		{
 			itemTip.row("Chance of one by now", formatPercent(r.getChanceAtLeastOne()));
@@ -2608,7 +2608,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			rowsPanel.add(spacer(Theme.HAIR));
 			// the verdict stays the main reading; on the Items page "got / expected" sits beside the dot
 			rowsPanel.add(luckRow(r, tip, open, h.isPet() && !r.isComplete()
-				? String.format("%s \u00b7 %s", DropMath.verdict(r.getLuck()), formatPercent(r.getChanceAtLeastOne())) : null,
+				? String.format(java.util.Locale.ROOT, "%s \u00b7 %s", DropMath.verdict(r.getLuck()), formatPercent(r.getChanceAtLeastOne())) : null,
 				null, pets ? null : gotOfExpected(r)));
 		}
 	}
@@ -2663,7 +2663,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			}
 			if (pool.isSplitNeedsAnswer() && pool.isSplittable())
 			{
-				missingLines.add(String.format("Your collection log has %s %s On Rate didn't see drop, so it's judged "
+				missingLines.add(String.format(java.util.Locale.ROOT, "Your collection log has %s %s On Rate didn't see drop, so it's judged "
 					+ "with the other bosses again. Right-click it to say where %s came from.",
 					pool.getOlderCopies() == 1 ? "a" : String.valueOf(pool.getOlderCopies()),
 					pool.getOlderCopies() == 1 ? pool.getLabel() : pool.getLabel() + " copies",
@@ -2673,7 +2673,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			missing.remove(page);
 			if (!missing.isEmpty())
 			{
-				missingLines.add(String.format("%s also drops from %s. If you've killed %s, open %s log page%s so those kills count too.",
+				missingLines.add(String.format(java.util.Locale.ROOT, "%s also drops from %s. If you've killed %s, open %s log page%s so those kills count too.",
 					pool.getLabel(), joinAnd(missing), missing.size() == 1 ? "it" : "them",
 					missing.size() == 1 ? "its" : "their", missing.size() == 1 ? "" : "s"));
 			}
@@ -2803,7 +2803,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			return null;
 		}
-		return String.format("Your %s count as %s. Change it under <i>Team bosses</i> in the settings.",
+		return String.format(java.util.Locale.ROOT, "Your %s count as %s. Change it under <i>Team bosses</i> in the settings.",
 			which, share <= 0.5 + 1e-9 ? "duo kills" : "partly duo");
 	}
 
@@ -2856,13 +2856,13 @@ public class ExpectedDropsPanel extends PluginPanel
 		boolean theatre = "tob".equals(boss.getRaid());
 		String own = archive ? "share of the damage" : theatre ? "team size" : "points";
 		String later = archive ? "your own share of the damage" : theatre ? "the real team size" : "your own points";
-		lastHintTip = String.format("<html><body style='width: 240px'>%,d of your %,d raids have no %s On Rate could read "
+		lastHintTip = String.format(java.util.Locale.ROOT, "<html><body style='width: 240px'>%,d of your %,d raids have no %s On Rate could read "
 			+ "(raids from before you installed it, for example), so they use the purple chance from your settings. "
 			+ "Raids from now on use %s.%s<br><br>%s</body></html>",
 			fromSettings, stats.getKillCount(), own, later,
 			// Theatre of Blood has no points, so History has no average to show
 			theatre ? "" : " The average of your tracked raids is under History.", advice);
-		return String.format("%,d of %,d raids use the purple chance from your settings.", fromSettings, stats.getKillCount());
+		return String.format(java.util.Locale.ROOT, "%,d of %,d raids use the purple chance from your settings.", fromSettings, stats.getKillCount());
 	}
 
 	/** Hover text for the line {@link #settingsHint} returns. */
@@ -3045,9 +3045,9 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		else
 		{
-			tip.row(capital(unitsOf(row.getLabel())), String.format("%,d", account.getKillCount(row.getLabel())));
+			tip.row(capital(unitsOf(row.getLabel())), String.format(java.util.Locale.ROOT, "%,d", account.getKillCount(row.getLabel())));
 		}
-		tip.row("Uniques", String.format("Got %d, expected %s", row.getReceived(), formatExpected(row.getExpected())));
+		tip.row("Uniques", String.format(java.util.Locale.ROOT, "Got %d, expected %s", row.getReceived(), formatExpected(row.getExpected())));
 		double luck = row.getLuck();
 		if (!Double.isNaN(luck))
 		{
@@ -3055,7 +3055,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		if (!row.isAny() && row.getDriestItem() != null)
 		{
-			tip.row("Driest right now", String.format("%s, %s the drop rate", row.getDriestItem(), formatMultiple(row.getDriestMultiple())));
+			tip.row("Driest right now", String.format(java.util.Locale.ROOT, "%s, %s the drop rate", row.getDriestItem(), formatMultiple(row.getDriestMultiple())));
 		}
 		if (!Double.isNaN(luck))
 		{
@@ -3191,7 +3191,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		panel.add(smallLabel(gotOfExpected(r), Theme.TEXT_MUTED), BorderLayout.EAST);
 		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
 		String tip = new Tip(r.getLabel())
-			.line(String.format("Got %d, expected %s", r.getReceived(), formatExpected(r.getExpected())))
+			.line(String.format(java.util.Locale.ROOT, "Got %d, expected %s", r.getReceived(), formatExpected(r.getExpected())))
 			.note("Left out of " + bossName + "'s verdicts, the account overview, the Items tab and dry messages. "
 				+ "Right-click to count it again.")
 			.wide();
@@ -3336,7 +3336,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		catch (java.text.ParseException ex)
 		{
-			JOptionPane.showMessageDialog(this, "That isn't a number between 1 and " + String.format("%,d", model.getMaximum()) + ".",
+			JOptionPane.showMessageDialog(this, "That isn't a number between 1 and " + String.format(java.util.Locale.ROOT, "%,d", model.getMaximum()) + ".",
 				"I got this at " + unit, JOptionPane.INFORMATION_MESSAGE);
 			return;
 		}
@@ -3345,8 +3345,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		int partLimit = tracker.pastDropLimit(bossName, part);
 		if (hasParts && kc > partLimit)
 		{
-			JOptionPane.showMessageDialog(this, "Your " + part + " count is " + String.format("%,d", partLimit) + ", so "
-				+ String.format("%,d", kc) + " is too high for it.", "I got this at " + unit, JOptionPane.INFORMATION_MESSAGE);
+			JOptionPane.showMessageDialog(this, "Your " + part + " count is " + String.format(java.util.Locale.ROOT, "%,d", partLimit) + ", so "
+				+ String.format(java.util.Locale.ROOT, "%,d", kc) + " is too high for it.", "I got this at " + unit, JOptionPane.INFORMATION_MESSAGE);
 			return;
 		}
 		if (tracker.addPastDrop(bossName, r.getIconItem(), kc, only || first.isSelected(), part))
@@ -3362,7 +3362,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		else
 		{
 			JOptionPane.showMessageDialog(this, "<html><body style='width: 240px'>Couldn't add it. Either On Rate saw "
-				+ r.getLabel() + " at " + unit + " " + String.format("%,d", kc) + (part == null ? "" : " of " + part)
+				+ r.getLabel() + " at " + unit + " " + String.format(java.util.Locale.ROOT, "%,d", kc) + (part == null ? "" : " of " + part)
 				+ " itself, or History already lists every copy your collection log shows (Remove from History frees one), "
 				+ "or History is full of newer kills.</body></html>",
 				"I got this at " + unit, JOptionPane.INFORMATION_MESSAGE);
@@ -4029,13 +4029,13 @@ public class ExpectedDropsPanel extends PluginPanel
 			double m = r.getStreakMultiple();
 			double p = -Math.expm1(-m);
 			ring.set(p, luckColor(Math.exp(-m)));
-			sub = String.format("%.0f%% so far", p * 100);
+			sub = String.format(java.util.Locale.ROOT, "%.0f%% so far", p * 100);
 		}
 		else
 		{
 			double p = r.getChanceAtLeastOne();
 			ring.set(p, luckColor(r.getLuck()));
-			sub = String.format("%.0f%% by now", p * 100);
+			sub = String.format(java.util.Locale.ROOT, "%.0f%% by now", p * 100);
 		}
 		if (r.isAny())
 		{
@@ -4193,7 +4193,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		head.setOpaque(false);
 		head.setAlignmentX(LEFT_ALIGNMENT);
 		head.add(smallLabel("THIS TRIP", Theme.TEXT_MUTED), BorderLayout.WEST);
-		head.add(smallLabel(minutes >= 60 ? String.format("%dh %02dm", minutes / 60, minutes % 60) : minutes + " min",
+		head.add(smallLabel(minutes >= 60 ? String.format(java.util.Locale.ROOT, "%dh %02dm", minutes / 60, minutes % 60) : minutes + " min",
 			ColorScheme.LIGHT_GRAY_COLOR), BorderLayout.EAST);
 		card.add(head);
 		card.add(spacer(Theme.S));
@@ -4212,7 +4212,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		else
 		{
-			sentence = String.format("%s, %s expected. %s for a trip like this.",
+			sentence = String.format(java.util.Locale.ROOT, "%s, %s expected. %s for a trip like this.",
 				trip.getReceived() == 0 ? "No uniques" : trip.getReceived() == 1 ? "1 unique" : trip.getReceived() + " uniques",
 				formatExpected(trip.getExpected()),
 				capital(luckPercent(trip.getShares(), trip.getReceived())));
@@ -4233,8 +4233,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		double perHour = trip.getKillsPerHour();
 		String capUnits = Character.toUpperCase(units.charAt(0)) + units.substring(1);
 		tiles.add(tile(Double.isNaN(perHour) ? capUnits : capUnits + " \u00b7 per hour",
-			Double.isNaN(perHour) ? String.format("%,d", trip.getKills())
-				: String.format("%,d \u00b7 %.0f/h", trip.getKills(), perHour)));
+			Double.isNaN(perHour) ? String.format(java.util.Locale.ROOT, "%,d", trip.getKills())
+				: String.format(java.util.Locale.ROOT, "%,d \u00b7 %.0f/h", trip.getKills(), perHour)));
 		tiles.add(tile("Uniques / expected", trip.getReceived() + " / " + formatExpected(trip.getExpected())));
 		card.add(tiles);
 		card.add(spacer(Theme.S));
@@ -4258,7 +4258,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		// the shared items it also drops, counted in the totals above
 		if (!trip.getSharedNames().isEmpty())
 		{
-			card.add(cardRow("Shared items", String.format("%d got \u00b7 %s expected", trip.getSharedReceived(),
+			card.add(cardRow("Shared items", String.format(java.util.Locale.ROOT, "%d got \u00b7 %s expected", trip.getSharedReceived(),
 				formatExpected(trip.getSharedExpected())), Color.WHITE,
 				"<html><body style='width: 240px'>Items other bosses drop too (" + html(String.join(", ", trip.getSharedNames()))
 				+ "). They can drop here, so the trip counts them.</body></html>"));
@@ -4271,11 +4271,11 @@ public class ExpectedDropsPanel extends PluginPanel
 		if (!Double.isNaN(perHour)
 			&& (perKill > 0 || !Double.isNaN(tripValue) && uniqueValuePerKill(bossName) > 0))
 		{
-			String worthTip = String.format("<html><body style='width: 240px'>About %s per %s at this trip's speed. "
+			String worthTip = String.format(java.util.Locale.ROOT, "<html><body style='width: 240px'>About %s per %s at this trip's speed. "
 				+ "Only uniques count (not bones, hides or other loot), so this isn't your full GP per hour. "
 				+ "Pets and most jars count as 0 GP.%s</body></html>",
 				DropMath.formatGp(perKill), units.substring(0, units.length() - 1), mainValueNote(bossName));
-			card.add(cardRow("Unique value", String.format("~%s/h expected", DropMath.formatGp(perKill * perHour)),
+			card.add(cardRow("Unique value", String.format(java.util.Locale.ROOT, "~%s/h expected", DropMath.formatGp(perKill * perHour)),
 				Color.WHITE, worthTip));
 		}
 
@@ -4283,8 +4283,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		long idleMinutes = Math.max(0, (System.currentTimeMillis() - trip.getLastMillis()) / 60_000);
 		long limitMinutes = tracker.tripIdleLimitMillis() / 60_000;
 		String idle = idleMinutes < 2 ? "Last kill just now"
-			: limitMinutes > idleMinutes ? String.format("Idle %d min \u00b7 ends in %d min", idleMinutes, limitMinutes - idleMinutes)
-			: String.format("Idle %d min", idleMinutes);
+			: limitMinutes > idleMinutes ? String.format(java.util.Locale.ROOT, "Idle %d min \u00b7 ends in %d min", idleMinutes, limitMinutes - idleMinutes)
+			: String.format(java.util.Locale.ROOT, "Idle %d min", idleMinutes);
 		card.add(spacer(Theme.S));
 		JPanel foot = new JPanel(new BorderLayout());
 		foot.setOpaque(false);
@@ -4352,8 +4352,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			long days = java.time.temporal.ChronoUnit.DAYS.between(
 				java.time.Instant.ofEpochMilli(last.time).atZone(zone).toLocalDate(), today);
-			String when = days <= 0 ? "today" : days == 1 ? "yesterday" : String.format("%,d days ago", days);
-			text = String.format("Last unique %s: %s (%s).", when, last.item, last.boss);
+			String when = days <= 0 ? "today" : days == 1 ? "yesterday" : String.format(java.util.Locale.ROOT, "%,d days ago", days);
+			text = String.format(java.util.Locale.ROOT, "Last unique %s: %s (%s).", when, last.item, last.boss);
 		}
 		else
 		{
@@ -4740,7 +4740,7 @@ public class ExpectedDropsPanel extends PluginPanel
 					break;
 				}
 			}
-			welcomeProgress.setText(String.format("<html><font color='%s'>%d of %d</font> pages loaded · next: %s</html>",
+			welcomeProgress.setText(String.format(java.util.Locale.ROOT, "<html><font color='%s'>%d of %d</font> pages loaded · next: %s</html>",
 				Theme.hex(Theme.TEXT), done, total, Texts.html(next.getPage())));
 			welcomeProgressBar.set(done / (double) total, -1, Theme.PROGRESS);
 		}
@@ -4789,7 +4789,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		Color statusColor = Theme.TEXT;
 		if (killed > 0)
 		{
-			status = String.format("Load %d boss%s you killed", killed, killed == 1 ? "" : "es");
+			status = String.format(java.util.Locale.ROOT, "Load %d boss%s you killed", killed, killed == 1 ? "" : "es");
 		}
 		else if (done == 0)
 		{
@@ -4797,7 +4797,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		else
 		{
-			status = String.format("Collection log: %d page%s loaded", done, done == 1 ? "" : "s");
+			status = String.format(java.util.Locale.ROOT, "Collection log: %d page%s loaded", done, done == 1 ? "" : "s");
 			statusColor = ColorScheme.LIGHT_GRAY_COLOR;
 		}
 		setupHeader.setText((setupExpanded ? "\u25be " : "\u25b8 ") + status + (setupExpanded ? "" : " (show)"));
@@ -4923,11 +4923,11 @@ public class ExpectedDropsPanel extends PluginPanel
 			double progress = expected - number;
 			if (name != null)
 			{
-				bar.set(progress, Theme.PROGRESS, name, String.format("%.0f%%", progress * 100));
+				bar.set(progress, Theme.PROGRESS, name, String.format(java.util.Locale.ROOT, "%.0f%%", progress * 100));
 			}
 			else
 			{
-				bar.set(progress, Theme.PROGRESS, String.format("%.1f%%", progress * 100));
+				bar.set(progress, Theme.PROGRESS, String.format(java.util.Locale.ROOT, "%.1f%%", progress * 100));
 			}
 		}
 		else
@@ -4983,7 +4983,7 @@ public class ExpectedDropsPanel extends PluginPanel
 	 */
 	static String summary(RowStats row)
 	{
-		String text = String.format("You got <b>%d</b> where %s was expected.", row.getReceived(),
+		String text = String.format(java.util.Locale.ROOT, "You got <b>%d</b> where %s was expected.", row.getReceived(),
 			formatExpected(row.getExpected()));
 		if (Double.isNaN(row.getLuck()))
 		{
@@ -5079,7 +5079,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		String multiple = rateMultiple(row);
 		if (multiple != null)
 		{
-			tip.row(row.isAny() ? "Without a unique" : "Without one", String.format("%,d %s, %s", kills, units, multiple));
+			tip.row(row.isAny() ? "Without a unique" : "Without one", String.format(java.util.Locale.ROOT, "%,d %s, %s", kills, units, multiple));
 		}
 		if (oneRate && row.getRate() > 0)
 		{
@@ -5092,7 +5092,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				half = Math.min(half, sure);
 				most = Math.min(most, sure);
 			}
-			tip.row("From none, 50% / 90% takes", String.format("%,d / %,d %ss", half, most, unit));
+			tip.row("From none, 50% / 90% takes", String.format(java.util.Locale.ROOT, "%,d / %,d %ss", half, most, unit));
 		}
 
 		// rates that depend on the run: one row each, under a small heading
@@ -5142,8 +5142,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		if (row.getFastest() != null)
 		{
 			tip.note(row.getFastest().equals(row.getLongest())
-				? String.format("Since On Rate: one drop took %,d %s.", row.getFastest(), unit + (row.getFastest() == 1 ? "" : "s"))
-				: String.format("Since On Rate: fastest drop after %,d %s, longest after %,d.", row.getFastest(),
+				? String.format(java.util.Locale.ROOT, "Since On Rate: one drop took %,d %s.", row.getFastest(), unit + (row.getFastest() == 1 ? "" : "s"))
+				: String.format(java.util.Locale.ROOT, "Since On Rate: fastest drop after %,d %s, longest after %,d.", row.getFastest(),
 					unit + (row.getFastest() == 1 ? "" : "s"), row.getLongest()));
 		}
 		boolean ownDrop = drop != null && stats.getBoss().getDrops().contains(drop);
@@ -5162,7 +5162,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		if (multiple != null)
 		{
 			// a dry spell says nothing about the next one
-			tip.note(String.format("Each %s is its own roll. Going without one does not make the next more likely.", unit));
+			tip.note(String.format(java.util.Locale.ROOT, "Each %s is its own roll. Going without one does not make the next more likely.", unit));
 		}
 		return tip.wide();
 	}
@@ -5197,7 +5197,7 @@ public class ExpectedDropsPanel extends PluginPanel
 
 	private static String formatWeight(double w)
 	{
-		return w == Math.rint(w) ? String.format("%,d", (long) w) : String.format("%.1f", w);
+		return w == Math.rint(w) ? String.format(java.util.Locale.ROOT, "%,d", (long) w) : String.format(java.util.Locale.ROOT, "%.1f", w);
 	}
 
 	/** See {@link Texts#plainLuck}. */

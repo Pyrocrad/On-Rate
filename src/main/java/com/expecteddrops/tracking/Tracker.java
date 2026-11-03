@@ -2347,16 +2347,16 @@ public class Tracker
 		if (previous != null && kc > previous)
 		{
 			int kills = kc - previous;
-			text = String.format("%s after %,d %s (%s the drop rate).", name, kills, units(boss, kills), multiple(kills * rate));
+			text = String.format(java.util.Locale.ROOT, "%s after %,d %s (%s the drop rate).", name, kills, units(boss, kills), multiple(kills * rate));
 		}
 		else if (historyKnown && (before == null || before == 0) && kc > 0)
 		{
-			text = String.format("Your first %s, after %,d %s (%s the drop rate).", name, kc, units(boss, kc), multiple(kc * rate));
+			text = String.format(java.util.Locale.ROOT, "Your first %s, after %,d %s (%s the drop rate).", name, kc, units(boss, kc), multiple(kc * rate));
 		}
 		else if (progress.trackingStartKc != null && kc > progress.trackingStartKc)
 		{
 			int kills = kc - progress.trackingStartKc;
-			text = String.format("%s after at least %,d %s.", name, kills, units(boss, kills));
+			text = String.format(java.util.Locale.ROOT, "%s after at least %,d %s.", name, kills, units(boss, kills));
 		}
 		if (text != null && rate > 0)
 		{
@@ -2464,9 +2464,9 @@ public class Tracker
 	{
 		if (m < 0.1)
 		{
-			return String.format("%.2fx", m);
+			return String.format(java.util.Locale.ROOT, "%.2fx", m);
 		}
-		return m < 10 ? String.format("%.1fx", m) : String.format("%.0fx", m);
+		return m < 10 ? String.format(java.util.Locale.ROOT, "%.1fx", m) : String.format(java.util.Locale.ROOT, "%.0fx", m);
 	}
 
 	/**
@@ -2527,9 +2527,9 @@ public class Tracker
 		{
 			RowStats row = rowFor(s, names.get(0));
 			String streak = row.isStreakExact()
-				? String.format("%,d %s without one", row.getStreak(), units(boss, row.getStreak()))
-				: String.format("at least %,d %s since your last one", row.getStreak(), units(boss, row.getStreak()));
-			outbox.add(new Note(Note.Kind.MILESTONE, String.format("%s: %s, %dx the drop rate.",
+				? String.format(java.util.Locale.ROOT, "%,d %s without one", row.getStreak(), units(boss, row.getStreak()))
+				: String.format(java.util.Locale.ROOT, "at least %,d %s since your last one", row.getStreak(), units(boss, row.getStreak()));
+			outbox.add(new Note(Note.Kind.MILESTONE, String.format(java.util.Locale.ROOT, "%s: %s, %dx the drop rate.",
 				names.get(0), streak, levels.get(0))));
 			return;
 		}
@@ -2554,8 +2554,8 @@ public class Tracker
 			list.append(" and ").append(names.size() - shown).append(" more");
 		}
 		outbox.add(new Note(Note.Kind.MILESTONE, same
-			? String.format("%s: %d items passed %dx the drop rate dry: %s.", boss.getName(), names.size(), top, list)
-			: String.format("%s: %d items passed a dry milestone: %s.", boss.getName(), names.size(), list)));
+			? String.format(java.util.Locale.ROOT, "%s: %d items passed %dx the drop rate dry: %s.", boss.getName(), names.size(), top, list)
+			: String.format(java.util.Locale.ROOT, "%s: %d items passed a dry milestone: %s.", boss.getName(), names.size(), list)));
 	}
 
 	private static RowStats rowFor(BossStats s, String label)
@@ -3367,8 +3367,8 @@ public class Tracker
 			: t.getReceived() == 1 ? "1 unique (" + String.join(", ", t.getDrops()) + ")"
 			: t.getReceived() + " uniques (" + String.join(", ", t.getDrops()) + ")";
 		double luck = t.getLuck();
-		outbox.add(new Note(Note.Kind.TRIP, String.format("Trip at %s: %,d %s, %s, %s expected%s.", t.getBoss(),
-			t.getKills(), units, uniques, t.getExpected() >= 10 ? String.format("%.1f", t.getExpected()) : String.format("%.2f", t.getExpected()),
+		outbox.add(new Note(Note.Kind.TRIP, String.format(java.util.Locale.ROOT, "Trip at %s: %,d %s, %s, %s expected%s.", t.getBoss(),
+			t.getKills(), units, uniques, t.getExpected() >= 10 ? String.format(java.util.Locale.ROOT, "%.1f", t.getExpected()) : String.format(java.util.Locale.ROOT, "%.2f", t.getExpected()),
 			Double.isNaN(luck) ? "" : " \u00b7 " + DropMath.verdict(luck))));
 	}
 
