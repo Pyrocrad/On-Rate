@@ -357,8 +357,9 @@ public class ExpectedDropsPlugin extends Plugin
 			return;
 		}
 		BossStats stats = tracker.stats(trip.getBoss(), raidSettings());
-		if (stats == null)
+		if (stats == null || Tracker.isLongRun(stats.getBoss()))
 		{
+			// a raid, the Inferno or the Fight Caves takes too long for the box to stay up to date
 			overlayInfo = null;
 			return;
 		}

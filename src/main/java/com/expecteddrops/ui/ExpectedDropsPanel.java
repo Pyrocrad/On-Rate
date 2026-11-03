@@ -4353,7 +4353,9 @@ public class ExpectedDropsPanel extends PluginPanel
 		});
 		foot.add(reset, BorderLayout.EAST);
 		card.add(foot);
-		if (trip.getKills() >= OVERLAY_OFFER_KILLS || minutes >= OVERLAY_OFFER_MINUTES)
+		// the overlay is not shown at raids, the Inferno or the Fight Caves, so it is not offered there
+		if ((tripBoss == null || !Tracker.isLongRun(tripBoss))
+			&& (trip.getKills() >= OVERLAY_OFFER_KILLS || minutes >= OVERLAY_OFFER_MINUTES))
 		{
 			addOverlayOffer(card);
 		}

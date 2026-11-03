@@ -3244,11 +3244,16 @@ public class Tracker
 	 */
 	static final long LONG_TRIP_IDLE_MILLIS = 120 * 60_000;
 
-	static long tripIdleMillis(BossDefinition boss)
+	/** True for content where one completion takes long: a raid, the Inferno or the Fight Caves. */
+	public static boolean isLongRun(BossDefinition boss)
 	{
 		String name = boss.getName();
-		return boss.getRaid() != null || "TzKal-Zuk".equals(name) || "TzTok-Jad".equals(name)
-			? LONG_TRIP_IDLE_MILLIS : TRIP_IDLE_MILLIS;
+		return boss.getRaid() != null || "TzKal-Zuk".equals(name) || "TzTok-Jad".equals(name);
+	}
+
+	static long tripIdleMillis(BossDefinition boss)
+	{
+		return isLongRun(boss) ? LONG_TRIP_IDLE_MILLIS : TRIP_IDLE_MILLIS;
 	}
 
 	private Trip trip;

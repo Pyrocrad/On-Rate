@@ -2508,6 +2508,20 @@ public class TrackerTest
 	}
 
 	@Test
+	public void longRunsAreRaidsTheInfernoAndTheFightCaves()
+	{
+		// the overlay and its offer skip these: one run is too long for a box that updates after each kill
+		for (String name : new String[]{"Chambers of Xeric", "Theatre of Blood", "Tombs of Amascut", "TzKal-Zuk", "TzTok-Jad"})
+		{
+			assertTrue(name, Tracker.isLongRun(catalog.byName(name)));
+		}
+		for (String name : new String[]{"Vorkath", "Zulrah", "Nex"})
+		{
+			assertFalse(name, Tracker.isLongRun(catalog.byName(name)));
+		}
+	}
+
+	@Test
 	public void tripBoundaryIsInclusive()
 	{
 		// half an hour for a normal boss, two hours for a raid (Tracker keeps these package-private)

@@ -165,7 +165,7 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigItem(
 		keyName = "showOverlay",
 		name = "In-game overlay",
-		description = "Show a small box on the game screen with this trip's kills, uniques, expected and luck while you kill a boss",
+		description = "Show a small box on the game screen with this trip's kills, uniques, expected and luck while you kill a boss. Not shown at raids, the Inferno or the Fight Caves.",
 		position = 13,
 		section = displaySection
 	)
