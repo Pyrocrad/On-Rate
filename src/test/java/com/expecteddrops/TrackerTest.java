@@ -1546,7 +1546,7 @@ public class TrackerTest
 		int[] around = {0};
 		tracker.setTeamSizeDetector(() -> around[0]);
 		// raids where On Rate couldn't count the team use the setting: a duo, 1 in 28 each
-		tracker.onChatMessage("Your completed The Fractured Archive count is: <col=ff0000>10</col>.", now);
+		tracker.onChatMessage("Your The Fractured Archive completion count is: <col=ff0000>10</col>.", now);
 		BossStats before = tracker.stats("The Fractured Archive", duo);
 		assertEquals(10, before.getKillCount());
 		assertEquals(10 / 28.0 * 5 / 15, row(before, "Rondache").getExpected(), 1e-12);
@@ -1554,7 +1554,7 @@ public class TrackerTest
 
 		// a raid with four players around you: x1.08 for the team, a quarter each
 		around[0] = 4;
-		tracker.onChatMessage("Your completed The Fractured Archive count is: <col=ff0000>11</col>.", now + 60_000);
+		tracker.onChatMessage("Your The Fractured Archive completion count is: <col=ff0000>11</col>.", now + 60_000);
 		List<RaidRecord> raids = tracker.raidRecords("The Fractured Archive");
 		assertEquals(1, raids.size());
 		assertEquals(4, raids.get(0).getTeamSize());
@@ -1565,6 +1565,31 @@ public class TrackerTest
 		// the pet and folio don't depend on the purple or the team
 		assertEquals(11 / 750.0, row(after, "Orion").getExpected(), 1e-12);
 		assertEquals(11 / 15.0, row(after, "Archivist's folio (inert)").getExpected(), 1e-12);
+	}
+
+	@Test
+	public void fracturedArchiveDamageShareJoinsTheRaidWhicheverComesFirst()
+	{
+		double base = RaidChance.TFA_BASE_CHANCE;
+		RaidSettings duo = raid -> "fractured".equals(raid) ? RaidChance.tfaEven(2, 0, base) : 0;
+		tracker.setTeamSizeDetector(() -> 2);
+		// the damage share first, then the completion message
+		assertNull(tracker.onRaidRecord(RaidRecord.fractured(0, 0, 420), now));
+		assertEquals("The Fractured Archive",
+			tracker.onChatMessage("Your The Fractured Archive completion count is: <col=ff0000>1</col>.", now + 1_000));
+		// the completion message first, then the damage share with a death
+		tracker.onChatMessage("Your The Fractured Archive completion count is: <col=ff0000>2</col>.", now + 600_000);
+		assertEquals("The Fractured Archive", tracker.onRaidRecord(RaidRecord.fractured(0, 1, 280), now + 601_000));
+		List<RaidRecord> raids = tracker.raidRecords("The Fractured Archive");
+		assertEquals(2, raids.size());
+		assertEquals(420, raids.get(0).getContribution(), 0);
+		assertEquals(2, raids.get(0).getTeamSize());
+		assertEquals(280, raids.get(1).getContribution(), 0);
+		assertEquals(1, raids.get(1).getDeaths());
+		assertEquals(2, tracker.measuredRaids("The Fractured Archive", "Normal"));
+		// 420 / 700 and (280 - 35) / 700 of the duo's 1 in 14
+		double chances = (420 + 245) / 700.0 / 14;
+		assertEquals(chances * 3 / 15, row(tracker.stats("The Fractured Archive", duo), "Horn of Bran").getExpected(), 1e-12);
 	}
 
 	@Test

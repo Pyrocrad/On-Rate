@@ -33,7 +33,8 @@
  * commit 963f3c4f). Only the parts that read raid points are used here: the Chambers of
  * Xeric points at the end of a raid, the Tombs of Amascut points estimate (from the Tombs
  * of Amascut plugin by LlemonDuck and TheStonedTurtle), the Tombs of Amascut plugin's party
- * points message and the Theatre of Blood end-of-raid board.
+ * points message and the Theatre of Blood end-of-raid board. The Fractured Archive's damage
+ * share (FracturedContribution) is On Rate's own.
  */
 package com.expecteddrops.raids;
 
@@ -48,8 +49,10 @@ import java.util.function.Consumer;
 import net.runelite.api.Actor;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
+import net.runelite.api.Hitsplat;
 import net.runelite.api.NPC;
 import net.runelite.api.Player;
+import net.runelite.api.events.ActorDeath;
 import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameStateChanged;
@@ -77,6 +80,8 @@ public class RaidPointsReader
 {
 	private static final String RAID_COMPLETE_MESSAGE_COX = "Congratulations - your raid is complete!";
 	private static final String RAID_COMPLETE_MESSAGE_TOA = "Challenge complete: The Wardens.";
+	/** The Fractured Archive's completion count message. */
+	static final String RAID_COMPLETE_MESSAGE_TFA = "Your The Fractured Archive completion count is";
 	private static final String TOA_EVENT_NAMESPACE = "tombs-of-amascut";
 	private static final String TOA_EVENT_NAME_POINTS = "raidCompletedPoints";
 
@@ -98,6 +103,8 @@ public class RaidPointsReader
 
 	private final RaidStateTracker raidStateTracker;
 	private final ToaPointsEstimator toaPoints = new ToaPointsEstimator();
+	/** Your damage share in The Fractured Archive, room by room. */
+	private final FracturedContribution fractured = new FracturedContribution();
 	/** True once the start of this Tombs raid was seen, so a half-tracked raid isn't saved. */
 	private boolean toaStartSeen;
 	private int toaRaidLevel = -1;
@@ -175,6 +182,11 @@ public class RaidPointsReader
 		{
 			return;
 		}
+		if (message.startsWith(RAID_COMPLETE_MESSAGE_TFA))
+		{
+			saveFracturedRaid();
+			return;
+		}
 		if (message.startsWith(ToaPointsEstimator.START_MESSAGE))
 		{
 			toaPoints.reset();
@@ -233,6 +245,27 @@ public class RaidPointsReader
 		report(tracker.onRaidRecord(record, System.currentTimeMillis()));
 	}
 
+	/** Your damage share and deaths for the Fractured Archive raid that just ended. */
+	private void saveFracturedRaid()
+	{
+		FracturedContribution.Result result = fractured.finish();
+		if (result == null || !enabled.getAsBoolean())
+		{
+			return;
+		}
+		// the team size is counted by the tracker when the completion message comes
+		report(tracker.onRaidRecord(RaidRecord.fractured(0, result.deaths, result.contribution), System.currentTimeMillis()));
+	}
+
+	@Subscribe
+	public void onActorDeath(ActorDeath e)
+	{
+		if (e.getActor() != null && e.getActor() == client.getLocalPlayer())
+		{
+			fractured.onLocalDeath();
+		}
+	}
+
 	/**
 	 * The game sends your exact Tombs of Amascut points at the end of the raid (the same value the
 	 * Tombs of Amascut plugin reads). Before the raid is saved they're kept for it; after, they
@@ -257,6 +290,12 @@ public class RaidPointsReader
 	@Subscribe
 	public void onHitsplatApplied(HitsplatApplied e)
 	{
+		if (e.getActor() instanceof NPC && FracturedContribution.isArchiveNpc(((NPC) e.getActor()).getId()))
+		{
+			Hitsplat hit = e.getHitsplat();
+			fractured.onHitsplat(((NPC) e.getActor()).getId(), hit.getAmount(), hit.isMine(), hit.isOthers());
+			return;
+		}
 		if (!raidStateTracker.getCurrentState().isInRaid() || !(e.getActor() instanceof NPC))
 		{
 			return;

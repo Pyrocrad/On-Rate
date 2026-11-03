@@ -1186,9 +1186,10 @@ public class ExpectedDropsPanel extends PluginPanel
 			int measured = tracker.measuredRaids(boss.getName(), part.getName());
 			if (measured > 0)
 			{
-				boolean estimated = "toa".equals(boss.getRaid());
+				String what = "toa".equals(boss.getRaid()) ? "estimated points"
+					: "fractured".equals(boss.getRaid()) ? "share of the damage (On Rate's estimate)" : "points";
 				sb.append(String.format("<br><br>%,d %s raid%s used your %s instead of the setting.",
-					measured, part.getName(), measured == 1 ? "" : "s", estimated ? "estimated points" : "points"));
+					measured, part.getName(), measured == 1 ? "" : "s", what));
 			}
 		}
 		int boards = 0;
@@ -1213,7 +1214,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		int players = 0;
 		for (com.expecteddrops.tracking.RaidRecord r : records)
 		{
-			if ("fractured".equals(r.getFamily()) && r.getTeamSize() > 0)
+			if ("fractured".equals(r.getFamily()) && r.getTeamSize() > 0 && r.getContribution() < 0)
 			{
 				archives++;
 				players += r.getTeamSize();
@@ -1222,7 +1223,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		if (archives > 0)
 		{
 			sb.append(String.format("<br><br>%,d raid%s used the team On Rate counted around you at the end (%.1f players on average). "
-				+ "Your contribution can't be read yet, so each assumes an even share of the damage and no deaths.",
+				+ "On Rate didn't see every fight of those raids, so each assumes an even share of the damage and no deaths.",
 				archives, archives == 1 ? "" : "s", players / (double) archives));
 		}
 		return sb.toString();
@@ -2768,7 +2769,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			measured = 0;
 			for (com.expecteddrops.tracking.RaidRecord r : tracker.raidRecords(boss.getName()))
 			{
-				measured += r.getTeamSize() > 0 ? 1 : 0;
+				measured += r.getTeamSize() > 0 || r.getContribution() >= 0 ? 1 : 0;
 			}
 		}
 		int fromSettings = Math.max(0, stats.getKillCount() - measured);

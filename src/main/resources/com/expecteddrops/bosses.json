@@ -635,10 +635,10 @@
       ]
     },
     {
-      "name": "The Fractured Archive", "loot": ["The Fractured Archive"], "clog": ["The Fractured Archive"], "raid": "fractured", "parts": [{"name": "Normal", "kc": ["The Fractured Archive", "Fractured Archive"], "raid": "fractured"}],
+      "name": "The Fractured Archive", "loot": ["The Fractured Archive"], "clog": ["The Fractured Archive"], "raid": "fractured", "parts": [{"name": "Normal", "kc": ["The Fractured Archive"], "raid": "fractured"}],
       "_todo": [
-        "Kill count and loot tracker names are assumed to be 'The Fractured Archive': check them against the game's chat message.",
-        "Contribution isn't read from the game yet (no known varp or end-of-raid board): raids save the team size On Rate counts around you, and assume an even share with no deaths. RaidRecord.fractured takes a contribution and deaths once they can be read.",
+        "Completion message: 'Your The Fractured Archive completion count is: X.' The loot tracker name is assumed to be 'The Fractured Archive'.",
+        "The game doesn't show contribution: FracturedContribution estimates it from hitsplats per room (NPC IDs from the OSRS Wiki). The soft cap on minion damage and Ocellus's split between phases aren't published.",
         "Rates as of the loot mechanics post two weeks after release; Jagex said some numbers change in the following game update."
       ],
       "note": "Each room hands out 100 contribution (Ocellus 300), split by damage. The team's chance of a purple is 1 in 14 for a solo or duo with no deaths, +4% of that per player beyond two, and it goes to a player with their share of the contribution, so a duo with even damage is 1 in 28 each. A death takes 10% of your expected contribution. The pet, folio and fragments roll for everyone at a flat rate, whatever your contribution. Fragments never repeat until you have all four.",

@@ -93,6 +93,10 @@ public class Tracker
 	/** The latest Tombs of Amascut record, for the team total the ToA plugin sends after it. */
 	private RaidRecord latestToa;
 	private long latestToaMillis;
+	/** The latest Fractured Archive raid, for the damage share that may come just after it. */
+	private RaidRecord latestFractured;
+	private String latestFracturedBoss;
+	private long latestFracturedMillis;
 	private int[] pendingParty;
 	private long pendingPartyMillis;
 	/** Points and the completion count message arrive within seconds of each other. */
@@ -1722,6 +1726,19 @@ public class Tracker
 			return null;
 		}
 		record.savedMillis = nowMillis;
+		if ("fractured".equals(record.family) && latestFractured != null
+			&& nowMillis - latestFracturedMillis <= RAID_MATCH_MILLIS)
+		{
+			// the completion message came first and saved the raid: add the damage share to it
+			String boss = latestFracturedBoss;
+			double before = anyExpected(boss);
+			latestFractured.contribution = record.contribution;
+			latestFractured.deaths = record.deaths;
+			latestFractured = null;
+			raidsChanged.add(boss);
+			shiftToday(boss, anyExpected(boss) - before);
+			return boss;
+		}
 		if ("toa".equals(record.family))
 		{
 			latestToa = record;
@@ -1836,18 +1853,28 @@ public class Tracker
 		{
 			return;
 		}
-		if ("fractured".equals(family) && (pendingRecord == null || !"fractured".equals(pendingRecord.family)))
+		if ("fractured".equals(family))
 		{
-			// no contribution to read yet: save the team around you at the end, for its multiplier and share
+			// the damage share may have come just before (or comes just after: see onRaidRecord);
+			// the team is counted around you now, for its bonus and your expected contribution
+			boolean pending = pendingRecord != null && "fractured".equals(pendingRecord.family)
+				&& nowMillis - pendingRecordMillis <= RAID_MATCH_MILLIS;
+			RaidRecord record = pending ? pendingRecord : RaidRecord.fractured(0, -1, -1);
+			pendingRecord = null;
+			lastRaidBoss = null;
 			int size = teamSize.getAsInt();
 			if (size > 0)
 			{
-				RaidRecord record = RaidRecord.fractured(Math.min(size, RaidChance.TFA_MAX_TEAM), -1, -1);
+				record.teamSize = Math.min(size, RaidChance.TFA_MAX_TEAM);
+			}
+			if (record.teamSize > 0 || record.contribution >= 0)
+			{
 				record.savedMillis = nowMillis;
 				saveRecord(boss.getName(), part, kc, record);
+				latestFractured = pending ? null : record;
+				latestFracturedBoss = boss.getName();
+				latestFracturedMillis = nowMillis;
 			}
-			pendingRecord = null;
-			lastRaidBoss = null;
 			return;
 		}
 		if (pendingRecord != null && nowMillis - pendingRecordMillis <= matchWindow(pendingRecord.family)
@@ -1983,7 +2010,8 @@ public class Tracker
 					record.teamSize, record.raidLevel);
 			case "fractured":
 				// only a measured contribution counts as "from your points"; a team size alone doesn't
-				return record.contribution < 0 ? Double.NaN : fracturedChance(record, RaidChance.TFA_BASE_CHANCE);
+				return record.contribution < 0 ? Double.NaN
+					: fracturedChance(record, RaidChance.TFA_BASE_CHANCE, record.teamSize > 0 ? record.teamSize : 2);
 			default:
 				return Double.NaN;
 		}
@@ -2021,10 +2049,12 @@ public class Tracker
 	 */
 	static double recordChance(RaidRecord record, BossPart part, RaidSettings raids)
 	{
-		if ("fractured".equals(record.family) && record.teamSize > 0)
+		if ("fractured".equals(record.family) && (record.teamSize > 0 || record.contribution >= 0))
 		{
-			// the base chance follows the setting, so a balancing change applies to every raid
-			return fracturedChance(record, raids.tfaBaseChance());
+			// the base chance follows the setting, so a balancing change applies to every raid;
+			// without a counted team, the team size setting
+			int team = record.teamSize > 0 ? record.teamSize : raids.teamSize(part.getRaid());
+			return fracturedChance(record, raids.tfaBaseChance(), team);
 		}
 		double chance = purpleChance(record);
 		if (!Double.isNaN(chance))
@@ -2043,9 +2073,9 @@ public class Tracker
 	 * The Fractured Archive: your chance from your contribution (or an even share of the team when
 	 * it is unknown) after your deaths.
 	 */
-	private static double fracturedChance(RaidRecord record, double baseChance)
+	private static double fracturedChance(RaidRecord record, double baseChance, int teamSize)
 	{
-		int team = Math.max(1, record.teamSize);
+		int team = Math.max(1, teamSize);
 		if (record.contribution < 0)
 		{
 			return RaidChance.tfaEven(team, record.deaths, baseChance);
