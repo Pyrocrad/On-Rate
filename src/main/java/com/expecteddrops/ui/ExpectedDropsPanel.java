@@ -321,7 +321,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		searchField.setFont(FontManager.getRunescapeSmallFont());
 		searchField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
 		searchField.setAlignmentX(LEFT_ALIGNMENT);
-		searchField.setToolTipText("Type part of a boss name, e.g. 'vork' or 'cox'. Enter opens the first match.");
+		searchField.setToolTipText("Try 'vork' or 'cox'. Enter opens the first match.");
 		searchField.getDocument().addDocumentListener(new DocumentListener()
 		{
 			@Override
@@ -435,7 +435,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		brightenOnHover(graphTitle);
 		graphTitle.setAlignmentX(LEFT_ALIGNMENT);
 		graphTitle.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-		graphTitle.setToolTipText("Click to show or hide your account's luck over time, one point per day you play");
+		graphTitle.setToolTipText("Your account's luck, one point per day you play");
 		graphTitle.addMouseListener(new MouseAdapter()
 		{
 			@Override
@@ -870,7 +870,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		link.setFont(FontManager.getRunescapeBoldFont());
 		link.setForeground(Theme.TEXT);
 		link.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-		link.setToolTipText(tip);
 		link.addMouseListener(new MouseAdapter()
 		{
 			@Override
@@ -957,7 +956,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		kcLabel.setToolTipText(null);
 		// "est." sits next to the expected number on the Uniques tile, where it applies, instead of a bare asterisk
 		estimateNote = stats.getBoss().isEstimate()
-			? "Estimate: the rates here depend on your team, raid points or settings." : null;
+			? ESTIMATE_NOTE : null;
 		setHeaderIcon(stats.getBoss());
 		if (combined)
 		{
@@ -1102,10 +1101,11 @@ public class ExpectedDropsPanel extends PluginPanel
 			if ("fractured".equals(stats.getBoss().getRaid()))
 			{
 				int team = Math.max(1, raidSettings.get().teamSize("fractured"));
-				note.append(String.format("Raids On Rate didn't follow use a team of %d (<i>TFA team size</i>) with an even share of the damage: "
-					+ "%.2f%% each. Your team rolls %.2f%%: 1 in 14 for a solo or duo, +4%% of that per player beyond two. "
+				note.append(String.format("Raids On Rate didn't track use a team of %d (<i>TFA team size</i>) and an even share of the damage: "
+					+ "%.2f%% each. The team rolls %.2f%% (%.2f%% for a solo or duo, +4%% of that per player beyond two). "
 					+ "Change these under <i>Raids</i> and <i>Raid purple chances</i> in the settings.",
-					team, raidSettings.get().uniqueChance("fractured") * 100, raidSettings.get().uniqueChance("fractured") * team * 100));
+					team, raidSettings.get().uniqueChance("fractured") * 100, raidSettings.get().uniqueChance("fractured") * team * 100,
+					raidSettings.get().tfaBaseChance() * 100));
 			}
 			else
 			{
@@ -1204,22 +1204,18 @@ public class ExpectedDropsPanel extends PluginPanel
 			}
 		}
 		int boards = 0;
-		int mvps = 0;
-		int deaths = 0;
 		for (com.expecteddrops.tracking.RaidRecord r : records)
 		{
 			if ("tob".equals(r.getFamily()))
 			{
 				boards++;
-				mvps += Boolean.TRUE.equals(r.getMvp()) ? 1 : 0;
-				deaths += Math.max(0, r.getDeaths());
 			}
 		}
 		if (boards > 0)
 		{
-			sb.append(String.format("<br><br>Saved from the end-of-raid board: %,d raid%s, MVP in %,d, %,d death%s. "
-				+ "ToB has no points to read, so these use the team chance from the settings split over each raid's real team size.",
-				boards, boards == 1 ? "" : "s", mvps, deaths, deaths == 1 ? "" : "s"));
+			sb.append(String.format("<br><br>%,d raid%s used the real team size from the end-of-raid board instead of the setting. "
+				+ "ToB has no points: the team chance from the settings is divided by that team size.",
+				boards, boards == 1 ? "" : "s"));
 		}
 		int archives = 0;
 		int players = 0;
@@ -1469,12 +1465,10 @@ public class ExpectedDropsPanel extends PluginPanel
 			? "Open your collection log and click the pages of the bosses you do, or go kill one. "
 			+ "Your account shows up here."
 			: "Every boss you have kills at, added up. Click one to open it.<br><br>"
-			+ "<b>Items</b>: up to " + TOP_ITEMS + " of your driest or luckiest items, and your pets. <b>Recent</b>: your latest uniques.<br><br>"
-			+ "GE value uses RuneLite's prices. Pets, jars and other untradeables count as 0 GP, so a twisted bow outweighs many cheap drops.<br><br>"
+			+ "<b>Items</b>: your driest and luckiest items, your pets and single drops. <b>Recent</b>: your latest uniques.<br><br>"
+			+ "GP value uses RuneLite's GE prices. Pets and most jars count as 0 GP, so a twisted bow outweighs many cheap drops.<br><br>"
 			+ "Items several bosses drop (dragon pickaxe, godsword shards, Virtus, onyx...) are on each boss's page. "
-			+ "They count in the totals once On Rate knows every kill count.<br><br>"
-			+ "Pets count once, like in the log. Raids without points use your purple chance settings. "
-			+ "Team bosses use your share of the kill (see Team bosses in the settings).";
+			+ "They count in the totals once On Rate knows every kill count.";
 		helpLabel.setToolTipText("<html><body style='width: 240px'>" + note + "</body></html>");
 		noteLabel.setText(account.getRows().isEmpty() ? "<html><body style='width: 165px'>" + note + "</body></html>" : "");
 		noteLabel.setToolTipText(null);
@@ -1566,10 +1560,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		resetSep.setVisible(resetButton.isVisible());
 	}
 
-	private static final String ESTIMATE_NOTE = "Estimate: these numbers depend on your team, points or settings.";
-	private static final String ESTIMATE_TIP = "<html><body style='width: 240px'>The rates here depend on things On Rate "
-		+ "can't always see: your team size or damage, raid points, or an assumed setup (all bodyguards killed at God Wars). "
-		+ "Treat the numbers as an estimate.</body></html>";
+	private static final String ESTIMATE_NOTE = "Estimate: it depends on your team, raid points or setup, which On Rate can't always see.";
 
 	/** One quiet line under the bosses: bosses with too few kills to list (hover for which). */
 	private void addAccountFootnote(AccountStats account, List<String> hidden, List<String> unsynced)
@@ -1585,7 +1576,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		if (!hidden.isEmpty())
 		{
 			java.util.Collections.sort(hidden);
-			parts.add(String.format("+ %d more boss%s", hidden.size(), hidden.size() == 1 ? "" : "es"));
+			parts.add(String.format("+ %d boss%s too early to list", hidden.size(), hidden.size() == 1 ? "" : "es"));
 			tip.append("<b>Too early to judge</b> (under 0.05 uniques expected), so not listed: ")
 				.append(String.join(", ", hidden)).append(". They still count in your account total.");
 		}
@@ -1668,8 +1659,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			}
 			if (isTotal)
 			{
-				dayTip.note("The uniques are green when you got more than expected from those kills, orange when fewer. "
-					+ "Hover a boss line for its numbers.");
+				dayTip.note("A coloured unique count means clearly more or fewer than expected.");
 			}
 			addUniqueNames(dayTip, isTotal, d, days);
 			String tip = dayTip.wide();
@@ -1840,8 +1830,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			int luckyShown = luckiestDropsAll ? lucky.size() : Math.min(DROPS_SHOWN, lucky.size());
 			dropListTitle("LUCKIEST DROPS", luckyShown, lucky.size(), () -> luckiestDropsAll = !luckiestDropsAll,
-				"Single drops that came sooner than their drop rate gives on average, luckiest first. "
-					+ "Each is judged once, by how long that drop took, and stays that way.");
+				"Drops that came sooner than their drop rate says on average, luckiest first.");
 			for (com.expecteddrops.tracking.RecentDrop r : lucky.subList(0, luckyShown))
 			{
 				rowsPanel.add(spacer(Theme.HAIR));
@@ -1852,8 +1841,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			int waitsShown = longestWaitsAll ? waits.size() : Math.min(DROPS_SHOWN, waits.size());
 			dropListTitle("LONGEST WAITS", waitsShown, waits.size(), () -> longestWaitsAll = !longestWaitsAll,
-				"Single drops that took longer than their drop rate gives on average, and items you are still waiting "
-					+ "for, longest wait first (as a multiple of the drop rate). Each drop is judged once, by how long it took.");
+				"Drops that took longer than their drop rate says on average, and items you are still waiting for, "
+					+ "longest first (as a multiple of the drop rate).");
 			for (Wait w : waits.subList(0, waitsShown))
 			{
 				rowsPanel.add(spacer(Theme.HAIR));
@@ -2036,8 +2025,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		JLabel title = smallLabel((historyOpen ? "\u25be" : "\u25b8") + " HISTORY", Theme.TEXT_MUTED);
 		brightenOnHover(title);
 		title.setAlignmentX(LEFT_ALIGNMENT);
-		title.setToolTipText("The " + unit + "s and drops On Rate saw since you installed it. Click to "
-			+ (historyOpen ? "fold it away." : "open."));
+		title.setToolTipText("The " + unit + "s and drops On Rate saw since you installed it");
 		title.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
 		title.addMouseListener(new MouseAdapter()
 		{
@@ -2108,7 +2096,7 @@ public class ExpectedDropsPanel extends PluginPanel
 					String chance = Double.isNaN(h.getPurpleChance()) ? "" : String.format(" \u00b7 %.1f%%", h.getPurpleChance() * 100);
 					if (r == null)
 					{
-						middle = mode + (archive ? "not followed" : "no points");
+						middle = mode + (archive ? "not tracked" : "no points");
 					}
 					else if (archive)
 					{
@@ -2272,7 +2260,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				tip.row(archive ? "Contribution" : "Points", "not recorded");
 				if (archive)
 				{
-					tip.note("On Rate didn't follow this raid, so it uses the TFA team size and team purple chance from the settings.");
+					tip.note("On Rate didn't track this raid, so it uses the TFA team size and team chance from the settings.");
 				}
 			}
 			else if (archive)
@@ -2402,8 +2390,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		label.setBorder(BorderFactory.createCompoundBorder(
 			BorderFactory.createMatteBorder(0, 0, 2, 0, selected ? Theme.ACCENT : ColorScheme.DARK_GRAY_COLOR),
 			new EmptyBorder(Theme.HAIR, Theme.S, Theme.S, Theme.S)));
-		label.setToolTipText(tab == TAB_ITEMS ? "Up to " + TOP_ITEMS + " of your driest and " + TOP_ITEMS + " of your luckiest items across every boss, and your pets"
-			: tab == TAB_RECENT ? "Your latest uniques across every boss" : "Every boss you have kills at");
+		label.setToolTipText(tab == TAB_ITEMS ? "Your driest and luckiest items across every boss, your pets and single drops"
+			: tab == TAB_RECENT ? "Your latest uniques across every boss" : null);
 		if (!selected)
 		{
 			label.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
@@ -2471,9 +2459,8 @@ public class ExpectedDropsPanel extends PluginPanel
 			key.setAlignmentX(LEFT_ALIGNMENT);
 			key.setBorder(new EmptyBorder(0, 0, Theme.S, 0));
 			key.setToolTipText(new Tip("Got / expected")
-				.line("Expected is the average number a player would have by now at these drop rates, with your kills. "
-					+ "It is a statistical average, not a number you were owed.")
-				.line("So 0 / 2.60 means none got, where the average player would have about 2.6.", Theme.TEXT_MUTED)
+				.line("Expected is the average a player would have by now at your kill count. It is not a number you were owed.")
+				.line("So 0 / 2.60 means you have none where an average player would have about 2.6.", Theme.TEXT_MUTED)
 				.note("Each kill is its own roll: being behind the average doesn't make the next drop more likely.")
 				.wide());
 			rowsPanel.add(key);
@@ -2556,7 +2543,6 @@ public class ExpectedDropsPanel extends PluginPanel
 				itemTip.row("Chance of one by now", formatPercent(r.getChanceAtLeastOne()));
 			}
 			itemTip.row("Without one", rateMultiple(r));
-			itemTip.note("Expected is a statistical average for players at your kill count, not drops you were owed.");
 			String tip = itemTip.wide();
 			Runnable open = h.getBoss() == null ? null : () -> showBoss(h.getBoss());
 			if (view == ItemView.COMPACT)
@@ -2612,9 +2598,9 @@ public class ExpectedDropsPanel extends PluginPanel
 		JLabel title = smallLabel("SHARED WITH OTHER BOSSES", Theme.TEXT_MUTED);
 		title.setAlignmentX(LEFT_ALIGNMENT);
 		title.setToolTipText("<html><body style='width: 240px'>These drop from other bosses too, and the collection log has "
-			+ "one total for all of them. So each is judged on all those bosses' kills together: the same numbers show on "
+			+ "one total for all of them. So each is judged on all those bosses' kills together, and shows the same numbers on "
 			+ "every boss that drops it. Hover one to see which bosses.<br><br>Know where yours came from? Right-click "
-			+ "one to judge it on each boss separately instead.</body></html>");
+			+ "it to judge it on each boss separately.</body></html>");
 		rowsPanel.add(title);
 		String page = stats.getBoss().getClogPages().isEmpty() ? stats.getBoss().getName() : stats.getBoss().getClogPages().get(0);
 		boolean headerAdded = false;
@@ -2752,8 +2738,8 @@ public class ExpectedDropsPanel extends PluginPanel
 			.row("Got", DropMath.formatGp(received))
 			.row("Expected", DropMath.formatGp((long) expected))
 			.row("By value", capital(luckPercent(luck)) + " for your kill count")
-			.note("The Uniques tile counts how many you got; this one weighs them by price. "
-				+ "Pets, jars and other untradeables count as 0 GP.")
+			.note("The Uniques tile counts how many you got; this one weighs them by GE price. "
+				+ "Pets and most jars count as 0 GP.")
 			.wide();
 		return new double[]{received, expected, luck};
 	}
@@ -2836,11 +2822,16 @@ public class ExpectedDropsPanel extends PluginPanel
 			default:
 				advice = "Set your usual chance under <i>Raid purple chances</i> in the settings.";
 		}
-		String own = "fractured".equals(boss.getRaid()) ? "share of the damage" : "points";
+		boolean archive = "fractured".equals(boss.getRaid());
+		boolean theatre = "tob".equals(boss.getRaid());
+		String own = archive ? "share of the damage" : theatre ? "team size" : "points";
+		String later = archive ? "your own share of the damage" : theatre ? "the real team size" : "your own points";
 		lastHintTip = String.format("<html><body style='width: 240px'>%,d of your %,d raids have no %s On Rate could read "
 			+ "(raids from before you installed it, for example), so they use an average purple chance from the settings. "
-			+ "Raids from now on use your own %s. What your raids with %s averaged is under History.<br><br>%s</body></html>",
-			fromSettings, stats.getKillCount(), own, own, own, advice);
+			+ "Raids from now on use %s.%s<br><br>%s</body></html>",
+			fromSettings, stats.getKillCount(), own, later,
+			// Theatre of Blood has no points, so History has no average to show
+			theatre ? "" : " The average of your tracked raids is under History.", advice);
 		return String.format("%,d of %,d raids use an average purple chance.", fromSettings, stats.getKillCount());
 	}
 
@@ -2991,20 +2982,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 	}
 
-	/** One line for the overview: GE value received / expected and its verdict (details on hover). */
-	private static String valueText(AccountStats account)
-	{
-		double luck = account.getValueLuck();
-		if (account.getExpectedValue() <= 0 || Double.isNaN(luck))
-		{
-			return "GE value: prices not loaded yet";
-		}
-		String color = String.format("#%06x", luckColor(luck).brighter().getRGB() & 0xFFFFFF);
-		return String.format("<html>GE value: %s / %s \u00b7 <font color='%s'>%s</font></html>",
-			DropMath.formatGp(account.getReceivedValue()), DropMath.formatGp(account.getExpectedValue()),
-			color, DropMath.verdict(luck));
-	}
-
 	private static String valueTooltip(AccountStats account)
 	{
 		double luck = account.getValueLuck();
@@ -3016,7 +2993,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			.row("Got", DropMath.formatGp(account.getReceivedValue()))
 			.row("Expected", DropMath.formatGp(account.getExpectedValue()))
 			.row("By value", capital(luckPercent(luck)) + " for your kill count")
-			.note("RuneLite's own price list. Pets, jars and other untradeables count as 0 GP.")
+			.note("RuneLite's GE prices. Pets and most jars count as 0 GP.")
 			.wide();
 	}
 
@@ -3088,8 +3065,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		return "<html><body style='width: 240px'>" + how + "<br><br>Hover an item for its drop rate, your chances "
 			+ "and your dry streak. Right-click one to leave it out of the calculations (a drop you got elsewhere, "
-			+ "or jars you don't care about). Right-click a shared item to judge it on each boss separately. "
-			+ "Click \u21c4 next to ITEMS for another view."
+			+ "or jars you don't care about). Click \u21c4 next to ITEMS for another view."
 			+ "</body></html>";
 	}
 
@@ -3151,8 +3127,8 @@ public class ExpectedDropsPanel extends PluginPanel
 				break;
 			default:
 				rowsPanel.add(itemsHeader("ITEMS", view, "bar = got \u00b7 line = expected",
-					"The bar is how many you got. The white line is how many you should have by now. "
-						+ "A bar short of the line is behind it; past the line is ahead. Rare items have their line near the start."));
+					"The white line is how many you should have by now. A bar short of it is behind; past it is ahead. "
+						+ "Rare items have their line near the start."));
 				for (int i = 0; i < all.size(); i++)
 				{
 					if (i > 0)
@@ -4010,7 +3986,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		luck.setHorizontalAlignment(SwingConstants.CENTER);
 		luck.setPreferredSize(new Dimension(38, 14));
 		luck.setToolTipText(new Tip(null)
-			.line("Share of players with fewer than you at this kill count (ties count half). 50% is average.").small());
+			.line("How lucky you are. 50% is average, lower is drier, higher is luckier.").small());
 		right.add(luck, BorderLayout.EAST);
 		panel.add(right, BorderLayout.EAST);
 		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 18));
@@ -4280,9 +4256,9 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		else
 		{
-			sentence = String.format("%s where %s %s expected. %s for a trip like this.",
+			sentence = String.format("%s, %s expected. %s for a trip like this.",
 				trip.getReceived() == 0 ? "No uniques" : trip.getReceived() == 1 ? "1 unique" : trip.getReceived() + " uniques",
-				formatExpected(trip.getExpected()), trip.getExpected() == 1 ? "was" : "were",
+				formatExpected(trip.getExpected()),
 				capital(luckPercent(trip.getShares(), trip.getReceived())));
 		}
 		JLabel why = smallLabel(Theme.wrap(html(sentence), Theme.TEXT_WIDTH), Theme.TEXT);
@@ -4326,11 +4302,11 @@ public class ExpectedDropsPanel extends PluginPanel
 		// what the expected is made of: the boss's own uniques and the shared items it also drops
 		double ownExpected = Math.max(0, trip.getExpected() - trip.getSharedExpected());
 		int ownReceived = Math.max(0, trip.getReceived() - trip.getSharedReceived());
-		card.add(cardRow("Boss uniques", String.format("%d got \u00b7 %s", ownReceived, formatExpected(ownExpected)),
+		card.add(cardRow("Boss uniques", String.format("%d got \u00b7 %s expected", ownReceived, formatExpected(ownExpected)),
 			Color.WHITE, "Uniques only this boss drops, against what a typical player would have by now."));
 		if (!trip.getSharedNames().isEmpty())
 		{
-			card.add(cardRow("Shared items", String.format("%d got \u00b7 %s", trip.getSharedReceived(),
+			card.add(cardRow("Shared items", String.format("%d got \u00b7 %s expected", trip.getSharedReceived(),
 				formatExpected(trip.getSharedExpected())), Color.WHITE,
 				"<html><body style='width: 240px'>Items other bosses drop too (" + html(String.join(", ", trip.getSharedNames()))
 				+ "). They can drop here, so the trip counts them.</body></html>"));
@@ -4344,8 +4320,8 @@ public class ExpectedDropsPanel extends PluginPanel
 			&& (perKill > 0 || !Double.isNaN(tripValue) && uniqueValuePerKill(bossName) > 0))
 		{
 			String worthTip = String.format("<html><body style='width: 240px'>About %s per %s at this trip's speed. "
-				+ "Only uniques count: bones, hides and other loot aren't included, so this isn't your full GP per hour. "
-				+ "Untradeables count as 0 GP.%s</body></html>",
+				+ "Only uniques count (not bones, hides or other loot), so this isn't your full GP per hour. "
+				+ "Pets and most jars count as 0 GP.%s</body></html>",
 				DropMath.formatGp(perKill), units.substring(0, units.length() - 1), mainValueNote(bossName));
 			card.add(cardRow("Unique value", String.format("~%s/h expected", DropMath.formatGp(perKill * perHour)),
 				Color.WHITE, worthTip));
@@ -4638,7 +4614,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		toggle.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 		toggle.setBorder(BorderFactory.createCompoundBorder(
 			BorderFactory.createMatteBorder(1, 0, 0, 0, Theme.DIVIDER), new EmptyBorder(Theme.S + 1, 0, Theme.S, 0)));
-		toggle.setToolTipText("The verdict words, what they don't mean, and a few things you may see");
 		Runnable flip = () ->
 		{
 			welcomeMoreOpen = !welcomeMoreOpen;
@@ -4716,15 +4691,13 @@ public class ExpectedDropsPanel extends PluginPanel
 		String[][] moments = {
 			{"\"Not synced\"", "on a boss: On Rate has its kill count but not your drops from before. Open its log "
 				+ "page once."},
-			{"Team bosses:", "Royal Titans and Yama count as duo kills. Set them to Solo, or Some of each, "
-				+ "under Team bosses in the settings if that's how you kill them."},
+			{"Team bosses:", "Royal Titans and older Yama kills count as duo. Change that under Team bosses in the settings."},
 			{"Drops from before:", "remember the kill count you got an item at? Right-click the item on its boss page "
 				+ "and choose \"I got this at kill...\". Then Items > Drops shows how lucky or dry that single drop was."},
-			{"Searching:", "type part of a name, or a short one like cox, tob or toa."},
 			{"Left out:", "right-click an item to leave it out of the calculations, for example one you got "
 				+ "elsewhere. Right-click it again to count it."},
 			{"Shared items:", "items several bosses drop are judged on all of them together. Know where yours came "
-				+ "from? Right-click one to count it for that boss instead."},
+				+ "from? Right-click one to judge it on each boss separately."},
 			{"History or raids empty", "out of the blue? On Rate couldn't read that saved data, started fresh and "
 				+ "kept a copy. Please tell us on Discord or in an issue."},
 		};

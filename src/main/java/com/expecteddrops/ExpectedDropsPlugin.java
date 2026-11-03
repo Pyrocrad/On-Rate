@@ -437,16 +437,15 @@ public class ExpectedDropsPlugin extends Plugin
 				{
 					return null;
 				}
-				String setting = "yama".equals(team) ? "Yama" : "Royal Titans";
 				int duo = duoKills(team, kills);
 				if (duo == 0)
 				{
-					return "Counted as solo kills. If you duo, change '" + setting + "' in the plugin settings.";
+					return "Counted as solo kills. If you duo, change it under Team bosses in the settings.";
 				}
 				if (duo >= kills)
 				{
 					return "Counted as duo kills: about half the uniques of a solo kill (the pet chance stays the same). "
-						+ "If you solo, change '" + setting + "' in the plugin settings.";
+						+ "If you solo, change it under Team bosses in the settings.";
 				}
 				return String.format("Counted as %,d solo and %,d duo kills (a duo gives about half the uniques).",
 					kills - duo, duo);

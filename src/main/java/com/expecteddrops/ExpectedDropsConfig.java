@@ -26,7 +26,7 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigItem(
 		keyName = "showWelcome",
 		name = "Show welcome guide",
-		description = "Show the getting-started steps at the top of the panel. 'Got it' turns this off.",
+		description = "Show the getting-started guide at the top of the panel",
 		position = 2
 	)
 	default boolean showWelcome()
@@ -44,7 +44,7 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigItem(
 		keyName = "syncReminders",
 		name = "Sync reminders",
-		description = "After killing a boss whose history isn't loaded yet, say in chat which collection log page to open (once per session)",
+		description = "After you kill a boss that isn't loaded yet, say in chat which collection log page to open. Once per boss each session.",
 		position = 4,
 		section = chatSection
 	)
@@ -56,7 +56,7 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigItem(
 		keyName = "dropMessages",
 		name = "Drop messages",
-		description = "When a unique drops, say in chat how many kills it took and how that compares with the drop rate",
+		description = "When a unique drops, say in chat how many kills it took against the drop rate. Also sums up each trip when it ends.",
 		position = 5,
 		section = chatSection
 	)
@@ -79,7 +79,7 @@ public interface ExpectedDropsConfig extends Config
 
 	@ConfigSection(
 		name = "Display",
-		description = "How the panel looks, and extras you can turn on",
+		description = "What the panel and overlay show",
 		position = 6
 	)
 	String displaySection = "display";
@@ -114,8 +114,8 @@ public interface ExpectedDropsConfig extends Config
 
 	@ConfigItem(
 		keyName = "showGeValue",
-		name = "GE value",
-		description = "Show the GP value tile: the GE value of your uniques, got vs expected, on boss pages and the account overview",
+		name = "GP value",
+		description = "Show the GP value tile on boss pages and the account overview: your uniques weighed by their GE price",
 		position = 8,
 		section = displaySection
 	)
@@ -127,7 +127,7 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigItem(
 		keyName = "showTopItems",
 		name = "Items tab",
-		description = "Show an Items tab on the account overview: up to 15 of your driest and 15 of your luckiest items across every boss, and your pets",
+		description = "Show the Items tab on the account overview: your driest and luckiest items, pets and single drops across every boss",
 		position = 9,
 		section = displaySection
 	)
@@ -165,7 +165,7 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigItem(
 		keyName = "showOverlay",
 		name = "In-game overlay",
-		description = "Show a small box on the game screen with this trip's kills, expected drops and luck while you kill a boss",
+		description = "Show a small box on the game screen with this trip's kills, uniques, expected and luck while you kill a boss",
 		position = 13,
 		section = displaySection
 	)
@@ -197,8 +197,8 @@ public interface ExpectedDropsConfig extends Config
 		keyName = "detectTeamSize",
 		name = "Count your team",
 		description = "At Nex, Yama, the Hueycoatl, the Corporeal Beast and Zalcano, count the players around you at each kill "
-			+ "and give you that share of the kill (a quarter with four players). Earlier kills use the team of "
-			+ "the first kill On Rate counted (Yama: as set below). Also counts your team at the end of each Fractured Archive raid.",
+			+ "and give you an even share of the kill (a quarter with four players). Also counts your team at the end of each "
+			+ "Fractured Archive raid. Kills from before use the first team On Rate counted (Yama: the setting below).",
 		position = 50,
 		section = teamSection
 	)
@@ -210,7 +210,7 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigItem(
 		keyName = "royalTitansTeam",
 		name = "Royal Titans: how you kill them",
-		description = "How you kill the Royal Titans. Counted as duo kills unless you change it. In a duo you get about half the uniques of a solo kill; the pet chance stays the same.",
+		description = "Counted as duo kills unless you change it. A duo gets about half the uniques of a solo kill; the pet chance stays the same.",
 		position = 51,
 		section = teamSection
 	)
@@ -235,8 +235,8 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigItem(
 		keyName = "yamaTeam",
 		name = "Yama: earlier kills",
-		description = "How you killed Yama before On Rate could count your team (it counts it from now on). "
-			+ "Counted as duo kills unless you change it. In a duo you get about half the uniques of a solo kill; the pet chance stays the same.",
+		description = "How you killed Yama before On Rate counted your team (it counts it from now on). "
+			+ "Counted as duo kills unless you change it. A duo gets about half the uniques of a solo kill; the pet chance stays the same.",
 		position = 53,
 		section = teamSection
 	)
@@ -267,8 +267,8 @@ public interface ExpectedDropsConfig extends Config
 
 	@ConfigSection(
 		name = "Raid purple chances",
-		description = "Only used for raids where On Rate has no points: everything from before you installed it, "
-			+ "Theatre of Blood, and every Fractured Archive raid (its team chance). Most players can leave these alone.",
+		description = "Used where On Rate has no raid points: raids from before you installed it, and Theatre of Blood. "
+			+ "The Fractured Archive team chance is used for every Archive raid. Most players can leave these alone.",
 		position = 40
 	)
 	String raidChancesSection = "raidChances";
@@ -276,7 +276,7 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigItem(
 		keyName = "readRaidPoints",
 		name = "Use raid points",
-		description = "Work out each raid's purple chance as it ends: from your points in Chambers of Xeric, from the game's points in Tombs of Amascut (or an estimate), from the end-of-raid team size in Theatre of Blood, and from your share of the damage in The Fractured Archive. Older raids use the percentages below.",
+		description = "Work out each raid's purple chance as it ends: from your points (Chambers of Xeric, Tombs of Amascut), the end-of-raid team size (Theatre of Blood) or your share of the damage (The Fractured Archive). Raids without them use the chances below.",
 		position = 31,
 		section = raidsSection
 	)
@@ -287,8 +287,8 @@ public interface ExpectedDropsConfig extends Config
 
 	@ConfigItem(
 		keyName = "coxUniqueChance",
-		name = "CoX purple chance (%)",
-		description = "Your chance of a unique per normal Chambers raid, in percent, for raids without points. Every 8,676 of your personal points is 1%, so 30,000 points is about 3.5%.",
+		name = "CoX Normal (%)",
+		description = "Your chance of a unique per normal Chambers raid, for raids without points. Every 8,676 of your personal points is 1%, so 30,000 points is about 3.5%.",
 		position = 32,
 		section = raidChancesSection
 	)
@@ -300,7 +300,7 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigItem(
 		keyName = "coxCmPurpleChance",
 		name = "CoX Challenge Mode (%)",
-		description = "Your chance of a unique per Challenge Mode raid, in percent, for raids without points. Same formula as normal mode (every 8,676 of your personal points is 1%); a Challenge Mode raid is usually 6.3 to 6.9%.",
+		description = "Your chance of a unique per Challenge Mode raid, for raids without points. Same formula as normal mode; a Challenge Mode raid is usually 6.3 to 6.9%.",
 		position = 33,
 		section = raidChancesSection
 	)
@@ -311,8 +311,8 @@ public interface ExpectedDropsConfig extends Config
 
 	@ConfigItem(
 		keyName = "tobTeamChance",
-		name = "ToB team purple chance (%)",
-		description = "The team's chance of a unique per normal Theatre raid, in percent: about 1 in 9.1 raids (11%) with no deaths. On Rate divides it by the team size. Entry Mode has no uniques.",
+		name = "ToB Normal team (%)",
+		description = "The team's chance of a unique per normal Theatre of Blood raid: about 1 in 9.1 raids (11%) with no deaths. On Rate divides it by the team size to get yours.",
 		position = 34,
 		section = raidChancesSection
 	)
@@ -324,7 +324,7 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigItem(
 		keyName = "tobHmTeamChance",
 		name = "ToB Hard Mode team (%)",
-		description = "The team's chance of a unique per Hard Mode raid, in percent: about 1 in 7.7 raids (13%). On Rate divides it by the team size.",
+		description = "The team's chance of a unique per Hard Mode raid: about 1 in 7.7 raids (13%). On Rate divides it by the team size to get yours.",
 		position = 35,
 		section = raidChancesSection
 	)
@@ -336,7 +336,7 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigItem(
 		keyName = "tobTeamSize",
 		name = "ToB team size",
-		description = "How many players you usually raid Theatre of Blood with. Your share of the team's purples is 1 / team size. Raids where On Rate read the end-of-raid board use that raid's real team size.",
+		description = "How many players you usually raid Theatre of Blood with. Your share of the team's purples is 1 / team size. Raids where On Rate read the end-of-raid board use their real team size.",
 		position = 36,
 		section = raidsSection
 	)
@@ -349,7 +349,7 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigItem(
 		keyName = "toaEntryUniqueChance",
 		name = "ToA Entry Mode (%)",
-		description = "Your chance of a unique per Entry Mode raid without points, in percent. Very low: at low raid levels most rolled uniques are turned into other loot.",
+		description = "Your chance of a unique per Entry Mode raid without points. Very low: at low raid levels most uniques turn into other loot.",
 		position = 37,
 		section = raidChancesSection
 	)
@@ -361,7 +361,7 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigItem(
 		keyName = "toaNormalUniqueChance",
 		name = "ToA Normal (%)",
-		description = "Your chance of a unique per normal Tombs raid without points, in percent. It depends on raid level and your points; the OSRS Wiki's ToA page has a calculator.",
+		description = "Your chance of a unique per normal Tombs raid without points. It depends on raid level and your points; the OSRS Wiki's ToA page has a calculator.",
 		position = 38,
 		section = raidChancesSection
 	)
@@ -373,7 +373,7 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigItem(
 		keyName = "toaExpertUniqueChance",
 		name = "ToA Expert Mode (%)",
-		description = "Your chance of a unique per Expert Mode raid without points, in percent. It depends on raid level and your points; the OSRS Wiki's ToA page has a calculator.",
+		description = "Your chance of a unique per Expert Mode raid without points. It depends on raid level and your points; the OSRS Wiki's ToA page has a calculator.",
 		position = 39,
 		section = raidChancesSection
 	)
@@ -386,7 +386,7 @@ public interface ExpectedDropsConfig extends Config
 		keyName = "tfaTeamSize",
 		name = "TFA team size",
 		description = "How many players you usually do The Fractured Archive with (1 to 8), for raids where On Rate couldn't count your team. "
-			+ "You get the unique with your share of the damage, assumed to be an even share. Raids from now on use the players around you at the end.",
+			+ "Assumes an even share of the damage. Raids from now on use the players around you at the end.",
 		position = 45,
 		section = raidsSection
 	)
@@ -398,9 +398,9 @@ public interface ExpectedDropsConfig extends Config
 
 	@ConfigItem(
 		keyName = "tfaTeamChance",
-		name = "TFA team purple chance (%)",
-		description = "The team's chance of a unique per Fractured Archive raid for a solo or duo with no deaths, in percent: 1 in 14 (7.14%). "
-			+ "Each player beyond two adds 4% of it (x1.24 for eight), and you get your share of the damage. Every raid uses it, also the ones where On Rate counted your team.",
+		name = "TFA team (%)",
+		description = "The team's chance of a unique per Fractured Archive raid for a solo or duo with no deaths: 1 in 14 (7.14%). "
+			+ "Each player beyond two adds 4% of it (x1.24 for eight), and you get your share of the damage. Every raid uses it, including ones where On Rate counted your team.",
 		position = 46,
 		section = raidChancesSection
 	)
