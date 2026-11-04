@@ -9,13 +9,14 @@ import net.runelite.client.ui.ColorScheme;
  */
 public final class Palette
 {
-	static final Color BAD = new Color(170, 40, 30);
-	static final Color MID = new Color(170, 150, 20);
-	static final Color GOOD = new Color(46, 160, 67);
+	/** The luck scale: bright enough to read as text on the dark panel as well as to fill a bar. */
+	static final Color BAD = new Color(225, 95, 88);
+	static final Color MID = new Color(227, 189, 99);
+	static final Color GOOD = new Color(101, 187, 129);
 
-	static final Color CB_BAD = new Color(220, 120, 20);
-	static final Color CB_MID = new Color(140, 140, 140);
-	static final Color CB_GOOD = new Color(40, 110, 200);
+	static final Color CB_BAD = new Color(220, 140, 60);
+	static final Color CB_MID = new Color(171, 171, 171);
+	static final Color CB_GOOD = new Color(87, 155, 211);
 
 	private static volatile boolean colourBlind;
 
@@ -69,6 +70,18 @@ public final class Palette
 			(int) Math.round(a.getRed() + (b.getRed() - a.getRed()) * t),
 			(int) Math.round(a.getGreen() + (b.getGreen() - a.getGreen()) * t),
 			(int) Math.round(a.getBlue() + (b.getBlue() - a.getBlue()) * t));
+	}
+
+	/** A quiet background in the hue of a luck colour (chips, tinted notices). */
+	static Color tint(Color c)
+	{
+		return blend(Theme.SURFACE, c, 0.2);
+	}
+
+	/** Text on a {@link #tint}: the luck colour, lifted a little so it stays readable. */
+	static Color onTint(Color c)
+	{
+		return blend(c, Color.WHITE, 0.22);
 	}
 
 	static Color withAlpha(Color c, int alpha)

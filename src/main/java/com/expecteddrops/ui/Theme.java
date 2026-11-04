@@ -17,24 +17,24 @@ import net.runelite.client.ui.ColorScheme;
  * <li>{@link #TEXT}: names, labels and headings</li>
  * <li>{@link #TEXT_MUTED}: secondary text, and the lowest grey any text may use</li>
  * <li>{@link #ACCENT}: selection, focus and hover (tab underlines, the focus ring, link hovers). Never
- * for notices or decoration: orange is also the "dry" end of the luck colours</li>
+ * for notices or decoration: it is also the "on rate" yellow of the luck colours</li>
  * </ul>
  */
 public final class Theme
 {
 	public static final Color TEXT = Color.WHITE;
 	public static final Color TEXT_MUTED = ColorScheme.LIGHT_GRAY_COLOR;
-	public static final Color ACCENT = ColorScheme.BRAND_ORANGE;
+	public static final Color ACCENT = new Color(227, 189, 99);
 
 	public static final Color PANEL = ColorScheme.DARK_GRAY_COLOR;
 	public static final Color SURFACE = ColorScheme.DARKER_GRAY_COLOR;
-	public static final Color SURFACE_RAISED = new Color(45, 45, 45);
+	public static final Color SURFACE_RAISED = new Color(50, 50, 50);
 	public static final Color SURFACE_SELECTED = new Color(61, 61, 61);
-	public static final Color TRACK = new Color(55, 55, 55);
+	public static final Color TRACK = new Color(66, 66, 66);
 	public static final Color TRACK_DARK = new Color(26, 26, 26);
-	public static final Color OUTLINE = new Color(70, 70, 70);
+	public static final Color OUTLINE = new Color(65, 65, 65);
 	/** The thin line between label / value rows in a tooltip. */
-	public static final Color DIVIDER = new Color(60, 60, 60);
+	public static final Color DIVIDER = new Color(53, 53, 53);
 	/** The expected-by-now tick on a quiet item row (nothing expected yet): visible, but not white. */
 	public static final Color QUIET_MARK = new Color(150, 150, 150);
 	/** Bars that show progress, not luck: no verdict colours on them. */
@@ -110,11 +110,14 @@ public final class Theme
 			{
 				Graphics2D g = (Graphics2D) graphics.create();
 				g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-				g.setColor(OUTLINE);
+				g.setColor(new Color(0x5b5033));
 				g.setStroke(new BasicStroke(1f));
+				g.setPaint(Palette.tint(ACCENT));
+				g.fillOval(x, y, 14, 14);
+				g.setColor(new Color(0x5b5033));
 				g.drawOval(x, y, 14, 14);
 				g.setFont(net.runelite.client.ui.FontManager.getRunescapeSmallFont());
-				g.setColor(TEXT_MUTED);
+				g.setColor(ACCENT);
 				String text = String.valueOf(number);
 				java.awt.FontMetrics fm = g.getFontMetrics();
 				g.drawString(text, x + (15 - fm.stringWidth(text)) / 2, y + (15 - fm.getHeight()) / 2 + fm.getAscent());

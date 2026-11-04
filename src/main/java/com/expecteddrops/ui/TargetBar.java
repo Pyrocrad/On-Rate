@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.BasicStroke;
 import javax.swing.JComponent;
 
@@ -48,18 +49,28 @@ class TargetBar extends JComponent
 	protected void paintComponent(Graphics graphics)
 	{
 		Graphics2D g = (Graphics2D) graphics.create();
+		g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 		int w = getWidth();
 		int h = getHeight();
+		int track = quiet ? 4 : 5;
+		int y = (h - track) / 2;
 		g.setColor(TRACK);
-		g.fillRect(0, 2, w, h - 4);
-		g.setColor(color);
-		g.fillRect(0, 2, (int) Math.round(w * fill), h - 4);
+		g.fillRoundRect(0, y, w, track, track, track);
+		int filled = (int) Math.round(w * fill);
+		if (filled > 0)
+		{
+			g.setColor(color);
+			g.fillRoundRect(0, y, Math.max(track, filled), track, track, track);
+		}
 		if (marker >= 0)
 		{
 			int x = (int) Math.round(Math.min(1, marker) * (w - 2));
-			g.setColor(quiet ? Theme.QUIET_MARK : Color.WHITE);
-			g.setStroke(new BasicStroke(2));
-			g.drawLine(x + 1, 0, x + 1, h);
+			g.setStroke(new BasicStroke(1f));
+			// a dark edge keeps the line visible on top of the fill
+			g.setColor(new Color(0, 0, 0, 90));
+			g.fillRoundRect(x - 1, 0, 4, h, 2, 2);
+			g.setColor(quiet ? Theme.QUIET_MARK : new Color(245, 245, 245));
+			g.fillRoundRect(x, 1, 2, h - 2, 2, 2);
 		}
 		g.dispose();
 	}

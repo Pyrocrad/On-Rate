@@ -310,17 +310,17 @@ public class ItemFigureTest
 		}
 	}
 
-	private static void strips(java.awt.Component c, List<LuckStrip> out)
+	private static void dots(java.awt.Component c, List<ExpectedDropsPanel.LuckDot> out)
 	{
-		if (c instanceof LuckStrip)
+		if (c instanceof ExpectedDropsPanel.LuckDot)
 		{
-			out.add((LuckStrip) c);
+			out.add((ExpectedDropsPanel.LuckDot) c);
 		}
 		if (c instanceof java.awt.Container)
 		{
 			for (java.awt.Component child : ((java.awt.Container) c).getComponents())
 			{
-				strips(child, out);
+				dots(child, out);
 			}
 		}
 	}
@@ -401,35 +401,32 @@ public class ItemFigureTest
 	}
 
 	@Test
-	public void theDotsLineUpAndTheRowsAreNoTallerWithTheFigure() throws Exception
+	public void theDotsLineUpAndTheRowsAreAsTallWithTheFigureAsWithout() throws Exception
 	{
 		Tracker tracker = seededTracker();
 		// the Items page lists the driest and the luckiest items, a few of each
 		for (int mode : new int[]{ExpectedDropsPanel.TOP_DRIEST, ExpectedDropsPanel.TOP_LUCKIEST})
 		{
 			ExpectedDropsPanel panel = laidOut(tracker, 1, mode);
-			List<LuckStrip> strips = new ArrayList<>();
-			strips(panel, strips);
-			assertEquals(2 * ExpectedDropsPanel.DROPS_SHOWN, strips.size());
-			int width = strips.get(0).getWidth();
-			int x = javax.swing.SwingUtilities.convertPoint(strips.get(0), 0, 0, panel).x;
-			assertTrue("a track wide enough to read: " + width, width >= 110);
-			for (LuckStrip strip : strips)
+			List<ExpectedDropsPanel.LuckDot> dots = new ArrayList<>();
+			dots(panel, dots);
+			assertEquals(2 * ExpectedDropsPanel.DROPS_SHOWN, dots.size());
+			int x = javax.swing.SwingUtilities.convertPoint(dots.get(0), 0, 0, panel).x;
+			int row = dots.get(0).getParent().getParent().getHeight();
+			for (ExpectedDropsPanel.LuckDot dot : dots)
 			{
-				// one track length and one starting point on every row: dots are comparable down the list
-				assertEquals(width, strip.getWidth());
-				assertEquals(x, javax.swing.SwingUtilities.convertPoint(strip, 0, 0, panel).x);
+				// the figure has one width on every row, so the dots are comparable down the list
+				assertEquals(x, javax.swing.SwingUtilities.convertPoint(dot, 0, 0, panel).x);
+				assertEquals(row, dot.getParent().getParent().getHeight());
 			}
 		}
-		// the same kind of row without a figure (the Bosses list) is no shorter: the figure shares the strip's line
+		// a boss row (kill count under the name, verdict word beside the dot) is as tall as an item row
 		ExpectedDropsPanel items = laidOut(tracker, 1, ExpectedDropsPanel.TOP_DRIEST);
 		ExpectedDropsPanel bosses = laidOut(tracker, 0, ExpectedDropsPanel.TOP_DRIEST);
-		List<LuckStrip> itemStrips = new ArrayList<>();
-		List<LuckStrip> bossStrips = new ArrayList<>();
-		strips(items, itemStrips);
-		strips(bosses, bossStrips);
-		int itemRow = itemStrips.get(0).getParent().getParent().getParent().getHeight();
-		java.awt.Container bossRowParent = bossStrips.get(0).getParent().getParent();
-		assertEquals(bossRowParent.getHeight(), itemRow);
+		List<ExpectedDropsPanel.LuckDot> itemDots = new ArrayList<>();
+		List<ExpectedDropsPanel.LuckDot> bossDots = new ArrayList<>();
+		dots(items, itemDots);
+		dots(bosses, bossDots);
+		assertEquals(bossDots.get(0).getParent().getParent().getHeight(), itemDots.get(0).getParent().getParent().getHeight());
 	}
 }

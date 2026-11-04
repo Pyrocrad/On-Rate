@@ -65,7 +65,7 @@ class LuckStrip extends JComponent
 		if (!Double.isNaN(luck))
 		{
 			int x = 4 + (int) Math.round(luck * w);
-			g.setColor(Palette.luck(luck).brighter());
+			g.setColor(Palette.luck(luck));
 			g.fillOval(x - 4, y - 4, 9, 9);
 			g.setColor(Color.WHITE);
 			g.drawOval(x - 4, y - 4, 9, 9);

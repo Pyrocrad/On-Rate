@@ -1279,7 +1279,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				.line(capital(sharesLine(any.getShares(), any.getReceived())), Theme.TEXT_MUTED);
 		}
 		uniquesTile.set(verdict,
-			early ? Theme.TEXT_MUTED : (bossPage ? Palette.verdict(luck) : luckColor(luck)).brighter(),
+			early ? Theme.TEXT_MUTED : (bossPage ? Palette.verdict(luck) : luckColor(luck)),
 			String.format(java.util.Locale.ROOT, "%,d / %s%s", any.getReceived(), formatExpected(any.getExpected()), estimateNote == null ? "" : " est."),
 			early ? "Too few " + (what.equals("purples") ? "raids" : "kills") : luckShort(any.getShares(), any.getReceived()),
 			uniquesTip
@@ -1290,7 +1290,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		if (showValue)
 		{
 			valueTile.set(early ? "Too early" : DropMath.verdict(value[2]),
-				early ? Theme.TEXT_MUTED : (bossPage ? Palette.verdict(value[2]) : luckColor(value[2])).brighter(),
+				early ? Theme.TEXT_MUTED : (bossPage ? Palette.verdict(value[2]) : luckColor(value[2])),
 				DropMath.formatGp(value[0]) + " / " + DropMath.formatGp(value[1]),
 				early ? "" : luckShort(value[2]), valueTip);
 			verdictTiles.add(valueTile);
@@ -1313,7 +1313,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			return;
 		}
 		verdictLabel.setText(verdict);
-		verdictLabel.setForeground(luckColor(luck).brighter());
+		verdictLabel.setForeground(luckColor(luck));
 		verdictLabel.setToolTipText(capital(sharesLine(any.getShares(), any.getReceived())) + ".");
 		summaryLabel.setText(String.format(java.util.Locale.ROOT, "<html>%,d unique%s \u00b7 %s expected<br>%s</html>",
 			any.getReceived(), any.getReceived() == 1 ? "" : "s", formatExpected(any.getExpected()),
@@ -1618,7 +1618,7 @@ public class ExpectedDropsPanel extends PluginPanel
 	private static Color multipleColor(com.expecteddrops.tracking.KillEntry.DropEntry d, boolean evenFirst)
 	{
 		Double m = d.getMultiple();
-		return (d.isFirst() && !evenFirst) || m == null ? ColorScheme.LIGHT_GRAY_COLOR : luckColor(Math.exp(-m)).brighter();
+		return (d.isFirst() && !evenFirst) || m == null ? ColorScheme.LIGHT_GRAY_COLOR : luckColor(Math.exp(-m));
 	}
 
 	/**
@@ -1646,7 +1646,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			String unitsHere = d.getKills() == 1 ? units.substring(0, units.length() - 1) : units;
 			double luck = DropMath.luck(d.getUniques(), d.getExpected());
 			Color uniquesColor = Double.isNaN(luck) || d.getExpected() <= 0 || (luck >= 0.35 && luck <= 0.65)
-				? Color.WHITE : luckColor(luck).brighter();
+				? Color.WHITE : luckColor(luck);
 			JPanel line = new JPanel(new BorderLayout(6, 0));
 			line.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 			// boss names in the normal font, a size up from the small one, so they're easy to read
@@ -1974,7 +1974,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		String where = h.getBoss() == null ? "several bosses" : h.getBoss();
 		JPanel panel = threeLineRow(r.getIconItem(), r.getLabel(), where,
 			String.format(java.util.Locale.ROOT, "%,d %s \u00b7 %s", r.getStreak(), unit, waitLuckShort(multiple, true)),
-			luckColor(Math.exp(-multiple)).brighter(), "waiting");
+			luckColor(Math.exp(-multiple)), "waiting");
 		Tip tip = new Tip(r.getLabel())
 			.row("Where", where)
 			.row("Without one", String.format(java.util.Locale.ROOT, "%,d %s, %s", r.getStreak(), unit, formatMultiple(multiple) + " the drop rate"))
@@ -2386,7 +2386,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		JPanel tabs = new JPanel(new GridLayout(1, withItems ? 3 : 2, 2, 0));
 		tabs.setOpaque(false);
 		tabs.setAlignmentX(LEFT_ALIGNMENT);
-		tabs.setBorder(new EmptyBorder(Theme.M, 0, Theme.HAIR, 0));
+		tabs.setBorder(BorderFactory.createCompoundBorder(new EmptyBorder(Theme.M, 0, Theme.S, 0),
+			BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.OUTLINE)));
 		tabs.add(accountTab("Bosses", TAB_BOSSES));
 		if (withItems)
 		{
@@ -2404,7 +2405,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		label.setFont(FontManager.getRunescapeBoldFont());
 		label.setHorizontalAlignment(SwingConstants.CENTER);
 		label.setBorder(BorderFactory.createCompoundBorder(
-			BorderFactory.createMatteBorder(0, 0, 2, 0, selected ? Theme.ACCENT : ColorScheme.DARK_GRAY_COLOR),
+			BorderFactory.createMatteBorder(0, 0, 2, 0, selected ? Theme.ACCENT : Theme.PANEL),
 			new EmptyBorder(Theme.HAIR, Theme.S, Theme.S, Theme.S)));
 		label.setToolTipText(tab == TAB_ITEMS ? "Your driest and luckiest items across every boss, your pets and single drops"
 			: tab == TAB_RECENT ? "Your latest uniques across every boss" : null);
@@ -2579,7 +2580,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		Tip itemTip = new Tip(r.getLabel()).line(capital(where), Theme.TEXT_MUTED);
 		if (!Double.isNaN(luck))
 		{
-			itemTip.row("Your result", "<b>" + DropMath.verdict(luck) + "</b>", luckColor(luck).brighter())
+			itemTip.row("Your result", "<b>" + DropMath.verdict(luck) + "</b>", luckColor(luck))
 				.line(capital(sharesLine(r.getShares(), r.getReceived())), Theme.TEXT_MUTED);
 		}
 		if (h.getBoss() != null && r.getIconItem() != null)
@@ -2638,8 +2639,9 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			rowsPanel.add(spacer(Theme.HAIR));
 			// the verdict stays the main reading; on the Items page "got / expected" sits beside the dot
-			rowsPanel.add(luckRow(r, tip, open, h.isPet() && !r.isComplete()
-				? String.format(java.util.Locale.ROOT, "%s \u00b7 %s", DropMath.verdict(r.getLuck()), formatPercent(r.getChanceAtLeastOne())) : null,
+			rowsPanel.add(listRow(r, h.getBoss() == null ? "Shared by several bosses" : h.getBoss(), tip, open,
+				h.isPet() && !r.isComplete()
+					? String.format(java.util.Locale.ROOT, "%s \u00b7 %s", DropMath.verdict(r.getLuck()), formatPercent(r.getChanceAtLeastOne())) : null,
 				null, pets ? null : gotOfExpected(r)));
 		}
 	}
@@ -3007,7 +3009,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		double luck = row.getLuck();
 		if (!Double.isNaN(luck))
 		{
-			tip.row("Your result", "<b>" + DropMath.verdict(luck) + "</b>", luckColor(luck).brighter())
+			tip.row("Your result", "<b>" + DropMath.verdict(luck) + "</b>", luckColor(luck))
 				.line(capital(sharesLine(row.getShares(), row.getReceived())), Theme.TEXT_MUTED);
 		}
 		tip.row("Dropped by", joinAnd(pool.getBosses()))
@@ -3099,7 +3101,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		double luck = row.getLuck();
 		if (!Double.isNaN(luck))
 		{
-			tip.row("Luck", DropMath.verdict(luck) + ": " + luckPercent(row.getShares(), row.getReceived()), luckColor(luck).brighter());
+			tip.row("Luck", DropMath.verdict(luck) + ": " + luckPercent(row.getShares(), row.getReceived()), luckColor(luck));
 		}
 		if (byValue != null && !row.isAny())
 		{
@@ -3110,7 +3112,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			}
 			else
 			{
-				tip.row("By value", DropMath.verdict(value[2]) + ": " + luckPercent(value[2]), luckColor(value[2]).brighter());
+				tip.row("By value", DropMath.verdict(value[2]) + ": " + luckPercent(value[2]), luckColor(value[2]));
 				tip.row("GP value", DropMath.formatGp(value[0]) + " / " + DropMath.formatGp(value[1]));
 			}
 		}
@@ -3781,8 +3783,10 @@ public class ExpectedDropsPanel extends PluginPanel
 						rowsPanel.add(spacer(Theme.HAIR));
 					}
 					boolean streak = sortSelect.getSelectedItem() == Sort.STREAK;
-					rowsPanel.add(luckRow(shownRow(row, byValue), accountTooltip(row, account, byValue), () -> showBoss(row.getLabel()),
-						streak ? streakText(row) : null, streak ? streakColor(row) : null));
+					int kills = account.getKillCount(row.getLabel());
+					rowsPanel.add(listRow(shownRow(row, byValue), kills > 0 ? String.format(java.util.Locale.ROOT, "%,d kills", kills) : null,
+						accountTooltip(row, account, byValue), () -> showBoss(row.getLabel()),
+						streak ? streakText(row) : null, streak ? streakColor(row) : null, null));
 				}
 		}
 	}
@@ -3896,9 +3900,11 @@ public class ExpectedDropsPanel extends PluginPanel
 	{
 		// nothing expected yet and none got: the row stays, but quietly, so the rows with something to read stand out
 		boolean quiet = Texts.isQuiet(r);
-		JPanel panel = new JPanel(new BorderLayout(0, 2));
-		panel.setBackground(Theme.SURFACE);
-		panel.setBorder(new EmptyBorder(Theme.HAIR, Theme.S, quiet ? Theme.HAIR : Theme.S, Theme.S));
+		JPanel panel = new JPanel(new BorderLayout(0, 4));
+		panel.setBackground(Theme.PANEL);
+		panel.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.DIVIDER),
+			new EmptyBorder(quiet ? Theme.S : Theme.S + 2, Theme.HAIR, quiet ? Theme.S : Theme.S + 2, Theme.HAIR)));
 		panel.setAlignmentX(LEFT_ALIGNMENT);
 
 		JPanel line = new JPanel(new BorderLayout(4, 0));
@@ -3970,47 +3976,100 @@ public class ExpectedDropsPanel extends PluginPanel
 	 */
 	private JPanel luckRow(RowStats r, String tip, Runnable onClick, String right, Color rightColor, String figure)
 	{
-		JPanel panel = new JPanel(new BorderLayout(Theme.S, 0));
-		panel.setBackground(Theme.SURFACE);
-		panel.setBorder(new EmptyBorder(Theme.S, Theme.HAIR, Theme.S, Theme.S));
+		return listRow(r, null, tip, onClick, right, rightColor, figure);
+	}
+
+	/**
+	 * A boss or item row of a list: picture, the name over a small line (the kill count of a boss, the boss
+	 * of an item), and on the right a luck dot with the verdict word or the "got / expected" figure. The
+	 * dot's colour and the word carry the verdict; the hover has the whole story.
+	 *
+	 * @param sub the small line under the name, or null (an item row then shows its verdict there)
+	 * @param right text on the right instead of the verdict word, or null
+	 * @param rightColor colour of that text, or null for the luck colour
+	 * @param figure "got / expected" to show beside the dot instead of the verdict word, or null
+	 */
+	private JPanel listRow(RowStats r, String sub, String tip, Runnable onClick, String right, Color rightColor, String figure)
+	{
+		double luck = r.getLuck();
+		boolean known = !Double.isNaN(luck);
+		String verdict = known ? DropMath.verdict(luck) : "-";
+		Color verdictColor = known ? verdictWordColor(luck) : Theme.TEXT_MUTED;
+
+		JPanel panel = new JPanel(new BorderLayout(Theme.M - 1, 0));
+		panel.setBackground(Theme.PANEL);
+		panel.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.DIVIDER),
+			new EmptyBorder(Theme.S + 1, Theme.HAIR, Theme.S + 1, Theme.HAIR)));
 		panel.setAlignmentX(LEFT_ALIGNMENT);
 		panel.add(itemIcon(r.getIconItem(), r.getLabel(), SMALL_ICON), BorderLayout.WEST);
-		double luck = r.getLuck();
-		JPanel body = new JPanel(new BorderLayout(0, Theme.HAIR));
+
+		JPanel body = new JPanel();
+		body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
 		body.setOpaque(false);
-		JPanel line = new JPanel(new BorderLayout(Theme.S, 0));
-		line.setOpaque(false);
-		line.add(rowLabel(r.getShownLabel(), Theme.TEXT), BorderLayout.CENTER);
-		String text = right != null ? right : Double.isNaN(luck) ? "-" : DropMath.verdict(luck);
-		Color color = rightColor != null ? rightColor
-			: "-".equals(text) || Double.isNaN(luck) ? Theme.TEXT_MUTED : verdictWordColor(luck);
-		line.add(rowLabel(text, color), BorderLayout.EAST);
-		body.add(line, BorderLayout.CENTER);
-		// the same scale on every row of a long list: one neutral track and the dot, no bands
-		LuckStrip strip = new LuckStrip();
-		strip.setBands(false);
-		strip.setLuck(luck);
-		strip.setPreferredSize(new Dimension(80, 12));
-		if (figure == null)
+		JLabel name = rowLabel(r.getShownLabel(), Theme.TEXT);
+		name.setAlignmentX(LEFT_ALIGNMENT);
+		body.add(name);
+		// an item row says where it is from and how it stands; a boss row how many kills
+		String under = sub != null ? Texts.html(sub)
+			: figure != null && known ? "<font color='" + Theme.hex(verdictColor) + "'>" + Texts.html(verdict) + "</font>" : null;
+		if (under != null)
 		{
-			body.add(strip, BorderLayout.SOUTH);
+			JLabel small = smallLabel(sub != null ? sub : "<html>" + under + "</html>", Theme.TEXT_MUTED);
+			small.setAlignmentX(LEFT_ALIGNMENT);
+			body.add(small);
+		}
+		panel.add(body, BorderLayout.CENTER);
+
+		JPanel east = new JPanel();
+		east.setLayout(new BoxLayout(east, BoxLayout.X_AXIS));
+		east.setOpaque(false);
+		String word = right != null ? right : figure == null ? verdict : null;
+		if (word != null)
+		{
+			JLabel label = smallLabel(word, right != null && rightColor != null ? rightColor : verdictColor);
+			east.add(label);
+			east.add(javax.swing.Box.createHorizontalStrut(Theme.S));
 		}
 		else
 		{
-			// the figure shares the strip's line, so the row is no taller than without it
+			// the figure shares one width on every row, so the dots line up down the list
 			JLabel figureLabel = smallLabel(figure, r.getReceived() > 0 ? Theme.TEXT : Theme.TEXT_MUTED);
 			figureLabel.setHorizontalAlignment(SwingConstants.RIGHT);
-			figureLabel.setPreferredSize(new Dimension(FIGURE_WIDTH, strip.getPreferredSize().height));
-			JPanel under = new JPanel(new BorderLayout(Theme.S, 0));
-			under.setOpaque(false);
-			under.add(strip, BorderLayout.CENTER);
-			under.add(figureLabel, BorderLayout.EAST);
-			body.add(under, BorderLayout.SOUTH);
+			figureLabel.setPreferredSize(new Dimension(FIGURE_WIDTH, figureLabel.getPreferredSize().height));
+			figureLabel.setMaximumSize(new Dimension(FIGURE_WIDTH, 40));
+			east.add(figureLabel);
+			east.add(javax.swing.Box.createHorizontalStrut(Theme.S));
 		}
-		panel.add(body, BorderLayout.CENTER);
+		east.add(new LuckDot(known ? luckColor(luck) : Theme.TEXT_MUTED));
+		panel.add(east, BorderLayout.EAST);
 		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, panel.getPreferredSize().height));
 		setTip(panel, tip, onClick);
 		return panel;
+	}
+
+	/** The small round marker of a luck colour at the end of a list row. */
+	static final class LuckDot extends javax.swing.JComponent
+	{
+		private final Color color;
+
+		LuckDot(Color color)
+		{
+			this.color = color;
+			setPreferredSize(new Dimension(8, 14));
+			setMinimumSize(new Dimension(8, 14));
+			setMaximumSize(new Dimension(8, 40));
+		}
+
+		@Override
+		protected void paintComponent(java.awt.Graphics graphics)
+		{
+			java.awt.Graphics2D g = (java.awt.Graphics2D) graphics.create();
+			g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+			g.setColor(color);
+			g.fillOval(1, getHeight() / 2 - 3, 6, 6);
+			g.dispose();
+		}
 	}
 
 	/** Width of the "got / expected" column: "0 / 35.5" and "99 / 153" fit; the widest items need about 40. */
@@ -4033,7 +4092,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			return Theme.TEXT_MUTED;
 		}
 		double luck = Math.exp(-m);
-		return luck >= 0.35 ? Theme.TEXT : luckColor(luck).brighter();
+		return luck >= 0.35 ? Theme.TEXT : luckColor(luck);
 	}
 
 	/** A row's name or number, in the same font as the verdicts at the top ("On rate"). */
@@ -4296,11 +4355,25 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			return;
 		}
-		JPanel card = new JPanel();
+		// a rounded card, like the verdict tiles
+		JPanel card = new JPanel()
+		{
+			@Override
+			protected void paintComponent(java.awt.Graphics graphics)
+			{
+				java.awt.Graphics2D g = (java.awt.Graphics2D) graphics.create();
+				g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+				g.setColor(getBackground());
+				g.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 8, 8);
+				g.setColor(Theme.OUTLINE);
+				g.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 8, 8);
+				g.dispose();
+			}
+		};
+		card.setOpaque(false);
 		card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
 		card.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		card.setBorder(BorderFactory.createCompoundBorder(
-			BorderFactory.createLineBorder(Theme.OUTLINE), new EmptyBorder(Theme.S, Theme.M, Theme.M, Theme.M)));
+		card.setBorder(new EmptyBorder(Theme.M, Theme.M + 1, Theme.M, Theme.M + 1));
 		card.setAlignmentX(LEFT_ALIGNMENT);
 
 		BossDefinition tripBoss = tracker.getCatalog().byName(bossName);
@@ -4319,7 +4392,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		double luck = trip.getLuck();
 		JLabel headline = new JLabel(Double.isNaN(luck) ? "\u2013" : DropMath.verdict(luck));
 		headline.setFont(FontManager.getRunescapeBoldFont().deriveFont(16f));
-		headline.setForeground(Double.isNaN(luck) ? ColorScheme.LIGHT_GRAY_COLOR : luckColor(luck).brighter());
+		headline.setForeground(Double.isNaN(luck) ? ColorScheme.LIGHT_GRAY_COLOR : luckColor(luck));
 		headline.setAlignmentX(LEFT_ALIGNMENT);
 		card.add(headline);
 		String sentence;
@@ -4799,7 +4872,7 @@ public class ExpectedDropsPanel extends PluginPanel
 	private static Color welcomeVerdictColor(int i)
 	{
 		double luck = WELCOME_VERDICT_LUCK[i];
-		return DropMath.isOnRate(luck) ? Theme.TEXT : Palette.verdict(luck).brighter();
+		return DropMath.isOnRate(luck) ? Theme.TEXT : Palette.verdict(luck);
 	}
 
 	/** A wrapped grey line in the welcome guide with a thin line above, starting with an optional white lead. */
@@ -5160,7 +5233,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		tip.line(summary(row));
 		if (!Double.isNaN(luck))
 		{
-			tip.row("Your result", "<b>" + DropMath.verdict(luck) + "</b>", luckColor(luck).brighter());
+			tip.row("Your result", "<b>" + DropMath.verdict(luck) + "</b>", luckColor(luck));
 			// the players at your kill count: fewer, as many as you (in your colour), more
 			tip.split(row.getShares(), row.getReceived(), luckColor(luck));
 			tip.line(capital(sharesLine(row.getShares(), row.getReceived())), Theme.TEXT_MUTED);
@@ -5357,7 +5430,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			return Theme.TEXT;
 		}
-		return Palette.verdict(luck).brighter();
+		return Palette.verdict(luck);
 	}
 
 	private void styleTab(JButton button, Tab which)
