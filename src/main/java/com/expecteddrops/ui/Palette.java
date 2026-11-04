@@ -71,6 +71,18 @@ public final class Palette
 			(int) Math.round(a.getBlue() + (b.getBlue() - a.getBlue()) * t));
 	}
 
+	/** A quiet background in the hue of a luck colour (the pill under a verdict). */
+	static Color tint(Color c)
+	{
+		return blend(Theme.SURFACE, c, 0.2);
+	}
+
+	/** Text on a {@link #tint}: the luck colour, lifted a little so it stays readable. */
+	static Color onTint(Color c)
+	{
+		return blend(c, Color.WHITE, 0.22);
+	}
+
 	static Color withAlpha(Color c, int alpha)
 	{
 		return new Color(c.getRed(), c.getGreen(), c.getBlue(), alpha);

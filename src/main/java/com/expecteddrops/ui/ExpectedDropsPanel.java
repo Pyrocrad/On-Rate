@@ -2386,7 +2386,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		JPanel tabs = new JPanel(new GridLayout(1, withItems ? 3 : 2, 2, 0));
 		tabs.setOpaque(false);
 		tabs.setAlignmentX(LEFT_ALIGNMENT);
-		tabs.setBorder(new EmptyBorder(Theme.M, 0, Theme.HAIR, 0));
+		tabs.setBorder(BorderFactory.createCompoundBorder(new EmptyBorder(Theme.M, 0, Theme.S, 0),
+			BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.OUTLINE)));
 		tabs.add(accountTab("Bosses", TAB_BOSSES));
 		if (withItems)
 		{
@@ -4296,11 +4297,25 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			return;
 		}
-		JPanel card = new JPanel();
+		// a rounded card, like the verdict tiles
+		JPanel card = new JPanel()
+		{
+			@Override
+			protected void paintComponent(java.awt.Graphics graphics)
+			{
+				java.awt.Graphics2D g = (java.awt.Graphics2D) graphics.create();
+				g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+				g.setColor(getBackground());
+				g.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 8, 8);
+				g.setColor(Theme.OUTLINE);
+				g.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 8, 8);
+				g.dispose();
+			}
+		};
+		card.setOpaque(false);
 		card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
 		card.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		card.setBorder(BorderFactory.createCompoundBorder(
-			BorderFactory.createLineBorder(Theme.OUTLINE), new EmptyBorder(Theme.S, Theme.M, Theme.M, Theme.M)));
+		card.setBorder(new EmptyBorder(Theme.M, Theme.M + 1, Theme.M, Theme.M + 1));
 		card.setAlignmentX(LEFT_ALIGNMENT);
 
 		BossDefinition tripBoss = tracker.getCatalog().byName(bossName);

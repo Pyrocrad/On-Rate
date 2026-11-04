@@ -118,7 +118,8 @@ public class QuietRowsTest
 		assertTrue("shrunk " + narrow.getSize2D(), narrow.getSize2D() < normal.getSize2D());
 		int room = 104 - tile.getInsets().left - tile.getInsets().right;
 		assertTrue(tile.getComponent(1).getFontMetrics(narrow).stringWidth("Very spooned") <= room);
-		tile.setSize(new Dimension(111, 80));
+		// the card's padding takes 11px: "Very spooned" is back at full size from about 114px
+		tile.setSize(new Dimension(118, 80));
 		tile.doLayout();
 		assertEquals(normal.getSize2D(), tile.getComponent(1).getFont().getSize2D(), 0.001);
 		// the longest words fit too, scrollbar showing
@@ -160,18 +161,19 @@ public class QuietRowsTest
 		tile.doLayout();
 		javax.swing.JLabel luck = (javax.swing.JLabel) tile.getComponent(3);
 		assertTrue(luck.getText(), luck.getText().startsWith("<html>") && luck.getText().contains("<br>"));
-		// every line fits the 98px the tile has, and the words are all still there
+		// every line fits the room the pill has (the tile's text width less the pill's own padding), and the words are all still there
 		java.awt.FontMetrics fm = luck.getFontMetrics(luck.getFont());
 		String[] lines = luck.getText().replace("<html>", "").replace("</html>", "").split("<br>");
+		int room = 104 - tile.getInsets().left - tile.getInsets().right - 17;
 		for (String line : lines)
 		{
-			assertTrue(line, fm.stringWidth(line) <= 98);
+			assertTrue(line, fm.stringWidth(line) <= room);
 		}
 		assertEquals("only 1 in 10,000 has none", String.join(" ", lines));
 		// a "<1 in ..." line keeps its less-than sign as text
 		tile.set("Very dry", java.awt.Color.RED, "0 / 3.4", "<1 in 10,000 as lucky", null);
 		tile.doLayout();
-		assertTrue(luck.getText(), luck.getText().contains("&lt;1 in 10,000 as") && luck.getText().contains("lucky")
+		assertTrue(luck.getText(), luck.getText().contains("&lt;1 in 10,000") && luck.getText().contains("lucky")
 			&& !luck.getText().contains("<1"));
 		// with room it is plain text again, and a short line never changes
 		tile.setSize(new Dimension(300, 80));

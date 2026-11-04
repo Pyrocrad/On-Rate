@@ -11,10 +11,12 @@ import net.runelite.client.ui.FontManager;
 /** One verdict tile: a small title, the verdict word, and the numbers behind it. */
 class VerdictTile extends JPanel
 {
-	private final JLabel key = new JLabel();
-	private final JLabel word = new JLabel();
-	private final JLabel numbers = new JLabel();
-	private final JLabel luck = new JLabel();
+	private final JLabel key = new FullWidthLabel();
+	private final JLabel word = new FullWidthLabel();
+	private final JLabel numbers = new FullWidthLabel();
+	private final LuckPill luck = new LuckPill();
+	/** The colour of the top edge: the verdict's colour. */
+	private Color accent = Theme.TEXT_MUTED;
 	/** The verdict word and the two small lines as set, before any wrapping (see {@link #doLayout}). */
 	private String wordText = "";
 	private String numbersText = "";
@@ -23,22 +25,100 @@ class VerdictTile extends JPanel
 	VerdictTile(String title)
 	{
 		setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-		setBackground(Theme.SURFACE);
-		setBorder(new EmptyBorder(Theme.S, Theme.S, Theme.S, Theme.HAIR));
+		setOpaque(false);
+		setBorder(new EmptyBorder(Theme.M, Theme.M, Theme.M - 1, Theme.S + 1));
 		key.setText(title);
 		key.setFont(FontManager.getRunescapeSmallFont());
 		key.setForeground(Theme.TEXT_MUTED);
 		// the verdict is what On Rate is about: a size up from the lists
 		word.setFont(Theme.verdictFont());
-		for (JLabel l : new JLabel[]{numbers, luck})
+		numbers.setFont(FontManager.getRunescapeSmallFont());
+		numbers.setForeground(Theme.TEXT_MUTED);
+		numbers.setBorder(new EmptyBorder(0, 0, Theme.S, 0));
+		for (JLabel l : new JLabel[]{key, word, numbers})
 		{
-			l.setFont(FontManager.getRunescapeSmallFont());
-			l.setForeground(Theme.TEXT_MUTED);
+			l.setAlignmentX(LEFT_ALIGNMENT);
 		}
+		luck.setAlignmentX(LEFT_ALIGNMENT);
 		add(key);
 		add(word);
 		add(numbers);
 		add(luck);
+	}
+
+	/** The card: a quiet gradient, a hairline outline and a coloured top edge. */
+	@Override
+	protected void paintComponent(java.awt.Graphics graphics)
+	{
+		java.awt.Graphics2D g = (java.awt.Graphics2D) graphics.create();
+		g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+		int w = getWidth();
+		int h = getHeight();
+		g.setPaint(new java.awt.GradientPaint(0, 0, Theme.SURFACE_RAISED, w, h, Theme.SURFACE));
+		g.fillRoundRect(0, 0, w - 1, h - 1, 8, 8);
+		g.setColor(Theme.OUTLINE);
+		g.drawRoundRect(0, 0, w - 1, h - 1, 8, 8);
+		// the coloured edge, clipped to the card's rounded corners
+		g.setClip(new java.awt.geom.RoundRectangle2D.Float(0, 0, w - 1, h - 1, 8, 8));
+		g.setColor(accent);
+		g.fillRect(0, 0, w, 2);
+		g.dispose();
+	}
+
+	/**
+	 * A label that takes the whole width of the tile. A plain label is never wider than its text was when it
+	 * was last measured, which is too narrow once the verdict word grows or the line wraps in {@link #doLayout}.
+	 */
+	private static final class FullWidthLabel extends JLabel
+	{
+		@Override
+		public java.awt.Dimension getMaximumSize()
+		{
+			return new java.awt.Dimension(Integer.MAX_VALUE, getPreferredSize().height);
+		}
+	}
+
+	/** The luck line as a pill that grows with its text. */
+	private static final class LuckPill extends JLabel
+	{
+		private Color hue = Theme.TEXT_MUTED;
+
+		LuckPill()
+		{
+			setFont(FontManager.getRunescapeSmallFont());
+			setBorder(new EmptyBorder(2, 11, 2, 6));
+		}
+
+		void setHue(Color hue)
+		{
+			this.hue = hue;
+			setForeground(Palette.onTint(hue));
+		}
+
+		@Override
+		public java.awt.Dimension getMaximumSize()
+		{
+			// as wide as its text, never stretched across the tile
+			return getPreferredSize();
+		}
+
+		@Override
+		protected void paintComponent(java.awt.Graphics graphics)
+		{
+			if (getText() == null || getText().isEmpty())
+			{
+				return;
+			}
+			java.awt.Graphics2D g = (java.awt.Graphics2D) graphics.create();
+			g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+			g.setColor(Palette.tint(hue));
+			int arc = getHeight() > 20 ? 12 : getHeight();
+			g.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, arc, arc);
+			g.setColor(hue);
+			g.fillOval(4, getInsets().top + getFontMetrics(getFont()).getHeight() / 2 - 1, 4, 4);
+			g.dispose();
+			super.paintComponent(graphics);
+		}
 	}
 
 	/**
@@ -95,7 +175,7 @@ class VerdictTile extends JPanel
 			}
 		}
 		changed |= wrapIfLong(numbers, numbersText, room);
-		changed |= wrapIfLong(luck, luckText, room);
+		changed |= wrapIfLong(luck, luckText, room - 17);
 		if (changed)
 		{
 			// a label that wrapped (or shrank) needs a different height: lay the tile and its row out again,
@@ -147,6 +227,8 @@ class VerdictTile extends JPanel
 		word.setText(verdict);
 		this.wordText = verdict;
 		word.setForeground(color);
+		this.accent = color;
+		luck.setHue(color);
 		this.numbersText = numbersText;
 		this.luckText = luckText;
 		numbers.setText(numbersText);
@@ -158,5 +240,6 @@ class VerdictTile extends JPanel
 		}
 		// the tile was taken out of its row while its text changed: drop the size it remembers
 		invalidate();
+		repaint();
 	}
 }
