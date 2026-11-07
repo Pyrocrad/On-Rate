@@ -2249,23 +2249,19 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 	}
 
-	/** A row under History with how long the kills took (average and fastest), when any kill has a time. */
+	/** A row under History with how long the kills took on average, when any kill has a time. */
 	private void addTimeRow(String label, com.expecteddrops.tracking.TimeStats t)
 	{
 		if (t == null)
 		{
 			return;
 		}
-		String value = com.expecteddrops.tracking.ChatTimes.format(t.getAverageMillis()) + " avg · "
-			+ com.expecteddrops.tracking.ChatTimes.format(t.getBestMillis()) + " best";
-		Tip tip = new Tip("Time per kill")
-			.row("Average", com.expecteddrops.tracking.ChatTimes.format(t.getAverageMillis()))
-			.row("Middle", com.expecteddrops.tracking.ChatTimes.format(t.getMedianMillis()))
-			.row("Fastest", com.expecteddrops.tracking.ChatTimes.format(t.getBestMillis()))
-			.row("Latest", com.expecteddrops.tracking.ChatTimes.format(t.getLastMillis()))
+		String average = com.expecteddrops.tracking.ChatTimes.format(t.getAverageMillis());
+		Tip tip = new Tip("Average time")
+			.row("Average", average)
 			.row("Counted", String.format(java.util.Locale.ROOT, "%,d", t.getCount()))
 			.note("The time the game's chat gave for each kill or raid. Kills without a time message aren't counted.");
-		rowsPanel.add(cardRow(label, value, Color.WHITE, tip.wide()));
+		rowsPanel.add(cardRow(label, average + " avg", Color.WHITE, tip.wide()));
 	}
 
 	private JLabel addHistoryNote(String text)
