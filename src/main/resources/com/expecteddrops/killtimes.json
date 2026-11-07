@@ -1,5 +1,5 @@
 {
- "_readme": "Average time for a kill or raid, used for the Time page of the Items tab until you have enough timed kills of your own (5 raids or 20 other kills). Figures are kills (or raids, or completions) per hour from the OSRS Wiki money-making guides, which include banking and walking between kills. Where the guide's default assumes maxed gear and it gives a typical figure on the same page, the typical figure is used. Bosses with no figure here (Brutus, Hespori, Skotizo, Obor, the Deranged Archaeologist, the TzHaar bosses, Wintertodt, Tempoross, Fortis Colosseum) have no estimate until you have timed kills. Nothing is fetched while the plugin runs.",
+ "_readme": "Average time for a kill or raid, used for the Time page of the Items tab until you have enough timed kills of your own (5 raids or 20 other kills). Figures are kills (or raids, or completions) per hour from the OSRS Wiki money-making guides, which include banking and walking between kills. The wiki's rates assume strong gear and stats, so most players are slower; they are used as the wiki states them. Bosses with no figure here (Brutus, Hespori, Skotizo, Obor, the Deranged Archaeologist, the TzHaar bosses, Wintertodt, Tempoross, Fortis Colosseum) have no estimate until you have timed kills. Nothing is fetched while the plugin runs.",
  "guideUrl": "https://oldschool.runescape.wiki/w/",
  "bosses": {
   "Abyssal Sire": {
@@ -12,8 +12,7 @@
    "kph": 25,
    "guides": [
     "Killing the Alchemical Hydra"
-   ],
-   "note": "Third-party guides give 22 to 35."
+   ]
   },
   "Amoxliatl": {
    "kph": 40,
@@ -25,8 +24,7 @@
    "kph": 39,
    "guides": [
     "Killing Araxxor"
-   ],
-   "note": "A third-party guide gives about 35."
+   ]
   },
   "Barrows": {
    "kph": 12,
@@ -59,20 +57,20 @@
    }
   },
   "Cerberus": {
-   "kph": 40,
+   "kph": 50,
    "guides": [
     "Killing Cerberus"
    ],
-   "note": "The guide's default of 50 assumes a maxed melee setup; it gives 40 for a Twisted bow, Arclight or Abyssal bludgeon."
+   "note": "The guide assumes a maxed melee setup; it gives 40 for a Twisted bow, Arclight or Abyssal bludgeon."
   },
   "Chambers of Xeric": {
    "parts": {
     "Normal": {
-     "kph": 2.5,
+     "kph": 3,
      "guides": [
       "Chambers of Xeric (Normal Mode)"
      ],
-     "note": "The wiki assumes 3 an hour; third-party guides give 2 to 2.5 solo and 2.5 to 3 in a team."
+     "note": "Assumes 33,000 points a raid."
     },
     "Challenge Mode": {
      "kph": 1.7,
@@ -201,12 +199,11 @@
    ]
   },
   "Maggot King": {
-   "kph": 22,
+   "kph": 25,
    "guides": [
-    "Killing the Maggot King",
-    "Killing the Maggot King (Ranged)"
+    "Killing the Maggot King"
    ],
-   "note": "Melee 25, ranged 20."
+   "note": "Melee; the ranged guide gives 20."
   },
   "Moons of Peril": {
    "kph": 10,
@@ -215,12 +212,11 @@
    ]
   },
   "Nex": {
-   "kph": 8,
+   "kph": 10,
    "guides": [
-    "Killing Nex (Duo)",
     "Killing Nex (Team)"
    ],
-   "note": "Duo 6.5, five-man team 10."
+   "note": "Five-man team; a duo is 6.5."
   },
   "Phantom Muspah": {
    "kph": 25,
@@ -236,12 +232,11 @@
    ]
   },
   "Royal Titans": {
-   "kph": 20,
+   "kph": 48,
    "guides": [
     "Looting Branda the Fire Queen"
    ],
-   "note": "Only a solo figure of about 20 an hour (2 to 3 minutes a kill) was found; the wiki gives 48 for a duo.",
-   "confidence": "low"
+   "note": "Assumes a duo."
   },
   "Sarachnis": {
    "kph": 30,
@@ -317,11 +312,11 @@
   "Theatre of Blood": {
    "parts": {
     "Normal": {
-     "kph": 2.5,
+     "kph": 3,
      "guides": [
       "Theatre of Blood"
      ],
-     "note": "The wiki assumes 3 an hour in a deathless trio; third-party guides give 2 to 3."
+     "note": "Deathless trio."
     }
    }
   },
@@ -382,13 +377,11 @@
    }
   },
   "Vorkath": {
-   "kph": 26,
+   "kph": 30,
    "guides": [
-    "Killing Vorkath (Toxic blowpipe)",
-    "Killing Vorkath (Dragon hunter crossbow)",
-    "Killing Vorkath (Dragon hunter lance)"
+    "Killing Vorkath (Dragon hunter crossbow)"
    ],
-   "note": "Blowpipe 22, dragon hunter crossbow or lance 30; third-party guides give 24 to 28."
+   "note": "Dragon hunter crossbow or lance; the blowpipe guide gives 22."
   },
   "Yama": {
    "kph": 10,

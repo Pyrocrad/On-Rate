@@ -1,0 +1,357 @@
+{
+ "name": "Ladlor chart",
+ "_readme": "The boss drops on the Ladlor ironman progression chart, in the order of the chart (left to right, row by row), read from a screenshot of it. Only chart items that are drops of bosses On Rate tracks are listed; quest, shop and skilling items are left out. Each item lists the drops it needs; a chart item you already have every drop of is not shown. 'step' is the item's place in the chart.",
+ "items": [
+  {
+   "step": 14,
+   "name": "Hallowfell",
+   "icon": "Hallowfell",
+   "needs": [
+    {
+     "boss": "The Mad Angel",
+     "drop": "Hallowfell"
+    }
+   ]
+  },
+  {
+   "step": 23,
+   "name": "Crystal armour",
+   "icon": "Crystal armour seed",
+   "needs": [
+    {
+     "boss": "The Gauntlet",
+     "drop": "Crystal armour seed"
+    }
+   ]
+  },
+  {
+   "step": 23,
+   "name": "Bow of Faerdhinen",
+   "icon": "Enhanced crystal weapon seed",
+   "needs": [
+    {
+     "boss": "The Gauntlet",
+     "drop": "Enhanced crystal weapon seed"
+    }
+   ]
+  },
+  {
+   "step": 28,
+   "name": "Bandos godsword",
+   "icon": "Bandos hilt",
+   "needs": [
+    {
+     "boss": "General Graardor",
+     "drop": "Bandos hilt"
+    }
+   ],
+   "note": "Also needs three godsword shards, which drop from every God Wars boss and are not counted here."
+  },
+  {
+   "step": 29,
+   "name": "Voidwaker",
+   "icon": "Voidwaker blade",
+   "needs": [
+    {
+     "boss": "Vet'ion and Calvar'ion",
+     "drop": "Voidwaker blade"
+    },
+    {
+     "boss": "Venenatis and Spindel",
+     "drop": "Voidwaker gem"
+    },
+    {
+     "boss": "Callisto and Artio",
+     "drop": "Voidwaker hilt"
+    }
+   ]
+  },
+  {
+   "step": 31,
+   "name": "Necklace of rupture",
+   "icon": "Elder venator fang",
+   "needs": [
+    {
+     "boss": "Maggot King",
+     "drop": "Elder venator fang"
+    }
+   ]
+  },
+  {
+   "step": 34,
+   "name": "Avernic treads",
+   "icon": "Avernic treads",
+   "needs": [
+    {
+     "boss": "Doom of Mokhaiotl",
+     "drop": "Avernic treads"
+    }
+   ]
+  },
+  {
+   "step": 34,
+   "name": "Rite of vile transference",
+   "icon": "Dossier",
+   "needs": [
+    {
+     "boss": "Yama",
+     "kills": 100
+    }
+   ],
+   "note": "Guaranteed from the first dossier you open once you have 100 Yama kills."
+  },
+  {
+   "step": 35,
+   "name": "Eternal boots",
+   "icon": "Eternal crystal",
+   "needs": [
+    {
+     "boss": "Cerberus",
+     "drop": "Eternal crystal"
+    }
+   ]
+  },
+  {
+   "step": 35,
+   "name": "Occult necklace",
+   "icon": "Occult necklace",
+   "needs": [
+    {
+     "boss": "Thermonuclear Smoke Devil",
+     "drop": "Occult necklace"
+    }
+   ]
+  },
+  {
+   "step": 36,
+   "name": "Eye of ayak",
+   "icon": "Eye of ayak (uncharged)",
+   "needs": [
+    {
+     "boss": "Doom of Mokhaiotl",
+     "drop": "Eye of ayak (uncharged)"
+    }
+   ]
+  },
+  {
+   "step": 36,
+   "name": "Confliction gauntlets",
+   "icon": "Mokhaiotl cloth",
+   "needs": [
+    {
+     "boss": "Doom of Mokhaiotl",
+     "drop": "Mokhaiotl cloth"
+    }
+   ]
+  },
+  {
+   "step": 38,
+   "name": "Osmumten's fang",
+   "icon": "Osmumten's fang",
+   "needs": [
+    {
+     "boss": "Tombs of Amascut",
+     "drop": "Osmumten's fang"
+    }
+   ]
+  },
+  {
+   "step": 38,
+   "name": "Lightbearer",
+   "icon": "Lightbearer",
+   "needs": [
+    {
+     "boss": "Tombs of Amascut",
+     "drop": "Lightbearer"
+    }
+   ]
+  },
+  {
+   "step": 40,
+   "name": "Oathplate armour",
+   "icon": "Oathplate chest",
+   "needs": [
+    {
+     "boss": "Yama",
+     "drop": "Oathplate helm"
+    },
+    {
+     "boss": "Yama",
+     "drop": "Oathplate chest"
+    },
+    {
+     "boss": "Yama",
+     "drop": "Oathplate legs"
+    }
+   ],
+   "note": "Oathplate shards from Yama can replace a piece; not counted here."
+  },
+  {
+   "step": 41,
+   "name": "Avernic defender",
+   "icon": "Avernic defender hilt",
+   "needs": [
+    {
+     "boss": "Theatre of Blood",
+     "drop": "Avernic defender hilt"
+    }
+   ]
+  },
+  {
+   "step": 41,
+   "name": "Scythe of vitur",
+   "icon": "Scythe of vitur (uncharged)",
+   "needs": [
+    {
+     "boss": "Theatre of Blood",
+     "drop": "Scythe of vitur (uncharged)"
+    }
+   ]
+  },
+  {
+   "step": 42,
+   "name": "Ultor ring",
+   "icon": "Ultor vestige",
+   "needs": [
+    {
+     "boss": "Vardorvis",
+     "drop": "Ultor vestige"
+    }
+   ],
+   "note": "Also needs three chromium ingots, which drop from all four Desert Treasure II bosses and are not counted here."
+  },
+  {
+   "step": 43,
+   "name": "Tumeken's shadow",
+   "icon": "Tumeken's shadow (uncharged)",
+   "needs": [
+    {
+     "boss": "Tombs of Amascut",
+     "drop": "Tumeken's shadow (uncharged)"
+    }
+   ]
+  },
+  {
+   "step": 43,
+   "name": "Magus ring",
+   "icon": "Magus vestige",
+   "needs": [
+    {
+     "boss": "Duke Sucellus",
+     "drop": "Magus vestige"
+    }
+   ],
+   "note": "Also needs three chromium ingots, which drop from all four Desert Treasure II bosses and are not counted here."
+  },
+  {
+   "step": 44,
+   "name": "Twisted bow",
+   "icon": "Twisted bow",
+   "needs": [
+    {
+     "boss": "Chambers of Xeric",
+     "drop": "Twisted bow"
+    }
+   ]
+  },
+  {
+   "step": 44,
+   "name": "Ancestral robe top",
+   "icon": "Ancestral robe top",
+   "needs": [
+    {
+     "boss": "Chambers of Xeric",
+     "drop": "Ancestral robe top"
+    }
+   ]
+  },
+  {
+   "step": 44,
+   "name": "Ancestral hat",
+   "icon": "Ancestral hat",
+   "needs": [
+    {
+     "boss": "Chambers of Xeric",
+     "drop": "Ancestral hat"
+    }
+   ]
+  },
+  {
+   "step": 44,
+   "name": "Dragon claws",
+   "icon": "Dragon claws",
+   "needs": [
+    {
+     "boss": "Chambers of Xeric",
+     "drop": "Dragon claws"
+    }
+   ]
+  },
+  {
+   "step": 44,
+   "name": "Ancestral robe bottom",
+   "icon": "Ancestral robe bottom",
+   "needs": [
+    {
+     "boss": "Chambers of Xeric",
+     "drop": "Ancestral robe bottom"
+    }
+   ]
+  },
+  {
+   "step": 44,
+   "name": "Elder maul",
+   "icon": "Elder maul",
+   "needs": [
+    {
+     "boss": "Chambers of Xeric",
+     "drop": "Elder maul"
+    }
+   ]
+  },
+  {
+   "step": 45,
+   "name": "Masori body",
+   "icon": "Masori body",
+   "needs": [
+    {
+     "boss": "Tombs of Amascut",
+     "drop": "Masori body"
+    }
+   ]
+  },
+  {
+   "step": 45,
+   "name": "Masori mask",
+   "icon": "Masori mask",
+   "needs": [
+    {
+     "boss": "Tombs of Amascut",
+     "drop": "Masori mask"
+    }
+   ]
+  },
+  {
+   "step": 45,
+   "name": "Masori chaps",
+   "icon": "Masori chaps",
+   "needs": [
+    {
+     "boss": "Tombs of Amascut",
+     "drop": "Masori chaps"
+    }
+   ]
+  },
+  {
+   "step": 45,
+   "name": "Elidinis' ward",
+   "icon": "Elidinis' ward",
+   "needs": [
+    {
+     "boss": "Tombs of Amascut",
+     "drop": "Elidinis' ward"
+    }
+   ]
+  }
+ ]
+}

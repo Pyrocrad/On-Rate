@@ -42,6 +42,7 @@ public final class ItemTimes
 	{
 		double seconds;
 		boolean estimated;
+		boolean usesOwn;
 		boolean lowConfidence;
 		String basis;
 		/** The part of a combined page the chances are taken from when there are no kills, else null. */
@@ -125,8 +126,8 @@ public final class ItemTimes
 				continue;
 			}
 			out.add(new ItemTime(boss.getName(), row.getShownLabel(), row.getIconItem(), drop != null && drop.isPet(),
-				hasAny(row), time.seconds / chance, time.seconds, chance, time.estimated, time.lowConfidence,
-				time.basis, unit(boss)));
+				hasAny(row), time.seconds / chance, time.seconds, chance, time.estimated, time.usesOwn, time.lowConfidence,
+				boss.getRaid() != null, time.basis, unit(boss)));
 		}
 	}
 
@@ -154,6 +155,7 @@ public final class ItemTimes
 		double weighted = 0;
 		double weights = 0;
 		boolean estimated = false;
+		boolean usesOwn = false;
 		boolean low = false;
 		List<String> bases = new ArrayList<>();
 		for (BossPart part : boss.getParts())
@@ -171,6 +173,7 @@ public final class ItemTimes
 			weighted += p.seconds * n;
 			weights += n;
 			estimated |= p.estimated;
+			usesOwn |= p.usesOwn;
 			low |= p.lowConfidence;
 			bases.add(part.getName() + ": " + p.basis);
 		}
@@ -179,6 +182,7 @@ public final class ItemTimes
 			PerKill result = new PerKill();
 			result.seconds = weighted / weights;
 			result.estimated = estimated;
+			result.usesOwn = usesOwn;
 			result.lowConfidence = low;
 			result.basis = String.join(" ", bases);
 			return result;
@@ -206,7 +210,8 @@ public final class ItemTimes
 		if (own != null && have >= need)
 		{
 			result.seconds = own.getAverageMillis() / 1000.0;
-			result.basis = String.format(Locale.ROOT, "Your average over %,d timed %ss. Fight time only: banking and walking aren't in it.",
+			result.usesOwn = true;
+			result.basis = String.format(Locale.ROOT, "Your times: the average of your %,d timed %ss. It is fight time only, so banking and walking aren't in it.",
 				have, unit);
 			return result;
 		}
@@ -218,7 +223,8 @@ public final class ItemTimes
 		result.seconds = e.getSecondsPerKill();
 		result.estimated = true;
 		result.lowConfidence = e.isLowConfidence();
-		result.basis = String.format(Locale.ROOT, "Estimate: %s %ss an hour (OSRS Wiki guides, with banking). Your own average takes over at %d timed %ss; you have %d.",
+		result.basis = String.format(Locale.ROOT, "Wiki rate: %s %ss an hour, from the OSRS Wiki's money-making guide. It includes banking and assumes strong gear and stats, "
+				+ "so most players are slower. Your own average takes over at %d timed %ss; you have %d.",
 			trim(e.getKillsPerHour()), unit, need, unit, have);
 		return result;
 	}
@@ -267,6 +273,7 @@ public final class ItemTimes
 			double chance;
 			double secondsPerDrop;
 			boolean estimated = false;
+			boolean usesOwn = false;
 			String unit;
 			String basis;
 			if (total > 0)
@@ -285,6 +292,7 @@ public final class ItemTimes
 						}
 						sum += n * seconds[l];
 						estimated |= !own[l];
+						usesOwn |= own[l];
 					}
 				}
 				if (Double.isNaN(sum))
@@ -296,7 +304,7 @@ public final class ItemTimes
 				chance = row.getExpected() / total;
 				unit = "delve";
 				basis = String.format(Locale.ROOT, "Your own depths: %,d delves in %,d runs, about %.1f levels a run, each level at its own time "
-						+ "(yours once you have %d timed delves of that level, else an estimate). A delve's chance depends on its level, "
+						+ "(your times once you have %d timed delves of that level, else the wiki rate). A delve's chance depends on its level, "
 						+ "and only a claimed run keeps its loot.", total, Math.max(runs, 1), (double) total / Math.max(runs, 1), MIN_TIMED_DELVES);
 				if (!(chance > 0))
 				{
@@ -330,11 +338,11 @@ public final class ItemTimes
 				chance = chancePerRun;
 				unit = "run";
 				secondsPerDrop = run / chancePerRun;
-				basis = String.format(Locale.ROOT, "No delves of yours yet, so runs claimed at delve %d are assumed (estimate from the OSRS Wiki guides, with banking). "
+				basis = String.format(Locale.ROOT, "Wiki rate: no delves of yours yet, so runs claimed at delve %d are assumed, at the OSRS Wiki guides' pace with banking. "
 					+ "Deeper runs take longer and roll better rates.", depth);
 			}
 			out.add(new ItemTime(boss.getName(), row.getShownLabel(), row.getIconItem(), drop.isPet(), hasAny(row),
-				secondsPerDrop, perDelve, chance, estimated, false, basis, unit));
+				secondsPerDrop, perDelve, chance, estimated, usesOwn, false, false, basis, unit));
 		}
 	}
 }

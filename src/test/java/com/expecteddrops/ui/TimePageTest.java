@@ -84,7 +84,7 @@ public class TimePageTest
 	public void theTimePageListsItemsWithAnEstimateBeforeYouHaveKills() throws Exception
 	{
 		List<String> texts = open(panel(tracker()), ExpectedDropsPanel.TOP_TIME);
-		assertTrue(texts.toString(), texts.contains("FASTEST ITEMS"));
+		assertTrue(texts.toString(), texts.contains("QUICKEST"));
 		// the fastest items come first, and each is an estimate (~) before you have timed kills
 		boolean estimate = false;
 		for (String t : texts)
@@ -116,10 +116,10 @@ public class TimePageTest
 		// picking a page saves it; the Time page's number is accepted when it comes back
 		List<String> out = new ArrayList<>();
 		texts(panel, out);
-		assertTrue(out.contains("FASTEST ITEMS"));
+		assertTrue(out.contains("QUICKEST"));
 		ExpectedDropsPanel again = panel(tracker());
 		List<String> old = open(again, ExpectedDropsPanel.TOP_DROPS);
-		assertFalse(old.contains("FASTEST ITEMS"));
+		assertFalse(old.contains("QUICKEST"));
 		assertEquals(4, ExpectedDropsPanel.TOP_TIME);
 	}
 
@@ -143,5 +143,169 @@ public class TimePageTest
 			}
 		}
 		assertTrue(any);
+	}
+
+	private static JComboBox<?> viewBox(Component c)
+	{
+		if (c instanceof JComboBox && ((JComboBox<?>) c).getItemCount() == 4 && "Ladlor chart".equals(String.valueOf(((JComboBox<?>) c).getItemAt(1))))
+		{
+			return (JComboBox<?>) c;
+		}
+		if (c instanceof Container)
+		{
+			for (Component child : ((Container) c).getComponents())
+			{
+				JComboBox<?> found = viewBox(child);
+				if (found != null)
+				{
+					return found;
+				}
+			}
+		}
+		return null;
+	}
+
+	/** Opens the Time page and picks one of its lists from the dropdown. */
+	private static List<String> pick(ExpectedDropsPanel panel, String view) throws Exception
+	{
+		open(panel, ExpectedDropsPanel.TOP_TIME);
+		JComboBox<?> box = viewBox(panel);
+		org.junit.Assert.assertNotNull("the Time page has a dropdown of lists", box);
+		for (int i = 0; i < box.getItemCount(); i++)
+		{
+			if (box.getItemAt(i).toString().equals(view))
+			{
+				box.setSelectedIndex(i);
+			}
+		}
+		List<String> out = new ArrayList<>();
+		texts(panel, out);
+		return out;
+	}
+
+	@Test
+	public void theDropdownOffersTheLists() throws Exception
+	{
+		ExpectedDropsPanel panel = panel(tracker());
+		open(panel, ExpectedDropsPanel.TOP_TIME);
+		JComboBox<?> box = viewBox(panel);
+		List<String> options = new ArrayList<>();
+		for (int i = 0; i < box.getItemCount(); i++)
+		{
+			options.add(box.getItemAt(i).toString());
+		}
+		assertEquals(java.util.Arrays.asList("Items", "Ladlor chart", "Pets", "Raids"), options);
+	}
+
+	@Test
+	public void theChartListIsInChartOrder() throws Exception
+	{
+		List<String> texts = pick(panel(tracker()), "Ladlor chart");
+		assertTrue(texts.toString(), texts.contains("IN CHART ORDER"));
+		int first = texts.indexOf("Hallowfell");
+		int later = texts.indexOf("Voidwaker");
+		assertTrue(texts.toString(), first >= 0 && later > first);
+	}
+
+	@Test
+	public void everyRowSaysWhereItsTimeComesFrom() throws Exception
+	{
+		List<String> texts = pick(panel(tracker()), "Items");
+		assertTrue(texts.toString(), texts.contains("wiki rate"));
+		assertTrue(pick(panel(tracker()), "Ladlor chart").contains("wiki rate"));
+	}
+
+	@Test
+	public void petsHaveTheirOwnListAndItemsLeaveThemOut() throws Exception
+	{
+		java.util.List<com.expecteddrops.stats.ItemTime> all = com.expecteddrops.stats.ItemTimes.compute(tracker(),
+			com.expecteddrops.data.KillTimes.bundled(), RAIDS);
+		String firstPet = null;
+		String firstItem = null;
+		double petAt = Double.MAX_VALUE;
+		double itemAt = Double.MAX_VALUE;
+		for (com.expecteddrops.stats.ItemTime t : all)
+		{
+			if (t.isHave())
+			{
+				continue;
+			}
+			if (t.isPet() && t.getSecondsPerDrop() < petAt)
+			{
+				petAt = t.getSecondsPerDrop();
+				firstPet = t.getLabel();
+			}
+			if (!t.isPet() && t.getSecondsPerDrop() < itemAt)
+			{
+				itemAt = t.getSecondsPerDrop();
+				firstItem = t.getLabel();
+			}
+		}
+		List<String> pets = pick(panel(tracker()), "Pets");
+		assertTrue(pets.toString(), pets.contains(firstPet));
+		assertFalse(pets.toString(), pets.contains(firstItem));
+		List<String> items = pick(panel(tracker()), "Items");
+		assertTrue(items.toString(), items.contains(firstItem));
+		assertFalse(items.toString(), items.contains(firstPet));
+	}
+
+	@Test
+	public void theRaidListHasOnlyRaidItems() throws Exception
+	{
+		String firstRaid = null;
+		double at = Double.MAX_VALUE;
+		java.util.Set<String> raidLabels = new java.util.HashSet<>();
+		for (com.expecteddrops.stats.ItemTime t : com.expecteddrops.stats.ItemTimes.compute(tracker(),
+			com.expecteddrops.data.KillTimes.bundled(), RAIDS))
+		{
+			if (t.isRaid() && !t.isPet() && !t.isHave())
+			{
+				raidLabels.add(t.getBoss());
+				if (t.getSecondsPerDrop() < at)
+				{
+					at = t.getSecondsPerDrop();
+					firstRaid = t.getLabel();
+				}
+			}
+		}
+		List<String> texts = pick(panel(tracker()), "Raids");
+		assertTrue(texts.toString(), texts.contains(firstRaid));
+		// the boss shown under each item is a raid
+		for (String t : texts)
+		{
+			if (t.equals("Zulrah") || t.equals("Vorkath") || t.equals("Royal Titans"))
+			{
+				throw new AssertionError("a boss that isn't a raid is in the raid list: " + t);
+			}
+		}
+		assertTrue(raidLabels.contains("Chambers of Xeric") || raidLabels.contains("Tombs of Amascut") || raidLabels.contains("Theatre of Blood"));
+	}
+
+	@Test
+	public void anItemYouGetLeavesItsList() throws Exception
+	{
+		Tracker tracker = tracker();
+		List<String> before = pick(panel(tracker), "Pets");
+		com.expecteddrops.stats.ItemTime first = null;
+		double at = Double.MAX_VALUE;
+		for (com.expecteddrops.stats.ItemTime t : com.expecteddrops.stats.ItemTimes.compute(tracker,
+			com.expecteddrops.data.KillTimes.bundled(), RAIDS))
+		{
+			if (t.isPet() && !t.isHave() && t.getSecondsPerDrop() < at)
+			{
+				at = t.getSecondsPerDrop();
+				first = t;
+			}
+		}
+		assertTrue(before.contains(first.getLabel()));
+		com.expecteddrops.data.BossDefinition boss = tracker.getCatalog().byName(first.getBoss());
+		List<String> counters = new ArrayList<>();
+		for (String name : boss.getKcNames())
+		{
+			counters.add(name + " kills: 50");
+		}
+		tracker.onClogPage(boss.getClogPages().get(0), counters, java.util.Collections.singletonMap(first.getIconItem(), 1));
+		List<String> after = pick(panel(tracker), "Pets");
+		assertFalse(after.toString(), after.contains(first.getLabel()));
 	}
 }

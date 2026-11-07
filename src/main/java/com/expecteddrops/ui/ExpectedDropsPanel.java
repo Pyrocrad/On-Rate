@@ -2508,46 +2508,107 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 	}
 
-	/** The Time page: show the whole list instead of the fastest {@link #DROPS_SHOWN}. */
+	/** The Time page: show the whole list instead of the first {@link #DROPS_SHOWN}. */
 	private boolean timesAll;
 
+	/** The lists of the Time page, chosen from its dropdown. */
+	private enum TimeView
+	{
+		ITEMS("Items"), CHART("Ladlor chart"), PETS("Pets"), RAIDS("Raids");
+
+		private final String label;
+
+		TimeView(String label)
+		{
+			this.label = label;
+		}
+
+		@Override
+		public String toString()
+		{
+			return label;
+		}
+	}
+
+	private TimeView timeView = TimeView.ITEMS;
+
 	/**
-	 * The Time page: how long, on average, each item you don't have takes to get, fastest first.
-	 * The time of a kill is your own average once you have enough timed kills, else an estimate
-	 * from the OSRS Wiki's money-making guides; the chance is yours (raids from your points, Doom
-	 * from the delve levels you did).
+	 * The Time page: how long, on average, the items you don't have take to get. A dropdown picks
+	 * the list: all items quickest first (Slayer bosses counted as if you can kill them), the
+	 * Ladlor chart's items in chart order, pets, or raid items. The time of a kill is your own
+	 * average once you have enough timed kills, else the OSRS Wiki's rate; the chance is yours
+	 * (raids from your points, Doom from the delve levels you did). Every row says which it used.
 	 */
 	private void renderTimes()
 	{
+		JPanel viewRow = new JPanel(new BorderLayout(4, 0));
+		viewRow.setOpaque(false);
+		viewRow.setAlignmentX(LEFT_ALIGNMENT);
+		JLabel viewLabel = new JLabel("Show:");
+		viewLabel.setFont(FontManager.getRunescapeSmallFont());
+		viewLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		viewRow.add(viewLabel, BorderLayout.WEST);
+		JComboBox<TimeView> viewSelect = new JComboBox<>(TimeView.values());
+		viewSelect.setFont(FontManager.getRunescapeSmallFont());
+		viewSelect.setSelectedItem(timeView);
+		viewSelect.addActionListener(e ->
+		{
+			timeView = (TimeView) viewSelect.getSelectedItem();
+			refresh();
+		});
+		viewRow.add(viewSelect, BorderLayout.CENTER);
+		viewRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
+		rowsPanel.add(viewRow);
+		rowsPanel.add(spacer(Theme.S));
+
+		String what;
+		switch (timeView)
+		{
+			case CHART:
+				what = "Items of the Ladlor chart you don't have yet, in the order of the chart. Each needs all of its drops.";
+				break;
+			case PETS:
+				what = "Pets you don't have yet, quickest first.";
+				break;
+			case RAIDS:
+				what = "Raid items you don't have yet, quickest first. Your points set your chance.";
+				break;
+			default:
+				what = "Items you don't have yet, quickest first. Slayer bosses count as if you can kill them.";
+				break;
+		}
+		JLabel note = smallLabel("<html><body style='width: 170px'>" + what + " <b>~</b> is the OSRS Wiki's rate; your own average "
+			+ "takes over after " + com.expecteddrops.stats.ItemTimes.MIN_TIMED_RAIDS + " timed raids or "
+			+ com.expecteddrops.stats.ItemTimes.MIN_TIMED_KILLS + " timed kills.</body></html>", Theme.TEXT_MUTED);
+		note.setAlignmentX(LEFT_ALIGNMENT);
+		rowsPanel.add(note);
+
+		if (timeView == TimeView.CHART)
+		{
+			renderChartTimes();
+			return;
+		}
 		List<com.expecteddrops.stats.ItemTime> todo = new ArrayList<>();
 		for (com.expecteddrops.stats.ItemTime t : com.expecteddrops.stats.ItemTimes.compute(tracker,
 			com.expecteddrops.data.KillTimes.bundled(), raidSettings.get()))
 		{
-			if (!t.isHave())
+			boolean inView = timeView == TimeView.PETS ? t.isPet() : !t.isPet() && (timeView != TimeView.RAIDS || t.isRaid());
+			if (inView && !t.isHave())
 			{
 				todo.add(t);
 			}
 		}
 		todo.sort(java.util.Comparator.comparingDouble(com.expecteddrops.stats.ItemTime::getSecondsPerDrop));
-		JLabel note = smallLabel("<html><body style='width: 170px'>Average time to get an item you don't have yet. "
-			+ "<b>~</b> is an estimate: your own average takes over after " + com.expecteddrops.stats.ItemTimes.MIN_TIMED_RAIDS
-			+ " timed raids or " + com.expecteddrops.stats.ItemTimes.MIN_TIMED_KILLS + " timed kills.</body></html>", Theme.TEXT_MUTED);
-		note.setAlignmentX(LEFT_ALIGNMENT);
-		rowsPanel.add(note);
 		if (todo.isEmpty())
 		{
-			JLabel none = smallLabel("<html><body style='width: 170px'>No times yet. They appear for bosses with a known "
-				+ "pace, and for every boss once you have enough timed kills.</body></html>",
-				ColorScheme.LIGHT_GRAY_COLOR);
-			none.setAlignmentX(LEFT_ALIGNMENT);
-			none.setBorder(new EmptyBorder(Theme.M, 0, 0, 0));
-			rowsPanel.add(none);
+			addTimeNone("Nothing to show. Times appear for bosses with a known pace, and for every boss once you have "
+				+ "enough timed kills; items you have are left out.");
 			return;
 		}
 		int shown = timesAll ? todo.size() : Math.min(DROPS_SHOWN, todo.size());
-		dropListTitle("FASTEST ITEMS", shown, todo.size(), () -> timesAll = !timesAll,
-			"The average time to get one of each item you don't have yet, quickest first. Fight times from the game don't "
-				+ "include banking or walking, so your real time is a little longer than a time based on your own kills.");
+		dropListTitle("QUICKEST", shown, todo.size(), () -> timesAll = !timesAll,
+			"The average time to get one of each, quickest first. Fight times from the game don't include banking or walking, "
+				+ "so a time from your own kills is a little shorter than your real time.");
 		for (com.expecteddrops.stats.ItemTime t : todo.subList(0, shown))
 		{
 			rowsPanel.add(spacer(Theme.HAIR));
@@ -2555,40 +2616,124 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 	}
 
-	/** An item, its boss and the average time to get it: "~" and grey when the time per kill is an estimate. */
+	private void addTimeNone(String text)
+	{
+		JLabel none = smallLabel("<html><body style='width: 170px'>" + text + "</body></html>", ColorScheme.LIGHT_GRAY_COLOR);
+		none.setAlignmentX(LEFT_ALIGNMENT);
+		none.setBorder(new EmptyBorder(Theme.M, 0, 0, 0));
+		rowsPanel.add(none);
+	}
+
+	/** The Ladlor chart's items you are still missing something of, in chart order. */
+	private void renderChartTimes()
+	{
+		List<com.expecteddrops.stats.ChartTime> chart = com.expecteddrops.stats.ChartTimes.compute(tracker,
+			com.expecteddrops.data.KillTimes.bundled(), raidSettings.get(), com.expecteddrops.data.LadlorChart.bundled());
+		if (chart.isEmpty())
+		{
+			addTimeNone("You have everything on the chart that On Rate can count.");
+			return;
+		}
+		int shown = timesAll ? chart.size() : Math.min(DROPS_SHOWN, chart.size());
+		dropListTitle("IN CHART ORDER", shown, chart.size(), () -> timesAll = !timesAll,
+			"The chart's items you don't have yet, in the chart's order. Each time is for all the drops the item needs; "
+				+ "drops at different bosses add up, drops at one boss come on the same kills.");
+		for (com.expecteddrops.stats.ChartTime t : chart.subList(0, shown))
+		{
+			rowsPanel.add(spacer(Theme.HAIR));
+			rowsPanel.add(chartRow(t));
+		}
+	}
+
+	/** An item, its boss and the average time to get it: "~" when it rests on the wiki's rate, and which one it used. */
 	private JPanel timeRow(com.expecteddrops.stats.ItemTime t)
+	{
+		String time = com.expecteddrops.stats.ItemTime.formatLong(t.getSecondsPerDrop());
+		Tip tip = new Tip(t.getLabel()).line(capital(t.getBoss()), Theme.TEXT_MUTED)
+			.row("Average time", (t.isEstimated() ? "~" : "") + time)
+			.row("Time based on", t.getSourceTag())
+			.row("Per " + t.getUnit(), com.expecteddrops.stats.ItemTime.formatLong(t.getSecondsPerKill()))
+			.row("Chance per " + t.getUnit(), t.getChancePerKill() > 0
+				? String.format(java.util.Locale.ROOT, "1 in %,.0f", 1 / t.getChancePerKill()) : "-");
+		if (t.isLowConfidence())
+		{
+			tip.line("The wiki figure rests on a thin source.", Theme.TEXT_MUTED);
+		}
+		tip.note(t.getBasis());
+		return timeRowPanel(t.getIconItem(), t.getLabel(), t.getBoss(), time, t.isEstimated(), t.getSourceTag(), tip.wide(),
+			() -> showBoss(t.getBoss()));
+	}
+
+	/** A chart item, the bosses it still needs drops from and the average time for all of them. */
+	private JPanel chartRow(com.expecteddrops.stats.ChartTime t)
+	{
+		String time = t.hasTime() ? com.expecteddrops.stats.ItemTime.formatLong(t.getSeconds()) : "-";
+		List<String> bosses = new ArrayList<>();
+		String firstBoss = null;
+		Tip tip = new Tip(t.getName()).line("Ladlor chart, step " + t.getStep(), Theme.TEXT_MUTED)
+			.row("Average time", t.hasTime() ? (t.isEstimated() ? "~" : "") + time : "no estimate yet");
+		if (t.hasTime())
+		{
+			tip.row("Time based on", t.getSourceTag());
+		}
+		for (com.expecteddrops.stats.ChartTime.Part part : t.getParts())
+		{
+			tip.row(part.getLabel() + " (" + part.getBoss() + ")", part.isHave() ? "you have it"
+				: Double.isNaN(part.getSeconds()) ? "no estimate" : com.expecteddrops.stats.ItemTime.formatLong(part.getSeconds()));
+			if (!part.isHave())
+			{
+				firstBoss = firstBoss == null ? part.getBoss() : firstBoss;
+				if (!bosses.contains(part.getBoss()))
+				{
+					bosses.add(part.getBoss());
+				}
+			}
+		}
+		if (t.getNote() != null)
+		{
+			tip.note(t.getNote());
+		}
+		else
+		{
+			tip.note("Each part's time is the wiki's rate or your own times, as its row on the Items view says.");
+		}
+		final String open = firstBoss;
+		return timeRowPanel(t.getIcon(), t.getName(), String.join(", ", bosses), time, t.isEstimated(), t.hasTime() ? t.getSourceTag() : "no estimate",
+			tip.wide(), open == null ? null : () -> showBoss(open));
+	}
+
+	/** One row of the Time page: picture, name over boss, and the time over where it comes from. */
+	private JPanel timeRowPanel(String iconItem, String name, String sub, String time, boolean estimated, String source,
+		String tip, Runnable onClick)
 	{
 		JPanel panel = new JPanel(new BorderLayout(4, 0));
 		panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		panel.setBorder(BorderFactory.createCompoundBorder(
 			BorderFactory.createMatteBorder(0, 0, 1, 0, ColorScheme.DARK_GRAY_COLOR), new EmptyBorder(Theme.HAIR, Theme.S, Theme.HAIR, Theme.S)));
 		panel.setAlignmentX(LEFT_ALIGNMENT);
-		panel.add(itemIcon(t.getIconItem(), t.getLabel(), 20), BorderLayout.WEST);
+		panel.add(itemIcon(iconItem, name, 20), BorderLayout.WEST);
 		JPanel names = new JPanel();
 		names.setOpaque(false);
 		names.setLayout(new javax.swing.BoxLayout(names, javax.swing.BoxLayout.Y_AXIS));
-		JLabel item = smallLabel(t.getLabel(), Color.WHITE);
+		JLabel item = smallLabel(name, Color.WHITE);
 		item.setAlignmentX(LEFT_ALIGNMENT);
-		JLabel boss = smallLabel(t.getBoss(), Theme.TEXT_MUTED);
+		JLabel boss = smallLabel(sub, Theme.TEXT_MUTED);
 		boss.setAlignmentX(LEFT_ALIGNMENT);
 		names.add(item);
 		names.add(boss);
 		panel.add(names, BorderLayout.CENTER);
-		String time = com.expecteddrops.stats.ItemTime.formatLong(t.getSecondsPerDrop());
-		panel.add(smallLabel((t.isEstimated() ? "~" : "") + time, t.isEstimated() ? ColorScheme.LIGHT_GRAY_COLOR : Color.WHITE),
-			BorderLayout.EAST);
+		JPanel right = new JPanel();
+		right.setOpaque(false);
+		right.setLayout(new javax.swing.BoxLayout(right, javax.swing.BoxLayout.Y_AXIS));
+		JLabel timeLabel = smallLabel((estimated ? "~" : "") + time, estimated ? ColorScheme.LIGHT_GRAY_COLOR : Color.WHITE);
+		timeLabel.setAlignmentX(RIGHT_ALIGNMENT);
+		JLabel sourceLabel = smallLabel(source, Theme.TEXT_MUTED);
+		sourceLabel.setAlignmentX(RIGHT_ALIGNMENT);
+		right.add(timeLabel);
+		right.add(sourceLabel);
+		panel.add(right, BorderLayout.EAST);
 		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
-		Tip tip = new Tip(t.getLabel()).line(capital(t.getBoss()), Theme.TEXT_MUTED)
-			.row("Average time", (t.isEstimated() ? "~" : "") + time)
-			.row("Per " + t.getUnit(), com.expecteddrops.stats.ItemTime.formatLong(t.getSecondsPerKill()))
-			.row("Chance per " + t.getUnit(), t.getChancePerKill() > 0
-				? String.format(java.util.Locale.ROOT, "1 in %,.0f", 1 / t.getChancePerKill()) : "-");
-		if (t.isLowConfidence())
-		{
-			tip.line("The estimate rests on a thin source.", Theme.TEXT_MUTED);
-		}
-		tip.note(t.getBasis());
-		setTip(panel, tip.wide(), () -> showBoss(t.getBoss()));
+		setTip(panel, tip, onClick);
 		return panel;
 	}
 

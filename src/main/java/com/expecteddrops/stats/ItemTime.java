@@ -18,11 +18,13 @@ public class ItemTime
 	private final double chancePerKill;
 	private final boolean estimated;
 	private final boolean lowConfidence;
+	private final boolean usesOwn;
+	private final boolean raid;
 	private final String basis;
 	private final String unit;
 
 	ItemTime(String boss, String label, String iconItem, boolean pet, boolean have, double secondsPerDrop,
-		double secondsPerKill, double chancePerKill, boolean estimated, boolean lowConfidence, String basis, String unit)
+		double secondsPerKill, double chancePerKill, boolean estimated, boolean usesOwn, boolean lowConfidence, boolean raid, String basis, String unit)
 	{
 		this.boss = boss;
 		this.label = label;
@@ -33,7 +35,9 @@ public class ItemTime
 		this.secondsPerKill = secondsPerKill;
 		this.chancePerKill = chancePerKill;
 		this.estimated = estimated;
+		this.usesOwn = usesOwn;
 		this.lowConfidence = lowConfidence;
+		this.raid = raid;
 		this.basis = basis;
 		this.unit = unit;
 	}
@@ -86,6 +90,24 @@ public class ItemTime
 	public boolean isEstimated()
 	{
 		return estimated;
+	}
+
+	/** True when some of the time per kill is your own timed kills (all of it when {@link #isEstimated()} is false). */
+	public boolean usesOwnTimes()
+	{
+		return usesOwn;
+	}
+
+	/** True for a raid item: Chambers, Tombs, Theatre of Blood, the Fractured Archive. */
+	public boolean isRaid()
+	{
+		return raid;
+	}
+
+	/** Where the time per kill comes from, short: "your times", "wiki rate" or "wiki + yours". */
+	public String getSourceTag()
+	{
+		return !estimated ? "your times" : usesOwn ? "wiki + yours" : "wiki rate";
 	}
 
 	/** True when the estimate rests on a thin source. */
