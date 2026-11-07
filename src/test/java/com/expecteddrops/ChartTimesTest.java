@@ -94,6 +94,18 @@ public class ChartTimesTest
 		tracker.onClogPage(boss.getClogPages().get(0), counters, items);
 	}
 
+	/** Puts a boss's collection log page in with this many copies of its first item (the crystal seeds) obtained. */
+	private void sync(String bossName, int kills, String[] ignored, int seeds)
+	{
+		BossDefinition boss = catalog.byName(bossName);
+		List<String> counters = new ArrayList<>();
+		for (String name : boss.getKcNames())
+		{
+			counters.add(name + " kills: " + kills);
+		}
+		tracker.onClogPage(boss.getClogPages().get(0), counters, java.util.Collections.singletonMap("Crystal armour seed", seeds));
+	}
+
 	@Test
 	public void expectedKillsForAllTheDropsOfOneBoss()
 	{
@@ -361,7 +373,8 @@ public class ChartTimesTest
 			names.add(t.getName());
 		}
 		for (String expected : new String[]{"Primordial boots", "Eternal boots", "Amulet of rancour", "Occult necklace", "Ferocious gloves",
-			"Toxic blowpipe", "Dizana's quiver", "Necklace of rupture", "Masori body (f)", "Masori mask (f)", "Masori chaps (f)", "Ancient icon"})
+			"Toxic blowpipe", "Necklace of rupture", "Masori body", "Masori mask", "Masori chaps", "Ancient icon",
+			"Crystal body", "Crystal helm", "Crystal legs", "Bow of Faerdhinen"})
 		{
 			assertTrue(expected + " is on the chart", names.contains(expected));
 		}
@@ -370,18 +383,13 @@ public class ChartTimesTest
 		assertTrue(names.indexOf("Voidwaker") < names.indexOf("Necklace of rupture"));
 		assertTrue(names.indexOf("Necklace of rupture") < names.indexOf("Toxic blowpipe"));
 		assertTrue(names.indexOf("Ferocious gloves") < names.indexOf("Oathplate armour"));
-		assertTrue(names.indexOf("Dizana's quiver") < names.indexOf("Avernic defender"));
-	}
-
-	@Test
-	public void aColosseumCompletionIsTimedAtTheWikisRunRate()
-	{
-		ChartTime quiver = find("Dizana's quiver");
-		assertNotNull(quiver);
-		// 2.5 runs an hour: 1,440 s
-		assertEquals(1440.0, quiver.getSeconds(), 1e-6);
-		assertEquals("wiki rate", quiver.getSourceTag());
-		assertEquals("completing Fortis Colosseum", quiver.getParts().get(0).getLabel());
+		assertFalse(names.contains("Dizana's quiver"));
+		assertFalse(names.contains("Infernal cape"));
+		assertFalse(names.contains("Masori body (f)"));
+		// crystal armour in the chart's order: body, helm, legs, then the bow
+		assertTrue(names.indexOf("Crystal body") < names.indexOf("Crystal helm"));
+		assertTrue(names.indexOf("Crystal helm") < names.indexOf("Crystal legs"));
+		assertTrue(names.indexOf("Crystal legs") < names.indexOf("Bow of Faerdhinen"));
 	}
 
 	@Test
@@ -418,5 +426,98 @@ public class ChartTimesTest
 			}
 			assertTrue(e.getKey() + " shows at its level", at.contains(e.getKey()));
 		}
+	}
+
+	@Test
+	public void crystalArmourIsCountedInSeeds()
+	{
+		// the body takes 3 crystal armour seeds, the legs 2, the helm 1
+		ItemTime seed = drop("The Gauntlet", "Crystal armour seed");
+		assertEquals(3 * seed.getSecondsPerDrop(), find("Crystal body").getSeconds(), 1e-6);
+		assertEquals(2 * seed.getSecondsPerDrop(), find("Crystal legs").getSeconds(), 1e-6);
+		assertEquals(seed.getSecondsPerDrop(), find("Crystal helm").getSeconds(), 1e-6);
+		assertEquals("3 x Crystal armour seed", find("Crystal body").getParts().get(0).getLabel());
+		assertEquals("wiki rate", find("Crystal body").getSourceTag());
+	}
+
+	@Test
+	public void theSeedsYouHaveGoToTheChartItemsInOrder()
+	{
+		// 4 seeds obtained: the body (3) and the helm (1) are covered, the legs (2) are not
+		sync("The Gauntlet", 214, new String[]{}, 4);
+		assertNull(find("Crystal body"));
+		assertNull(find("Crystal helm"));
+		assertNotNull(find("Crystal legs"));
+		assertEquals(2, find("Crystal legs").getParts().get(0).getMissing());
+		// 5 seeds: one seed short on the legs
+		sync("The Gauntlet", 214, new String[]{}, 5);
+		assertEquals(1, find("Crystal legs").getParts().get(0).getMissing());
+		ItemTime seed = drop("The Gauntlet", "Crystal armour seed");
+		assertEquals(seed.getSecondsPerDrop(), find("Crystal legs").getSeconds(), 1e-6);
+		// 2 seeds: not even the body
+		sync("The Gauntlet", 214, new String[]{}, 2);
+		assertEquals(1, find("Crystal body").getParts().get(0).getMissing());
+		assertEquals(1, find("Crystal helm").getParts().get(0).getMissing());
+		assertEquals(2, find("Crystal legs").getParts().get(0).getMissing());
+		// 6: all of it
+		sync("The Gauntlet", 214, new String[]{}, 6);
+		assertNull(find("Crystal body"));
+		assertNull(find("Crystal helm"));
+		assertNull(find("Crystal legs"));
+	}
+
+	@Test
+	public void theSameDropInSeveralChartItemsIsOneGrindInTheTotal()
+	{
+		List<ChartTime> items = new ArrayList<>();
+		for (ChartTime t : chart())
+		{
+			if (t.getName().startsWith("Crystal"))
+			{
+				items.add(t);
+			}
+		}
+		assertEquals(3, items.size());
+		ItemTime seed = drop("The Gauntlet", "Crystal armour seed");
+		ChartTimes.Total total = ChartTimes.total(items);
+		// six copies of one drop: 6 / p kills, not three separate waits that happen to add to the same
+		assertEquals(6 * seed.getSecondsPerDrop(), total.getSeconds(), 1.0);
+	}
+
+	@Test
+	public void expectedKillsForSeveralCopies()
+	{
+		double p = 1 / 120.0;
+		assertEquals(3 / p, ChartTimes.expectedKillsForAll(new double[]{p}, new int[]{3}), 1e-3);
+		assertEquals(1 / p, ChartTimes.expectedKillsForAll(new double[]{p}, new int[]{1}), 1e-9);
+		// two drops, one needed twice: checked against a simulation
+		double p1 = 1 / 100.0;
+		double p2 = 1 / 250.0;
+		double exact = ChartTimes.expectedKillsForAll(new double[]{p1, p2}, new int[]{2, 1});
+		java.util.Random random = new java.util.Random(99);
+		double sum = 0;
+		int runs = 200_000;
+		for (int r = 0; r < runs; r++)
+		{
+			int a = 0;
+			boolean b = false;
+			int kills = 0;
+			while (a < 2 || !b)
+			{
+				kills++;
+				if (random.nextDouble() < p1)
+				{
+					a++;
+				}
+				if (random.nextDouble() < p2)
+				{
+					b = true;
+				}
+			}
+			sum += kills;
+		}
+		assertEquals(sum / runs, exact, exact * 0.01);
+		// more copies of anything takes longer
+		assertTrue(exact > ChartTimes.expectedKillsForAll(new double[]{p1, p2}, new int[]{1, 1}));
 	}
 }

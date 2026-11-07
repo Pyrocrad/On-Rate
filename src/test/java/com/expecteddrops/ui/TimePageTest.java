@@ -203,7 +203,7 @@ public class TimePageTest
 		List<String> texts = pick(panel(tracker()), "Ladlor chart");
 		assertTrue(texts.toString(), texts.contains("IN CHART ORDER"));
 		int first = texts.indexOf("Hallowfell");
-		int later = texts.indexOf("Bandos godsword");
+		int later = texts.indexOf("Bow of Faerdhinen");
 		assertTrue(texts.toString(), first >= 0 && later > first);
 	}
 

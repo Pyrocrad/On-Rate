@@ -18,15 +18,36 @@ public class ChartTime
 		private final double seconds;
 		private final double chancePerKill;
 		private final double secondsPerKill;
+		private final String dropKey;
+		private final int missing;
 
 		Part(String label, String boss, boolean have, double seconds, double chancePerKill, double secondsPerKill)
 		{
+			this(label, boss, have, seconds, chancePerKill, secondsPerKill, null, 0);
+		}
+
+		Part(String label, String boss, boolean have, double seconds, double chancePerKill, double secondsPerKill, String dropKey, int missing)
+		{
+			this.dropKey = dropKey;
+			this.missing = missing;
 			this.label = label;
 			this.boss = boss;
 			this.have = have;
 			this.seconds = seconds;
 			this.chancePerKill = chancePerKill;
 			this.secondsPerKill = secondsPerKill;
+		}
+
+		/** Which drop this is (boss and drop), or null for kills of a boss: the same drop in two chart items shares kills. */
+		public String getDropKey()
+		{
+			return dropKey;
+		}
+
+		/** How many copies of the drop are still missing (0 when you have them), 0 for a kill-count part. */
+		public int getMissing()
+		{
+			return missing;
 		}
 
 		/** Your chance of this drop in one kill, NaN for a reward that is sure at a kill count. */

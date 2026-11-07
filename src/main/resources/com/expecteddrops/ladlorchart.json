@@ -1,6 +1,6 @@
 {
  "name": "Ladlor chart",
- "_readme": "The boss drops on the Ladlor ironman progression chart, in the order of the chart (left to right, row by row), read from screenshots of it. Only chart items that are drops of bosses On Rate tracks (or a completion of one) are listed; quest, shop, skilling and crafted-only items are left out. Each item lists the drops it needs; a chart item you already have every drop of is not shown, and Slayer bosses above your Slayer level are hidden. 'step' is the item's place in the chart.",
+ "_readme": "The boss drops on the Ladlor ironman progression chart, in the order of the chart (left to right, row by row), read from screenshots of it. A chart item is counted as the drop that gives it (Voidwaker is its three pieces, Bandos godsword the hilt, Masori the plain pieces, crystal armour its seeds: 'count' is how many); what you make from them is not counted. Quest, shop, skilling and crafted-only items are left out. A chart item you already have every drop of is not shown, and Slayer bosses above your Slayer level are hidden. 'step' is the item's place in the chart.",
  "items": [
   {
    "step": 15,
@@ -15,12 +15,37 @@
   },
   {
    "step": 24,
-   "name": "Crystal armour",
-   "icon": "Crystal armour seed",
+   "name": "Crystal body",
+   "icon": "Crystal body",
    "needs": [
     {
      "boss": "The Gauntlet",
-     "drop": "Crystal armour seed"
+     "drop": "Crystal armour seed",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "step": 24,
+   "name": "Crystal helm",
+   "icon": "Crystal helm",
+   "needs": [
+    {
+     "boss": "The Gauntlet",
+     "drop": "Crystal armour seed",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "step": 24,
+   "name": "Crystal legs",
+   "icon": "Crystal legs",
+   "needs": [
+    {
+     "boss": "The Gauntlet",
+     "drop": "Crystal armour seed",
+     "count": 2
     }
    ]
   },
@@ -56,8 +81,7 @@
      "boss": "General Graardor",
      "drop": "Bandos hilt"
     }
-   ],
-   "note": "Also needs three godsword shards, which drop from every God Wars boss and are not counted here."
+   ]
   },
   {
    "step": 33,
@@ -113,8 +137,7 @@
      "boss": "Araxxor",
      "drop": "Araxyte fang"
     }
-   ],
-   "note": "Also needs an amulet of torture."
+   ]
   },
   {
    "step": 35,
@@ -147,8 +170,7 @@
      "boss": "Doom of Mokhaiotl",
      "drop": "Mokhaiotl cloth"
     }
-   ],
-   "note": "Also needs a tormented bracelet, which is not counted here."
+   ]
   },
   {
    "step": 37,
@@ -200,8 +222,7 @@
      "boss": "Maggot King",
      "drop": "Elder venator fang"
     }
-   ],
-   "note": "Also needs a necklace of anguish."
+   ]
   },
   {
    "step": 44,
@@ -244,18 +265,6 @@
     }
    ],
    "route": "oathplate-shards"
-  },
-  {
-   "step": 49,
-   "name": "Dizana's quiver",
-   "icon": "Dizana's quiver (uncharged)",
-   "needs": [
-    {
-     "boss": "Fortis Colosseum",
-     "kills": 1
-    }
-   ],
-   "note": "A guaranteed reward for completing the Fortis Colosseum."
   },
   {
    "step": 50,
@@ -382,39 +391,36 @@
   },
   {
    "step": 54,
-   "name": "Masori body (f)",
-   "icon": "Masori body (f)",
+   "name": "Masori body",
+   "icon": "Masori body",
    "needs": [
     {
      "boss": "Tombs of Amascut",
      "drop": "Masori body"
     }
-   ],
-   "note": "Fortified: the Masori body plus four Armadylean plates (Crafting 90); the plates are not counted here."
+   ]
   },
   {
    "step": 54,
-   "name": "Masori mask (f)",
-   "icon": "Masori mask (f)",
+   "name": "Masori mask",
+   "icon": "Masori mask",
    "needs": [
     {
      "boss": "Tombs of Amascut",
      "drop": "Masori mask"
     }
-   ],
-   "note": "Fortified: the Masori mask plus one Armadylean plate (Crafting 90); the plate is not counted here."
+   ]
   },
   {
    "step": 54,
-   "name": "Masori chaps (f)",
-   "icon": "Masori chaps (f)",
+   "name": "Masori chaps",
+   "icon": "Masori chaps",
    "needs": [
     {
      "boss": "Tombs of Amascut",
      "drop": "Masori chaps"
     }
-   ],
-   "note": "Fortified: the Masori chaps plus three Armadylean plates (Crafting 90); the plates are not counted here."
+   ]
   },
   {
    "step": 54,

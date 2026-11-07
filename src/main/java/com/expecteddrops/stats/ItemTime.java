@@ -23,6 +23,7 @@ public class ItemTime
 	private final String basis;
 	private final String unit;
 	private String hint;
+	private int received;
 
 	ItemTime(String boss, String label, String iconItem, boolean pet, boolean have, double secondsPerDrop,
 		double secondsPerKill, double chancePerKill, boolean estimated, boolean usesOwn, boolean lowConfidence, boolean raid, String basis, String unit)
@@ -52,6 +53,18 @@ public class ItemTime
 	ItemTime withHint(String hint)
 	{
 		this.hint = hint;
+		return this;
+	}
+
+	/** How many of the item you have (the collection log's count). */
+	public int getReceived()
+	{
+		return received;
+	}
+
+	ItemTime withReceived(int received)
+	{
+		this.received = received;
 		return this;
 	}
 

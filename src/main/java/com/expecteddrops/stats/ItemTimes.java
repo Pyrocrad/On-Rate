@@ -137,7 +137,7 @@ public final class ItemTimes
 			}
 			ItemTime item = new ItemTime(boss.getName(), row.getShownLabel(), row.getIconItem(), drop != null && drop.isPet(),
 				hasAny(row), time.seconds / chance, time.seconds, chance, time.estimated, time.usesOwn, time.lowConfidence,
-				boss.getRaid() != null, time.basis, unit(boss));
+				boss.getRaid() != null, time.basis, unit(boss)).withReceived(row.getReceived());
 			if ("Yama".equals(boss.getName()) && row.getIconItem() != null && row.getIconItem().startsWith("Oathplate ") && !hasAny(row))
 			{
 				item.withHint(OathplateShards.describe(new double[]{chance}, time.seconds));
@@ -357,7 +357,7 @@ public final class ItemTimes
 					+ "Deeper runs take longer and roll better rates.", depth);
 			}
 			out.add(new ItemTime(boss.getName(), row.getShownLabel(), row.getIconItem(), drop.isPet(), hasAny(row),
-				secondsPerDrop, perDelve, chance, estimated, usesOwn, false, false, basis, unit));
+				secondsPerDrop, perDelve, chance, estimated, usesOwn, false, false, basis, unit).withReceived(row.getReceived()));
 		}
 	}
 }

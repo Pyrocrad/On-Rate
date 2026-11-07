@@ -24,6 +24,7 @@ public final class LadlorChart
 		private String boss;
 		private String drop;
 		private Integer kills;
+		private Integer count;
 
 		public String getBoss()
 		{
@@ -34,6 +35,12 @@ public final class LadlorChart
 		public String getDrop()
 		{
 			return drop;
+		}
+
+		/** How many of the drop are needed (crystal armour seeds: 3 for the body), at least 1. */
+		public int getCount()
+		{
+			return count == null || count < 1 ? 1 : count;
 		}
 
 		/** Kills of the boss needed, or null for a drop. */
