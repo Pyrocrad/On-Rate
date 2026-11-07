@@ -2145,6 +2145,12 @@ public class ExpectedDropsPanel extends PluginPanel
 					middle = null;
 				}
 			}
+			String took = com.expecteddrops.tracking.ChatTimes.format(k.getDurationMillis() == null ? 0 : k.getDurationMillis());
+			if (!took.isEmpty() && !dropsOnly)
+			{
+				// how long it took, after what the row already says
+				middle = middle == null ? took : middle + " · " + took;
+			}
 			if (dropsOnly)
 			{
 				boolean byPart = boss.hasParts() && k.getPart() != null && k.getPartKc() != null;
@@ -2157,8 +2163,12 @@ public class ExpectedDropsPanel extends PluginPanel
 						dropTip.row("Where", whereName(boss, boss.getName(), k));
 					}
 					dropTip.row(capital(unit) + " count", String.format(java.util.Locale.ROOT, "%,d", byPart ? k.getPartKc() : k.getKc()))
-						.row("When", daysAgo(k.getTime(), now))
-						.row("Gap before it", gapText(d, unit));
+						.row("When", daysAgo(k.getTime(), now));
+					if (!took.isEmpty())
+					{
+						dropTip.row("Time", took);
+					}
+					dropTip.row("Gap before it", gapText(d, unit));
 					if (!dropLuck(d).isEmpty())
 					{
 						dropTip.row("Luck", dropLuck(d));
@@ -2218,6 +2228,11 @@ public class ExpectedDropsPanel extends PluginPanel
 					rowsPanel.add(cardRow(part.getName(), String.format(java.util.Locale.ROOT, "%.1f%%", a * 100), Color.WHITE, tip));
 				}
 			}
+			for (com.expecteddrops.data.BossPart part : boss.getParts())
+			{
+				addTimeRow(boss.hasParts() && boss.getParts().size() > 1 ? "Time · " + shortMode(part.getName()) : "Time",
+					tracker.killTimes(boss.getName(), part.getName()));
+			}
 		}
 		else if (!delve)
 		{
@@ -2226,11 +2241,31 @@ public class ExpectedDropsPanel extends PluginPanel
 			// a boss whose drops are all shared has no expected of its own
 			rowsPanel.add(cardRow("Uniques", boss.getDrops().isEmpty() ? String.format(java.util.Locale.ROOT, "%,d", drops)
 				: String.format(java.util.Locale.ROOT, "%,d (%s expected)", drops, formatExpected(stats.getAnyRow().getRate() * seen)), Color.WHITE, tip));
+			addTimeRow("Time", tracker.killTimes(boss.getName(), null));
 		}
 		if (seen >= com.expecteddrops.tracking.Tracker.MAX_KILLS)
 		{
 			addHistoryNote("On Rate keeps your last " + com.expecteddrops.tracking.Tracker.MAX_KILLS + " " + unit + "s here.");
 		}
+	}
+
+	/** A row under History with how long the kills took (average and fastest), when any kill has a time. */
+	private void addTimeRow(String label, com.expecteddrops.tracking.TimeStats t)
+	{
+		if (t == null)
+		{
+			return;
+		}
+		String value = com.expecteddrops.tracking.ChatTimes.format(t.getAverageMillis()) + " avg · "
+			+ com.expecteddrops.tracking.ChatTimes.format(t.getBestMillis()) + " best";
+		Tip tip = new Tip("Time per kill")
+			.row("Average", com.expecteddrops.tracking.ChatTimes.format(t.getAverageMillis()))
+			.row("Middle", com.expecteddrops.tracking.ChatTimes.format(t.getMedianMillis()))
+			.row("Fastest", com.expecteddrops.tracking.ChatTimes.format(t.getBestMillis()))
+			.row("Latest", com.expecteddrops.tracking.ChatTimes.format(t.getLastMillis()))
+			.row("Counted", String.format(java.util.Locale.ROOT, "%,d", t.getCount()))
+			.note("The time the game's chat gave for each kill or raid. Kills without a time message aren't counted.");
+		rowsPanel.add(cardRow(label, value, Color.WHITE, tip.wide()));
 	}
 
 	private JLabel addHistoryNote(String text)
@@ -2323,6 +2358,10 @@ public class ExpectedDropsPanel extends PluginPanel
 			tip.row("Titan looted", k.getTitan() == null ? "unknown" : k.getTitan());
 		}
 		tip.row("When", daysAgo(k.getTime(), now));
+		if (k.getDurationMillis() != null)
+		{
+			tip.row("Time", com.expecteddrops.tracking.ChatTimes.format(k.getDurationMillis()));
+		}
 		tip.row("Uniques", loot.isEmpty() ? "none" : loot);
 		return tip.wide();
 	}

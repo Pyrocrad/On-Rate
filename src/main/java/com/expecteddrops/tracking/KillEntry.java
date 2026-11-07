@@ -32,6 +32,9 @@ public class KillEntry
 	/** Royal Titans: the titan you looted ("Branda", "Eldric"), or null. */
 	@SerializedName("ti")
 	String titan;
+	/** How long the kill or raid took, in milliseconds, as the game's chat said; null when it didn't say. */
+	@SerializedName("du")
+	Integer durationMillis;
 	/** Uniques from this kill. */
 	@SerializedName("d")
 	List<DropEntry> drops;
@@ -39,6 +42,12 @@ public class KillEntry
 	public int getKc()
 	{
 		return kc;
+	}
+
+	/** How long this kill or raid took in milliseconds, or null when unknown (older kills, bosses with no time message). */
+	public Integer getDurationMillis()
+	{
+		return durationMillis;
 	}
 
 	/** False for a kill the player added by hand from memory: its kill count is known, its date isn't. */

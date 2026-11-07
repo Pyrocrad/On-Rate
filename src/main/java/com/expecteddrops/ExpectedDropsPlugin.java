@@ -660,11 +660,24 @@ public class ExpectedDropsPlugin extends Plugin
 	@Subscribe
 	public void onChatMessage(ChatMessage event)
 	{
+		Tracker t = tracker;
+		if (event.getType() == ChatMessageType.FRIENDSCHATNOTIFICATION)
+		{
+			// the Chambers raid time comes this way; nothing else from this type is counted
+			if (t != null)
+			{
+				String timed = t.onTimeMessage(event.getMessage(), System.currentTimeMillis());
+				if (timed != null)
+				{
+					changed(timed, true);
+				}
+			}
+			return;
+		}
 		if (event.getType() != ChatMessageType.GAMEMESSAGE && event.getType() != ChatMessageType.SPAM)
 		{
 			return;
 		}
-		Tracker t = tracker;
 		if (t == null)
 		{
 			return;

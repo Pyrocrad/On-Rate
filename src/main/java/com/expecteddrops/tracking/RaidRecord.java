@@ -35,6 +35,8 @@ public class RaidRecord
 	double contribution = -1;
 	/** When it was saved (epoch millis), to match the board or a party message to it. */
 	long savedMillis;
+	/** How long the raid took in milliseconds, as the game's chat said; -1 when unknown. */
+	int durationMillis = -1;
 
 	public RaidRecord()
 	{
@@ -100,6 +102,12 @@ public class RaidRecord
 	public double getContribution()
 	{
 		return contribution;
+	}
+
+	/** How long the raid took in milliseconds, or -1 when unknown. */
+	public int getDurationMillis()
+	{
+		return durationMillis;
 	}
 
 	public String getFamily()

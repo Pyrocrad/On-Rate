@@ -99,6 +99,18 @@ public class Tracker
 	private long latestFracturedMillis;
 	private int[] pendingParty;
 	private long pendingPartyMillis;
+	/**
+	 * A kill's time message and its kill count message arrive within a moment of each other, in
+	 * either order: the one that comes first waits here for the other.
+	 */
+	private static final long DURATION_MATCH_MILLIS = 20_000;
+	private ChatTimes.Reading pendingDuration;
+	private long pendingDurationAt;
+	/** The kill whose time message may still come, and the rank of the time it has. */
+	private KillEntry durationEntry;
+	private String durationBoss;
+	private long durationAt;
+	private int durationRank;
 	/** Points and the completion count message arrive within seconds of each other. */
 	private static final long RAID_MATCH_MILLIS = 60_000;
 	/** The Theatre of Blood board can be read a while after the completion message. */
@@ -838,6 +850,127 @@ public class Tracker
 			.forEach(e -> result.add(new BossDays(e.getKey(), e.getValue(),
 				uniqueNames(e.getKey(), today - days + 1, today))));
 		return result;
+	}
+
+	/**
+	 * A kill was just counted: it takes the time message that came a moment before it, and
+	 * waits for one that comes a moment after.
+	 */
+	private void offerDuration(String bossName, KillEntry entry, long nowMillis)
+	{
+		durationEntry = entry;
+		durationBoss = bossName;
+		durationAt = nowMillis;
+		durationRank = 0;
+		ChatTimes.Reading waiting = pendingDuration;
+		pendingDuration = null;
+		if (waiting != null && nowMillis - pendingDurationAt <= DURATION_MATCH_MILLIS)
+		{
+			setDuration(bossName, entry, waiting);
+		}
+	}
+
+	/**
+	 * Only the time of a kill or raid, from a message type that never carries kill counts (the
+	 * Chambers raid time comes as a friends chat notification). Returns the boss whose History
+	 * changed, or null.
+	 */
+	public synchronized String onTimeMessage(String message, long nowMillis)
+	{
+		ChatTimes.Reading time = ChatTimes.read(message);
+		return time == null ? null : onDuration(time, nowMillis);
+	}
+
+	/**
+	 * A message with the time of a whole kill or raid. Goes to the kill counted a moment ago when
+	 * that has no time yet (or a less certain one), else waits for the kill it belongs to.
+	 * Returns the boss whose History changed, or null.
+	 */
+	private String onDuration(ChatTimes.Reading time, long nowMillis)
+	{
+		if (durationEntry != null && nowMillis - durationAt <= DURATION_MATCH_MILLIS
+			&& (durationEntry.durationMillis == null || time.getRank() > durationRank))
+		{
+			setDuration(durationBoss, durationEntry, time);
+			return durationBoss;
+		}
+		// two time messages can wait for one kill (Tombs: the challenge time, then a total): keep the better one
+		boolean waiting = pendingDuration != null && nowMillis - pendingDurationAt <= DURATION_MATCH_MILLIS;
+		if (!waiting || time.getRank() >= pendingDuration.getRank())
+		{
+			pendingDuration = time;
+			pendingDurationAt = nowMillis;
+		}
+		return null;
+	}
+
+	private void setDuration(String bossName, KillEntry entry, ChatTimes.Reading time)
+	{
+		entry.durationMillis = time.getMillis();
+		if (entry == durationEntry)
+		{
+			durationRank = time.getRank();
+		}
+		killsChanged.add(bossName);
+		BossProgress progress = state.peek(bossName);
+		if (progress == null || entry.partKc == null)
+		{
+			return;
+		}
+		// the raid's own record, when its points were already saved
+		for (int i = progress.raids.size() - 1, looked = 0; i >= 0 && looked < 10; i--, looked++)
+		{
+			RaidRecord record = progress.raids.get(i);
+			if (record.kc == entry.partKc && java.util.Objects.equals(record.part, entry.part))
+			{
+				if (record.durationMillis != time.getMillis())
+				{
+					record.durationMillis = time.getMillis();
+					raidsChanged.add(bossName);
+				}
+				return;
+			}
+		}
+	}
+
+	/** The time of the latest kill of this raid mode, when its message came before the raid's points. */
+	private static int knownDuration(BossProgress progress, String part, int kc)
+	{
+		for (int i = progress.kills.size() - 1, looked = 0; i >= 0 && looked < 10; i--, looked++)
+		{
+			KillEntry kill = progress.kills.get(i);
+			if (kill.partKc != null && kill.partKc == kc && java.util.Objects.equals(kill.part, part)
+				&& kill.durationMillis != null)
+			{
+				return kill.durationMillis;
+			}
+		}
+		return -1;
+	}
+
+	/**
+	 * How long this boss's kills took (a combined page: one part's), from the kills in History.
+	 * Null when no kill has a time.
+	 */
+	public synchronized TimeStats killTimes(String bossName, String partName)
+	{
+		BossProgress progress = state.peek(bossName);
+		if (progress == null)
+		{
+			return null;
+		}
+		List<Integer> times = new ArrayList<>();
+		int last = -1;
+		for (KillEntry kill : progress.kills)
+		{
+			if (kill.durationMillis == null || (partName != null && !partName.equals(kill.part)))
+			{
+				continue;
+			}
+			times.add(kill.durationMillis);
+			last = kill.durationMillis;
+		}
+		return times.isEmpty() ? null : new TimeStats(times, last);
 	}
 
 	/** Saves a kill for the History section (the oldest ones go once there are too many). */
@@ -1685,6 +1818,7 @@ public class Tracker
 				}
 				entry.team = team;
 				countKillToday(boss, entry);
+				offerDuration(boss.getName(), entry, nowMillis);
 			}
 			markKill(boss, nowMillis);
 			afterKill(boss, nowMillis);
@@ -1707,7 +1841,15 @@ public class Tracker
 		if (plain.contains("duration:") && delve.find())
 		{
 			String level = delve.group(1);
-			return onDelveLevel(level.endsWith("+") ? BossDefinition.DELVE_LEVELS : Integer.parseInt(level), nowMillis);
+			ChatTimes.Reading delveTime = ChatTimes.read(plain);
+			return onDelveLevel(level.endsWith("+") ? BossDefinition.DELVE_LEVELS : Integer.parseInt(level), nowMillis,
+				delveTime == null ? -1 : delveTime.getMillis());
+		}
+
+		ChatTimes.Reading time = ChatTimes.read(message);
+		if (time != null)
+		{
+			return onDuration(time, nowMillis);
 		}
 
 		Matcher clog = NEW_CLOG_ITEM.matcher(plain);
@@ -1930,6 +2072,11 @@ public class Tracker
 		double before = anyExpected(bossName);
 		record.part = part == null ? bossName : part;
 		record.kc = kc;
+		if (record.durationMillis < 0)
+		{
+			// the raid's time message may have come before its points
+			record.durationMillis = knownDuration(state.get(bossName), record.part, kc);
+		}
 		List<RaidRecord> raids = state.get(bossName).raids;
 		raids.add(record);
 		raidsChanged.add(bossName);
@@ -2164,7 +2311,7 @@ public class Tracker
 		return null;
 	}
 
-	private String onDelveLevel(int level, long nowMillis)
+	private String onDelveLevel(int level, long nowMillis, int durationMillis)
 	{
 		BossDefinition boss = delveBoss();
 		if (boss == null || level < 1 || level > BossDefinition.DELVE_LEVELS)
@@ -2176,6 +2323,8 @@ public class Tracker
 		progress.levelKc.merge(level, 1, Integer::sum);
 		KillEntry entry = addKill(boss, progress, nowMillis);
 		entry.level = level;
+		// the delve message carries its own time
+		entry.durationMillis = durationMillis > 0 ? durationMillis : null;
 		countKillToday(boss, entry);
 		markKill(boss, nowMillis);
 		afterKill(boss, nowMillis);
