@@ -330,7 +330,7 @@ public class ExpectedDropsPlugin extends Plugin
 		{
 			try
 			{
-				RaidDataImport.Times times = RaidDataImport.read(new java.io.File(RuneLite.RUNELITE_DIR, "raid-data-tracker"), accountHash);
+				RaidDataImport.Times times = RaidDataImport.read(new java.io.File(RuneLite.RUNELITE_DIR, RaidDataImport.FOLDER), accountHash);
 				for (java.util.Map.Entry<String, java.util.Map<String, java.util.List<long[]>>> boss : times.byBoss().entrySet())
 				{
 					int added = 0;
@@ -665,16 +665,64 @@ public class ExpectedDropsPlugin extends Plugin
 	/** Your real Slayer level (not boosted), -1 until the game has sent it. Set on the client thread, read by the panel. */
 	private volatile int slayerLevel = -1;
 
+	/** Per account: the last Slayer level seen, so the Time page can hide the Slayer bosses before the game sends the stats. */
+	private static final String SLAYER_LEVEL_KEY = "slayerLevel";
+
 	@Subscribe
 	public void onStatChanged(StatChanged event)
 	{
-		if (event.getSkill() == Skill.SLAYER && event.getLevel() != slayerLevel)
+		if (event.getSkill() == Skill.SLAYER)
 		{
-			slayerLevel = event.getLevel();
-			if (panel != null)
+			setSlayerLevel(event.getLevel());
+		}
+	}
+
+	/** Takes a Slayer level (from the game, or the one remembered) and redraws the Time page when it changed. */
+	private void setSlayerLevel(int level)
+	{
+		if (level < 1 || level == slayerLevel)
+		{
+			return;
+		}
+		slayerLevel = level;
+		if (configManager.getRSProfileKey() != null)
+		{
+			configManager.setRSProfileConfiguration(ExpectedDropsConfig.GROUP, SLAYER_LEVEL_KEY, String.valueOf(level));
+		}
+		if (panel != null)
+		{
+			// the Time page hides the Slayer bosses above it
+			SwingUtilities.invokeLater(panel::refresh);
+		}
+	}
+
+	/**
+	 * Finds the Slayer level when logged in: from the game when it already has the stats (turning the
+	 * plugin on while logged in sends no stat event), else the one remembered for this account.
+	 * Runs on the client thread.
+	 */
+	private void readSlayerLevel()
+	{
+		if (client.getGameState() != GameState.LOGGED_IN)
+		{
+			return;
+		}
+		int real = client.getRealSkillLevel(Skill.SLAYER);
+		if (real > 1)
+		{
+			setSlayerLevel(real);
+			return;
+		}
+		if (slayerLevel < 1 && configManager.getRSProfileKey() != null)
+		{
+			String saved = configManager.getRSProfileConfiguration(ExpectedDropsConfig.GROUP, SLAYER_LEVEL_KEY);
+			try
 			{
-				// the Time page hides the Slayer bosses above it
-				SwingUtilities.invokeLater(panel::refresh);
+				setSlayerLevel(saved == null ? -1 : Integer.parseInt(saved));
+			}
+			catch (NumberFormatException e)
+			{
+				// not a level: wait for the game's
 			}
 		}
 	}
@@ -1077,6 +1125,7 @@ public class ExpectedDropsPlugin extends Plugin
 
 	private void loadProfile()
 	{
+		readSlayerLevel();
 		ProfileStore s = store;
 		if (tracker == null || s == null || !s.load(configManager.getRSProfileKey(), tracker))
 		{

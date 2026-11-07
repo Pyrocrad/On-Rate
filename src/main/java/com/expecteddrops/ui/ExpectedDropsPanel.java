@@ -282,6 +282,9 @@ public class ExpectedDropsPanel extends PluginPanel
 
 		buildWelcome();
 		top.add(welcomePanel);
+		buildTimesNotice();
+		top.add(timesNoticePanel);
+		top.add(spacer(Theme.M));
 
 		setupHeader.setFont(FontManager.getRunescapeSmallFont());
 		setupHeader.setAlignmentX(LEFT_ALIGNMENT);
@@ -787,9 +790,9 @@ public class ExpectedDropsPanel extends PluginPanel
 	private Runnable markTimesNoticeShown = () -> { };
 
 	/**
-	 * The one-time notice about the Time page, for players who had On Rate before it. It appears the
-	 * first time the panel is on screen, and is marked as shown before it opens, so it never comes
-	 * back, whatever the player does with it. The plugin decides who it is for (a new install is
+	 * The one-time notice about the Time page, for players who had On Rate before it: a card in the panel,
+	 * like the welcome guide. It appears the first time the panel is on screen, and is marked as shown
+	 * then, so it never comes back, whatever the player does with it. The plugin decides who it is for (a new install is
 	 * never due).
 	 */
 	public void setTimesNotice(BooleanSupplier due, Runnable markShown)
@@ -809,21 +812,79 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 	}
 
-	/** The notice's text: what is new and where to find it. */
-	static String timesNoticeText()
+	/** The notice's paragraphs: what is new and where to find it. */
+	static String[] timesNoticeParagraphs()
 	{
-		return "<html><body style='width: 260px'>"
-			+ "<b>New: how long things take</b><br><br>"
-			+ "On Rate now times your kills and raids. The <b>Time</b> page (Items tab) shows how long each item you "
-			+ "don't have takes on average, quickest first, or in the Ladlor chart's order.<br><br>"
-			+ "Each time says where it comes from: the OSRS Wiki's rate until you have enough timed kills of your own, "
-			+ "then your own average.<br><br>"
-			+ "If you use the Raid Data Tracker plugin, On Rate reads your raid times from it when you log in, "
-			+ "so your raids use your own times straight away. You can turn that off under Raids in the settings.<br><br>"
-			+ "This message only shows once.</body></html>";
+		return new String[]{
+			"On Rate now times your kills and raids. The <font color='#ffffff'>Time</font> page (Items tab) shows how long each "
+				+ "item you don't have takes on average, quickest first, or in the Ladlor chart's order.",
+			"Each time says where it comes from: the OSRS Wiki's rate until you have enough timed kills of your own, then your own average.",
+			"If you use the Raid Data Tracker plugin, On Rate reads your raid times from it when you log in, so your raids use "
+				+ "your own times straight away. Turn that off under Raids in the settings.",
+			"This message only shows once.",
+		};
 	}
 
-	/** True when the notice is due now, and marks it shown: it must never come back, however its dialog is closed. */
+	/** The notice card, built like the welcome guide: in the panel, under the title. Hidden until it is due. */
+	private final JPanel timesNoticePanel = new JPanel();
+
+	private void buildTimesNotice()
+	{
+		timesNoticePanel.setLayout(new BoxLayout(timesNoticePanel, BoxLayout.Y_AXIS));
+		timesNoticePanel.setAlignmentX(LEFT_ALIGNMENT);
+		timesNoticePanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		timesNoticePanel.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createMatteBorder(0, 3, 0, 0, Theme.ACCENT),
+			new EmptyBorder(Theme.M, Theme.M, Theme.M, Theme.M)));
+		JLabel title = new JLabel("New: how long things take");
+		title.setFont(FontManager.getRunescapeBoldFont());
+		title.setForeground(Theme.TEXT);
+		title.setAlignmentX(LEFT_ALIGNMENT);
+		timesNoticePanel.add(title);
+		String[] paragraphs = timesNoticeParagraphs();
+		for (int i = 0; i < paragraphs.length; i++)
+		{
+			boolean last = i == paragraphs.length - 1;
+			JLabel text = smallLabel(Theme.wrap(paragraphs[i], 148), Theme.TEXT_MUTED);
+			text.setAlignmentX(LEFT_ALIGNMENT);
+			text.setBorder(last ? new EmptyBorder(Theme.S, 0, 0, 0)
+				: BorderFactory.createCompoundBorder(BorderFactory.createMatteBorder(i == 0 ? 0 : 1, 0, 0, 0, Theme.DIVIDER),
+					new EmptyBorder(i == 0 ? Theme.HAIR : Theme.S + 1, 0, Theme.S + 1, 0)));
+			timesNoticePanel.add(text);
+		}
+		JButton show = new JButton("Show me");
+		show.setFont(FontManager.getRunescapeSmallFont());
+		show.setFocusPainted(false);
+		show.setToolTipText("Opens the Time page");
+		show.addActionListener(e ->
+		{
+			closeTimesNotice();
+			openTimePage();
+		});
+		JButton gotIt = new JButton("Got it");
+		gotIt.setFont(FontManager.getRunescapeSmallFont());
+		gotIt.setFocusPainted(false);
+		gotIt.addActionListener(e -> closeTimesNotice());
+		JPanel buttons = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, Theme.S, 0));
+		buttons.setOpaque(false);
+		buttons.setAlignmentX(LEFT_ALIGNMENT);
+		buttons.setBorder(new EmptyBorder(Theme.S, 0, 0, 0));
+		buttons.add(show);
+		buttons.add(gotIt);
+		buttons.setMaximumSize(new Dimension(Integer.MAX_VALUE, buttons.getPreferredSize().height));
+		timesNoticePanel.add(buttons);
+		timesNoticePanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, timesNoticePanel.getPreferredSize().height));
+		timesNoticePanel.setVisible(false);
+	}
+
+	private void closeTimesNotice()
+	{
+		timesNoticePanel.setVisible(false);
+		revalidate();
+		repaint();
+	}
+
+	/** True when the notice is due now, and marks it shown: it must never come back, however it is closed. */
 	boolean takeTimesNotice()
 	{
 		if (!timesNoticeDue.getAsBoolean())
@@ -834,22 +895,22 @@ public class ExpectedDropsPanel extends PluginPanel
 		return true;
 	}
 
-	private void showTimesNoticeOnce()
+	/** Shows the card when it is due: marked shown first, so it stays through this session's redraws but never returns. */
+	void showTimesNoticeOnce()
 	{
-		if (!takeTimesNotice())
+		if (takeTimesNotice())
 		{
-			return;
+			timesNoticePanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, timesNoticePanel.getPreferredSize().height));
+			timesNoticePanel.setVisible(true);
+			revalidate();
+			repaint();
 		}
-		SwingUtilities.invokeLater(() ->
-		{
-			Object[] options = {"Show me the Time page", "Got it"};
-			int choice = JOptionPane.showOptionDialog(SwingUtilities.getWindowAncestor(this), timesNoticeText(), "New in On Rate",
-				JOptionPane.DEFAULT_OPTION, JOptionPane.INFORMATION_MESSAGE, null, options, options[1]);
-			if (choice == 0)
-			{
-				openTimePage();
-			}
-		});
+	}
+
+	/** Whether the notice card is on screen. */
+	boolean isTimesNoticeVisible()
+	{
+		return timesNoticePanel.isVisible();
 	}
 
 	/** Goes to the account overview's Items tab, on its Time page. */
@@ -2596,25 +2657,25 @@ public class ExpectedDropsPanel extends PluginPanel
 		slayerLevel = level == null ? () -> -1 : level;
 	}
 
-	/** False for a Slayer boss that needs more Slayer than you have: its items are left off the Time page. */
+	/**
+	 * False for a Slayer boss that needs more Slayer than you have: its items are always left off the
+	 * Time page. Until your level is known (not logged in yet) it counts as 0, so no Slayer boss shows.
+	 */
 	private boolean canFight(String bossName)
 	{
-		int level = slayerLevel.getAsInt();
+		int level = Math.max(0, slayerLevel.getAsInt());
 		BossDefinition boss = tracker.getCatalog().byName(bossName);
-		return level < 0 || boss == null || boss.getSlayerLevel() <= level;
+		return boss == null || boss.getSlayerLevel() <= level;
 	}
 
-	/** How many bosses are hidden on the Time page for lack of Slayer (0 when your level isn't known). */
+	/** How many Slayer bosses are hidden on the Time page for lack of Slayer. */
 	private int bossesAboveYourSlayer()
 	{
-		int level = slayerLevel.getAsInt();
+		int level = Math.max(0, slayerLevel.getAsInt());
 		int hidden = 0;
-		if (level >= 0)
+		for (BossDefinition boss : tracker.getCatalog().getBosses())
 		{
-			for (BossDefinition boss : tracker.getCatalog().getBosses())
-			{
-				hidden += boss.getSlayerLevel() > level ? 1 : 0;
-			}
+			hidden += boss.getSlayerLevel() > level ? 1 : 0;
 		}
 		return hidden;
 	}
@@ -2685,7 +2746,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				what = "Raid items, quickest first. Your points set your chance.";
 				break;
 			default:
-				what = slayerLevel.getAsInt() >= 0 ? "Quickest first." : "Quickest first. Slayer bosses are included.";
+				what = "Quickest first.";
 				break;
 		}
 		JLabel note = smallLabel("<html><body style='width: 170px'>" + what + "</body></html>", Theme.TEXT_MUTED);
@@ -2694,7 +2755,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		int hiddenBosses = bossesAboveYourSlayer();
 		if (hiddenBosses > 0)
 		{
-			what += " Bosses above your Slayer level (" + slayerLevel.getAsInt() + ") are hidden.";
+			what += slayerLevel.getAsInt() >= 0 ? " Bosses above your Slayer level (" + slayerLevel.getAsInt() + ") are hidden."
+				: " Slayer bosses are hidden until On Rate knows your Slayer level (log in).";
 			note.setText("<html><body style='width: 170px'>" + what + "</body></html>");
 		}
 		note.setToolTipText(new Tip("How to read this")

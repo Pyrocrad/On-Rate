@@ -344,9 +344,22 @@ public class TimePageTest
 		ExpectedDropsPanel high = panel(tracker());
 		high.setSlayerLevel(() -> 99);
 		assertFalse(pick(high, "Items").stream().anyMatch(t -> t.contains("are hidden")));
-		// unknown (not logged in): nothing hidden, and the list says Slayer bosses are included
+		// unknown (not logged in): Slayer bosses are always left out, and the list says why
 		ExpectedDropsPanel unknown = panel(tracker());
-		assertTrue(pick(unknown, "Items").stream().anyMatch(t -> t.contains("Slayer bosses are included")));
+		assertTrue(pick(unknown, "Items").stream().anyMatch(t -> t.contains("Slayer bosses are hidden until On Rate knows your Slayer level")));
+	}
+
+	@Test
+	public void slayerBossItemsAreLeftOutUntilYouHaveTheLevel() throws Exception
+	{
+		// Hellpuppy (Cerberus, Slayer 91) is among the quickest pets
+		assertTrue(pick(panel(tracker()), "Pets").toString(), pick(panel(tracker()), "Pets").stream().noneMatch(t -> t.equals("Pet smoke devil")));
+		ExpectedDropsPanel low = panel(tracker());
+		low.setSlayerLevel(() -> 60);
+		assertTrue(pick(low, "Pets").stream().noneMatch(t -> t.equals("Pet smoke devil")));
+		ExpectedDropsPanel high = panel(tracker());
+		high.setSlayerLevel(() -> 99);
+		assertTrue(pick(high, "Pets").toString(), pick(high, "Pets").stream().anyMatch(t -> t.equals("Pet smoke devil")));
 	}
 
 	@Test
@@ -378,11 +391,68 @@ public class TimePageTest
 	}
 
 	@Test
+	public void theNoticeIsACardInThePanelThatShowsOnceAndCloses() throws Exception
+	{
+		ExpectedDropsPanel panel = panel(tracker());
+		assertFalse(panel.isTimesNoticeVisible());
+		boolean[] seen = {false};
+		panel.setTimesNotice(() -> !seen[0], () -> seen[0] = true);
+		// not due until the panel is on screen
+		assertFalse(panel.isTimesNoticeVisible());
+		panel.showTimesNoticeOnce();
+		assertTrue(panel.isTimesNoticeVisible());
+		// the card stays through redraws, and a second time on screen doesn't ask again
+		panel.refresh();
+		assertTrue(panel.isTimesNoticeVisible());
+		panel.showTimesNoticeOnce();
+		assertTrue(seen[0]);
+		// "Got it" closes it, and it never comes back
+		javax.swing.JButton gotIt = find(panel, "Got it");
+		gotIt.doClick();
+		assertFalse(panel.isTimesNoticeVisible());
+		panel.showTimesNoticeOnce();
+		assertFalse(panel.isTimesNoticeVisible());
+	}
+
+	@Test
+	public void showMeOpensTheTimePage() throws Exception
+	{
+		ExpectedDropsPanel panel = panel(tracker());
+		panel.setTimesNotice(() -> true, () -> { });
+		panel.showTimesNoticeOnce();
+		find(panel, "Show me").doClick();
+		assertFalse(panel.isTimesNoticeVisible());
+		List<String> out = new ArrayList<>();
+		texts(panel, out);
+		assertTrue(out.toString(), out.stream().anyMatch(t -> t.contains("Quickest first")));
+	}
+
+	@Test
 	public void theNoticeSaysWhereTheTimePageIsAndAboutRaidDataTracker()
 	{
-		String text = ExpectedDropsPanel.timesNoticeText();
-		assertTrue(text.contains("Time</b> page"));
+		String text = String.join(" ", ExpectedDropsPanel.timesNoticeParagraphs());
+		assertTrue(text.contains("Time</font> page"));
 		assertTrue(text.contains("Raid Data Tracker"));
 		assertTrue(text.contains("only shows once"));
+	}
+
+	private static javax.swing.JButton find(Component c, String text)
+	{
+		if (c instanceof javax.swing.JButton && text.equals(((javax.swing.JButton) c).getText()))
+		{
+			return (javax.swing.JButton) c;
+		}
+		if (c instanceof Container)
+		{
+			for (Component child : ((Container) c).getComponents())
+			{
+				javax.swing.JButton found = find(child, text);
+				if (found != null)
+				{
+					return found;
+				}
+			}
+		}
+		return null;
 	}
 }

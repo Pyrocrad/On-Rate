@@ -18,15 +18,16 @@ import java.util.Map;
  * times instead of waiting for five timed raids. Read only: it never writes to that plugin's folder.
  *
  * <p>The plugin keeps one file per raid, {@code raid_tracker_data.log}, with one JSON object per
- * line, in {@code raid-data-tracker/<raid>/} and, in newer versions, {@code raid-data-tracker/<name>/<raid>/}.
- * Only completed raids of this account (matched by its account hash) with a plausible time are
- * taken, so a second account's raids or a raid you left don't count. Times are in game ticks
- * (0.6 s).
+ * line, in {@code .runelite/raid-data tracker/<name>/<raid>/} (the folder name has a space in it; older
+ * versions kept the raid folders directly in {@code raid-data tracker/}). Only completed raids of this
+ * account (matched by its account hash) with a plausible time are taken, so a second account's raids or
+ * a raid you left don't count. Its times are in whole seconds.
  *
- * <p>Which time: Chambers of Xeric and Theatre of Blood the whole raid's time ({@code raidTime},
- * what the game's "total completion time" says; its {@code tobCompTime} is only the rooms added up).
- * Tombs of Amascut too: the total ({@code raidTime}), not the challenge time ({@code toaCompTime}, the
- * rooms added up): On Rate counts only the total for Tombs.
+ * <p>Which time: the whole raid's time ({@code raidTime}), which the plugin reads from the game's
+ * "Duration" (Chambers) or "total completion time" (Tombs) message. For Tombs that is the total, not the
+ * challenge time ({@code toaCompTime}): On Rate counts only the total there. Chambers and Tombs only: the
+ * plugin does not record whether a Theatre of Blood raid was Normal or Hard Mode, so those times can't be
+ * told apart and are left out.
  */
 public final class RaidDataImport
 {
@@ -34,11 +35,13 @@ public final class RaidDataImport
 	static final long MIN_MILLIS = 2 * 60_000L;
 	/** A raid time longer than this is a stuck timer, not a raid. */
 	static final long MAX_MILLIS = 3 * 60 * 60_000L;
-	static final int MILLIS_PER_TICK = 600;
+	static final int MILLIS_PER_SECOND = 1000;
+	/** The other plugin's folder inside {@code .runelite}: the name has a space, not a hyphen, before "tracker". */
+	public static final String FOLDER = "raid-data tracker";
 	/** The log file each raid folder holds. */
 	static final String LOG_NAME = "raid_tracker_data.log";
 	/** Raid folders of the other plugin; "unknown" holds raids it could not place and is skipped. */
-	private static final String[] RAIDS = {"cox", "toa", "tob"};
+	private static final String[] RAIDS = {"cox", "toa"};
 
 	/** The boss name On Rate uses for each folder. */
 	private static String boss(String raid)
@@ -47,10 +50,8 @@ public final class RaidDataImport
 		{
 			case "cox":
 				return "Chambers of Xeric";
-			case "toa":
-				return "Tombs of Amascut";
 			default:
-				return "Theatre of Blood";
+				return "Tombs of Amascut";
 		}
 	}
 
@@ -177,12 +178,12 @@ public final class RaidDataImport
 			return;
 		}
 		long when = has(o, "date") ? o.get("date").getAsLong() : 0;
-		int ticks = ticks(o);
-		if (when <= 0 || ticks <= 0)
+		int seconds = seconds(o);
+		if (when <= 0 || seconds <= 0)
 		{
 			return;
 		}
-		long millis = (long) ticks * MILLIS_PER_TICK;
+		long millis = (long) seconds * MILLIS_PER_SECOND;
 		if (millis < MIN_MILLIS || millis > MAX_MILLIS)
 		{
 			return;
@@ -194,8 +195,8 @@ public final class RaidDataImport
 		}
 	}
 
-	/** The raid's whole time in ticks (see the class comment): -1 when there is none. */
-	private static int ticks(JsonObject o)
+	/** The raid's whole time in seconds (see the class comment): -1 when there is none. */
+	private static int seconds(JsonObject o)
 	{
 		return num(o, "raidTime");
 	}
@@ -211,8 +212,6 @@ public final class RaidDataImport
 		{
 			case "cox":
 				return bool(o, "challengeMode") ? "Challenge Mode" : "Normal";
-			case "tob":
-				return bool(o, "challengeMode") ? "Hard Mode" : "Normal";
 			default:
 				int level = num(o, "raidLevel");
 				if (level < 0)

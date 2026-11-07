@@ -36,7 +36,7 @@ public class RaidDataImportTest
 	}
 
 	@Test
-	public void chambersTimesInTicksByMode() throws IOException
+	public void chambersTimesInSecondsByMode() throws IOException
 	{
 		File root = tmp.newFolder("rdt");
 		log(root, "cox",
@@ -44,22 +44,22 @@ public class RaidDataImportTest
 			line(ME, true, 2000, "\"challengeMode\":true,\"raidTime\":2400"));
 		RaidDataImport.Times times = RaidDataImport.read(root, ME);
 		Map<String, List<long[]>> cox = times.byBoss().get("Chambers of Xeric");
-		assertEquals(900_000, cox.get("Normal").get(0)[1]);
+		assertEquals(1_500_000, cox.get("Normal").get(0)[1]);
 		assertEquals(1000, cox.get("Normal").get(0)[0]);
-		assertEquals(1_440_000, cox.get("Challenge Mode").get(0)[1]);
+		assertEquals(2_400_000, cox.get("Challenge Mode").get(0)[1]);
 		assertEquals(2, times.count());
 	}
 
 	@Test
 	public void readsTheOlderLayoutAndTheNamedFolder() throws IOException
 	{
-		File root = tmp.newFolder("rdt");
+		File root = tmp.newFolder("raid-data tracker");
 		log(root, "cox", line(ME, true, 1000, "\"raidTime\":1500"));
 		log(root, "somebody/cox", line(ME, true, 5000, "\"raidTime\":1600"));
-		log(root, "somebody/tob", line(ME, true, 6000, "\"raidTime\":2156,\"tobCompTime\":1430"));
 		RaidDataImport.Times times = RaidDataImport.read(root, ME);
 		assertEquals(2, times.byBoss().get("Chambers of Xeric").get("Normal").size());
-		assertEquals(2156 * 600L, times.byBoss().get("Theatre of Blood").get("Normal").get(0)[1]);
+		// the other plugin's folder has a space in its name
+		assertEquals("raid-data tracker", RaidDataImport.FOLDER);
 	}
 
 	@Test
@@ -103,20 +103,22 @@ public class RaidDataImportTest
 			// no raid level: the mode can't be told
 			line(ME, true, 5000, "\"raidLevel\":-1,\"raidTime\":2400,\"toaCompTime\":2100"));
 		Map<String, List<long[]>> toa = RaidDataImport.read(root, ME).byBoss().get("Tombs of Amascut");
-		assertEquals(2400 * 600L, toa.get("Expert Mode").get(0)[1]);
-		assertEquals(2500 * 600L, toa.get("Normal").get(0)[1]);
-		assertEquals(1500 * 600L, toa.get("Entry Mode").get(0)[1]);
+		assertEquals(2400_000L, toa.get("Expert Mode").get(0)[1]);
+		assertEquals(2500_000L, toa.get("Normal").get(0)[1]);
+		assertEquals(1500_000L, toa.get("Entry Mode").get(0)[1]);
 		assertEquals(3, toa.values().stream().mapToInt(List::size).sum());
 	}
 
 	@Test
-	public void theatreHardModeAndUnknownFolder() throws IOException
+	public void theatreOfBloodAndTheUnknownFolderAreLeftOut() throws IOException
 	{
 		File root = tmp.newFolder("rdt");
-		log(root, "tob", line(ME, true, 1000, "\"challengeMode\":true,\"tobCompTime\":1400,\"raidTime\":2000"));
+		// the other plugin doesn't record the Theatre mode, so those times can't be told apart
+		log(root, "tob", line(ME, true, 1000, "\"tobCompTime\":1400,\"raidTime\":2000"));
 		log(root, "unknown", line(ME, true, 2000, "\"raidTime\":1500"));
+		log(root, "cox", line(ME, true, 3000, "\"raidTime\":1500"));
 		RaidDataImport.Times times = RaidDataImport.read(root, ME);
-		assertEquals(2000 * 600L, times.byBoss().get("Theatre of Blood").get("Hard Mode").get(0)[1]);
+		assertNull(times.byBoss().get("Theatre of Blood"));
 		assertEquals(1, times.count());
 	}
 
