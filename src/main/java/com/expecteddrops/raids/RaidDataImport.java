@@ -25,8 +25,8 @@ import java.util.Map;
  *
  * <p>Which time: Chambers of Xeric and Theatre of Blood the whole raid's time ({@code raidTime},
  * what the game's "total completion time" says; its {@code tobCompTime} is only the rooms added up).
- * Tombs of Amascut the challenge time ({@code toaCompTime}, the rooms), which is what On Rate times
- * itself, so a Tombs raid the plugin has only a total for is left out rather than mixed in.
+ * Tombs of Amascut too: the total ({@code raidTime}), not the challenge time ({@code toaCompTime}, the
+ * rooms added up): On Rate counts only the total for Tombs.
  */
 public final class RaidDataImport
 {
@@ -177,7 +177,7 @@ public final class RaidDataImport
 			return;
 		}
 		long when = has(o, "date") ? o.get("date").getAsLong() : 0;
-		int ticks = ticks(o, raid);
+		int ticks = ticks(o);
 		if (when <= 0 || ticks <= 0)
 		{
 			return;
@@ -194,16 +194,10 @@ public final class RaidDataImport
 		}
 	}
 
-	/** The raid's time in ticks: see the class comment for which one. -1 when there is none. */
-	private static int ticks(JsonObject o, String raid)
+	/** The raid's whole time in ticks (see the class comment): -1 when there is none. */
+	private static int ticks(JsonObject o)
 	{
-		switch (raid)
-		{
-			case "toa":
-				return num(o, "toaCompTime");
-			default:
-				return num(o, "raidTime");
-		}
+		return num(o, "raidTime");
 	}
 
 	/**

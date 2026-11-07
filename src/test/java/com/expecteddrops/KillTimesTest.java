@@ -240,17 +240,21 @@ public class KillTimesTest
 	}
 
 	@Test
-	public void tombsUsesTheChallengeTimeWhicheverComesFirst()
+	public void tombsKeepsOnlyTheTotalTimeWhicheverComesFirst()
 	{
 		tracker.onChatMessage("Tombs of Amascut: Expert Mode challenge completion time: <col=ff0000>31:35.40</col>.", now);
 		tracker.onChatMessage("Tombs of Amascut: Expert Mode total completion time: <col=ff0000>36:00.00</col>.", now + 100);
 		tracker.onChatMessage("Your completed Tombs of Amascut: Expert Mode count is: <col=ff0000>50</col>.", now + 600);
-		assertEquals(31 * 60_000 + 35_400, (int) kill("Tombs of Amascut", 50).getDurationMillis());
+		assertEquals(36 * 60_000, (int) kill("Tombs of Amascut", 50).getDurationMillis());
 		// the other way round
-		tracker.onChatMessage("Tombs of Amascut: Expert Mode total completion time: <col=ff0000>36:00.00</col>.", now + 3_600_000);
+		tracker.onChatMessage("Tombs of Amascut: Expert Mode total completion time: <col=ff0000>37:00.00</col>.", now + 3_600_000);
 		tracker.onChatMessage("Tombs of Amascut: Expert Mode challenge completion time: <col=ff0000>30:00.00</col>.", now + 3_600_100);
 		tracker.onChatMessage("Your completed Tombs of Amascut: Expert Mode count is: <col=ff0000>51</col>.", now + 3_600_600);
-		assertEquals(30 * 60_000, (int) kill("Tombs of Amascut", 51).getDurationMillis());
+		assertEquals(37 * 60_000, (int) kill("Tombs of Amascut", 51).getDurationMillis());
+		// a raid with only the challenge time has no time at all
+		tracker.onChatMessage("Tombs of Amascut: Expert Mode challenge completion time: <col=ff0000>30:00.00</col>.", now + 7_200_000);
+		tracker.onChatMessage("Your completed Tombs of Amascut: Expert Mode count is: <col=ff0000>52</col>.", now + 7_200_600);
+		assertNull(kill("Tombs of Amascut", 52).getDurationMillis());
 	}
 
 	@Test

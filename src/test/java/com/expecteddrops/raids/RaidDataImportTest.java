@@ -91,21 +91,21 @@ public class RaidDataImportTest
 	}
 
 	@Test
-	public void tombsUsesTheChallengeTimeAndModeFromTheRaidLevel() throws IOException
+	public void tombsUsesTheTotalTimeAndModeFromTheRaidLevel() throws IOException
 	{
 		File root = tmp.newFolder("rdt");
 		log(root, "toa",
 			line(ME, true, 1000, "\"raidLevel\":300,\"raidTime\":2400,\"toaCompTime\":2100"),
 			line(ME, true, 2000, "\"raidLevel\":150,\"raidTime\":2500,\"toaCompTime\":2200"),
 			line(ME, true, 3000, "\"raidLevel\":50,\"raidTime\":1500,\"toaCompTime\":1300"),
-			// only a total, no challenge time: left out, not mixed in
-			line(ME, true, 4000, "\"raidLevel\":300,\"raidTime\":2400,\"toaCompTime\":-1"),
+			// only a challenge time, no total: left out
+			line(ME, true, 4000, "\"raidLevel\":300,\"raidTime\":-1,\"toaCompTime\":2100"),
 			// no raid level: the mode can't be told
 			line(ME, true, 5000, "\"raidLevel\":-1,\"raidTime\":2400,\"toaCompTime\":2100"));
 		Map<String, List<long[]>> toa = RaidDataImport.read(root, ME).byBoss().get("Tombs of Amascut");
-		assertEquals(2100 * 600L, toa.get("Expert Mode").get(0)[1]);
-		assertEquals(2200 * 600L, toa.get("Normal").get(0)[1]);
-		assertEquals(1300 * 600L, toa.get("Entry Mode").get(0)[1]);
+		assertEquals(2400 * 600L, toa.get("Expert Mode").get(0)[1]);
+		assertEquals(2500 * 600L, toa.get("Normal").get(0)[1]);
+		assertEquals(1500 * 600L, toa.get("Entry Mode").get(0)[1]);
 		assertEquals(3, toa.values().stream().mapToInt(List::size).sum());
 	}
 

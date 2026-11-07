@@ -64,14 +64,13 @@ public class ChatTimesTest
 	}
 
 	@Test
-	public void tombsUsesTheChallengeTimeOverTheTotal()
+	public void tombsCountsOnlyTheTotalTime()
 	{
-		ChatTimes.Reading challenge = ChatTimes.read("Tombs of Amascut: Expert Mode challenge completion time: <col=ff0000>31:35.40</col>. Personal best: 24:19.80");
-		assertEquals(31 * 60_000 + 35_400, challenge.getMillis());
+		// the challenge time leaves out the rooms around the fight: not a time we keep
+		assertNull(ChatTimes.read("Tombs of Amascut: Expert Mode challenge completion time: <col=ff0000>31:35.40</col>. Personal best: 24:19.80"));
 		ChatTimes.Reading total = ChatTimes.read("Tombs of Amascut: Expert Mode total completion time: <col=ff0000>36:00.00</col>");
 		assertEquals(36 * 60_000, total.getMillis());
-		// the total counts the rooms before the fight: it loses to the challenge time
-		assertEquals(true, challenge.getRank() > total.getRank());
+		assertEquals(ChatTimes.RANK_TOTAL, total.getRank());
 	}
 
 	@Test

@@ -17,17 +17,18 @@ public final class ChatTimes
 	public static final int RANK_TOTAL = 3;
 	/** A reading from a plain "duration:" style message. */
 	public static final int RANK_KILL = 2;
-	/** A reading that only counts when nothing better arrives (a "total" that includes more than the fight). */
-	public static final int RANK_WEAK = 1;
 
 	private static final String TIME = "(\\d+(?::\\d{2}){1,2}(?:\\.\\d+)?)";
 	private static final long MAX_MILLIS = 24L * 60 * 60 * 1000;
 
 	/** Chambers of Xeric: "Congratulations - your raid is complete! Team size: 3 players Duration: 26:10.20". */
 	private static final Pattern RAID_COMPLETE = Pattern.compile("your raid is complete!?.*?duration:\\s*" + TIME, Pattern.CASE_INSENSITIVE);
-	/** Tombs of Amascut: "Tombs of Amascut: Expert Mode challenge completion time: 31:35.40". */
+	/** Tombs of Amascut: "Tombs of Amascut: Expert Mode challenge completion time: 31:35.40". Not used: only the total counts. */
 	private static final Pattern CHALLENGE_TIME = Pattern.compile("challenge completion time:\\s*" + TIME, Pattern.CASE_INSENSITIVE);
-	/** "Theatre of Blood total completion time: 23:50.40", "The Fractured Archive: Total completion time: 12:00.00". */
+	/**
+	 * The whole run: "Theatre of Blood total completion time: 23:50.40", "Tombs of Amascut: Expert Mode total
+	 * completion time: 36:00.00", "The Fractured Archive: Total completion time: 12:00.00".
+	 */
 	private static final Pattern TOTAL_TIME = Pattern.compile("total completion time:\\s*" + TIME, Pattern.CASE_INSENSITIVE);
 	/** Bosses, the Gauntlet ("Challenge duration"), Tempoross ("Subdued in"), other timed content. */
 	private static final Pattern KILL_TIME = Pattern.compile(
@@ -76,17 +77,15 @@ public final class ChatTimes
 		{
 			return null;
 		}
+		if (CHALLENGE_TIME.matcher(plain).find())
+		{
+			// Tombs: the challenge time leaves out the rooms around the fight; the total that comes with it is used instead
+			return null;
+		}
 		Reading r = first(RAID_COMPLETE, plain, RANK_TOTAL);
 		if (r == null)
 		{
-			r = first(CHALLENGE_TIME, plain, RANK_TOTAL);
-		}
-		if (r == null)
-		{
-			// the whole Theatre of Blood or Fractured Archive run; a Tombs "total" also counts the
-			// rooms before the fight, so it only counts when the challenge time doesn't come
-			boolean whole = plain.contains("Theatre of Blood") || plain.contains("Fractured Archive");
-			r = first(TOTAL_TIME, plain, whole ? RANK_TOTAL : RANK_WEAK);
+			r = first(TOTAL_TIME, plain, RANK_TOTAL);
 		}
 		if (r == null)
 		{
