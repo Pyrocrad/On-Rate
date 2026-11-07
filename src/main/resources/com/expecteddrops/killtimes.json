@@ -402,6 +402,13 @@
     "Killing Zulrah"
    ],
    "note": "The wiki gives 40 with maximum efficiency."
+  },
+  "Fortis Colosseum": {
+   "kph": 2.5,
+   "guides": [
+    "Completing the Fortis Colosseum (Wave 12)"
+   ],
+   "note": "A run to wave 12; used for a completion of the Colosseum."
   }
  },
  "doom": {

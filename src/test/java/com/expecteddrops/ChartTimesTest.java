@@ -351,4 +351,72 @@ public class ChartTimesTest
 		assertTrue(names.contains("Eternal boots"));
 		assertTrue(names.contains("Occult necklace"));
 	}
+
+	@Test
+	public void theFullChartHasItsSlayerAndCompletionItems()
+	{
+		List<String> names = new ArrayList<>();
+		for (ChartTime t : chart())
+		{
+			names.add(t.getName());
+		}
+		for (String expected : new String[]{"Primordial boots", "Eternal boots", "Amulet of rancour", "Occult necklace", "Ferocious gloves",
+			"Toxic blowpipe", "Dizana's quiver", "Necklace of rupture", "Masori body (f)", "Masori mask (f)", "Masori chaps (f)", "Ancient icon"})
+		{
+			assertTrue(expected + " is on the chart", names.contains(expected));
+		}
+		// the chart's order: the boots before the rancour amulet, the amulet before the Doom items
+		assertTrue(names.indexOf("Primordial boots") < names.indexOf("Amulet of rancour"));
+		assertTrue(names.indexOf("Voidwaker") < names.indexOf("Necklace of rupture"));
+		assertTrue(names.indexOf("Necklace of rupture") < names.indexOf("Toxic blowpipe"));
+		assertTrue(names.indexOf("Ferocious gloves") < names.indexOf("Oathplate armour"));
+		assertTrue(names.indexOf("Dizana's quiver") < names.indexOf("Avernic defender"));
+	}
+
+	@Test
+	public void aColosseumCompletionIsTimedAtTheWikisRunRate()
+	{
+		ChartTime quiver = find("Dizana's quiver");
+		assertNotNull(quiver);
+		// 2.5 runs an hour: 1,440 s
+		assertEquals(1440.0, quiver.getSeconds(), 1e-6);
+		assertEquals("wiki rate", quiver.getSourceTag());
+		assertEquals("completing Fortis Colosseum", quiver.getParts().get(0).getLabel());
+	}
+
+	@Test
+	public void theBlowpipeNeedsZulrahsFang()
+	{
+		ChartTime blowpipe = find("Toxic blowpipe");
+		assertNotNull(blowpipe);
+		assertEquals(drop("Zulrah", "Tanzanite fang").getSecondsPerDrop(), blowpipe.getSeconds(), 1e-6);
+		sync("Zulrah", 300, "Tanzanite fang");
+		assertNull(find("Toxic blowpipe"));
+	}
+
+	@Test
+	public void theSlayerGatedChartItemsFollowTheirBossesLevels()
+	{
+		java.util.Map<String, Integer> level = new java.util.HashMap<>();
+		level.put("Primordial boots", 91);
+		level.put("Eternal boots", 91);
+		level.put("Amulet of rancour", 92);
+		level.put("Occult necklace", 93);
+		level.put("Ferocious gloves", 95);
+		for (java.util.Map.Entry<String, Integer> e : level.entrySet())
+		{
+			List<String> at = new ArrayList<>();
+			for (ChartTime t : ChartTimes.compute(tracker, web, RAIDS, LadlorChart.bundled(), boss -> canFight(boss, e.getValue() - 1)))
+			{
+				at.add(t.getName());
+			}
+			assertFalse(e.getKey() + " is hidden one level short", at.contains(e.getKey()));
+			at.clear();
+			for (ChartTime t : ChartTimes.compute(tracker, web, RAIDS, LadlorChart.bundled(), boss -> canFight(boss, e.getValue())))
+			{
+				at.add(t.getName());
+			}
+			assertTrue(e.getKey() + " shows at its level", at.contains(e.getKey()));
+		}
+	}
 }

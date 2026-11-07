@@ -203,7 +203,7 @@ public class TimePageTest
 		List<String> texts = pick(panel(tracker()), "Ladlor chart");
 		assertTrue(texts.toString(), texts.contains("IN CHART ORDER"));
 		int first = texts.indexOf("Hallowfell");
-		int later = texts.indexOf("Voidwaker");
+		int later = texts.indexOf("Bandos godsword");
 		assertTrue(texts.toString(), first >= 0 && later > first);
 	}
 
@@ -229,7 +229,7 @@ public class TimePageTest
 		List<String> chart = pick(panel(tracker), "Ladlor chart");
 		assertTrue(chart.toString(), chart.contains("yours"));
 		// the chart row says its step and what is missing
-		assertTrue(chart.toString(), chart.contains("Step 14 \u00b7 The Mad Angel"));
+		assertTrue(chart.toString(), chart.contains("Step 15 \u00b7 The Mad Angel"));
 	}
 
 	@Test

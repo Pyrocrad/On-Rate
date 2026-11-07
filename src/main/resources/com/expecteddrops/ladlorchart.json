@@ -1,9 +1,9 @@
 {
  "name": "Ladlor chart",
- "_readme": "The boss drops on the Ladlor ironman progression chart, in the order of the chart (left to right, row by row), read from a screenshot of it. Only chart items that are drops of bosses On Rate tracks are listed; quest, shop and skilling items are left out. Each item lists the drops it needs; a chart item you already have every drop of is not shown. 'step' is the item's place in the chart.",
+ "_readme": "The boss drops on the Ladlor ironman progression chart, in the order of the chart (left to right, row by row), read from screenshots of it. Only chart items that are drops of bosses On Rate tracks (or a completion of one) are listed; quest, shop, skilling and crafted-only items are left out. Each item lists the drops it needs; a chart item you already have every drop of is not shown, and Slayer bosses above your Slayer level are hidden. 'step' is the item's place in the chart.",
  "items": [
   {
-   "step": 14,
+   "step": 15,
    "name": "Hallowfell",
    "icon": "Hallowfell",
    "needs": [
@@ -14,7 +14,7 @@
    ]
   },
   {
-   "step": 23,
+   "step": 24,
    "name": "Crystal armour",
    "icon": "Crystal armour seed",
    "needs": [
@@ -25,7 +25,7 @@
    ]
   },
   {
-   "step": 23,
+   "step": 24,
    "name": "Bow of Faerdhinen",
    "icon": "Enhanced crystal weapon seed",
    "needs": [
@@ -36,7 +36,19 @@
    ]
   },
   {
-   "step": 28,
+   "step": 27,
+   "name": "Ancient icon",
+   "icon": "Ancient icon",
+   "needs": [
+    {
+     "boss": "Phantom Muspah",
+     "drop": "Ancient icon"
+    }
+   ],
+   "note": "Needs the quest Secrets of the North to fight the Phantom Muspah."
+  },
+  {
+   "step": 31,
    "name": "Bandos godsword",
    "icon": "Bandos hilt",
    "needs": [
@@ -48,37 +60,7 @@
    "note": "Also needs three godsword shards, which drop from every God Wars boss and are not counted here."
   },
   {
-   "step": 29,
-   "name": "Voidwaker",
-   "icon": "Voidwaker blade",
-   "needs": [
-    {
-     "boss": "Vet'ion and Calvar'ion",
-     "drop": "Voidwaker blade"
-    },
-    {
-     "boss": "Venenatis and Spindel",
-     "drop": "Voidwaker gem"
-    },
-    {
-     "boss": "Callisto and Artio",
-     "drop": "Voidwaker hilt"
-    }
-   ]
-  },
-  {
-   "step": 31,
-   "name": "Necklace of rupture",
-   "icon": "Elder venator fang",
-   "needs": [
-    {
-     "boss": "Maggot King",
-     "drop": "Elder venator fang"
-    }
-   ]
-  },
-  {
-   "step": 34,
+   "step": 33,
    "name": "Avernic treads",
    "icon": "Avernic treads",
    "needs": [
@@ -89,7 +71,7 @@
    ]
   },
   {
-   "step": 34,
+   "step": 33,
    "name": "Rite of vile transference",
    "icon": "Dossier",
    "needs": [
@@ -102,6 +84,17 @@
   },
   {
    "step": 35,
+   "name": "Primordial boots",
+   "icon": "Primordial crystal",
+   "needs": [
+    {
+     "boss": "Cerberus",
+     "drop": "Primordial crystal"
+    }
+   ]
+  },
+  {
+   "step": 35,
    "name": "Eternal boots",
    "icon": "Eternal crystal",
    "needs": [
@@ -110,6 +103,18 @@
      "drop": "Eternal crystal"
     }
    ]
+  },
+  {
+   "step": 35,
+   "name": "Amulet of rancour",
+   "icon": "Araxyte fang",
+   "needs": [
+    {
+     "boss": "Araxxor",
+     "drop": "Araxyte fang"
+    }
+   ],
+   "note": "Also needs an amulet of torture."
   },
   {
    "step": 35,
@@ -142,10 +147,11 @@
      "boss": "Doom of Mokhaiotl",
      "drop": "Mokhaiotl cloth"
     }
-   ]
+   ],
+   "note": "Also needs a tormented bracelet, which is not counted here."
   },
   {
-   "step": 38,
+   "step": 37,
    "name": "Osmumten's fang",
    "icon": "Osmumten's fang",
    "needs": [
@@ -156,7 +162,7 @@
    ]
   },
   {
-   "step": 38,
+   "step": 37,
    "name": "Lightbearer",
    "icon": "Lightbearer",
    "needs": [
@@ -168,6 +174,59 @@
   },
   {
    "step": 40,
+   "name": "Voidwaker",
+   "icon": "Voidwaker blade",
+   "needs": [
+    {
+     "boss": "Vet'ion and Calvar'ion",
+     "drop": "Voidwaker blade"
+    },
+    {
+     "boss": "Venenatis and Spindel",
+     "drop": "Voidwaker gem"
+    },
+    {
+     "boss": "Callisto and Artio",
+     "drop": "Voidwaker hilt"
+    }
+   ]
+  },
+  {
+   "step": 42,
+   "name": "Necklace of rupture",
+   "icon": "Elder venator fang",
+   "needs": [
+    {
+     "boss": "Maggot King",
+     "drop": "Elder venator fang"
+    }
+   ],
+   "note": "Also needs a necklace of anguish."
+  },
+  {
+   "step": 44,
+   "name": "Toxic blowpipe",
+   "icon": "Tanzanite fang",
+   "needs": [
+    {
+     "boss": "Zulrah",
+     "drop": "Tanzanite fang"
+    }
+   ]
+  },
+  {
+   "step": 45,
+   "name": "Ferocious gloves",
+   "icon": "Hydra leather",
+   "needs": [
+    {
+     "boss": "Alchemical Hydra",
+     "drop": "Hydra leather"
+    }
+   ]
+  },
+  {
+   "step": 48,
    "name": "Oathplate armour",
    "icon": "Oathplate chest",
    "needs": [
@@ -187,7 +246,19 @@
    "route": "oathplate-shards"
   },
   {
-   "step": 41,
+   "step": 49,
+   "name": "Dizana's quiver",
+   "icon": "Dizana's quiver (uncharged)",
+   "needs": [
+    {
+     "boss": "Fortis Colosseum",
+     "kills": 1
+    }
+   ],
+   "note": "A guaranteed reward for completing the Fortis Colosseum."
+  },
+  {
+   "step": 50,
    "name": "Avernic defender",
    "icon": "Avernic defender hilt",
    "needs": [
@@ -198,7 +269,7 @@
    ]
   },
   {
-   "step": 41,
+   "step": 50,
    "name": "Scythe of vitur",
    "icon": "Scythe of vitur (uncharged)",
    "needs": [
@@ -209,7 +280,7 @@
    ]
   },
   {
-   "step": 42,
+   "step": 51,
    "name": "Ultor ring",
    "icon": "Ultor vestige",
    "needs": [
@@ -221,7 +292,7 @@
    "note": "Also needs three chromium ingots, which drop from all four Desert Treasure II bosses and are not counted here."
   },
   {
-   "step": 43,
+   "step": 52,
    "name": "Tumeken's shadow",
    "icon": "Tumeken's shadow (uncharged)",
    "needs": [
@@ -232,7 +303,7 @@
    ]
   },
   {
-   "step": 43,
+   "step": 52,
    "name": "Magus ring",
    "icon": "Magus vestige",
    "needs": [
@@ -244,7 +315,7 @@
    "note": "Also needs three chromium ingots, which drop from all four Desert Treasure II bosses and are not counted here."
   },
   {
-   "step": 44,
+   "step": 53,
    "name": "Twisted bow",
    "icon": "Twisted bow",
    "needs": [
@@ -255,7 +326,7 @@
    ]
   },
   {
-   "step": 44,
+   "step": 53,
    "name": "Ancestral robe top",
    "icon": "Ancestral robe top",
    "needs": [
@@ -266,7 +337,7 @@
    ]
   },
   {
-   "step": 44,
+   "step": 53,
    "name": "Ancestral hat",
    "icon": "Ancestral hat",
    "needs": [
@@ -277,7 +348,7 @@
    ]
   },
   {
-   "step": 44,
+   "step": 53,
    "name": "Dragon claws",
    "icon": "Dragon claws",
    "needs": [
@@ -288,7 +359,7 @@
    ]
   },
   {
-   "step": 44,
+   "step": 53,
    "name": "Ancestral robe bottom",
    "icon": "Ancestral robe bottom",
    "needs": [
@@ -299,7 +370,7 @@
    ]
   },
   {
-   "step": 44,
+   "step": 53,
    "name": "Elder maul",
    "icon": "Elder maul",
    "needs": [
@@ -310,40 +381,43 @@
    ]
   },
   {
-   "step": 45,
-   "name": "Masori body",
-   "icon": "Masori body",
+   "step": 54,
+   "name": "Masori body (f)",
+   "icon": "Masori body (f)",
    "needs": [
     {
      "boss": "Tombs of Amascut",
      "drop": "Masori body"
     }
-   ]
+   ],
+   "note": "Fortified: the base piece plus four Armadylean plates (Crafting 90); the plates are not counted here."
   },
   {
-   "step": 45,
-   "name": "Masori mask",
-   "icon": "Masori mask",
+   "step": 54,
+   "name": "Masori mask (f)",
+   "icon": "Masori mask (f)",
    "needs": [
     {
      "boss": "Tombs of Amascut",
      "drop": "Masori mask"
     }
-   ]
+   ],
+   "note": "Fortified: the base piece plus four Armadylean plates (Crafting 90); the plates are not counted here."
   },
   {
-   "step": 45,
-   "name": "Masori chaps",
-   "icon": "Masori chaps",
+   "step": 54,
+   "name": "Masori chaps (f)",
+   "icon": "Masori chaps (f)",
    "needs": [
     {
      "boss": "Tombs of Amascut",
      "drop": "Masori chaps"
     }
-   ]
+   ],
+   "note": "Fortified: the base piece plus four Armadylean plates (Crafting 90); the plates are not counted here."
   },
   {
-   "step": 45,
+   "step": 54,
    "name": "Elidinis' ward",
    "icon": "Elidinis' ward",
    "needs": [

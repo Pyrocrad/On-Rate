@@ -50,7 +50,7 @@ public final class ChartTimes
 			{
 				continue;
 			}
-			ChartTime t = timeOf(tracker, raids, byBoss, item);
+			ChartTime t = timeOf(tracker, web, raids, byBoss, item);
 			if (t != null)
 			{
 				result.add(t);
@@ -60,7 +60,8 @@ public final class ChartTimes
 	}
 
 	/** Null when you have everything the item needs. */
-	private static ChartTime timeOf(Tracker tracker, RaidSettings raids, Map<String, Map<String, ItemTime>> byBoss, LadlorChart.Item item)
+	private static ChartTime timeOf(Tracker tracker, com.expecteddrops.data.KillTimes web, RaidSettings raids,
+		Map<String, Map<String, ItemTime>> byBoss, LadlorChart.Item item)
 	{
 		List<ChartTime.Part> parts = new ArrayList<>();
 		// the missing drops of each boss, which come on the same kills
@@ -100,13 +101,22 @@ public final class ChartTimes
 				BossStats stats = tracker.stats(need.getBoss(), raids);
 				int done = stats == null ? 0 : stats.getKillCount();
 				int left = Math.max(0, need.getKills() - done);
-				String label = need.getKills() + " " + need.getBoss() + " kills";
+				String label = need.getKills() == 1 ? "completing " + need.getBoss() : need.getKills() + " " + need.getBoss() + " kills";
 				ItemTime any = rows == null || rows.isEmpty() ? null : rows.values().iterator().next();
+				// the time of a kill: from the boss's drop rows, or the wiki's rate for a boss with none (a Colosseum run)
+				double perKill = any != null ? any.getSecondsPerKill() : Double.NaN;
+				boolean wiki = any == null || any.isEstimated();
+				boolean own = any != null && any.usesOwnTimes();
+				if (any == null)
+				{
+					com.expecteddrops.data.KillTimes.Estimate e = web.forBoss(need.getBoss(), null);
+					perKill = e == null ? Double.NaN : e.getSecondsPerKill();
+				}
 				if (left == 0)
 				{
 					parts.add(new ChartTime.Part(label, need.getBoss(), true, 0, Double.NaN, Double.NaN));
 				}
-				else if (any == null)
+				else if (Double.isNaN(perKill))
 				{
 					parts.add(new ChartTime.Part(label, need.getBoss(), false, Double.NaN, Double.NaN, Double.NaN));
 					unknown = true;
@@ -114,12 +124,12 @@ public final class ChartTimes
 				}
 				else
 				{
-					double s = left * any.getSecondsPerKill();
-					parts.add(new ChartTime.Part(label + " (" + left + " to go)", need.getBoss(), false, s, Double.NaN, any.getSecondsPerKill()));
+					double s = left * perKill;
+					parts.add(new ChartTime.Part(label + (need.getKills() > 1 ? " (" + left + " to go)" : ""), need.getBoss(), false, s, Double.NaN, perKill));
 					seconds += s;
 					anythingMissing = true;
-					estimated |= any.isEstimated();
-					usesOwn |= any.usesOwnTimes();
+					estimated |= wiki;
+					usesOwn |= own;
 				}
 			}
 		}
