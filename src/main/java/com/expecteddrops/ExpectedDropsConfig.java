@@ -79,7 +79,7 @@ public interface ExpectedDropsConfig extends Config
 
 	@ConfigSection(
 		name = "Display",
-		description = "What the panel and overlay show",
+		description = "What the panel shows",
 		position = 6
 	)
 	String displaySection = "display";
@@ -158,18 +158,6 @@ public interface ExpectedDropsConfig extends Config
 	default boolean showTrip()
 	{
 		return true;
-	}
-
-	@ConfigItem(
-		keyName = "showOverlay",
-		name = "In-game overlay",
-		description = "Show a small box on the game screen with this trip's kills, uniques, expected and luck while you kill a boss. Not shown at raids, the Inferno or the Fight Caves.",
-		position = 13,
-		section = displaySection
-	)
-	default boolean showOverlay()
-	{
-		return false;
 	}
 
 	@ConfigItem(

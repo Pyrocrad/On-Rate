@@ -185,16 +185,6 @@ public class ExpectedDropsPanel extends PluginPanel
 	/** Opens or closes the Luck over time section (remembered; see {@link #setGraphOpener}). */
 	private java.util.function.Consumer<Boolean> setGraphOpen = open -> { };
 	private final JLabel graphTitle = new JLabel();
-	/** Once, during a long trip: a line on the trip card offering the in-game overlay. */
-	private JLabel overlayOfferLabel;
-	private BooleanSupplier overlayOn = () -> true;
-	private BooleanSupplier overlayOfferSeen = () -> true;
-	private Runnable markOverlayOfferSeen = () -> { };
-	private Runnable turnOnOverlay = () -> { };
-	private boolean overlayOfferOnScreen;
-	/** A trip this long (kills, or minutes) is when the overlay is worth offering. */
-	static final int OVERLAY_OFFER_KILLS = 30;
-	static final int OVERLAY_OFFER_MINUTES = 45;
 	private final JLabel summaryLabel = new JLabel();
 	private final JLabel levelsLabel = new JLabel();
 	private final JButton expectedTab = new JButton("Expected");
@@ -773,16 +763,8 @@ public class ExpectedDropsPanel extends PluginPanel
 	/** Recomputes and redraws the selected page (see {@link #refresh()}). */
 	private void draw()
 	{
-		// the graph offer was on screen and this redraw may move on from it (see the end)
-		boolean overlayWasOnScreen = overlayOfferOnScreen && overlayOfferLabel != null && overlayOfferLabel.isShowing();
-		overlayOfferOnScreen = false;
 		drawPage();
 		updateFooter();
-		// seen, and the player went on to another page or tab: never again on this account
-		if (overlayWasOnScreen && !overlayOfferOnScreen)
-		{
-			markOverlayOfferSeen.run();
-		}
 	}
 
 	/** Whether the one-time notice about the times feature is still due, and marking it shown. */
@@ -919,19 +901,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		accountTab = TAB_ITEMS;
 		topMode = TOP_TIME;
 		showBoss(ACCOUNT);
-	}
-
-	/**
-	 * The overlay offer: during a long trip at one boss, one line on the trip card that turns
-	 * the in-game overlay on when clicked. Shown once per account (remembered as for the graph
-	 * offer), never when the overlay is on, and not in a session that already showed a tip.
-	 */
-	public void setOverlayOffer(BooleanSupplier on, BooleanSupplier seen, Runnable markSeen, Runnable turnOn)
-	{
-		overlayOn = on == null ? () -> true : on;
-		overlayOfferSeen = seen == null ? () -> true : seen;
-		markOverlayOfferSeen = markSeen == null ? () -> { } : markSeen;
-		turnOnOverlay = turnOn == null ? () -> { } : turnOn;
 	}
 
 	/**
@@ -4984,12 +4953,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		});
 		foot.add(reset, BorderLayout.EAST);
 		card.add(foot);
-		// the overlay is not shown at raids, the Inferno or the Fight Caves, so it is not offered there
-		if ((tripBoss == null || !Tracker.isLongRun(tripBoss))
-			&& (trip.getKills() >= OVERLAY_OFFER_KILLS || minutes >= OVERLAY_OFFER_MINUTES))
-		{
-			addOverlayOffer(card);
-		}
 		card.setMaximumSize(new Dimension(Integer.MAX_VALUE, card.getPreferredSize().height));
 		rowsPanel.add(card);
 		rowsPanel.add(spacer(Theme.M));
@@ -5043,37 +5006,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		lastUniqueLabel.setText(Theme.wrap(html(text), Theme.TEXT_WIDTH));
 		lastUniqueLabel.setToolTipText("From History: the drops On Rate saw since you installed it. Items you left out don't count.");
 		lastUniqueLabel.setVisible(true);
-	}
-
-	/** The overlay offer line at the bottom of a long trip's card, when it's due (see {@link #setOverlayOffer}). */
-	private void addOverlayOffer(JPanel card)
-	{
-		if (overlayOn.getAsBoolean() || overlayOfferSeen.getAsBoolean())
-		{
-			return;
-		}
-		JLabel offer = smallLabel(Theme.wrap("Long trip? The in-game overlay shows this on screen. Click to turn it on.",
-			Theme.TEXT_WIDTH - 30), Theme.TEXT_MUTED);
-		offer.setIcon(Theme.infoIcon());
-		offer.setVerticalTextPosition(SwingConstants.TOP);
-		offer.setAlignmentX(LEFT_ALIGNMENT);
-		offer.setBorder(new EmptyBorder(Theme.S, 0, 0, 0));
-		offer.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-		offer.setToolTipText("Turns on In-game overlay in the settings (Display). This note shows only once.");
-		offer.addMouseListener(new MouseAdapter()
-		{
-			@Override
-			public void mouseClicked(MouseEvent e)
-			{
-				overlayOfferOnScreen = false;
-				offer.setVisible(false);
-				markOverlayOfferSeen.run();
-				turnOnOverlay.run();
-			}
-		});
-		card.add(offer);
-		overlayOfferLabel = offer;
-		overlayOfferOnScreen = true;
 	}
 
 	/** "<br><br>Most of it is the Crystal tool seed (95%)." for the value hover, or "" when it's spread out. */
@@ -5222,10 +5154,10 @@ public class ExpectedDropsPanel extends PluginPanel
 		welcomeProgressPanel = progress;
 		welcomePanel.add(progress);
 
-		JButton gotIt = new JButton("Hide guide and open settings");
+		JButton gotIt = new JButton("Hide guide");
 		gotIt.setFont(FontManager.getRunescapeSmallFont());
 		gotIt.setFocusPainted(false);
-		gotIt.setToolTipText("Hides this guide and opens On Rate's settings. Turn the guide back on there with 'Show welcome guide'.");
+		gotIt.setToolTipText("Hides this guide. Turn it back on in On Rate's settings with 'Show welcome guide'.");
 		gotIt.addActionListener(e ->
 		{
 			dismissWelcome.run();

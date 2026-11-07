@@ -54,11 +54,10 @@ Prefer something else than the bars? Pick another **Item view** in the settings 
 
 ### Extras
 
-The trip card is on by default; the overlay is off. Change them in the settings under **Display**. Luck over time opens and closes from the panel itself.
+The trip card is on by default. Change it in the settings under **Display**. Luck over time opens and closes from the panel itself.
 
 - **Luck over time:** your account's luck over time, one point per day you play, in the account overview. Click its title to open or close it; it stays the way you left it. On Rate saves a point every day even while it's closed, so it has data when you open it.
 - **This trip card:** kills, uniques and expected for your current trip on the boss page, plus kills per hour, the drops you got and what the uniques should be worth per hour at that speed ("Unique value: ~1.2m/h expected"). That value only counts uniques, not normal loot like bones or hides. A trip ends when you kill another boss, after 30 minutes without a kill (2 hours for raids, the Inferno and the Fight Caves, where one run can take longer), or with the *Start a new trip* button.
-- **In-game overlay:** a small box on the game screen while you kill a boss: this trip's kills and uniques, expected and trip luck. It is not shown at raids, the Inferno or the Fight Caves, where one run takes too long for it to stay current. During a long trip (30 kills or 45 minutes at one boss) the trip card offers it once with a one-line note; click the note to turn the overlay on.
 - **Colour-blind colours:** orange to blue instead of red to green.
 
 ## Supported bosses
@@ -82,14 +81,14 @@ Bosses that share a collection log page are shown together, just like in the log
 Open the settings with the cog next to **On Rate** in the Configuration panel.
 
 - **Follow last kill:** switch the panel to the boss you just killed. On by default.
-- **Show welcome guide:** show the getting-started steps at the top of the panel. *Hide guide and open settings* turns this off and opens these settings; turn it back on here.
+- **Show welcome guide:** show the getting-started steps at the top of the panel. *Hide guide* turns this off; turn it back on here.
 - **Chat messages** (own section): **Sync reminders**, **Drop messages** and **Dry milestone messages**.
 - **Sync reminders:** the chat reminder after killing a boss that isn't synced yet. On by default.
 - **Drop messages:** a chat line when you get a unique, saying how many kills it took, and a summary line when a trip of 3 or more kills ends. On by default.
 - **Dry milestone messages:** a chat line when you pass 2x, 3x, 5x or 10x the drop rate dry on an item. On by default.
 - **Items tab:** the Items tab on the account overview (your driest and luckiest items, pets and single drops). On by default.
 - **GP value:** the GP value tile (see [Account overview](#account-overview)). On by default.
-- **Trip card**, **In-game overlay** and **Colour-blind colours**: see [Extras](#extras). The trip card is on by default.
+- **Trip card** and **Colour-blind colours**: see [Extras](#extras). The trip card is on by default.
 - **Count your team:** at Nex, Yama, the Hueycoatl, the Corporeal Beast and Zalcano, On Rate counts the players within 15 tiles of you at each kill and gives you that share of the kill: a quarter with four players, a half in a duo. The boss's page says how many kills it saw and the average team size. Kills from before On Rate counted use the team of the first kill it counted (Yama uses its own setting below), and the pet chance doesn't scale (except at Corp, where only the top damager gets loot). At Zalcano only the crystal tool seed is shared; shards and the pet are rolled for each player. On by default.
 - **Royal Titans: how you kill them:** kills count as **duo** kills unless you change it to **Solo** or **Some of each**. With *Some of each*, also enter how many of your kills were solo; the rest count as duo. In a duo you get about half the uniques of a solo kill, while the pet chance stays the same.
 - **Yama: earlier kills:** how you killed Yama before On Rate could count your team: **duo** by default, or **Solo** or **Some of each** (with your number of solo kills). Kills from then on use the counted team size.

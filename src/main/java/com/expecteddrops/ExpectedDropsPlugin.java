@@ -9,11 +9,7 @@ import com.expecteddrops.stats.RaidSettings;
 import com.expecteddrops.tracking.ClogPage;
 import com.expecteddrops.tracking.Tracker;
 import com.expecteddrops.tracking.TrackerState;
-import com.expecteddrops.stats.BossStats;
-import com.expecteddrops.stats.DropMath;
-import com.expecteddrops.tracking.TripStats;
 import com.expecteddrops.ui.ExpectedDropsPanel;
-import com.expecteddrops.ui.Palette;
 import com.expecteddrops.ui.ViewOptions;
 import com.google.gson.Gson;
 import com.google.inject.Provides;
@@ -40,7 +36,6 @@ import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.ItemComposition;
-import net.runelite.api.MenuAction;
 import net.runelite.api.NPC;
 import net.runelite.api.Player;
 import net.runelite.api.ScriptID;
@@ -68,7 +63,6 @@ import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
-import net.runelite.client.events.OverlayMenuClicked;
 import net.runelite.client.events.RuneScapeProfileChanged;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.ItemStack;
@@ -77,8 +71,6 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.loottracker.LootReceived;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
-import net.runelite.client.ui.overlay.OverlayManager;
-import net.runelite.client.ui.overlay.OverlayMenuEntry;
 import net.runelite.client.util.ImageUtil;
 
 @PluginDescriptor(
@@ -136,13 +128,6 @@ public class ExpectedDropsPlugin extends Plugin
 
 	@Inject
 	private ScheduledExecutorService executor;
-
-	@Inject
-	private OverlayManager overlayManager;
-
-	private OnRateOverlay overlay;
-	/** What the overlay shows; worked out after each kill on the client thread. */
-	private volatile OverlayInfo overlayInfo;
 
 	/** Reads raid points at the end of each raid (see RaidPointsReader for the credits). */
 	private RaidPointsReader raidPoints;
@@ -215,10 +200,6 @@ public class ExpectedDropsPlugin extends Plugin
 		panel.setGraphOpener(open -> configManager.setConfiguration(ExpectedDropsConfig.GROUP, "showLuckGraph", String.valueOf(open)));
 		panel.setAccountPageStore(config.accountPage(),
 			page -> configManager.setConfiguration(ExpectedDropsConfig.GROUP, "accountPage", page));
-		panel.setOverlayOffer(config::showOverlay,
-			() -> "true".equals(configManager.getRSProfileConfiguration(ExpectedDropsConfig.GROUP, OVERLAY_OFFER_KEY)),
-			() -> configManager.setRSProfileConfiguration(ExpectedDropsConfig.GROUP, OVERLAY_OFFER_KEY, "true"),
-			() -> configManager.setConfiguration(ExpectedDropsConfig.GROUP, "showOverlay", "true"));
 
 		BufferedImage icon = ImageUtil.loadImageResource(getClass(), "panel_icon.png");
 		navButton = NavigationButton.builder()
@@ -228,9 +209,6 @@ public class ExpectedDropsPlugin extends Plugin
 			.panel(panel)
 			.build();
 		clientToolbar.addNavigation(navButton);
-
-		overlay = new OnRateOverlay(this, config, () -> overlayInfo);
-		overlayManager.add(overlay);
 
 		prepareTimesNotice();
 		openPanelOnce();
@@ -258,12 +236,6 @@ public class ExpectedDropsPlugin extends Plugin
 			eventBus.unregister(raidPoints);
 			raidPoints = null;
 		}
-		if (overlay != null)
-		{
-			overlayManager.remove(overlay);
-			overlay = null;
-		}
-		overlayInfo = null;
 		clientToolbar.removeNavigation(navButton);
 		navButton = null;
 		panel = null;
@@ -354,8 +326,6 @@ public class ExpectedDropsPlugin extends Plugin
 
 	/** Saved once On Rate has opened its panel for a new player. */
 	private static final String FIRST_RUN_KEY = "firstRunDone";
-	/** Per account: the one-time offer of the in-game overlay was seen (see ExpectedDropsPanel#setOverlayOffer). */
-	private static final String OVERLAY_OFFER_KEY = "overlayOfferSeen";
 
 	/**
 	 * The very first time On Rate starts for a player, open its panel so they see the
@@ -370,22 +340,6 @@ public class ExpectedDropsPlugin extends Plugin
 		configManager.setConfiguration(ExpectedDropsConfig.GROUP, FIRST_RUN_KEY, "true");
 		NavigationButton button = navButton;
 		SwingUtilities.invokeLater(() -> clientToolbar.openPanel(button));
-	}
-
-	/**
-	 * Opens On Rate's settings, so a new player sees the choices that change their numbers
-	 * (luck view, duo bosses, raid chances) right after the welcome guide. RuneLite's own
-	 * config plugin opens the panel for this event, just like "Configure" on an overlay.
-	 */
-	private void openSettings()
-	{
-		OnRateOverlay forPlugin = overlay;
-		if (forPlugin == null)
-		{
-			return;
-		}
-		SwingUtilities.invokeLater(() -> eventBus.post(new OverlayMenuClicked(
-			new OverlayMenuEntry(MenuAction.RUNELITE_OVERLAY_CONFIG, "Configure", "On Rate"), forPlugin)));
 	}
 
 	/** Players within this many tiles of you at a group boss kill count as your team. */
@@ -478,53 +432,6 @@ public class ExpectedDropsPlugin extends Plugin
 	{
 		return new ViewOptions(config.itemView(), config.showGeValue(), config.showLuckGraph(),
 			config.showTrip(), config.colourBlind(), config.showTopItems());
-	}
-
-	/** This trip at the boss you are killing, for the overlay. */
-	private void updateOverlayInfo()
-	{
-		TripStats trip = tracker.tripStats();
-		if (trip == null)
-		{
-			overlayInfo = null;
-			return;
-		}
-		BossStats stats = tracker.stats(trip.getBoss(), raidSettings());
-		if (stats == null || Tracker.isLongRun(stats.getBoss()))
-		{
-			// a raid, the Inferno or the Fight Caves takes too long for the box to stay up to date
-			overlayInfo = null;
-			return;
-		}
-		Palette.setColourBlind(config.colourBlind());
-		String units = Tracker.unit(stats.getBoss());
-		String one = Tracker.unitOne(stats.getBoss());
-		String tripText = String.format(java.util.Locale.ROOT, "%,d %s \u00b7 %d unique%s", trip.getKills(), trip.getKills() == 1 ? one : units,
-			trip.getReceived(), trip.getReceived() == 1 ? "" : "s");
-		double tripLuck = trip.getLuck();
-		String tripExpected = trip.getExpected() >= 10 ? String.format(java.util.Locale.ROOT, "%.1f", trip.getExpected())
-			: String.format(java.util.Locale.ROOT, "%.2f", trip.getExpected());
-		overlayInfo = new OverlayInfo(trip.getBoss(), tripText, tripExpected,
-			Double.isNaN(tripLuck) ? "-" : DropMath.verdict(tripLuck),
-			Double.isNaN(tripLuck) ? java.awt.Color.WHITE : Palette.luck(tripLuck).brighter(),
-			trip.getLastMillis());
-	}
-
-	/** Item names that fit the overlay: cut at a word, "Deadeye prayer scroll" becomes "Deadeye prayer...". */
-	static String shortName(String label)
-	{
-		return shortName(label, 18);
-	}
-
-	/** Same, cut to {@code max} characters (the overlay's driest line shares its row with the streak). */
-	static String shortName(String label, int max)
-	{
-		if (label.length() <= max)
-		{
-			return label;
-		}
-		int cut = label.lastIndexOf(' ', max - 3);
-		return label.substring(0, cut > 0 ? cut : max - 3) + "...";
 	}
 
 	RaidSettings raidSettings()
@@ -1047,8 +954,6 @@ public class ExpectedDropsPlugin extends Plugin
 			return;
 		}
 		recordHistoryPoint(false);
-		// also when raid points come in after the kill, so the overlay shows them
-		updateOverlayInfo();
 		save();
 		refreshPrices(false);
 		if (fromKill)
@@ -1116,11 +1021,10 @@ public class ExpectedDropsPlugin extends Plugin
 		postChat(reminder);
 	}
 
-	/** "Got it" on the welcome guide: hide it, then show the settings it talks about. */
+	/** "Hide guide" on the welcome guide: turn it off (it can be turned back on in the settings). */
 	private void dismissWelcome()
 	{
 		configManager.setConfiguration(ExpectedDropsConfig.GROUP, "showWelcome", "false");
-		openSettings();
 	}
 
 	private void loadProfile()
