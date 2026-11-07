@@ -184,7 +184,7 @@
      "drop": "Oathplate legs"
     }
    ],
-   "note": "Oathplate shards from Yama can replace a piece; not counted here."
+   "route": "oathplate-shards"
   },
   {
    "step": 41,

@@ -51,6 +51,7 @@ public final class LadlorChart
 		private String icon;
 		private List<Need> needs;
 		private String note;
+		private String route;
 
 		/** Its place in the chart: items of one step share a number. */
 		public int getStep()
@@ -78,6 +79,12 @@ public final class LadlorChart
 		public String getNote()
 		{
 			return note;
+		}
+
+		/** A second way to get the item with its own explanation ("oathplate-shards"), or null. */
+		public String getRoute()
+		{
+			return route;
 		}
 	}
 

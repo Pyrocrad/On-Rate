@@ -135,9 +135,14 @@ public final class ItemTimes
 			{
 				continue;
 			}
-			out.add(new ItemTime(boss.getName(), row.getShownLabel(), row.getIconItem(), drop != null && drop.isPet(),
+			ItemTime item = new ItemTime(boss.getName(), row.getShownLabel(), row.getIconItem(), drop != null && drop.isPet(),
 				hasAny(row), time.seconds / chance, time.seconds, chance, time.estimated, time.usesOwn, time.lowConfidence,
-				boss.getRaid() != null, time.basis, unit(boss)));
+				boss.getRaid() != null, time.basis, unit(boss));
+			if ("Yama".equals(boss.getName()) && row.getIconItem() != null && row.getIconItem().startsWith("Oathplate ") && !hasAny(row))
+			{
+				item.withHint(OathplateShards.describe(new double[]{chance}, time.seconds));
+			}
+			out.add(item);
 		}
 	}
 

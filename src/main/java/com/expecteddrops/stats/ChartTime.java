@@ -72,6 +72,7 @@ public class ChartTime
 	private final double seconds;
 	private final boolean estimated;
 	private final boolean usesOwn;
+	private String route;
 
 	ChartTime(int step, String name, String icon, String note, List<Part> parts, double seconds, boolean estimated, boolean usesOwn)
 	{
@@ -83,6 +84,18 @@ public class ChartTime
 		this.seconds = seconds;
 		this.estimated = estimated;
 		this.usesOwn = usesOwn;
+	}
+
+	/** A second way to get the item, explained for the hover (Oathplate shards), or null. */
+	public String getRoute()
+	{
+		return route;
+	}
+
+	ChartTime withRoute(String route)
+	{
+		this.route = route;
+		return this;
 	}
 
 	/** Its place in the chart. */

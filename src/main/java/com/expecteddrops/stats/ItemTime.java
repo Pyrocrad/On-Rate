@@ -22,6 +22,7 @@ public class ItemTime
 	private final boolean raid;
 	private final String basis;
 	private final String unit;
+	private String hint;
 
 	ItemTime(String boss, String label, String iconItem, boolean pet, boolean have, double secondsPerDrop,
 		double secondsPerKill, double chancePerKill, boolean estimated, boolean usesOwn, boolean lowConfidence, boolean raid, String basis, String unit)
@@ -40,6 +41,18 @@ public class ItemTime
 		this.raid = raid;
 		this.basis = basis;
 		this.unit = unit;
+	}
+
+	/** An extra line for the hover about another way to get the item (Oathplate shards), or null. */
+	public String getHint()
+	{
+		return hint;
+	}
+
+	ItemTime withHint(String hint)
+	{
+		this.hint = hint;
+		return this;
 	}
 
 	public String getBoss()

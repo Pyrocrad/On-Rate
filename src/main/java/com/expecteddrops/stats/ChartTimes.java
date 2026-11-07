@@ -136,8 +136,18 @@ public final class ChartTimes
 			}
 			seconds += expectedKillsForAll(chances) * group.get(0).getSecondsPerKill();
 		}
-		return new ChartTime(item.getStep(), item.getName(), item.getIcon(), item.getNote(), parts,
+		ChartTime result = new ChartTime(item.getStep(), item.getName(), item.getIcon(), item.getNote(), parts,
 			unknown ? Double.NaN : seconds, estimated, usesOwn);
+		if ("oathplate-shards".equals(item.getRoute()))
+		{
+			List<ItemTime> yama = missingAtBoss.get("Yama");
+			if (yama != null && !yama.isEmpty())
+			{
+				result.withRoute(OathplateShards.describe(yama.stream().mapToDouble(ItemTime::getChancePerKill).toArray(),
+					yama.get(0).getSecondsPerKill()));
+			}
+		}
+		return result;
 	}
 
 	/** The time for everything the listed chart items still need, and how many items had no time and are left out of it. */

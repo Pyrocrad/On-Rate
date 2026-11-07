@@ -2716,6 +2716,10 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			tip.line("The wiki figure rests on a thin source.", Theme.TEXT_MUTED);
 		}
+		if (t.getHint() != null)
+		{
+			tip.line(t.getHint(), Theme.TEXT_MUTED);
+		}
 		tip.note(t.getBasis());
 		return timeRowPanel(t.getIconItem(), t.getLabel(), t.getBoss(), time, t.isEstimated(), t.getSecondsPerDrop(),
 			t.getSourceTag(), tip.wide(), () -> showBoss(t.getBoss()));
@@ -2760,6 +2764,10 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			tip.row(part.getLabel() + " (" + part.getBoss() + ")", part.isHave() ? "you have it"
 				: Double.isNaN(part.getSeconds()) ? "no estimate" : com.expecteddrops.stats.ItemTime.formatLong(part.getSeconds()));
+		}
+		if (t.getRoute() != null)
+		{
+			tip.line(t.getRoute(), Theme.TEXT_MUTED);
 		}
 		tip.note(t.getNote() != null ? t.getNote()
 			: "Each part's time is the wiki's rate or your own times, as its row on the Items list says.");
