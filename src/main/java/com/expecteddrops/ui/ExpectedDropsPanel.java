@@ -139,6 +139,8 @@ public class ExpectedDropsPanel extends PluginPanel
 	public static final int TOP_PETS = 2;
 	/** Items tab view of single drops: luckiest drops and longest waits. */
 	public static final int TOP_DROPS = 3;
+	/** Items tab view of the average time to get each item you don't have. */
+	public static final int TOP_TIME = 4;
 	/** Pets shown per group in the Items tab: the luckiest ones you have, the driest ones you don't. */
 	static final int TOP_PETS_SHOWN = 5;
 	/** Account overview: showing the Items tab (the top items) instead of the bosses. */
@@ -824,7 +826,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				{
 					accountTab = tab;
 				}
-				if (top >= TOP_DRIEST && top <= TOP_DROPS)
+				if (top >= TOP_DRIEST && top <= TOP_TIME)
 				{
 					topMode = top;
 				}
@@ -2475,19 +2477,24 @@ public class ExpectedDropsPanel extends PluginPanel
 	{
 		// a segmented control, visibly a level below the Bosses / Items / Recent tabs
 		boolean itemsPage = topMode == TOP_DRIEST || topMode == TOP_LUCKIEST;
-		JPanel switcher = new JPanel(new GridLayout(1, 3, Theme.HAIR, 0));
+		JPanel switcher = new JPanel(new GridLayout(2, 2, Theme.HAIR, Theme.HAIR));
 		switcher.setBackground(Theme.SURFACE);
 		switcher.setAlignmentX(LEFT_ALIGNMENT);
 		switcher.setBorder(new EmptyBorder(Theme.HAIR, Theme.HAIR, Theme.HAIR, Theme.HAIR));
 		switcher.add(topSwitch("Items", itemsPage, TOP_DRIEST));
 		switcher.add(topSwitch("Pets", topMode == TOP_PETS, TOP_PETS));
 		switcher.add(topSwitch("Single drops", topMode == TOP_DROPS, TOP_DROPS));
-		switcher.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
+		switcher.add(topSwitch("Time", topMode == TOP_TIME, TOP_TIME));
+		switcher.setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
 		rowsPanel.add(spacer(Theme.S));
 		rowsPanel.add(switcher);
 		rowsPanel.add(spacer(Theme.S));
 
-		if (topMode == TOP_DROPS)
+		if (topMode == TOP_TIME)
+		{
+			renderTimes();
+		}
+		else if (topMode == TOP_DROPS)
 		{
 			renderDropLists(account);
 		}
@@ -2499,6 +2506,90 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			renderItemLists(account, view);
 		}
+	}
+
+	/** The Time page: show the whole list instead of the fastest {@link #DROPS_SHOWN}. */
+	private boolean timesAll;
+
+	/**
+	 * The Time page: how long, on average, each item you don't have takes to get, fastest first.
+	 * The time of a kill is your own average once you have enough timed kills, else an estimate
+	 * from the OSRS Wiki's money-making guides; the chance is yours (raids from your points, Doom
+	 * from the delve levels you did).
+	 */
+	private void renderTimes()
+	{
+		List<com.expecteddrops.stats.ItemTime> todo = new ArrayList<>();
+		for (com.expecteddrops.stats.ItemTime t : com.expecteddrops.stats.ItemTimes.compute(tracker,
+			com.expecteddrops.data.KillTimes.bundled(), raidSettings.get()))
+		{
+			if (!t.isHave())
+			{
+				todo.add(t);
+			}
+		}
+		todo.sort(java.util.Comparator.comparingDouble(com.expecteddrops.stats.ItemTime::getSecondsPerDrop));
+		JLabel note = smallLabel("<html><body style='width: 170px'>Average time to get an item you don't have yet. "
+			+ "<b>~</b> is an estimate: your own average takes over after " + com.expecteddrops.stats.ItemTimes.MIN_TIMED_RAIDS
+			+ " timed raids or " + com.expecteddrops.stats.ItemTimes.MIN_TIMED_KILLS + " timed kills.</body></html>", Theme.TEXT_MUTED);
+		note.setAlignmentX(LEFT_ALIGNMENT);
+		rowsPanel.add(note);
+		if (todo.isEmpty())
+		{
+			JLabel none = smallLabel("<html><body style='width: 170px'>No times yet. They appear for bosses with a known "
+				+ "pace, and for every boss once you have enough timed kills.</body></html>",
+				ColorScheme.LIGHT_GRAY_COLOR);
+			none.setAlignmentX(LEFT_ALIGNMENT);
+			none.setBorder(new EmptyBorder(Theme.M, 0, 0, 0));
+			rowsPanel.add(none);
+			return;
+		}
+		int shown = timesAll ? todo.size() : Math.min(DROPS_SHOWN, todo.size());
+		dropListTitle("FASTEST ITEMS", shown, todo.size(), () -> timesAll = !timesAll,
+			"The average time to get one of each item you don't have yet, quickest first. Fight times from the game don't "
+				+ "include banking or walking, so your real time is a little longer than a time based on your own kills.");
+		for (com.expecteddrops.stats.ItemTime t : todo.subList(0, shown))
+		{
+			rowsPanel.add(spacer(Theme.HAIR));
+			rowsPanel.add(timeRow(t));
+		}
+	}
+
+	/** An item, its boss and the average time to get it: "~" and grey when the time per kill is an estimate. */
+	private JPanel timeRow(com.expecteddrops.stats.ItemTime t)
+	{
+		JPanel panel = new JPanel(new BorderLayout(4, 0));
+		panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		panel.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createMatteBorder(0, 0, 1, 0, ColorScheme.DARK_GRAY_COLOR), new EmptyBorder(Theme.HAIR, Theme.S, Theme.HAIR, Theme.S)));
+		panel.setAlignmentX(LEFT_ALIGNMENT);
+		panel.add(itemIcon(t.getIconItem(), t.getLabel(), 20), BorderLayout.WEST);
+		JPanel names = new JPanel();
+		names.setOpaque(false);
+		names.setLayout(new javax.swing.BoxLayout(names, javax.swing.BoxLayout.Y_AXIS));
+		JLabel item = smallLabel(t.getLabel(), Color.WHITE);
+		item.setAlignmentX(LEFT_ALIGNMENT);
+		JLabel boss = smallLabel(t.getBoss(), Theme.TEXT_MUTED);
+		boss.setAlignmentX(LEFT_ALIGNMENT);
+		names.add(item);
+		names.add(boss);
+		panel.add(names, BorderLayout.CENTER);
+		String time = com.expecteddrops.stats.ItemTime.formatLong(t.getSecondsPerDrop());
+		panel.add(smallLabel((t.isEstimated() ? "~" : "") + time, t.isEstimated() ? ColorScheme.LIGHT_GRAY_COLOR : Color.WHITE),
+			BorderLayout.EAST);
+		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+		Tip tip = new Tip(t.getLabel()).line(capital(t.getBoss()), Theme.TEXT_MUTED)
+			.row("Average time", (t.isEstimated() ? "~" : "") + time)
+			.row("Per " + t.getUnit(), com.expecteddrops.stats.ItemTime.formatLong(t.getSecondsPerKill()))
+			.row("Chance per " + t.getUnit(), t.getChancePerKill() > 0
+				? String.format(java.util.Locale.ROOT, "1 in %,.0f", 1 / t.getChancePerKill()) : "-");
+		if (t.isLowConfidence())
+		{
+			tip.line("The estimate rests on a thin source.", Theme.TEXT_MUTED);
+		}
+		tip.note(t.getBasis());
+		setTip(panel, tip.wide(), () -> showBoss(t.getBoss()));
+		return panel;
 	}
 
 	/** The Items page: your driest and your luckiest items, a few of each with "show all". */

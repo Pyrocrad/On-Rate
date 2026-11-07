@@ -973,6 +973,27 @@ public class Tracker
 		return times.isEmpty() ? null : new TimeStats(times, last);
 	}
 
+	/** How long delves of one level took (Doom: 1 to 8, 9 for the deep delves), or null when none has a time. */
+	public synchronized TimeStats levelTimes(String bossName, int level)
+	{
+		BossProgress progress = state.peek(bossName);
+		if (progress == null)
+		{
+			return null;
+		}
+		List<Integer> times = new ArrayList<>();
+		int last = -1;
+		for (KillEntry kill : progress.kills)
+		{
+			if (kill.durationMillis != null && kill.level != null && kill.level == level)
+			{
+				times.add(kill.durationMillis);
+				last = kill.durationMillis;
+			}
+		}
+		return times.isEmpty() ? null : new TimeStats(times, last);
+	}
+
 	/** Saves a kill for the History section (the oldest ones go once there are too many). */
 	private KillEntry addKill(BossDefinition boss, BossProgress progress, long nowMillis)
 	{
