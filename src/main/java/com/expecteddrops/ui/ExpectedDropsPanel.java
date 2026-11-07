@@ -2762,7 +2762,6 @@ public class ExpectedDropsPanel extends PluginPanel
 			note.setText("<html><body style='width: 170px'>" + what + "</body></html>");
 		}
 		note.setToolTipText(new Tip("How to read this")
-			.row("wiki", "The OSRS Wiki's rate")
 			.row("yours", "Your own timed kills")
 			.row("mixed", "A bit of both")
 			.row("~", "Based on the wiki's rate")
@@ -2980,11 +2979,12 @@ public class ExpectedDropsPanel extends PluginPanel
 		JPanel content = new JPanel(new BorderLayout(4, 0));
 		content.setOpaque(false);
 		content.setBorder(new EmptyBorder(Theme.S, Theme.S, Theme.S, Theme.S));
-		content.add(itemIcon(iconItem, name, 20), BorderLayout.WEST);
+		// the same sizes as the Items and Pets pages: their picture size and row font for the name, the rest small
+		content.add(itemIcon(iconItem, name, SMALL_ICON), BorderLayout.WEST);
 		JPanel names = new JPanel();
 		names.setOpaque(false);
 		names.setLayout(new javax.swing.BoxLayout(names, javax.swing.BoxLayout.Y_AXIS));
-		JLabel item = smallLabel(name, Color.WHITE);
+		JLabel item = rowLabel(name, Color.WHITE);
 		item.setAlignmentX(LEFT_ALIGNMENT);
 		JLabel detail = smallLabel(sub, Theme.TEXT_MUTED);
 		detail.setAlignmentX(LEFT_ALIGNMENT);
@@ -2997,10 +2997,15 @@ public class ExpectedDropsPanel extends PluginPanel
 		JLabel timeLabel = boldLabel((estimated ? "~" : "") + time);
 		timeLabel.setForeground(estimated ? ColorScheme.LIGHT_GRAY_COLOR : Color.WHITE);
 		timeLabel.setAlignmentX(RIGHT_ALIGNMENT);
-		Chip chip = sourceChip(source);
-		chip.setAlignmentX(RIGHT_ALIGNMENT);
 		right.add(timeLabel);
-		right.add(chip);
+		// a time from the wiki's rate has no chip (its "~" says so); only your own or mixed times, or no data, are labelled
+		boolean wikiRate = !"your times".equals(source) && !"wiki + yours".equals(source) && !"no data".equals(source);
+		Chip chip = wikiRate ? null : sourceChip(source);
+		if (chip != null)
+		{
+			chip.setAlignmentX(RIGHT_ALIGNMENT);
+			right.add(chip);
+		}
 		content.add(right, BorderLayout.EAST);
 
 		JPanel panel = new JPanel(new BorderLayout());
@@ -3008,10 +3013,13 @@ public class ExpectedDropsPanel extends PluginPanel
 		panel.setAlignmentX(LEFT_ALIGNMENT);
 		panel.add(content, BorderLayout.CENTER);
 		panel.add(new EffortBar(seconds), BorderLayout.SOUTH);
-		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
+		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, panel.getPreferredSize().height));
 		setTip(panel, tip, onClick);
 		// after the row's own hover, which would otherwise reach the chip too
-		chip.setToolTipText(sourceChip(source).getToolTipText());
+		if (chip != null)
+		{
+			chip.setToolTipText(sourceChip(source).getToolTipText());
+		}
 		return panel;
 	}
 

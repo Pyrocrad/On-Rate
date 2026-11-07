@@ -211,9 +211,13 @@ public class TimePageTest
 	public void everyRowSaysWhereItsTimeComesFrom() throws Exception
 	{
 		List<String> texts = pick(panel(tracker()), "Items");
-		assertTrue(texts.toString(), texts.contains("wiki"));
+		// a time from the wiki's rate says it with "~" and has no chip; the word "wiki" isn't on the rows
+		assertTrue(texts.toString(), texts.stream().anyMatch(t -> t.startsWith("~")));
+		assertFalse(texts.toString(), texts.contains("wiki"));
 		assertFalse(texts.toString(), texts.contains("yours"));
-		assertTrue(pick(panel(tracker()), "Ladlor chart").contains("wiki"));
+		List<String> chart = pick(panel(tracker()), "Ladlor chart");
+		assertTrue(chart.toString(), chart.stream().anyMatch(t -> t.startsWith("~")));
+		assertFalse(chart.toString(), chart.contains("wiki"));
 	}
 
 	@Test
