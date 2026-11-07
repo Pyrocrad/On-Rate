@@ -2,6 +2,7 @@ package com.expecteddrops;
 
 import com.expecteddrops.data.BossCatalog;
 import com.expecteddrops.data.ValueFormula;
+import com.expecteddrops.raids.RaidDataImport;
 import com.expecteddrops.raids.RaidPointsReader;
 import com.expecteddrops.stats.RaidChance;
 import com.expecteddrops.stats.RaidSettings;
@@ -31,6 +32,7 @@ import java.util.HashSet;
 import javax.inject.Inject;
 import javax.swing.SwingUtilities;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import net.runelite.api.Actor;
@@ -56,6 +58,7 @@ import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
+import net.runelite.client.RuneLite;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.ChatColorType;
 import net.runelite.client.chat.ChatMessageBuilder;
@@ -130,6 +133,9 @@ public class ExpectedDropsPlugin extends Plugin
 
 	@Inject
 	private EventBus eventBus;
+
+	@Inject
+	private ScheduledExecutorService executor;
 
 	@Inject
 	private OverlayManager overlayManager;
@@ -226,6 +232,7 @@ public class ExpectedDropsPlugin extends Plugin
 		overlay = new OnRateOverlay(this, config, () -> overlayInfo);
 		overlayManager.add(overlay);
 
+		prepareTimesNotice();
 		openPanelOnce();
 
 		raidPoints = new RaidPointsReader(client, clientThread, tracker, boss -> changed(boss, false), config::readRaidPoints);
@@ -267,6 +274,82 @@ public class ExpectedDropsPlugin extends Plugin
 		spotter.clearAll();
 		prices.clear();
 		pricesRefreshedAt = 0;
+	}
+
+	/** Saved once the "times" notice was shown (or not needed): it is only for players who had On Rate before it. */
+	static final String TIMES_NOTICE_KEY = "timesNoticeSeen";
+
+	/**
+	 * True for a player who had On Rate before the times feature: the panel was opened for them once
+	 * (the first-run flag), or they turned the welcome guide off. A new install is false.
+	 */
+	static boolean hadOnRateBefore(String firstRunDone, boolean showWelcome)
+	{
+		return firstRunDone != null || !showWelcome;
+	}
+
+	/**
+	 * A new player has nothing new to be told about, so mark the notice as seen for them; a player who
+	 * had On Rate before gets it once, the next time they open the panel (see ExpectedDropsPanel#setTimesNotice).
+	 * Runs before {@link #openPanelOnce()} sets the first-run flag.
+	 */
+	private void prepareTimesNotice()
+	{
+		if (configManager.getConfiguration(ExpectedDropsConfig.GROUP, TIMES_NOTICE_KEY) == null
+			&& !hadOnRateBefore(configManager.getConfiguration(ExpectedDropsConfig.GROUP, FIRST_RUN_KEY), config.showWelcome()))
+		{
+			configManager.setConfiguration(ExpectedDropsConfig.GROUP, TIMES_NOTICE_KEY, "true");
+		}
+		panel.setTimesNotice(
+			() -> configManager.getConfiguration(ExpectedDropsConfig.GROUP, TIMES_NOTICE_KEY) == null,
+			() -> configManager.setConfiguration(ExpectedDropsConfig.GROUP, TIMES_NOTICE_KEY, "true"));
+	}
+
+	/**
+	 * Reads your raid times from the Raid Data Tracker plugin's files, if it is installed and the
+	 * setting is on. Runs off the client thread (it reads files); adding a time twice is harmless.
+	 */
+	private void importRaidTimes()
+	{
+		Tracker t = tracker;
+		if (t == null || !config.importRaidTimes())
+		{
+			return;
+		}
+		long accountHash = client.getAccountHash();
+		if (accountHash == -1)
+		{
+			return;
+		}
+		ScheduledExecutorService pool = executor;
+		if (pool == null)
+		{
+			return;
+		}
+		pool.execute(() ->
+		{
+			try
+			{
+				RaidDataImport.Times times = RaidDataImport.read(new java.io.File(RuneLite.RUNELITE_DIR, "raid-data-tracker"), accountHash);
+				for (java.util.Map.Entry<String, java.util.Map<String, java.util.List<long[]>>> boss : times.byBoss().entrySet())
+				{
+					int added = 0;
+					for (java.util.Map.Entry<String, java.util.List<long[]>> part : boss.getValue().entrySet())
+					{
+						added += t.importRaidTimes(boss.getKey(), part.getKey(), part.getValue());
+					}
+					if (added > 0)
+					{
+						String name = boss.getKey();
+						clientThread.invokeLater(() -> changed(name, false));
+					}
+				}
+			}
+			catch (RuntimeException e)
+			{
+				log.debug("Could not import raid times from Raid Data Tracker", e);
+			}
+		});
 	}
 
 	/** Saved once On Rate has opened its panel for a new player. */
@@ -1001,6 +1084,7 @@ public class ExpectedDropsPlugin extends Plugin
 		}
 		remindedThisSession.clear();
 		spotter.clearAll();
+		importRaidTimes();
 		if (panel != null)
 		{
 			// Open on the account overview: how dry or spooned the account is overall.

@@ -284,6 +284,19 @@ public interface ExpectedDropsConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "importRaidTimes",
+		name = "Import times from Raid Data Tracker",
+		description = "If you also use the Raid Data Tracker plugin, read your Chambers of Xeric, Tombs of Amascut and Theatre of Blood "
+			+ "raid times from its saved files when you log in, so those raids use your own times straight away. Only read, nothing in that plugin changes.",
+		position = 32,
+		section = raidsSection
+	)
+	default boolean importRaidTimes()
+	{
+		return true;
+	}
+
+	@ConfigItem(
 		keyName = "coxUniqueChance",
 		name = "CoX Normal (%)",
 		description = "Your chance of a unique per normal Chambers raid, for raids without points. Every 8,676 of your personal points is 1%, so 30,000 points is about 3.5%.",

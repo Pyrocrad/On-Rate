@@ -158,6 +158,74 @@ public class KillTimesTest
 		assertEquals(26 * 60_000 + 10_200, (int) kill("Chambers of Xeric", 100).getDurationMillis());
 	}
 
+	private static long[] sample(long when, int minutes)
+	{
+		return new long[]{when, minutes * 60_000L};
+	}
+
+	@Test
+	public void importedRaidTimesCountAndAreNotAddedTwice()
+	{
+		java.util.List<long[]> samples = java.util.Arrays.asList(sample(10_000_000, 15), sample(20_000_000, 17), sample(30_000_000, 16));
+		assertEquals(3, tracker.importRaidTimes("Chambers of Xeric", "Normal", samples));
+		assertEquals(3, tracker.importedRaidTimes("Chambers of Xeric", null));
+		TimeStats stats = tracker.killTimes("Chambers of Xeric", "Normal");
+		assertEquals(3, stats.getCount());
+		assertEquals(16 * 60_000, stats.getAverageMillis());
+		assertEquals(16 * 60_000, stats.getLastMillis());
+		// the same list again (every login): nothing is added
+		assertEquals(0, tracker.importRaidTimes("Chambers of Xeric", "Normal", samples));
+		assertEquals(3, tracker.killTimes("Chambers of Xeric", "Normal").getCount());
+		// each raid mode on its own, and a boss that isn't a raid takes nothing
+		assertNull(tracker.killTimes("Chambers of Xeric", "Challenge Mode"));
+		assertEquals(3, tracker.killTimes("Chambers of Xeric", null).getCount());
+		assertEquals(0, tracker.importRaidTimes("Zulrah", "Normal", samples));
+		assertEquals(0, tracker.importRaidTimes("Chambers of Xeric", "Normal", null));
+		assertEquals(0, tracker.importRaidTimes("Chambers of Xeric", "Normal", java.util.Collections.singletonList(new long[]{0, 5})));
+	}
+
+	@Test
+	public void importedRaidIsNotCountedAgainWhenOnRateTimedItItself()
+	{
+		long done = System.currentTimeMillis();
+		tracker.onChatMessage("<col=ef20ff>Congratulations - your raid is complete!</col><br>Team size: <col=ff0000>Solo</col> Duration:</col> <col=ff0000>18:00.00</col>", done);
+		tracker.onChatMessage("Your completed Chambers of Xeric count is: <col=ff0000>100</col>.", done + 600);
+		assertEquals(1, tracker.killTimes("Chambers of Xeric", "Normal").getCount());
+		// the other plugin saw the same raid a few seconds apart, and an earlier one On Rate never saw
+		assertEquals(2, tracker.importRaidTimes("Chambers of Xeric", "Normal",
+			java.util.Arrays.asList(new long[]{done + 15_000, 18 * 60_000L + 5_000}, sample(done - 86_400_000, 20))));
+		TimeStats stats = tracker.killTimes("Chambers of Xeric", "Normal");
+		assertEquals(2, stats.getCount());
+		// On Rate's own time is used for the raid it saw, the other plugin's for the older one
+		assertEquals(19 * 60_000, stats.getAverageMillis());
+		assertEquals(18 * 60_000, stats.getLastMillis());
+	}
+
+	@Test
+	public void importedTimeFillsARaidOnRateSawWithoutATime()
+	{
+		long done = System.currentTimeMillis();
+		tracker.onChatMessage("Your completed Chambers of Xeric count is: <col=ff0000>100</col>.", done);
+		tracker.onRaidRecord(RaidRecord.cox(24_000, 70_000, 3), done + 600);
+		assertNull(tracker.killTimes("Chambers of Xeric", "Normal"));
+		tracker.importRaidTimes("Chambers of Xeric", "Normal", java.util.Collections.singletonList(new long[]{done + 30_000, 21 * 60_000L}));
+		assertEquals(21 * 60_000, (int) kill("Chambers of Xeric", 100).getDurationMillis());
+		assertEquals(21 * 60_000, tracker.raidRecords("Chambers of Xeric").get(0).getDurationMillis());
+		assertEquals(1, tracker.killTimes("Chambers of Xeric", "Normal").getCount());
+	}
+
+	@Test
+	public void importedTimesSurviveSavingAndLoading()
+	{
+		tracker.importRaidTimes("Chambers of Xeric", "Normal", java.util.Collections.singletonList(sample(10_000_000, 15)));
+		Gson gson = new Gson();
+		com.expecteddrops.tracking.SaveData data = tracker.saveData(gson::toJson);
+		Tracker restored = new Tracker(tracker.getCatalog());
+		restored.setState(gson.fromJson(data.progress, com.expecteddrops.tracking.TrackerState.class));
+		assertEquals(1, restored.killTimes("Chambers of Xeric", "Normal").getCount());
+		assertEquals(1, restored.importedRaidTimes("Chambers of Xeric", "Normal"));
+	}
+
 	@Test
 	public void raidModesKeepTheirOwnTimes()
 	{

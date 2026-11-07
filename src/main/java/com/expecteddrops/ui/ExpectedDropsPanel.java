@@ -35,6 +35,7 @@ import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JTextField;
@@ -779,6 +780,84 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			markOverlayOfferSeen.run();
 		}
+	}
+
+	/** Whether the one-time notice about the times feature is still due, and marking it shown. */
+	private BooleanSupplier timesNoticeDue = () -> false;
+	private Runnable markTimesNoticeShown = () -> { };
+
+	/**
+	 * The one-time notice about the Time page, for players who had On Rate before it. It appears the
+	 * first time the panel is on screen, and is marked as shown before it opens, so it never comes
+	 * back, whatever the player does with it. The plugin decides who it is for (a new install is
+	 * never due).
+	 */
+	public void setTimesNotice(BooleanSupplier due, Runnable markShown)
+	{
+		timesNoticeDue = due == null ? () -> false : due;
+		markTimesNoticeShown = markShown == null ? () -> { } : markShown;
+		addHierarchyListener(e ->
+		{
+			if ((e.getChangeFlags() & java.awt.event.HierarchyEvent.SHOWING_CHANGED) != 0 && isShowing())
+			{
+				showTimesNoticeOnce();
+			}
+		});
+		if (isShowing())
+		{
+			showTimesNoticeOnce();
+		}
+	}
+
+	/** The notice's text: what is new and where to find it. */
+	static String timesNoticeText()
+	{
+		return "<html><body style='width: 260px'>"
+			+ "<b>New: how long things take</b><br><br>"
+			+ "On Rate now times your kills and raids. The <b>Time</b> page (Items tab) shows how long each item you "
+			+ "don't have takes on average, quickest first, or in the Ladlor chart's order.<br><br>"
+			+ "Each time says where it comes from: the OSRS Wiki's rate until you have enough timed kills of your own, "
+			+ "then your own average.<br><br>"
+			+ "If you use the Raid Data Tracker plugin, On Rate reads your raid times from it when you log in, "
+			+ "so your raids use your own times straight away. You can turn that off under Raids in the settings.<br><br>"
+			+ "This message only shows once.</body></html>";
+	}
+
+	/** True when the notice is due now, and marks it shown: it must never come back, however its dialog is closed. */
+	boolean takeTimesNotice()
+	{
+		if (!timesNoticeDue.getAsBoolean())
+		{
+			return false;
+		}
+		markTimesNoticeShown.run();
+		return true;
+	}
+
+	private void showTimesNoticeOnce()
+	{
+		if (!takeTimesNotice())
+		{
+			return;
+		}
+		SwingUtilities.invokeLater(() ->
+		{
+			Object[] options = {"Show me the Time page", "Got it"};
+			int choice = JOptionPane.showOptionDialog(SwingUtilities.getWindowAncestor(this), timesNoticeText(), "New in On Rate",
+				JOptionPane.DEFAULT_OPTION, JOptionPane.INFORMATION_MESSAGE, null, options, options[1]);
+			if (choice == 0)
+			{
+				openTimePage();
+			}
+		});
+	}
+
+	/** Goes to the account overview's Items tab, on its Time page. */
+	public void openTimePage()
+	{
+		accountTab = TAB_ITEMS;
+		topMode = TOP_TIME;
+		showBoss(ACCOUNT);
 	}
 
 	/**

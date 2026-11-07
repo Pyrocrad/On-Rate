@@ -65,6 +65,11 @@ public class BossProgress
 	Map<String, Integer> milestone = new HashMap<>();
 	/** Kill count at the last milestone check, so a big jump (first sync) stays quiet. */
 	Integer lastCheckedKc;
+	/**
+	 * Raids only: times read from another plugin's log (Raid Data Tracker), per raid mode: {when it
+	 * ended in epoch millis, how long it took in millis}. Null in older saves and until something is imported.
+	 */
+	Map<String, List<long[]>> importedTimes;
 	/** Raids only: each raid finished with On Rate, with its points (see RaidRecord). */
 	/**
 	 * Saved raids with their points. Kept out of the main save (it's saved per raid under its own

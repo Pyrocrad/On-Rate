@@ -348,4 +348,41 @@ public class TimePageTest
 		ExpectedDropsPanel unknown = panel(tracker());
 		assertTrue(pick(unknown, "Items").stream().anyMatch(t -> t.contains("Slayer bosses are included")));
 	}
+
+	@Test
+	public void theTimesNoticeIsTakenOnceAndNeverAgain() throws Exception
+	{
+		ExpectedDropsPanel panel = panel(tracker());
+		boolean[] seen = {false};
+		int[] marked = {0};
+		panel.setTimesNotice(() -> !seen[0], () ->
+		{
+			seen[0] = true;
+			marked[0]++;
+		});
+		assertTrue(panel.takeTimesNotice());
+		assertEquals(1, marked[0]);
+		// shown already: opening the panel again, or any redraw, never asks twice
+		assertFalse(panel.takeTimesNotice());
+		assertFalse(panel.takeTimesNotice());
+		assertEquals(1, marked[0]);
+	}
+
+	@Test
+	public void noNoticeWhenNobodyAsksForIt() throws Exception
+	{
+		ExpectedDropsPanel panel = panel(tracker());
+		assertFalse(panel.takeTimesNotice());
+		panel.setTimesNotice(() -> false, () -> { throw new AssertionError("marked without being shown"); });
+		assertFalse(panel.takeTimesNotice());
+	}
+
+	@Test
+	public void theNoticeSaysWhereTheTimePageIsAndAboutRaidDataTracker()
+	{
+		String text = ExpectedDropsPanel.timesNoticeText();
+		assertTrue(text.contains("Time</b> page"));
+		assertTrue(text.contains("Raid Data Tracker"));
+		assertTrue(text.contains("only shows once"));
+	}
 }
