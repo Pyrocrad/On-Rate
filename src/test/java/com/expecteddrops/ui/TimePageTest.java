@@ -455,4 +455,47 @@ public class TimePageTest
 		}
 		return null;
 	}
+
+	private static void tooltips(Component c, List<String> out)
+	{
+		if (c instanceof javax.swing.JComponent && ((javax.swing.JComponent) c).getToolTipText() != null)
+		{
+			out.add(((javax.swing.JComponent) c).getToolTipText());
+		}
+		if (c instanceof Container)
+		{
+			for (Component child : ((Container) c).getComponents())
+			{
+				tooltips(child, out);
+			}
+		}
+	}
+
+	@Test
+	public void anItemsHoverOnItsBossPageSaysHowLongOneTakes() throws Exception
+	{
+		ExpectedDropsPanel panel = panel(tracker());
+		panel.showBoss("Zulrah");
+		List<String> tips = new ArrayList<>();
+		tooltips(panel, tips);
+		String fang = tips.stream().filter(t -> t.contains("Tanzanite fang") && t.contains("Time to get one")).findFirst().orElse(null);
+		assertTrue(tips.toString(), fang != null);
+		// wiki-based here (no timed kills): marked with ~ and says where it comes from
+		assertTrue(fang, fang.contains("~"));
+		assertTrue(fang, fang.contains("the OSRS Wiki's rate"));
+	}
+
+	@Test
+	public void aTimeRowAlwaysComesWithItsSource() throws Exception
+	{
+		// whichever way it is: every hover that has the row also says where the time comes from
+		ExpectedDropsPanel panel = panel(tracker());
+		panel.showBoss("Chaos Fanatic");
+		List<String> tips = new ArrayList<>();
+		tooltips(panel, tips);
+		for (String t : tips)
+		{
+			assertEquals(t, t.contains("Time to get one"), t.contains("Time based on"));
+		}
+	}
 }

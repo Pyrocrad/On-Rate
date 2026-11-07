@@ -763,6 +763,7 @@ public class ExpectedDropsPanel extends PluginPanel
 	/** Recomputes and redraws the selected page (see {@link #refresh()}). */
 	private void draw()
 	{
+		timeIndex = null;
 		drawPage();
 		updateFooter();
 	}
@@ -2090,6 +2091,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			.row("Where", where)
 			.row("Without one", String.format(java.util.Locale.ROOT, "%,d %s, %s", r.getStreak(), unit, formatMultiple(multiple) + " the drop rate"))
 			.row("Luck", waitLuck(multiple));
+		addTimeRows(tip, timeOf(h.getBoss(), r.getIconItem()));
 		setTip(panel, tip.note("Still going: each " + (unit.endsWith("s") ? unit.substring(0, unit.length() - 1) : unit)
 			+ " is its own roll, so a long wait doesn't make the next one more likely.").wide(),
 			h.getBoss() == null ? null : () -> showBoss(h.getBoss()), true);
@@ -3122,6 +3124,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			itemTip.row("Chance of one by now", formatPercent(r.getChanceAtLeastOne()));
 		}
 		itemTip.row("Without one", rateMultiple(r));
+		addTimeRows(itemTip, timeOf(h.getBoss(), r.getIconItem()));
 		String tip = itemTip.wide();
 		Runnable open = h.getBoss() == null ? null : () -> showBoss(h.getBoss());
 		if (view == ItemView.COMPACT)
@@ -5619,6 +5622,51 @@ public class ExpectedDropsPanel extends PluginPanel
 		return tooltip(row, stats, unit, java.util.Collections.emptyList());
 	}
 
+	/** Every item's average time, by boss and item, for the hovers: worked out once per redraw. */
+	private java.util.Map<String, com.expecteddrops.stats.ItemTime> timeIndex;
+
+	/**
+	 * How long one copy of this item takes on average (your own times where you have enough, else the
+	 * wiki's rate), or null when the boss has no time yet. Used by the item hovers everywhere.
+	 */
+	private com.expecteddrops.stats.ItemTime timeOf(String boss, String iconItem)
+	{
+		if (boss == null || iconItem == null)
+		{
+			return null;
+		}
+		try
+		{
+			if (timeIndex == null)
+			{
+				java.util.Map<String, com.expecteddrops.stats.ItemTime> index = new java.util.HashMap<>();
+				for (com.expecteddrops.stats.ItemTime t : com.expecteddrops.stats.ItemTimes.compute(tracker,
+					com.expecteddrops.data.KillTimes.bundled(), raidSettings.get()))
+				{
+					index.put(t.getBoss() + "|" + com.expecteddrops.data.BossCatalog.normalize(t.getIconItem()), t);
+				}
+				timeIndex = index;
+			}
+			return timeIndex.get(boss + "|" + com.expecteddrops.data.BossCatalog.normalize(iconItem));
+		}
+		catch (RuntimeException e)
+		{
+			// a hover must never break the page
+			return null;
+		}
+	}
+
+	/** The hover rows for an item's time: how long one takes on average, and where that comes from. */
+	private static void addTimeRows(Tip tip, com.expecteddrops.stats.ItemTime t)
+	{
+		if (t == null || Double.isNaN(t.getSecondsPerDrop()) || Double.isInfinite(t.getSecondsPerDrop()) || t.getSecondsPerDrop() <= 0)
+		{
+			return;
+		}
+		tip.row("Time to get one", (t.isEstimated() ? "~" : "") + com.expecteddrops.stats.ItemTime.formatLong(t.getSecondsPerDrop()))
+			.row("Time based on", sourceName(t.getSourceTag()));
+	}
+
 	/** The item hover with how lucky your drops of it were ({where, luck} per drop) under the verdict. */
 	private String itemTooltip(RowStats row, BossStats stats, String unit)
 	{
@@ -5638,10 +5686,16 @@ public class ExpectedDropsPanel extends PluginPanel
 				luck.add(new String[]{"+ " + (drops.size() - 3) + " more", ""});
 			}
 		}
-		return tooltip(row, stats, unit, luck);
+		return tooltip(row, stats, unit, luck, row.isAny() ? null : timeOf(stats.getBoss().getName(), row.getIconItem()));
 	}
 
 	private static String tooltip(RowStats row, BossStats stats, String unit, List<String[]> dropLuck)
+	{
+		return tooltip(row, stats, unit, dropLuck, null);
+	}
+
+	private static String tooltip(RowStats row, BossStats stats, String unit, List<String[]> dropLuck,
+		com.expecteddrops.stats.ItemTime time)
 	{
 		Tip tip = new Tip(row.isAny() ? "Any unique" : row.getLabel());
 		tip.line(stats.getBoss().getName(), Theme.TEXT_MUTED);
@@ -5705,6 +5759,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			}
 			tip.row("From none, 50% / 90% takes", String.format(java.util.Locale.ROOT, "%,d / %,d %ss", half, most, unit));
 		}
+		addTimeRows(tip, time);
 
 		// rates that depend on the run: one row each, under a small heading
 		if (drop != null && drop.hasLevelRates() && stats.getBoss().getWaves() > 0)
