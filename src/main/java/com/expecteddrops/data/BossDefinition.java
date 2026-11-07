@@ -19,6 +19,8 @@ public class BossDefinition
 	/** Team boss whose uniques scale with your damage share (setting key), or null. */
 	private String team;
 	private String note;
+	/** Slayer level needed to fight this boss (a Slayer boss), or null when none is needed. */
+	private Integer slayerLevel;
 	private List<DropDefinition> drops;
 	private List<BossPart> parts;
 	/** Minions killed with the boss that roll some of its uniques (God Wars bodyguards). */
@@ -53,6 +55,12 @@ public class BossDefinition
 		this.loot = loot;
 		this.clog = clog;
 		this.drops = drops;
+	}
+
+	/** Slayer level needed to fight this boss, 0 when none is. */
+	public int getSlayerLevel()
+	{
+		return slayerLevel == null ? 0 : slayerLevel;
 	}
 
 	public String getName()

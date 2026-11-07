@@ -42,12 +42,14 @@ import net.runelite.api.MenuAction;
 import net.runelite.api.NPC;
 import net.runelite.api.Player;
 import net.runelite.api.ScriptID;
+import net.runelite.api.Skill;
 import net.runelite.api.WorldView;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.ScriptPostFired;
+import net.runelite.api.events.StatChanged;
 import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
@@ -203,6 +205,7 @@ public class ExpectedDropsPlugin extends Plugin
 		tracker.setTeamSizeDetectorFor(boss -> config.detectTeamSize() ? teamSizeFor(boss) : 0);
 		panel = new ExpectedDropsPanel(tracker, itemManager, this::raidSettings, this::itemIdFor, this::save,
 			config::showWelcome, this::dismissWelcome, this::priceOf, this::viewOptions);
+		panel.setSlayerLevel(() -> slayerLevel);
 		panel.setGraphOpener(open -> configManager.setConfiguration(ExpectedDropsConfig.GROUP, "showLuckGraph", String.valueOf(open)));
 		panel.setAccountPageStore(config.accountPage(),
 			page -> configManager.setConfiguration(ExpectedDropsConfig.GROUP, "accountPage", page));
@@ -576,9 +579,31 @@ public class ExpectedDropsPlugin extends Plugin
 		return Math.max(0, Math.min(100, percent)) / 100.0;
 	}
 
+	/** Your real Slayer level (not boosted), -1 until the game has sent it. Set on the client thread, read by the panel. */
+	private volatile int slayerLevel = -1;
+
+	@Subscribe
+	public void onStatChanged(StatChanged event)
+	{
+		if (event.getSkill() == Skill.SLAYER && event.getLevel() != slayerLevel)
+		{
+			slayerLevel = event.getLevel();
+			if (panel != null)
+			{
+				// the Time page hides the Slayer bosses above it
+				SwingUtilities.invokeLater(panel::refresh);
+			}
+		}
+	}
+
 	@Subscribe
 	public void onGameStateChanged(GameStateChanged event)
 	{
+		if (event.getGameState() == GameState.LOGIN_SCREEN)
+		{
+			// another account may log in: its level is not known yet
+			slayerLevel = -1;
+		}
 		if (event.getGameState() == GameState.LOGIN_SCREEN || event.getGameState() == GameState.HOPPING)
 		{
 			// a new login sends the counters again: that's not collecting rewards

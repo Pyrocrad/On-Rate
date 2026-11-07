@@ -296,4 +296,59 @@ public class ChartTimesTest
 		assertEquals(1, total.getWithoutTime());
 		assertEquals(100 * 360.0, total.getSeconds(), 1e-6);
 	}
+
+	@Test
+	public void slayerBossesNeedTheirSlayerLevel()
+	{
+		// the wiki's requirements
+		assertEquals(91, catalog.byName("Cerberus").getSlayerLevel());
+		assertEquals(95, catalog.byName("Alchemical Hydra").getSlayerLevel());
+		assertEquals(93, catalog.byName("Thermonuclear Smoke Devil").getSlayerLevel());
+		assertEquals(92, catalog.byName("Araxxor").getSlayerLevel());
+		assertEquals(87, catalog.byName("Kraken").getSlayerLevel());
+		assertEquals(85, catalog.byName("Abyssal Sire").getSlayerLevel());
+		assertEquals(75, catalog.byName("Grotesque Guardians").getSlayerLevel());
+		assertEquals(0, catalog.byName("Zulrah").getSlayerLevel());
+		assertEquals(0, catalog.byName("Yama").getSlayerLevel());
+	}
+
+	private boolean canFight(String boss, int level)
+	{
+		return catalog.byName(boss).getSlayerLevel() <= level;
+	}
+
+	@Test
+	public void itemsOfBossesAboveYourSlayerLevelAreLeftOut()
+	{
+		List<ItemTime> at80 = ItemTimes.compute(tracker, web, RAIDS, boss -> canFight(boss, 80));
+		for (ItemTime t : at80)
+		{
+			assertTrue(t.getBoss() + " needs more than 80 Slayer", catalog.byName(t.getBoss()).getSlayerLevel() <= 80);
+		}
+		assertTrue(at80.stream().anyMatch(t -> t.getBoss().equals("Grotesque Guardians")));
+		assertFalse(at80.stream().anyMatch(t -> t.getBoss().equals("Cerberus")));
+		List<ItemTime> at99 = ItemTimes.compute(tracker, web, RAIDS, boss -> canFight(boss, 99));
+		assertTrue(at99.stream().anyMatch(t -> t.getBoss().equals("Alchemical Hydra")));
+		assertTrue(at99.size() > at80.size());
+	}
+
+	@Test
+	public void aChartItemNeedingASlayerBossIsLeftOutBelowItsLevel()
+	{
+		List<String> names = new ArrayList<>();
+		for (ChartTime t : ChartTimes.compute(tracker, web, RAIDS, LadlorChart.bundled(), boss -> canFight(boss, 80)))
+		{
+			names.add(t.getName());
+		}
+		assertFalse(names.contains("Eternal boots"));
+		assertFalse(names.contains("Occult necklace"));
+		assertTrue(names.contains("Hallowfell"));
+		names.clear();
+		for (ChartTime t : ChartTimes.compute(tracker, web, RAIDS, LadlorChart.bundled(), boss -> canFight(boss, 93)))
+		{
+			names.add(t.getName());
+		}
+		assertTrue(names.contains("Eternal boots"));
+		assertTrue(names.contains("Occult necklace"));
+	}
 }

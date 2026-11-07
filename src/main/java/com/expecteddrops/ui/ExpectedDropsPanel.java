@@ -2508,6 +2508,38 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 	}
 
+	/** Your real Slayer level, or -1 when it isn't known (not logged in): nothing is hidden then. */
+	private java.util.function.IntSupplier slayerLevel = () -> -1;
+
+	/** Call once after the panel is made: where to read your Slayer level from. */
+	public void setSlayerLevel(java.util.function.IntSupplier level)
+	{
+		slayerLevel = level == null ? () -> -1 : level;
+	}
+
+	/** False for a Slayer boss that needs more Slayer than you have: its items are left off the Time page. */
+	private boolean canFight(String bossName)
+	{
+		int level = slayerLevel.getAsInt();
+		BossDefinition boss = tracker.getCatalog().byName(bossName);
+		return level < 0 || boss == null || boss.getSlayerLevel() <= level;
+	}
+
+	/** How many bosses are hidden on the Time page for lack of Slayer (0 when your level isn't known). */
+	private int bossesAboveYourSlayer()
+	{
+		int level = slayerLevel.getAsInt();
+		int hidden = 0;
+		if (level >= 0)
+		{
+			for (BossDefinition boss : tracker.getCatalog().getBosses())
+			{
+				hidden += boss.getSlayerLevel() > level ? 1 : 0;
+			}
+		}
+		return hidden;
+	}
+
 	/** The Time page: show the whole list instead of the first {@link #DROPS_SHOWN}. */
 	private boolean timesAll;
 
@@ -2574,12 +2606,18 @@ public class ExpectedDropsPanel extends PluginPanel
 				what = "Raid items, quickest first. Your points set your chance.";
 				break;
 			default:
-				what = "Quickest first. Slayer bosses are included.";
+				what = slayerLevel.getAsInt() >= 0 ? "Quickest first." : "Quickest first. Slayer bosses are included.";
 				break;
 		}
 		JLabel note = smallLabel("<html><body style='width: 170px'>" + what + "</body></html>", Theme.TEXT_MUTED);
 		note.setAlignmentX(LEFT_ALIGNMENT);
 		note.setBorder(new EmptyBorder(Theme.S, 0, 0, 0));
+		int hiddenBosses = bossesAboveYourSlayer();
+		if (hiddenBosses > 0)
+		{
+			what += " Bosses above your Slayer level (" + slayerLevel.getAsInt() + ") are hidden.";
+			note.setText("<html><body style='width: 170px'>" + what + "</body></html>");
+		}
 		note.setToolTipText(new Tip("How to read this")
 			.row("wiki", "The OSRS Wiki's rate")
 			.row("yours", "Your own timed kills")
@@ -2599,7 +2637,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		List<com.expecteddrops.stats.ItemTime> todo = new ArrayList<>();
 		for (com.expecteddrops.stats.ItemTime t : com.expecteddrops.stats.ItemTimes.compute(tracker,
-			com.expecteddrops.data.KillTimes.bundled(), raidSettings.get()))
+			com.expecteddrops.data.KillTimes.bundled(), raidSettings.get(), this::canFight))
 		{
 			boolean inView = timeView == TimeView.PETS ? t.isPet() : !t.isPet() && (timeView != TimeView.RAIDS || t.isRaid());
 			if (inView && !t.isHave())
@@ -2637,7 +2675,7 @@ public class ExpectedDropsPanel extends PluginPanel
 	private void renderChartTimes()
 	{
 		List<com.expecteddrops.stats.ChartTime> chart = com.expecteddrops.stats.ChartTimes.compute(tracker,
-			com.expecteddrops.data.KillTimes.bundled(), raidSettings.get(), com.expecteddrops.data.LadlorChart.bundled());
+			com.expecteddrops.data.KillTimes.bundled(), raidSettings.get(), com.expecteddrops.data.LadlorChart.bundled(), this::canFight);
 		if (chart.isEmpty())
 		{
 			addTimeNone("You have everything on the chart that On Rate can count.");

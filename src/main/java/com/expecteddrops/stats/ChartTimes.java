@@ -26,7 +26,17 @@ public final class ChartTimes
 	/** Items of the chart you are still missing something of, in chart order. */
 	public static List<ChartTime> compute(Tracker tracker, com.expecteddrops.data.KillTimes web, RaidSettings raids, LadlorChart chart)
 	{
-		List<ItemTime> all = ItemTimes.compute(tracker, web, raids);
+		return compute(tracker, web, raids, chart, boss -> true);
+	}
+
+	/**
+	 * The chart items you are missing something of, leaving out any that needs a drop of a boss
+	 * {@code allowed} doesn't let through (a Slayer boss above your level).
+	 */
+	public static List<ChartTime> compute(Tracker tracker, com.expecteddrops.data.KillTimes web, RaidSettings raids, LadlorChart chart,
+		java.util.function.Predicate<String> allowed)
+	{
+		List<ItemTime> all = ItemTimes.compute(tracker, web, raids, allowed);
 		Map<String, Map<String, ItemTime>> byBoss = new LinkedHashMap<>();
 		for (ItemTime t : all)
 		{
@@ -36,6 +46,10 @@ public final class ChartTimes
 		List<ChartTime> result = new ArrayList<>();
 		for (LadlorChart.Item item : chart.getItems())
 		{
+			if (item.getNeeds().stream().anyMatch(need -> !allowed.test(need.getBoss())))
+			{
+				continue;
+			}
 			ChartTime t = timeOf(tracker, raids, byBoss, item);
 			if (t != null)
 			{

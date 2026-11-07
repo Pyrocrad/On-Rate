@@ -52,9 +52,19 @@ public final class ItemTimes
 	/** All items with a time, for every boss that has one; items you have are included (see {@link ItemTime#isHave()}). */
 	public static List<ItemTime> compute(Tracker tracker, KillTimes web, RaidSettings raids)
 	{
+		return compute(tracker, web, raids, boss -> true);
+	}
+
+	/** {@link #compute(Tracker, KillTimes, RaidSettings)} for the bosses {@code allowed} lets through (the ones you can fight). */
+	public static List<ItemTime> compute(Tracker tracker, KillTimes web, RaidSettings raids, java.util.function.Predicate<String> allowed)
+	{
 		List<ItemTime> result = new ArrayList<>();
 		for (BossDefinition boss : tracker.getCatalog().getBosses())
 		{
+			if (!allowed.test(boss.getName()))
+			{
+				continue;
+			}
 			if (boss.getWaves() > 0)
 			{
 				// a Colosseum run is claimed wave by wave: no time per kill to speak of

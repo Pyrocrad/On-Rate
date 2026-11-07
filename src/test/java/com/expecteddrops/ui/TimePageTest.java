@@ -332,4 +332,20 @@ public class TimePageTest
 		List<String> after = pick(panel(tracker), "Pets");
 		assertFalse(after.toString(), after.contains(first.getLabel()));
 	}
+
+	@Test
+	public void theTimePageSaysWhenSlayerBossesAreHidden() throws Exception
+	{
+		ExpectedDropsPanel low = panel(tracker());
+		low.setSlayerLevel(() -> 80);
+		List<String> texts = pick(low, "Items");
+		assertTrue(texts.toString(), texts.stream().anyMatch(t -> t.contains("Bosses above your Slayer level (80) are hidden.")));
+		// a high enough level hides nothing and says nothing
+		ExpectedDropsPanel high = panel(tracker());
+		high.setSlayerLevel(() -> 99);
+		assertFalse(pick(high, "Items").stream().anyMatch(t -> t.contains("are hidden")));
+		// unknown (not logged in): nothing hidden, and the list says Slayer bosses are included
+		ExpectedDropsPanel unknown = panel(tracker());
+		assertTrue(pick(unknown, "Items").stream().anyMatch(t -> t.contains("Slayer bosses are included")));
+	}
 }

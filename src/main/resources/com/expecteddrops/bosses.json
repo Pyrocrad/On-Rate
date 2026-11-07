@@ -2,7 +2,7 @@
   "_readme": "'once': true marks items you can only get once (pets count as once automatically). Items that drop from more than one boss are pooled: judged on all those bosses' kills together against their one collection log total. 'clogShared': true marks items that also drop from monsters outside the bosses: they are left out entirely (no row, and neither the collection log nor loot counts them), because the log total can't be credited to a boss. Rates are per kill/completion, solo or full contribution, base rates (no diary or CA boosts). 'rate' is a fraction string. Delve items use 'levelRates' per delve level (9 = 8+). Combined pages (Dagannoth Kings, Callisto and Artio...) list 'parts', each with its own kill-count names, and drops use 'partRates' per part. Raid modes are parts with a 'raid' key for their purple chance; 'partWeights' overrides an item's weight in one mode. Raid items use 'weight' (share of the purple, chance set in the plugin settings). 'valueFrom' prices an untradeable item from tradeable ones (e.g. \"Noxious halberd / 3\"); it is only used when the item has no price of its own. 'match' lists extra item names that count for that row. 'hidden': true keeps a prepared boss out of the plugin until it is released (remove the flag to show it). 'any': false keeps a row out of the 'Any' total. 'kc' = chat kill-count names, 'loot' = loot tracker names, 'clog' = collection log page titles.",
   "bosses": [
     {
-      "name": "Abyssal Sire", "kc": ["Abyssal Sire"], "loot": ["Abyssal Sire"], "clog": ["Abyssal Sire"], "note": "Bludgeon pieces and the abyssal dagger come from Unsired, not from the kill itself. Unsired is shown but not counted as a unique: the jar and pet come out of it, so counting both would count one drop twice.",
+      "name": "Abyssal Sire", "slayerLevel": 85, "kc": ["Abyssal Sire"], "loot": ["Abyssal Sire"], "clog": ["Abyssal Sire"], "note": "Bludgeon pieces and the abyssal dagger come from Unsired, not from the kill itself. Unsired is shown but not counted as a unique: the jar and pet come out of it, so counting both would count one drop twice.",
       "drops": [
         {"name": "Unsired", "rate": "1/100", "any": false},
         {"name": "Jar of miasma", "rate": "1/1000"},
@@ -10,7 +10,7 @@
       ]
     },
     {
-      "name": "Alchemical Hydra", "kc": ["Alchemical Hydra"], "loot": ["Alchemical Hydra"], "clog": ["Alchemical Hydra"],
+      "name": "Alchemical Hydra", "slayerLevel": 95, "kc": ["Alchemical Hydra"], "loot": ["Alchemical Hydra"], "clog": ["Alchemical Hydra"],
       "note": "Dragon thrownaxes and knives are left out: wyrms, drakes and hydras drop them too, and the collection log has one total for all of them, so On Rate can't tell which came from the Hydra. That means the ones the Hydra did drop aren't counted either.",
       "drops": [
         {"name": "Hydra's eye", "valueFrom": "Brimstone ring / 3", "rate": "1/181", "alsoFrom": "hydras"},
@@ -27,7 +27,7 @@
       ]
     },
     {
-      "name": "Amoxliatl", "kc": ["Amoxliatl"], "loot": ["Amoxliatl"], "clog": ["Amoxliatl"],
+      "name": "Amoxliatl", "slayerLevel": 48, "kc": ["Amoxliatl"], "loot": ["Amoxliatl"], "clog": ["Amoxliatl"],
       "drops": [
         {"name": "Pendant of ates (inert)", "rate": "1/25"},
         {"name": "Glacial temotli", "rate": "1/100", "alsoFrom": "Frost Nagua"},
@@ -35,7 +35,7 @@
       ]
     },
     {
-      "name": "Araxxor", "kc": ["Araxxor"], "loot": ["Araxxor"], "clog": ["Araxxor"], "note": "Assumes you harvest every kill (destroying gives no uniques but doubles the pet rate). Any halberd piece is 1/200 per kill, so 1/600 for each piece.",
+      "name": "Araxxor", "slayerLevel": 92, "kc": ["Araxxor"], "loot": ["Araxxor"], "clog": ["Araxxor"], "note": "Assumes you harvest every kill (destroying gives no uniques but doubles the pet rate). Any halberd piece is 1/200 per kill, so 1/600 for each piece.",
       "drops": [
         {"name": "Noxious point", "valueFrom": "Noxious halberd / 3", "rate": "1/600"},
         {"name": "Noxious blade", "valueFrom": "Noxious halberd / 3", "rate": "1/600"},
@@ -101,7 +101,7 @@
       ]
     },
     {
-      "name": "Cerberus", "kc": ["Cerberus"], "loot": ["Cerberus"], "clog": ["Cerberus"],
+      "name": "Cerberus", "slayerLevel": 91, "kc": ["Cerberus"], "loot": ["Cerberus"], "clog": ["Cerberus"],
       "drops": [
         {"name": "Primordial crystal", "rate": "1/520"},
         {"name": "Pegasian crystal", "rate": "1/520"},
@@ -257,7 +257,7 @@
       ]
     },
     {
-      "name": "Grotesque Guardians", "kc": ["Grotesque Guardians"], "loot": ["Dusk", "Grotesque Guardians"], "clog": ["Grotesque Guardians"], "note": "The Guardians roll their drop table twice per kill, so these are per-kill rates (twice the per-roll rates). The granite maul isn't tracked: gargoyles drop it too.",
+      "name": "Grotesque Guardians", "slayerLevel": 75, "kc": ["Grotesque Guardians"], "loot": ["Dusk", "Grotesque Guardians"], "clog": ["Grotesque Guardians"], "note": "The Guardians roll their drop table twice per kill, so these are per-kill rates (twice the per-roll rates). The granite maul isn't tracked: gargoyles drop it too.",
       "drops": [
         {"name": "Granite gloves", "rate": "1/250"},
         {"name": "Granite ring", "rate": "1/250"},
@@ -316,7 +316,7 @@
       ]
     },
     {
-      "name": "Kraken", "kc": ["Kraken"], "loot": ["Kraken"], "clog": ["Kraken"],
+      "name": "Kraken", "slayerLevel": 87, "kc": ["Kraken"], "loot": ["Kraken"], "clog": ["Kraken"],
       "drops": [
         {"name": "Kraken tentacle", "rate": "1/400", "alsoFrom": "cave krakens"},
         {"name": "Trident of the seas (full)", "rate": "1/512"},
@@ -431,7 +431,7 @@
       ]
     },
     {
-      "name": "Shellbane Gryphon", "kc": ["Shellbane Gryphon"], "loot": ["Shellbane Gryphon"], "clog": ["Shellbane Gryphon"],
+      "name": "Shellbane Gryphon", "slayerLevel": 51, "kc": ["Shellbane Gryphon"], "loot": ["Shellbane Gryphon"], "clog": ["Shellbane Gryphon"],
       "drops": [
         {"name": "Belle's folly (tarnished)", "rate": "1/75"},
         {"name": "Jar of feathers", "rate": "1/2000"},
@@ -514,7 +514,7 @@
       ]
     },
     {
-      "name": "Thermonuclear Smoke Devil", "kc": ["Thermonuclear Smoke Devil", "Thermonuclear smoke devil"], "loot": ["Thermonuclear smoke devil"], "clog": ["Thermonuclear Smoke Devil"],
+      "name": "Thermonuclear Smoke Devil", "slayerLevel": 93, "kc": ["Thermonuclear Smoke Devil", "Thermonuclear smoke devil"], "loot": ["Thermonuclear smoke devil"], "clog": ["Thermonuclear Smoke Devil"],
       "drops": [
         {"name": "Occult necklace", "rate": "1/350", "alsoFrom": "regular smoke devils"},
         {"name": "Smoke battlestaff", "rate": "1/512"},
