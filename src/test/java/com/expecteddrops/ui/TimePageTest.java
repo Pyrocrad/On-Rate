@@ -499,7 +499,26 @@ public class TimePageTest
 		tooltips(panel, tips);
 		for (String t : tips)
 		{
-			assertEquals(t, t.contains("Time to get one"), t.contains("Time based on"));
+			assertEquals(t, t.contains("Time to get one") || t.contains("Time to get a unique"), t.contains("Time based on"));
 		}
+	}
+
+	@Test
+	public void theAnyUniqueHoverSaysHowLongAUniqueTakesAndIsQuickerThanAnyItem() throws Exception
+	{
+		ExpectedDropsPanel panel = panel(tracker());
+		panel.showBoss("Zulrah");
+		List<String> tips = new ArrayList<>();
+		tooltips(panel, tips);
+		String any = tips.stream().filter(t -> t.contains("Any unique") && t.contains("Time to get a unique")).findFirst().orElse(null);
+		assertTrue(tips.toString(), any != null);
+		assertTrue(any, any.contains("the OSRS Wiki's rate"));
+		// quicker than the quickest single item at that boss (Zulrah's fang is 25.6 h)
+		java.util.regex.Matcher m = java.util.regex.Pattern.compile("Time to get a unique[^~\\d]*~?([\\d.,]+) (h|min)").matcher(any.replaceAll("<[^>]*>", " "));
+		assertTrue(any, m.find());
+		double hours = Double.parseDouble(m.group(1).replace(",", "")) / ("min".equals(m.group(2)) ? 60 : 1);
+		assertTrue(any, hours > 0 && hours < 25.6);
+		// the single items say "one", not "a unique"
+		assertTrue(tips.stream().noneMatch(t -> t.contains("Tanzanite fang") && t.contains("Time to get a unique")));
 	}
 }

@@ -5735,11 +5735,16 @@ public class ExpectedDropsPanel extends PluginPanel
 	/** The hover rows for an item's time: how long one takes on average, and where that comes from. */
 	private static void addTimeRows(Tip tip, com.expecteddrops.stats.ItemTime t)
 	{
+		addTimeRows(tip, t, "Time to get one");
+	}
+
+	private static void addTimeRows(Tip tip, com.expecteddrops.stats.ItemTime t, String label)
+	{
 		if (t == null || Double.isNaN(t.getSecondsPerDrop()) || Double.isInfinite(t.getSecondsPerDrop()) || t.getSecondsPerDrop() <= 0)
 		{
 			return;
 		}
-		tip.row("Time to get one", (t.isEstimated() ? "~" : "") + com.expecteddrops.stats.ItemTime.formatLong(t.getSecondsPerDrop()))
+		tip.row(label, (t.isEstimated() ? "~" : "") + com.expecteddrops.stats.ItemTime.formatLong(t.getSecondsPerDrop()))
 			.row("Time based on", sourceName(t.getSourceTag()));
 	}
 
@@ -5762,7 +5767,43 @@ public class ExpectedDropsPanel extends PluginPanel
 				luck.add(new String[]{"+ " + (drops.size() - 3) + " more", ""});
 			}
 		}
-		return tooltip(row, stats, unit, luck, row.isAny() ? null : timeOf(stats.getBoss().getName(), row.getIconItem()));
+		return tooltip(row, stats, unit, luck, row.isAny() ? anyUniqueTime(stats) : timeOf(stats.getBoss().getName(), row.getIconItem()));
+	}
+
+	/**
+	 * How long a unique of any kind takes at this boss, as an item time: the boss's time per kill over the
+	 * uniques you get per kill (what your kills really gave; the drop rates when you have no kills yet).
+	 * Null when the boss has no time yet.
+	 */
+	private com.expecteddrops.stats.ItemTime anyUniqueTime(BossStats stats)
+	{
+		String boss = stats.getBoss().getName();
+		try
+		{
+			timeOf(boss, "");
+			com.expecteddrops.stats.ItemTime base = null;
+			double chances = 0;
+			for (java.util.Map.Entry<String, com.expecteddrops.stats.ItemTime> e : timeIndex.entrySet())
+			{
+				com.expecteddrops.stats.ItemTime t = e.getValue();
+				if (boss.equals(t.getBoss()) && !t.isPet())
+				{
+					base = base == null ? t : base;
+					chances += t.getChancePerKill();
+				}
+			}
+			if (base == null)
+			{
+				return null;
+			}
+			int kills = stats.getKillCount();
+			double perKill = kills > 0 && stats.getAnyRow().getExpected() > 0 ? stats.getAnyRow().getExpected() / kills : chances;
+			return perKill > 0 ? base.forAnyUnique(perKill) : null;
+		}
+		catch (RuntimeException e)
+		{
+			return null;
+		}
 	}
 
 	private static String tooltip(RowStats row, BossStats stats, String unit, List<String[]> dropLuck)
@@ -5835,7 +5876,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			}
 			tip.row("From none, 50% / 90% takes", String.format(java.util.Locale.ROOT, "%,d / %,d %ss", half, most, unit));
 		}
-		addTimeRows(tip, time);
+		addTimeRows(tip, time, row.isAny() ? "Time to get a unique" : "Time to get one");
 
 		// rates that depend on the run: one row each, under a small heading
 		if (drop != null && drop.hasLevelRates() && stats.getBoss().getWaves() > 0)

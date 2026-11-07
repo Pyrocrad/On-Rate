@@ -62,6 +62,16 @@ public class ItemTime
 		return received;
 	}
 
+	/**
+	 * The same boss's time for a unique of any kind: this time per kill over the chance of some unique
+	 * in a kill. A copy; this item stays as it is.
+	 */
+	public ItemTime forAnyUnique(double chancePerKill)
+	{
+		return new ItemTime(boss, "Any unique", iconItem, false, have, secondsPerKill / chancePerKill, secondsPerKill, chancePerKill,
+			estimated, usesOwn, lowConfidence, raid, basis, unit).withHint(hint);
+	}
+
 	ItemTime withReceived(int received)
 	{
 		this.received = received;
