@@ -20,6 +20,14 @@ public class PanelTextTest
 	}
 
 	@Test
+	public void overlayNamesFit()
+	{
+		assertEquals("Vorkath's head", ExpectedDropsPlugin.shortName("Vorkath's head"));
+		assertEquals("Deadeye prayer...", ExpectedDropsPlugin.shortName("Deadeye prayer scroll"));
+		assertTrue(ExpectedDropsPlugin.shortName("Sanguinesti staff (uncharged)").length() <= 18);
+	}
+
+	@Test
 	public void teamNoteSaysWhatWasSeen()
 	{
 		Map<Integer, Integer> seen = new TreeMap<>();
