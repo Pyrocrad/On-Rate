@@ -153,8 +153,9 @@ public final class ChartTimes
 			List<ItemTime> yama = missingAtBoss.get("Yama");
 			if (yama != null && !yama.isEmpty())
 			{
+				long yamaNeeds = item.getNeeds().stream().filter(n -> "Yama".equals(n.getBoss()) && n.getDrop() != null).count();
 				result.withRoute(OathplateShards.describe(yama.stream().mapToDouble(ItemTime::getChancePerKill).toArray(),
-					yama.get(0).getSecondsPerKill()));
+					yama.get(0).getSecondsPerKill(), (int) (yamaNeeds - yama.size())));
 			}
 		}
 		return result;

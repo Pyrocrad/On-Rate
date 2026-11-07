@@ -83,12 +83,22 @@ public final class OathplateShards
 	 */
 	public static String describe(double[] chances, double secondsPerKill)
 	{
+		return describe(chances, secondsPerKill, 0);
+	}
+
+	/**
+	 * {@link #describe(double[], double)} for someone who already has {@code have} of the pieces: it
+	 * says so, and the numbers are for the ones still missing.
+	 */
+	public static String describe(double[] chances, double secondsPerKill, int have)
+	{
 		int n = chances.length;
 		double withShards = expectedKills(chances);
 		double dropsOnly = ChartTimes.expectedKillsForAll(chances);
 		boolean timed = !Double.isNaN(secondsPerKill);
-		String which = n == 1 ? "this piece" : "all " + n + " missing pieces";
-		return String.format(Locale.ROOT, "Oathplate shards: Yama also drops about %.2f a kill, and %d of them plus %,d crushed infernal shale "
+		String which = n == 1 ? (have > 0 ? "the piece you are missing" : "this piece") : "all " + n + " missing pieces";
+		String had = have > 0 ? String.format(Locale.ROOT, "You have %d of %d pieces. ", have, have + n) : "";
+		return had + String.format(Locale.ROOT, "Oathplate shards: Yama also drops about %.2f a kill, and %d of them plus %,d crushed infernal shale "
 				+ "(%d Smithing) make a piece you are missing. With drops and shards together %s takes about %,.0f kills%s, "
 				+ "against %,.0f kills%s from drops alone. This assumes you start with no shards; the shale is not counted.",
 			SHARDS_PER_KILL, SHARDS_PER_PIECE, SHALE_PER_PIECE, SMITHING_LEVEL, which,

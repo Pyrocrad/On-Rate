@@ -123,7 +123,9 @@ public class OathplateShardsTest
 		{
 			if (t.getName().equals("Oathplate armour"))
 			{
-				assertTrue(t.getRoute(), t.getRoute().contains("this piece"));
+				// it recounts for the piece left and says how many you have
+				assertTrue(t.getRoute(), t.getRoute().startsWith("You have 2 of 3 pieces."));
+				assertTrue(t.getRoute(), t.getRoute().contains("the piece you are missing"));
 				return;
 			}
 		}
@@ -146,5 +148,42 @@ public class OathplateShardsTest
 				assertNull(t.getBoss() + " / " + t.getIconItem(), t.getHint());
 			}
 		}
+	}
+
+	@Test
+	public void theRouteIsRecountedAsYouGetPieces()
+	{
+		BossDefinition yama = catalog.byName("Yama");
+		List<String> counters = new ArrayList<>();
+		for (String name : yama.getKcNames())
+		{
+			counters.add(name + " kills: 40");
+		}
+		double[] kills = new double[3];
+		String[][] had = {{}, {"Oathplate helm"}, {"Oathplate helm", "Oathplate chest"}};
+		for (int i = 0; i < had.length; i++)
+		{
+			Tracker t = new Tracker(catalog);
+			t.setSettings(RAIDS);
+			java.util.Map<String, Integer> have = new java.util.HashMap<>();
+			for (String piece : had[i])
+			{
+				have.put(piece, 1);
+			}
+			t.onClogPage(yama.getClogPages().get(0), counters, have);
+			for (ChartTime c : ChartTimes.compute(t, KillTimes.bundled(), RAIDS, LadlorChart.bundled()))
+			{
+				if (c.getName().equals("Oathplate armour"))
+				{
+					String route = c.getRoute();
+					assertTrue(route, i == 0 ? !route.startsWith("You have") : route.startsWith("You have " + i + " of 3 pieces."));
+					java.util.regex.Matcher m = java.util.regex.Pattern.compile("takes about ([\\d,]+) kills").matcher(route);
+					assertTrue(route, m.find());
+					kills[i] = Double.parseDouble(m.group(1).replace(",", ""));
+				}
+			}
+		}
+		// fewer pieces missing: fewer kills
+		assertTrue(kills[0] > kills[1] && kills[1] > kills[2]);
 	}
 }
