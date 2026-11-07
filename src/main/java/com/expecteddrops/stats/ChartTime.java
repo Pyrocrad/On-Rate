@@ -16,13 +16,29 @@ public class ChartTime
 		private final String boss;
 		private final boolean have;
 		private final double seconds;
+		private final double chancePerKill;
+		private final double secondsPerKill;
 
-		Part(String label, String boss, boolean have, double seconds)
+		Part(String label, String boss, boolean have, double seconds, double chancePerKill, double secondsPerKill)
 		{
 			this.label = label;
 			this.boss = boss;
 			this.have = have;
 			this.seconds = seconds;
+			this.chancePerKill = chancePerKill;
+			this.secondsPerKill = secondsPerKill;
+		}
+
+		/** Your chance of this drop in one kill, NaN for a reward that is sure at a kill count. */
+		public double getChancePerKill()
+		{
+			return chancePerKill;
+		}
+
+		/** Seconds one kill takes at this part's boss, NaN when unknown. */
+		public double getSecondsPerKill()
+		{
+			return secondsPerKill;
 		}
 
 		public String getLabel()

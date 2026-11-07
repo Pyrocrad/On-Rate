@@ -262,4 +262,38 @@ public class ChartTimesTest
 		assertFalse(drop("Zulrah", "Tanzanite fang").isPet());
 		assertEquals(Arrays.asList("wiki rate"), Arrays.asList(drop("Zulrah", "Tanzanite fang").getSourceTag()));
 	}
+
+	@Test
+	public void theWholeChartSharesKillsBetweenItsItems() throws Exception
+	{
+		// the Chambers items come on the same raids: together far less than their times added up
+		String json = "{\"items\":["
+			+ "{\"step\":1,\"name\":\"Twisted bow\",\"icon\":\"Twisted bow\",\"needs\":[{\"boss\":\"Chambers of Xeric\",\"drop\":\"Twisted bow\"}]},"
+			+ "{\"step\":2,\"name\":\"Dragon claws\",\"icon\":\"Dragon claws\",\"needs\":[{\"boss\":\"Chambers of Xeric\",\"drop\":\"Dragon claws\"}]},"
+			+ "{\"step\":3,\"name\":\"Hallowfell\",\"icon\":\"Hallowfell\",\"needs\":[{\"boss\":\"The Mad Angel\",\"drop\":\"Hallowfell\"}]}]}";
+		List<ChartTime> items = ChartTimes.compute(tracker, web, RAIDS, LadlorChart.load(new Gson(), new StringReader(json)));
+		assertEquals(3, items.size());
+		ChartTimes.Total total = ChartTimes.total(items);
+		assertEquals(0, total.getWithoutTime());
+		ItemTime bow = drop("Chambers of Xeric", "Twisted bow");
+		ItemTime claws = drop("Chambers of Xeric", "Dragon claws");
+		double raids = ChartTimes.expectedKillsForAll(new double[]{bow.getChancePerKill(), claws.getChancePerKill()});
+		double expected = raids * bow.getSecondsPerKill() + drop("The Mad Angel", "Hallowfell").getSecondsPerDrop();
+		assertEquals(expected, total.getSeconds(), 1.0);
+		double added = items.get(0).getSeconds() + items.get(1).getSeconds() + items.get(2).getSeconds();
+		assertTrue(total.getSeconds() < added);
+		assertTrue(total.getSeconds() > items.get(1).getSeconds());
+	}
+
+	@Test
+	public void theTotalLeavesOutItemsWithNoTimeAndCountsKillsToGo() throws Exception
+	{
+		String json = "{\"items\":["
+			+ "{\"step\":1,\"name\":\"Beef\",\"icon\":\"Beef\",\"needs\":[{\"boss\":\"Brutus\",\"drop\":\"Beef\"}]},"
+			+ "{\"step\":2,\"name\":\"Rite\",\"icon\":\"Dossier\",\"needs\":[{\"boss\":\"Yama\",\"kills\":100}]}]}";
+		List<ChartTime> items = ChartTimes.compute(tracker, web, RAIDS, LadlorChart.load(new Gson(), new StringReader(json)));
+		ChartTimes.Total total = ChartTimes.total(items);
+		assertEquals(1, total.getWithoutTime());
+		assertEquals(100 * 360.0, total.getSeconds(), 1e-6);
+	}
 }

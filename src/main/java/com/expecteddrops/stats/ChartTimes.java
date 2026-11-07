@@ -65,12 +65,13 @@ public final class ChartTimes
 				if (drop == null)
 				{
 					// no time for this boss (or a drop that isn't on its page): the item can't be timed
-					parts.add(new ChartTime.Part(need.getDrop(), need.getBoss(), false, Double.NaN));
+					parts.add(new ChartTime.Part(need.getDrop(), need.getBoss(), false, Double.NaN, Double.NaN, Double.NaN));
 					unknown = true;
 					anythingMissing = true;
 					continue;
 				}
-				parts.add(new ChartTime.Part(drop.getLabel(), need.getBoss(), drop.isHave(), drop.isHave() ? 0 : drop.getSecondsPerDrop()));
+				parts.add(new ChartTime.Part(drop.getLabel(), need.getBoss(), drop.isHave(), drop.isHave() ? 0 : drop.getSecondsPerDrop(),
+					drop.getChancePerKill(), drop.getSecondsPerKill()));
 				if (!drop.isHave())
 				{
 					anythingMissing = true;
@@ -89,18 +90,18 @@ public final class ChartTimes
 				ItemTime any = rows == null || rows.isEmpty() ? null : rows.values().iterator().next();
 				if (left == 0)
 				{
-					parts.add(new ChartTime.Part(label, need.getBoss(), true, 0));
+					parts.add(new ChartTime.Part(label, need.getBoss(), true, 0, Double.NaN, Double.NaN));
 				}
 				else if (any == null)
 				{
-					parts.add(new ChartTime.Part(label, need.getBoss(), false, Double.NaN));
+					parts.add(new ChartTime.Part(label, need.getBoss(), false, Double.NaN, Double.NaN, Double.NaN));
 					unknown = true;
 					anythingMissing = true;
 				}
 				else
 				{
 					double s = left * any.getSecondsPerKill();
-					parts.add(new ChartTime.Part(label + " (" + left + " to go)", need.getBoss(), false, s));
+					parts.add(new ChartTime.Part(label + " (" + left + " to go)", need.getBoss(), false, s, Double.NaN, any.getSecondsPerKill()));
 					seconds += s;
 					anythingMissing = true;
 					estimated |= any.isEstimated();
@@ -123,6 +124,72 @@ public final class ChartTimes
 		}
 		return new ChartTime(item.getStep(), item.getName(), item.getIcon(), item.getNote(), parts,
 			unknown ? Double.NaN : seconds, estimated, usesOwn);
+	}
+
+	/** The time for everything the listed chart items still need, and how many items had no time and are left out of it. */
+	public static final class Total
+	{
+		private final double seconds;
+		private final int withoutTime;
+
+		Total(double seconds, int withoutTime)
+		{
+			this.seconds = seconds;
+			this.withoutTime = withoutTime;
+		}
+
+		public double getSeconds()
+		{
+			return seconds;
+		}
+
+		public int getWithoutTime()
+		{
+			return withoutTime;
+		}
+	}
+
+	/**
+	 * How long everything on the list takes together. Drops at one boss, across all the chart's items
+	 * (the five Chambers items, say), come on the same raids, so this is less than the items added up.
+	 */
+	public static Total total(List<ChartTime> items)
+	{
+		Map<String, List<Double>> chancesAtBoss = new LinkedHashMap<>();
+		Map<String, Double> secondsAtBoss = new LinkedHashMap<>();
+		double seconds = 0;
+		int without = 0;
+		for (ChartTime item : items)
+		{
+			if (!item.hasTime())
+			{
+				without++;
+				continue;
+			}
+			for (ChartTime.Part part : item.getParts())
+			{
+				if (part.isHave())
+				{
+					continue;
+				}
+				if (Double.isNaN(part.getChancePerKill()))
+				{
+					// the kills to go for a reward that is sure at a kill count
+					seconds += part.getSeconds();
+				}
+				else
+				{
+					chancesAtBoss.computeIfAbsent(part.getBoss(), k -> new ArrayList<>()).add(part.getChancePerKill());
+					secondsAtBoss.putIfAbsent(part.getBoss(), part.getSecondsPerKill());
+				}
+			}
+		}
+		for (Map.Entry<String, List<Double>> e : chancesAtBoss.entrySet())
+		{
+			double[] chances = e.getValue().stream().mapToDouble(Double::doubleValue).toArray();
+			seconds += expectedKillsForAll(chances) * secondsAtBoss.get(e.getKey());
+		}
+		return new Total(seconds, without);
 	}
 
 	/**

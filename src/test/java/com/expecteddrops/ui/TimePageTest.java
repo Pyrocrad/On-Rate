@@ -211,8 +211,32 @@ public class TimePageTest
 	public void everyRowSaysWhereItsTimeComesFrom() throws Exception
 	{
 		List<String> texts = pick(panel(tracker()), "Items");
-		assertTrue(texts.toString(), texts.contains("wiki rate"));
-		assertTrue(pick(panel(tracker()), "Ladlor chart").contains("wiki rate"));
+		assertTrue(texts.toString(), texts.contains("wiki"));
+		assertFalse(texts.toString(), texts.contains("yours"));
+		assertTrue(pick(panel(tracker()), "Ladlor chart").contains("wiki"));
+	}
+
+	@Test
+	public void yourOwnTimesShowAsYours() throws Exception
+	{
+		Tracker tracker = tracker();
+		for (int i = 0; i < 20; i++)
+		{
+			long at = 1_000_000 + i * 3_600_000L;
+			tracker.onChatMessage("Your Mad Angel kill count is: <col=ff0000>" + (i + 1) + "</col>.", at);
+			tracker.onChatMessage("Fight duration: <col=ff0000>1:00.00</col>.", at + 500);
+		}
+		List<String> chart = pick(panel(tracker), "Ladlor chart");
+		assertTrue(chart.toString(), chart.contains("yours"));
+		// the chart row says its step and what is missing
+		assertTrue(chart.toString(), chart.contains("Step 14 \u00b7 The Mad Angel"));
+	}
+
+	@Test
+	public void theChartSaysHowMuchIsLeftInAll() throws Exception
+	{
+		List<String> chart = pick(panel(tracker()), "Ladlor chart");
+		assertTrue(chart.toString(), chart.stream().anyMatch(t -> t.contains("items left, about") && t.contains(" h")));
 	}
 
 	@Test

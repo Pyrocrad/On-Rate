@@ -16,12 +16,17 @@ class Chip extends JLabel
 
 	Chip(String text, Color background)
 	{
+		this(text, background, 38);
+	}
+
+	Chip(String text, Color background, int width)
+	{
 		super(text);
 		this.background = background;
 		setFont(FontManager.getRunescapeSmallFont());
 		setForeground(Color.WHITE);
 		setHorizontalAlignment(SwingConstants.CENTER);
-		setPreferredSize(new Dimension(38, 16));
+		setPreferredSize(new Dimension(width, 16));
 	}
 
 	@Override
