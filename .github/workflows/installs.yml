@@ -1,0 +1,54 @@
+# Saves On Rate's install count twice a day (08:00 and 20:00 Belgian summer time).
+# The numbers go to installs.csv on the separate "stats" branch, so the plugin's own
+# code and commits stay untouched. Run it by hand under Actions > Track installs.
+name: Track installs
+
+on:
+  schedule:
+    - cron: '0 6,18 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  track:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read the install count from RuneLite
+        id: count
+        run: |
+          version=$(curl -fsSL https://static.runelite.net/bootstrap.json | jq -r .version)
+          installs=$(curl -fsSL "https://api.runelite.net/runelite-${version}/pluginhub" | jq -r '."on-rate" // empty')
+          if [ -z "$installs" ]; then
+            echo "RuneLite didn't list an install count for on-rate (version $version)"
+            exit 1
+          fi
+          echo "On Rate has $installs installs"
+          echo "installs=$installs" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+
+      - name: Add it to installs.csv on the stats branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git fetch -q origin stats; then
+            git checkout -q stats
+          else
+            # first run: start the branch with the numbers counted by hand before this existed
+            git checkout -q --orphan stats
+            git rm -rfq .
+            printf '%s\n' \
+              'time_utc,installs' \
+              '2026-10-18T15:09Z,0' \
+              '2026-10-19T07:09Z,41' \
+              '2026-10-19T18:03Z,78' \
+              '2026-10-20T04:41Z,118' \
+              '2026-10-20T15:48Z,142' \
+              '2026-10-20T16:42Z,147' > installs.csv
+          fi
+          echo "$(date -u +%Y-%m-%dT%H:%MZ),${{ steps.count.outputs.installs }}" >> installs.csv
+          git add installs.csv
+          git commit -qm "Installs: ${{ steps.count.outputs.installs }}"
+          git push -q origin stats
