@@ -1,0 +1,23 @@
+# Builds On Rate against the real RuneLite and runs the tests on every upload.
+# The result shows as a green tick or red cross next to each commit on GitHub.
+name: Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '11'
+          cache: gradle
+      - name: Build and test
+        run: |
+          chmod +x gradlew
+          ./gradlew build --no-daemon
