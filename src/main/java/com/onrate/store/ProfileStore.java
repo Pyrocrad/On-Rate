@@ -10,7 +10,6 @@ import com.onrate.engine.tracking.RaidRecord;
 import com.onrate.engine.tracking.SaveData;
 import com.onrate.engine.tracking.Tracker;
 import com.onrate.engine.tracking.TrackerState;
-import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -29,12 +28,12 @@ import org.slf4j.LoggerFactory;
 public final class ProfileStore
 {
 	private static final Logger log = LoggerFactory.getLogger(ProfileStore.class);
-	private static final Type RAIDS_TYPE = new TypeToken<List<RaidRecord>>()
+	private static final TypeToken<List<RaidRecord>> RAIDS_TYPE = new TypeToken<List<RaidRecord>>()
 	{
-	}.getType();
-	private static final Type KILLS_TYPE = new TypeToken<List<KillEntry>>()
+	};
+	private static final TypeToken<List<KillEntry>> KILLS_TYPE = new TypeToken<List<KillEntry>>()
 	{
-	}.getType();
+	};
 
 	/** RuneLite's per-profile settings, always addressed with the RuneScape profile key. */
 	public interface Backend
@@ -84,7 +83,7 @@ public final class ProfileStore
 		try
 		{
 			String json = backend.get(profile, Keys.DATA);
-			TrackerState state = json == null || json.isEmpty() ? null : read(profile, Keys.DATA, json, TrackerState.class);
+			TrackerState state = json == null || json.isEmpty() ? null : read(profile, Keys.DATA, json, TypeToken.get(TrackerState.class));
 			tracker.setState(state);
 			for (BossDefinition boss : tracker.getCatalog().getBosses())
 			{
@@ -124,9 +123,9 @@ public final class ProfileStore
 	 * One saved value, with what can't be read left out (null when none of it can). When anything was
 	 * left out the saved text is kept as a backup first.
 	 */
-	private <T> T read(String profile, String key, String json, Type type)
+	private <T> T read(String profile, String key, String json, TypeToken<T> type)
 	{
-		LenientJson lenient = new LenientJson(gson);
+		LenientJson lenient = new LenientJson(gson, type);
 		JsonElement tree;
 		try
 		{
@@ -138,13 +137,13 @@ public final class ProfileStore
 			backup(profile, key, json);
 			return null;
 		}
-		JsonElement clean = lenient.clean(tree, type, key);
+		JsonElement clean = lenient.clean(tree, key);
 		T value = null;
 		if (clean != null)
 		{
 			try
 			{
-				value = gson.fromJson(clean, type);
+				value = gson.getAdapter(type).fromJsonTree(clean);
 			}
 			catch (RuntimeException e)
 			{

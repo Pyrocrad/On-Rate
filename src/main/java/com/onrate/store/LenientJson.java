@@ -4,219 +4,216 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.annotations.SerializedName;
+import com.google.gson.TypeAdapter;
 import com.google.gson.reflect.TypeToken;
-import com.onrate.engine.tracking.KillEntry;
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Reads saved data that may be damaged: walks the JSON along the saved classes and takes out only
- * what can't be read (a null boss or History entry, a count that isn't a number, a list where a map
- * belongs), keeping everything else exactly as it was. Data On Rate wrote itself comes out
- * unchanged, so Gson reads it to the same objects as before.
+ * Reads saved data that may be damaged: finds what can't be read and takes out only that (a null boss
+ * or History entry, a count that isn't a number, a list where a map belongs), keeping everything else
+ * exactly as it was. Data On Rate wrote itself comes out unchanged, so Gson reads it to the same
+ * objects as before.
+ *
+ * <p>It never looks at the saved classes themselves. Each part of the saved text is tried by itself:
+ * Gson reads a copy of the whole text that holds just that part (and what leads to it), so a part
+ * that doesn't read is found, and what it holds is tried in turn. Parts of a saved object, entries of
+ * a map and elements of a list are read independently of each other, so the rest is unaffected.
  *
  * <p>What was taken out is listed in {@link #dropped}, so the caller can keep the original text and
- * say what happened. A null member of a saved object is just absent (Gson doesn't write nulls), so
- * it isn't counted; a null in a map or a list is.
+ * say what happened. A null in an object, a map or a list is taken out and counted (Gson never
+ * writes one).
  */
 final class LenientJson
 {
-	private static final String MODEL = "com.onrate.engine.tracking.";
+	/** A way through the saved text: a member name, or null for "an element of a list". */
+	private static final String ELEMENT = null;
 
-	private final Gson gson;
+	private final TypeAdapter<?> adapter;
 	/** Where something was taken out, and why. */
 	final List<String> dropped = new ArrayList<>();
-	private final Map<Class<?>, Map<String, Field>> fieldsOf = new HashMap<>();
 
-	LenientJson(Gson gson)
+	/** {@code type} is what the whole saved text is read as. */
+	LenientJson(Gson gson, TypeToken<?> type)
 	{
-		this.gson = gson;
+		this.adapter = gson.getAdapter(type);
 	}
 
-	/** A copy of {@code e} with what can't be read as {@code type} taken out, or null when none of it can. */
-	JsonElement clean(JsonElement e, Type type, String path)
+	/** A copy of {@code root} with what can't be read taken out, or null when none of it can. */
+	JsonElement clean(JsonElement root, String path)
+	{
+		return prune(root, new ArrayList<>(), path);
+	}
+
+	private JsonElement prune(JsonElement e, List<String> steps, String path)
 	{
 		if (e == null || e.isJsonNull())
 		{
 			return null;
 		}
-		Class<?> raw = TypeToken.get(type).getRawType();
-		if (Map.class.isAssignableFrom(raw))
+		String broken = rule(steps, e);
+		if (broken != null)
 		{
-			return cleanMap(e, type, path);
+			return reject(path, broken);
 		}
-		if (Collection.class.isAssignableFrom(raw))
+		// Gson reads a null in a list or map and a drop without a name, so look inside before trusting it
+		if (!hasProblem(steps, e) && reads(steps, e))
 		{
-			return cleanList(e, type, path);
-		}
-		if (raw == long[].class)
-		{
-			// the only long[] saved: an imported raid time, its end and its length
-			if (!parses(e, type) || e.getAsJsonArray().size() < 2)
-			{
-				return reject(path, "not a raid time");
-			}
 			return e;
 		}
-		if (raw.getName().startsWith(MODEL))
+		if (e.isJsonObject())
 		{
-			return cleanObject(e, raw, path);
-		}
-		return parses(e, type) ? e : reject(path, "not a " + raw.getSimpleName());
-	}
-
-	private JsonElement cleanMap(JsonElement e, Type type, String path)
-	{
-		if (!e.isJsonObject())
-		{
-			return reject(path, "not a map");
-		}
-		Type valueType = typeArgument(type, 1);
-		JsonObject out = new JsonObject();
-		for (Map.Entry<String, JsonElement> entry : e.getAsJsonObject().entrySet())
-		{
-			String at = path + "." + entry.getKey();
-			JsonElement value = entry.getValue().isJsonNull() ? null : clean(entry.getValue(), valueType, at);
-			if (value == null)
+			JsonObject out = new JsonObject();
+			for (Map.Entry<String, JsonElement> member : e.getAsJsonObject().entrySet())
 			{
-				if (entry.getValue().isJsonNull())
+				if (member.getValue().isJsonNull())
 				{
-					reject(at, "empty");
+					reject(path + "." + member.getKey(), "empty");
+					continue;
 				}
-				continue;
+				JsonElement kept = prune(member.getValue(), with(steps, member.getKey()), path + "." + member.getKey());
+				if (kept != null)
+				{
+					out.add(member.getKey(), kept);
+				}
 			}
-			// the key must read too (a kill count keyed by team size needs a number)
-			JsonObject one = new JsonObject();
-			one.add(entry.getKey(), value);
-			if (!parses(one, type))
+			return checked(steps, out, path);
+		}
+		if (e.isJsonArray())
+		{
+			JsonArray in = e.getAsJsonArray();
+			if (onlyValues(in))
 			{
-				reject(at, "unreadable key");
-				continue;
+				// a list of plain values that doesn't read stays whole or goes whole (a raid time is a pair)
+				return reject(path, "unreadable");
 			}
-			out.add(entry.getKey(), value);
-		}
-		return out;
-	}
-
-	private JsonElement cleanList(JsonElement e, Type type, String path)
-	{
-		if (!e.isJsonArray())
-		{
-			return reject(path, "not a list");
-		}
-		Type elementType = typeArgument(type, 0);
-		JsonArray out = new JsonArray();
-		int i = 0;
-		for (JsonElement element : e.getAsJsonArray())
-		{
-			String at = path + "[" + i++ + "]";
-			JsonElement value = element.isJsonNull() ? null : clean(element, elementType, at);
-			if (value == null)
+			JsonArray out = new JsonArray();
+			int i = 0;
+			for (JsonElement element : in)
 			{
+				String at = path + "[" + i++ + "]";
 				if (element.isJsonNull())
 				{
 					reject(at, "empty");
+					continue;
 				}
-				continue;
-			}
-			out.add(value);
-		}
-		return out;
-	}
-
-	private JsonElement cleanObject(JsonElement e, Class<?> raw, String path)
-	{
-		if (!e.isJsonObject())
-		{
-			return reject(path, "not a " + raw.getSimpleName());
-		}
-		Map<String, Field> fields = fields(raw);
-		JsonObject out = new JsonObject();
-		for (Map.Entry<String, JsonElement> member : e.getAsJsonObject().entrySet())
-		{
-			Field f = fields.get(member.getKey());
-			if (f == null)
-			{
-				// not one of ours (a newer version's): Gson skips it, and it stays as it was
-				out.add(member.getKey(), member.getValue());
-				continue;
-			}
-			if (member.getValue().isJsonNull())
-			{
-				continue;
-			}
-			JsonElement value = clean(member.getValue(), f.getGenericType(), path + "." + member.getKey());
-			if (value != null)
-			{
-				out.add(member.getKey(), value);
-			}
-		}
-		if (raw == KillEntry.DropEntry.class)
-		{
-			// a drop is nothing without its item (saved under its short JSON name)
-			String nameKey = jsonName(fields, "name");
-			if (nameKey == null || !out.has(nameKey) || !out.get(nameKey).isJsonPrimitive())
-			{
-				return reject(path, "no item name");
-			}
-		}
-		return parses(out, raw) ? out : reject(path, "not a " + raw.getSimpleName());
-	}
-
-	/** The saved fields of a class by their JSON name (as Gson names them). */
-	private Map<String, Field> fields(Class<?> raw)
-	{
-		return fieldsOf.computeIfAbsent(raw, c ->
-		{
-			Map<String, Field> byName = new HashMap<>();
-			for (Class<?> k = c; k != null && k != Object.class; k = k.getSuperclass())
-			{
-				for (Field f : k.getDeclaredFields())
+				JsonElement kept = prune(element, with(steps, ELEMENT), at);
+				if (kept != null)
 				{
-					int mods = f.getModifiers();
-					if (Modifier.isStatic(mods) || Modifier.isTransient(mods) || f.isSynthetic())
-					{
-						continue;
-					}
-					SerializedName name = f.getAnnotation(SerializedName.class);
-					byName.put(name == null ? f.getName() : name.value(), f);
+					out.add(kept);
 				}
 			}
-			return byName;
-		});
+			return checked(steps, out, path);
+		}
+		return reject(path, "unreadable");
 	}
 
-	/** The JSON name of the Java field with this name, or null. */
-	private static String jsonName(Map<String, Field> fields, String javaName)
+	/** Whether anything inside {@code e} breaks a rule or is null, whatever Gson makes of it. */
+	private static boolean hasProblem(List<String> steps, JsonElement e)
 	{
-		for (Map.Entry<String, Field> e : fields.entrySet())
+		if (e.isJsonObject())
 		{
-			if (e.getValue().getName().equals(javaName))
+			for (Map.Entry<String, JsonElement> member : e.getAsJsonObject().entrySet())
 			{
-				return e.getKey();
+				JsonElement value = member.getValue();
+				if (value.isJsonNull() || rule(with(steps, member.getKey()), value) != null || hasProblem(with(steps, member.getKey()), value))
+				{
+					return true;
+				}
+			}
+		}
+		else if (e.isJsonArray())
+		{
+			for (JsonElement element : e.getAsJsonArray())
+			{
+				if (element.isJsonNull() || rule(with(steps, ELEMENT), element) != null || hasProblem(with(steps, ELEMENT), element))
+				{
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	/** What is left of a part once what can't be read is out: kept when it reads and breaks no rule. */
+	private JsonElement checked(List<String> steps, JsonElement out, String path)
+	{
+		String broken = rule(steps, out);
+		if (broken != null)
+		{
+			return reject(path, broken);
+		}
+		return reads(steps, out) ? out : reject(path, "unreadable");
+	}
+
+	/**
+	 * Two things Gson reads without complaint but On Rate can't use: a drop with no item name (saved
+	 * under {@code i}, in a kill's {@code d} list), and a raid time that isn't a pair (its end and its length).
+	 */
+	private static String rule(List<String> steps, JsonElement e)
+	{
+		int n = steps.size();
+		if (n >= 2 && steps.get(n - 1) == ELEMENT && "d".equals(steps.get(n - 2)) && e.isJsonObject())
+		{
+			JsonElement name = e.getAsJsonObject().get("i");
+			if (name == null || !name.isJsonPrimitive())
+			{
+				return "no item name";
+			}
+		}
+		if (n >= 3 && steps.get(n - 1) == ELEMENT && "importedTimes".equals(steps.get(n - 3)))
+		{
+			if (!e.isJsonArray() || e.getAsJsonArray().size() < 2)
+			{
+				return "not a raid time";
 			}
 		}
 		return null;
 	}
 
-	private static Type typeArgument(Type type, int i)
+	private static boolean onlyValues(JsonArray array)
 	{
-		return type instanceof ParameterizedType ? ((ParameterizedType) type).getActualTypeArguments()[i] : Object.class;
+		for (JsonElement element : array)
+		{
+			if (!element.isJsonPrimitive())
+			{
+				return false;
+			}
+		}
+		return true;
 	}
 
-	private boolean parses(JsonElement e, Type type)
+	private static List<String> with(List<String> steps, String next)
 	{
+		List<String> longer = new ArrayList<>(steps);
+		longer.add(next);
+		return longer;
+	}
+
+	/** Whether Gson reads the saved text when it holds only {@code part}, at the place {@code steps} lead to. */
+	private boolean reads(List<String> steps, JsonElement part)
+	{
+		JsonElement tree = part;
+		for (int i = steps.size() - 1; i >= 0; i--)
+		{
+			String step = steps.get(i);
+			if (step == ELEMENT)
+			{
+				JsonArray list = new JsonArray();
+				list.add(tree);
+				tree = list;
+			}
+			else
+			{
+				JsonObject holder = new JsonObject();
+				holder.add(step, tree);
+				tree = holder;
+			}
+		}
 		try
 		{
-			gson.fromJson(e, type);
+			adapter.fromJsonTree(tree);
 			return true;
 		}
 		catch (RuntimeException ex)
