@@ -1,0 +1,77 @@
+plugins {
+	id 'java'
+}
+
+repositories {
+	mavenLocal()
+	maven {
+		url = 'https://repo.runelite.net'
+		content {
+			includeGroupByRegex("net\\.runelite.*")
+		}
+	}
+	mavenCentral()
+}
+
+def runeLiteVersion = 'latest.release'
+
+// The original On Rate, untouched apart from its package (legacy.expecteddrops, so it can sit next to the
+// original UI classes). Compiled only so the tests can run it next to this plugin on identical input. Never shipped.
+sourceSets {
+	legacy
+	test {
+		compileClasspath += sourceSets.legacy.output
+		runtimeClasspath += sourceSets.legacy.output
+	}
+}
+
+configurations {
+	legacyCompileOnly.extendsFrom compileOnly
+	legacyAnnotationProcessor.extendsFrom annotationProcessor
+}
+
+dependencies {
+	compileOnly group: 'net.runelite', name: 'client', version: runeLiteVersion
+
+	compileOnly 'org.projectlombok:lombok:1.18.30'
+	annotationProcessor 'org.projectlombok:lombok:1.18.30'
+
+	testImplementation 'junit:junit:4.13.2'
+	testImplementation group: 'net.runelite', name: 'client', version: runeLiteVersion
+	testImplementation group: 'net.runelite', name: 'jshell', version: runeLiteVersion
+}
+
+group = 'com.expecteddrops'
+version = '1.1.0'
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_11
+	targetCompatibility = JavaVersion.VERSION_11
+}
+
+tasks.withType(JavaCompile).configureEach {
+	options.encoding = 'UTF-8'
+	options.release.set(11)
+}
+
+test {
+	// the Swing pages are rendered off-screen in tests
+	systemProperty 'java.awt.headless', 'true'
+	systemProperty 'onrate.shots', System.getProperty('onrate.shots', 'build/screenshots')
+	systemProperty 'onrate.pairs', System.getProperty('onrate.pairs', 'build/pixel-parity')
+	testLogging {
+		events 'failed'
+		exceptionFormat 'full'
+	}
+	maxHeapSize = '1g'
+}
+
+// ./gradlew run  starts RuneLite in developer mode with this plugin loaded
+tasks.register('run', JavaExec) {
+	group = 'application'
+	description = 'Runs RuneLite with the On Rate plugin'
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'com.expecteddrops.ExpectedDropsPluginTest'
+	jvmArgs = ['-ea']
+	args = ['--developer-mode']
+}
