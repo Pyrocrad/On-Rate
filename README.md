@@ -67,7 +67,7 @@ The **?** at the top of the panel explains what you're looking at.
 
 ## Good to know
 
-- Items several bosses drop (dragon pickaxe, godsword shards, Virtus, onyx...) are judged on all those bosses' kills together, under **Shared with other bosses** on each boss page. Know where yours came from? **Right-click one to judge it on each boss separately:** drops On Rate sees go to the boss that dropped them, and you say where the older ones came from (a visage from a regular dragon can count for no boss at all).
+- Items several bosses drop (dragon pickaxe, godsword shards, Virtus, onyx...) are judged on all those bosses' kills together, under **Shared with other bosses** on each boss page. Know where yours came from? **Right-click one to move it to each boss separately:** drops On Rate sees go to the boss that dropped them, and you say where the older ones came from (a visage from a regular dragon can count for no boss at all).
 - **Drops from before On Rate:** On Rate only sees drops that happen while it runs, so older ones have no known wait. If you remember the kill count, right-click the item (one you have) on its boss page and choose **I got this at kill...** (or *raid*, *delve*...), then type the count. It is added to the boss's History without a date and your dry streak counts from it. Open **Items > Single drops** on the account overview to see how lucky or dry that single drop was. Your unique counts and expected don't change. With several copies it asks if this was your first one; on pages with several modes or bosses (Chambers normal or Challenge Mode, Callisto or Artio...) it asks which one first.
 - Pets and Royal Titans prayer scrolls count once, like in the collection log.
 - Raids without points (everything from before you installed On Rate) use an average purple chance, which you can change under **Raid purple chances** in the settings.
@@ -92,7 +92,7 @@ Found a bug or a wrong drop rate, or have an idea? Join the **[On Rate Discord](
 <details>
 <summary><b>Prefer another look?</b> Four more item views</summary>
 
-<br>Pick an **Item view** in the settings: bars (shown above), a compact table, a luck gauge, chance rings or bars with tabs.
+<br>Use the **View** button above the items (or pick an **Item view** in the settings): bars (shown above), a compact table, a luck gauge, chance rings or bars with tabs.
 
 <img src="docs/luck-views.png" width="830" alt="The other item views on a Chambers of Xeric page: compact table, luck gauge, chance rings and bars with tabs">
 

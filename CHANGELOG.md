@@ -10,6 +10,8 @@ Updates come through the Plugin Hub. Each heading is the date of that update; **
 - **Safer stopping:** game events that arrive while On Rate is being turned off no longer cause errors.
 
 *New*
+- **Opens on Bosses:** the account overview always opens on its Bosses tab when RuneLite starts, instead of the tab you left it on. Your sort order and Items list are still remembered.
+- **View button:** a small icon button on the ITEMS line of a boss page, and on the account overview's Sort row, switches between the five item views (bars, bars with tabs, compact table, chance rings, luck gauge) without opening the settings. It is the same choice as **Item view** in the settings, so every page follows it. On the bars view, the key "bar = got · line = expected" moves under the ITEMS line.
 - **Raid pages: three new sections** under History, from the raids On Rate saw. Details: [Boss page](docs/HOW-IT-WORKS.md#boss-page).
   - **Purple chance by setup:** your purple chance an hour (and the GP value an hour) per team size and mode, or team size and raid level at Tombs of Amascut. Scaled Chambers raids get their own rows, like **1+2** for one player in a raid scaled for three; raids from before this update say **Trio/scaled**. Your top 5 setups; the top row says **FASTEST PURPLES** or **MOST GP**.
   - **Personal bests:** your fastest raid and most points per mode and team size. The raid that set one says **PB** in History.

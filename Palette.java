@@ -1,0 +1,126 @@
+package com.expecteddrops.ui;
+
+import java.awt.Color;
+import net.runelite.client.ui.ColorScheme;
+
+/**
+ * Luck colours: red (dry) to yellow to green (spooned), or orange to grey to blue for
+ * colour-blind players.
+ */
+public final class Palette
+{
+	static final Color BAD = new Color(170, 40, 30);
+	static final Color MID = new Color(170, 150, 20);
+	static final Color GOOD = new Color(46, 160, 67);
+
+	static final Color CB_BAD = new Color(220, 120, 20);
+	static final Color CB_MID = new Color(140, 140, 140);
+	static final Color CB_GOOD = new Color(40, 110, 200);
+
+	private static volatile boolean colourBlind;
+
+	private Palette()
+	{
+	}
+
+	private static volatile Color customBad;
+	private static volatile Color customMid;
+
+	public static void setColourBlind(boolean on)
+	{
+		colourBlind = on;
+	}
+
+	/**
+	 * Picks the colours for dry to spooned. The ready-made sets keep spooned green (the
+	 * colour-blind one has its own blue); Custom takes the player's dry and on rate colours.
+	 */
+	public static void setScheme(LuckColours scheme, Color dry, Color onRate)
+	{
+		LuckColours s = scheme == null ? LuckColours.CLASSIC : scheme;
+		colourBlind = s == LuckColours.COLOUR_BLIND;
+		switch (s)
+		{
+			case PURPLE_AMBER:
+				customBad = new Color(110, 60, 170);
+				customMid = new Color(200, 150, 30);
+				break;
+			case PINK_GREY:
+				customBad = new Color(210, 90, 140);
+				customMid = new Color(140, 140, 140);
+				break;
+			case MONO:
+				customBad = new Color(110, 110, 110);
+				customMid = new Color(150, 150, 150);
+				break;
+			case CUSTOM:
+				customBad = dry;
+				customMid = onRate;
+				break;
+			default:
+				customBad = null;
+				customMid = null;
+				break;
+		}
+	}
+
+	/** Colour for a luck percentile 0..1 (grey when unknown). */
+	public static Color luck(double luck)
+	{
+		if (Double.isNaN(luck))
+		{
+			return ColorScheme.MEDIUM_GRAY_COLOR;
+		}
+		Color bad = customBad != null ? customBad : colourBlind ? CB_BAD : BAD;
+		Color mid = customMid != null ? customMid : colourBlind ? CB_MID : MID;
+		Color good = colourBlind ? CB_GOOD : GOOD;
+		if (luck < 0.5)
+		{
+			return blend(bad, mid, luck / 0.5);
+		}
+		return blend(mid, good, (luck - 0.5) / 0.5);
+	}
+
+	/**
+	 * The verdict colour on a boss page: the dry and spooned bands (a third of players each) are
+	 * toned down, so only very dry and very spooned get the full colour.
+	 */
+	static Color verdict(double luck)
+	{
+		Color c = luck(luck);
+		boolean mild = !Double.isNaN(luck) && (luck >= 0.10 && luck < 0.35 || luck > 0.65 && luck <= 0.90);
+		return mild ? blend(c, new Color(170, 170, 170), 0.3) : c;
+	}
+
+	/** The "you have it" colour. */
+	public static Color good()
+	{
+		return colourBlind ? CB_GOOD : GOOD;
+	}
+
+	static Color blend(Color a, Color b, double t)
+	{
+		t = Math.max(0, Math.min(1, t));
+		return new Color(
+			(int) Math.round(a.getRed() + (b.getRed() - a.getRed()) * t),
+			(int) Math.round(a.getGreen() + (b.getGreen() - a.getGreen()) * t),
+			(int) Math.round(a.getBlue() + (b.getBlue() - a.getBlue()) * t));
+	}
+
+	/** A quiet background in the hue of a luck colour (the pill under a verdict). */
+	static Color tint(Color c)
+	{
+		return blend(Theme.SURFACE, c, 0.2);
+	}
+
+	/** Text on a {@link #tint}: the luck colour, lifted a little so it stays readable. */
+	static Color onTint(Color c)
+	{
+		return blend(c, Color.WHITE, 0.22);
+	}
+
+	static Color withAlpha(Color c, int alpha)
+	{
+		return new Color(c.getRed(), c.getGreen(), c.getBlue(), alpha);
+	}
+}

@@ -223,6 +223,20 @@ public class ExpectedDropsPanel extends PluginPanel
 	/** True while the sort list gains or loses its GP value option, so that is not taken for a click. */
 	private boolean sortOptionsUpdating;
 	private final JPanel sortRow = new JPanel(new BorderLayout(4, 0));
+	private final JLabel sortLabel = new JLabel("Sort:");
+	/**
+	 * False draws the layout from before the View buttons: the key to the bars on the ITEMS line, no button on the Sort
+	 * row. Only the pixel comparison with the original panel turns it off (see PanelPixelParityTest).
+	 */
+	private boolean viewButtons = true;
+	/** Saves the chosen item view (the same setting as Display > Item view). */
+	private java.util.function.Consumer<ItemView> setItemView = view -> { };
+	/** The View button on the account overview's Sort row, and the one on a boss page's Items line. */
+	private final ViewChip accountViewChip = new ViewChip(view -> pickView(view));
+	private final ViewChip bossViewChip = new ViewChip(view -> pickView(view));
+	/** Boss pages: the "ITEMS" line with the View button, and the key to the bars under it. */
+	private final JPanel itemsHeading = new JPanel();
+	private final JLabel itemsLegend = new JLabel("bar = got · line = expected");
 	private final JLabel kcLabel = new JLabel();
 	private final JLabel syncLabel = new JLabel();
 	/** Boss pages: GE value received vs expected, weighed by price (the verdict only counts). */
@@ -563,6 +577,30 @@ public class ExpectedDropsPanel extends PluginPanel
 		top.add(topItemsPanel);
 		top.add(graphPanel);
 
+		// boss pages: "ITEMS" with the View button on its right; the key to the bars goes under it
+		itemsHeading.setLayout(new BoxLayout(itemsHeading, BoxLayout.Y_AXIS));
+		itemsHeading.setOpaque(false);
+		itemsHeading.setAlignmentX(LEFT_ALIGNMENT);
+		itemsHeading.setBorder(new EmptyBorder(0, 0, Theme.S, 0));
+		JPanel itemsLine = new JPanel(new BorderLayout(6, 0));
+		itemsLine.setOpaque(false);
+		itemsLine.setAlignmentX(LEFT_ALIGNMENT);
+		itemsLine.add(smallLabel("ITEMS", Theme.TEXT_MUTED), BorderLayout.WEST);
+		// icon and arrow only, as on the account overview's Sort row; the view's name is in its tooltip
+		bossViewChip.setCompact(true);
+		itemsLine.add(bossViewChip, BorderLayout.EAST);
+		itemsLine.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+		itemsHeading.add(itemsLine);
+		itemsLegend.setFont(FontManager.getRunescapeSmallFont());
+		itemsLegend.setForeground(Theme.TEXT_MUTED);
+		itemsLegend.setAlignmentX(LEFT_ALIGNMENT);
+		itemsLegend.setBorder(new EmptyBorder(Theme.HAIR, 0, 0, 0));
+		itemsLegend.setToolTipText(new Tip(null).line("The white line is how many you should have by now. A bar short of it is behind; "
+			+ "past it is ahead. Rare items have their line near the start.").small());
+		itemsHeading.add(itemsLegend);
+		itemsHeading.setVisible(false);
+		top.add(itemsHeading);
+
 		JPanel tabs = new JPanel(new GridLayout(1, 2, 2, 0));
 		tabsRow = tabs;
 		tabs.setOpaque(false);
@@ -577,7 +615,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		sortRow.setOpaque(false);
 		sortRow.setAlignmentX(LEFT_ALIGNMENT);
 		sortRow.setBorder(new EmptyBorder(Theme.S, 0, 0, 0));
-		JLabel sortLabel = new JLabel("Sort:");
 		sortLabel.setFont(FontManager.getRunescapeSmallFont());
 		sortLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		sortRow.add(sortLabel, BorderLayout.WEST);
@@ -592,6 +629,8 @@ public class ExpectedDropsPanel extends PluginPanel
 			refresh();
 		});
 		sortRow.add(sortSelect, BorderLayout.CENTER);
+		sortRow.add(accountViewChip, BorderLayout.EAST);
+		sortControls(true);
 		sortRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
 		top.add(sortRow);
 
@@ -1118,6 +1157,18 @@ public class ExpectedDropsPanel extends PluginPanel
 		setGraphOpen = opener == null ? open -> { } : opener;
 	}
 
+	/** Where the View button saves the item view; the same setting as in Display, so every page follows it. */
+	public void setItemViewSaver(java.util.function.Consumer<ItemView> saver)
+	{
+		setItemView = saver == null ? view -> { } : saver;
+	}
+
+	private void pickView(ItemView view)
+	{
+		setItemView.accept(view);
+		refresh();
+	}
+
 	/** Where the account overview's page choice is kept between sessions ("tab,sort,top"); see {@link #setAccountPageStore}. */
 	private java.util.function.Consumer<String> saveAccountPage = page -> { };
 	private boolean restoringAccountPage;
@@ -1162,6 +1213,17 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			restoringAccountPage = false;
 		}
+		refresh();
+	}
+
+	/**
+	 * Opens the account overview on its Bosses tab, whatever tab was saved. Called once after
+	 * {@link #setAccountPageStore}, so RuneLite always starts on Bosses; the sort order and the Items list
+	 * are still the saved ones, and the tab you pick afterwards is remembered for the rest of the session.
+	 */
+	public void startOnBossesTab()
+	{
+		accountTab = TAB_BOSSES;
 		refresh();
 	}
 
@@ -1232,6 +1294,11 @@ public class ExpectedDropsPanel extends PluginPanel
 		topItemsPanel.setVisible(account && o.isTopItems());
 		topItemsPanel.removeAll();
 		sortRow.setVisible(account);
+		sortControls(true);
+		accountViewChip.setView(o.getItemView());
+		bossViewChip.setView(o.getItemView());
+		itemsHeading.setVisible(false);
+		itemsLegend.setVisible(o.getItemView() == ItemView.TARGET_BARS);
 		tabsRow.setVisible(o.getItemView() == ItemView.DELVE_BARS);
 		syncLabel.setVisible(!account);
 		valueLabel.setVisible(false);
@@ -1257,6 +1324,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			repaint();
 			return;
 		}
+		itemsHeading.setVisible(viewButtons);
 
 		boolean raid = stats.getBoss().getRaid() != null;
 		boolean delve = stats.getLevelCounts() != null;
@@ -1864,7 +1932,15 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		if (tabs && accountTab == TAB_ITEMS)
 		{
-			sortRow.setVisible(false);
+			// the Items tab has no sort list, but its lists follow the view: the button stays
+			if (viewButtons)
+			{
+				sortControls(false);
+			}
+			else
+			{
+				sortRow.setVisible(false);
+			}
 			renderItemsTab(account, o.getItemView());
 		}
 		else if (tabs && accountTab == TAB_RECENT)
@@ -4375,7 +4451,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		title.setToolTipText("<html><body style='width: 240px'>These drop from other bosses too, and the collection log has "
 			+ "one total for all of them. So each is judged on all those bosses' kills together, and shows the same numbers on "
 			+ "every boss that drops it. Hover one to see which bosses.<br><br>Know where yours came from? Right-click "
-			+ "it to judge it on each boss separately.</body></html>");
+			+ "it to move it to each boss separately.</body></html>");
 		rowsPanel.add(title);
 		String page = stats.getBoss().getClogPages().isEmpty() ? stats.getBoss().getName() : stats.getBoss().getClogPages().get(0);
 		boolean headerAdded = false;
@@ -4408,7 +4484,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			}
 			if (pool.isSplitNeedsAnswer() && pool.isSplittable())
 			{
-				missingLines.add(String.format(java.util.Locale.ROOT, "Your collection log has %s %s On Rate didn't see drop, so it's judged "
+				missingLines.add(String.format(java.util.Locale.ROOT, "Your collection log has %s %s On Rate didn't see drop, so it's counted "
 					+ "with the other bosses again. Right-click it to say where %s came from.",
 					pool.getOlderCopies() == 1 ? "a" : String.valueOf(pool.getOlderCopies()),
 					pool.getOlderCopies() == 1 ? pool.getLabel() : pool.getLabel() + " copies",
@@ -4741,9 +4817,9 @@ public class ExpectedDropsPanel extends PluginPanel
 		if (pool.isSplittable())
 		{
 			tip.note(pool.getAlsoFrom() != null
-				? "Know where yours came from? Right-click to judge it on each boss separately, with the ones from "
+				? "Know where yours came from? Right-click to move it to each boss separately, with the ones from "
 					+ pool.getAlsoFrom() + " left out."
-				: "Know which boss yours came from? Right-click to judge it on each boss separately.");
+				: "Know which boss yours came from? Right-click to move it to each boss separately.");
 		}
 		return tip.wide();
 	}
@@ -4872,7 +4948,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		return "<html><body style='width: 240px'>" + how + "<br><br>Hover an item for its drop rate, your chances "
 			+ "and your dry streak. Right-click one to leave it out of the calculations (a drop you got elsewhere, "
-			+ "or jars you don't care about), or to add a drop from before On Rate. Change the view in the settings (Display)."
+			+ "or jars you don't care about), or to add a drop from before On Rate. Change the view with the View button above the items, or in the settings (Display)."
 			+ "</body></html>";
 	}
 
@@ -4929,9 +5005,12 @@ public class ExpectedDropsPanel extends PluginPanel
 				}
 				break;
 			default:
-				rowsPanel.add(itemsHeader("ITEMS", "bar = got \u00b7 line = expected",
-					"The white line is how many you should have by now. A bar short of it is behind; past it is ahead. "
-						+ "Rare items have their line near the start."));
+				if (!viewButtons)
+				{
+					rowsPanel.add(itemsHeader("ITEMS", "bar = got · line = expected",
+						"The white line is how many you should have by now. A bar short of it is behind; past it is ahead. "
+							+ "Rare items have their line near the start."));
+				}
 				for (int i = 0; i < all.size(); i++)
 				{
 					if (i > 0)
@@ -4989,7 +5068,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		if (splitKey != null)
 		{
 			// a shared item the player chose to judge per boss: it can go back, not be left out
-			JMenuItem back = new JMenuItem("Judge it with the other bosses again");
+			JMenuItem back = new JMenuItem("Move it back to Shared with other bosses");
 			back.addActionListener(e ->
 			{
 				tracker.unsplitPool(splitKey);
@@ -5149,7 +5228,7 @@ public class ExpectedDropsPanel extends PluginPanel
 	}
 
 	/**
-	 * Adds the right-click menu to a shared item: judge it on each boss separately. The copies
+	 * Adds the right-click menu to a shared item: move it to each boss separately. The copies
 	 * On Rate saw drop go to the boss that dropped them; the older ones it didn't see go where
 	 * the player says: a boss they have kills at, or "not from a boss" for an item other
 	 * monsters drop too (a visage from a regular dragon).
@@ -5164,7 +5243,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		int older = pool.getOlderCopies();
 		if (older == 0)
 		{
-			JMenuItem item = new JMenuItem("Judge it on each boss separately");
+			JMenuItem item = new JMenuItem("Move it to each boss separately");
 			item.addActionListener(e -> splitPool(pool, java.util.Collections.emptyMap()));
 			menu.add(item);
 			addPopup(c, menu);
@@ -5175,8 +5254,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			return c;
 		}
-		javax.swing.JMenu all = new javax.swing.JMenu(older == 1 ? "Judge per boss: my older one came from"
-			: "Judge per boss: all " + older + " older ones came from");
+		javax.swing.JMenu all = new javax.swing.JMenu(older == 1 ? "Move my older one to"
+			: "Move all " + older + " older ones to");
 		for (Map.Entry<String, String> w : where.entrySet())
 		{
 			JMenuItem item = new JMenuItem(w.getValue());
@@ -5186,7 +5265,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		menu.add(all);
 		if (older > 1 && where.size() > 1)
 		{
-			JMenuItem some = new JMenuItem("Judge per boss: split my " + older + " older ones...");
+			JMenuItem some = new JMenuItem("Split my " + older + " older ones between bosses...");
 			some.addActionListener(e -> askSplit(pool, where));
 			menu.add(some);
 		}
@@ -5236,7 +5315,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		content.add(form, BorderLayout.CENTER);
 		while (true)
 		{
-			int answer = JOptionPane.showConfirmDialog(this, content, "Judge " + pool.getLabel() + " per boss",
+			int answer = JOptionPane.showConfirmDialog(this, content, "Move " + pool.getLabel() + " to bosses",
 				JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
 			if (answer != JOptionPane.OK_OPTION)
 			{
@@ -5251,7 +5330,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			{
 				return;
 			}
-			JOptionPane.showMessageDialog(this, "They need to add up to " + older + ".", "Judge " + pool.getLabel() + " per boss",
+			JOptionPane.showMessageDialog(this, "They need to add up to " + older + ".", "Move " + pool.getLabel() + " to bosses",
 				JOptionPane.WARNING_MESSAGE);
 		}
 	}
@@ -5359,7 +5438,19 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 	}
 
-	/** The title over the item list ("ITEMS") with a key on the right. */
+	/**
+	 * The account overview's Sort row: the sort list shows on the Bosses tab; on the Items tab only the View
+	 * button stays. It is icon-only everywhere, like on the boss pages.
+	 */
+	private void sortControls(boolean withSort)
+	{
+		sortLabel.setVisible(withSort);
+		sortSelect.setVisible(withSort);
+		accountViewChip.setVisible(viewButtons);
+		accountViewChip.setCompact(true);
+	}
+
+	/** The title over the item list ("ITEMS") with a key on the right: the layout without the View button. */
 	private JPanel itemsHeader(String title, String key, String keyTip)
 	{
 		JPanel panel = new JPanel(new BorderLayout(6, 0));
@@ -7203,9 +7294,9 @@ public class ExpectedDropsPanel extends PluginPanel
 		if (drop != null && !ownDrop)
 		{
 			// a shared item the player split: their own choice of where the older copies came from
-			tip.note("Other bosses drop this too. You chose to judge it on each boss separately: the copies On Rate "
+			tip.note("Other bosses drop this too. You moved it to each boss separately: the copies On Rate "
 				+ "saw drop count for the boss that dropped them, and the older ones where you said. "
-				+ "Right-click to judge it with the other bosses again.");
+				+ "Right-click to move it back to Shared with other bosses.");
 		}
 		if (multiple != null)
 		{

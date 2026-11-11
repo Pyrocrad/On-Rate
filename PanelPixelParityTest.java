@@ -94,6 +94,9 @@ public class PanelPixelParityTest
 			set(p, "boxes", false);
 			// the line under the verdict taking turns with other facts is new: the original shows one line
 			set(p, "moreFacts", false);
+			// the View buttons (boss pages' ITEMS line, account Sort row) are new: the comparison draws the old layout
+			// (ViewChipTest covers the button)
+			set(p, "viewButtons", false);
 		}
 		panelClass.getMethod("onActivate").invoke(p);
 		return p;
