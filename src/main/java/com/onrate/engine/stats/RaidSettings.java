@@ -19,8 +19,9 @@ public interface RaidSettings
 	}
 
 	/**
-	 * The Fractured Archive: the team's unique chance for a duo with no deaths (before the bonus
-	 * for bigger teams), which raids with a known team size scale from.
+	 * The Fractured Archive: the team's unique chance for a solo or duo with no deaths (bigger teams
+	 * have their own, higher chance), which raids with a known team size scale from. Used for raids
+	 * since the game update of 11 November 2026; older ones keep the chance of their time.
 	 */
 	default double tfaBaseChance()
 	{

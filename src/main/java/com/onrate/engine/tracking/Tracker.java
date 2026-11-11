@@ -829,7 +829,11 @@ public class Tracker
 			{
 				RaidRecord last = p.raids.get(p.raids.size() - 1);
 				key = key * 31 + p.raids.size();
+				// everything a late message can still change in the latest raid: the points (yours, the
+				// team's, the party's) and the team
 				key = key * 31 + last.savedMillis + last.personalPoints + last.teamSize;
+				key = key * 31 + last.teamPoints;
+				key = key * 31 + last.partyPoints;
 			}
 		}
 		if (habits == null || key != habitsKey || ctx.state() != habitsState)
@@ -1561,9 +1565,16 @@ public class Tracker
 	 * Prices are per item name; untradeable items have price 0, so they count for the number
 	 * of uniques but not for value.
 	 */
-	public synchronized AccountStats accountStats(RaidSettings raids, ToLongFunction<String> prices)
+	public AccountStats accountStats(RaidSettings raids, ToLongFunction<String> prices)
 	{
-		return statistics.accountStats(raids, prices);
+		Statistics.PendingAccount pending;
+		synchronized (this)
+		{
+			pending = statistics.accountPending(raids, prices);
+		}
+		// the GP value's luck simulates thousands of accounts (a quarter of a second on a full account):
+		// worked out after the lock is let go, so a kill or loot event on the game thread never waits for it
+		return pending.finish();
 	}
 
 	/**

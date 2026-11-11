@@ -979,7 +979,17 @@ public class ExpectedDropsPanel extends PluginPanel
 		// the graph offer was on screen and this redraw may move on from it (see the end)
 		boolean overlayWasOnScreen = overlayOfferOnScreen && overlayOfferLabel != null && overlayOfferLabel.isShowing();
 		overlayOfferOnScreen = false;
-		drawPage();
+		insightsThisDraw.clear();
+		drawing = true;
+		try
+		{
+			drawPage();
+		}
+		finally
+		{
+			drawing = false;
+			insightsThisDraw.clear();
+		}
 		if (boxes)
 		{
 			// every run of list rows into one card, like the verdict tiles
@@ -996,6 +1006,25 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			markOverlayOfferSeen.run();
 		}
+	}
+
+	/** True while {@link #draw()} runs: only then are a raid's insights shared between the parts of the page. */
+	private boolean drawing;
+	/** A raid's insights worked out during the draw in progress, with and without GP value. */
+	private final java.util.Map<String, RaidInsights> insightsThisDraw = new java.util.HashMap<>();
+
+	/**
+	 * A raid's insights. One draw of a raid page asks for them many times over (the sections, the line of
+	 * facts, History's PB tags and every item's hover), and each time goes through every saved raid: within
+	 * a draw they are worked out once. Outside a draw they are worked out fresh, as before.
+	 */
+	private RaidInsights raidInsights(String bossName, boolean gp)
+	{
+		if (!drawing)
+		{
+			return tracker.raidInsights(bossName, gp ? priceOf : null);
+		}
+		return insightsThisDraw.computeIfAbsent(bossName + (gp ? "|gp" : "|"), k -> tracker.raidInsights(bossName, gp ? priceOf : null));
 	}
 
 	/** Whether the one-time notice about the times feature is still due, and marking it shown. */
@@ -1497,7 +1526,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				note.append(String.format(java.util.Locale.ROOT, "Raids On Rate didn't track use a team of %d ("
 					+ (learned > 0 ? "your usual team, from your last " + learned + " raids" : "<i>TFA team size</i>")
 					+ ") and an even share of the damage: "
-					+ "%.2f%% each. The team rolls %.2f%% (%.2f%% for a solo or duo, +4%% of that per player beyond two). "
+					+ "%.2f%% each. The team rolls %.2f%% (%.2f%% for a solo or duo, more for each bigger team). "
 					+ "Change these under <i>Raids</i> and <i>Raid purple chances</i> in the settings.",
 					team, raidSettings.get().uniqueChance("fractured") * 100, raidSettings.get().uniqueChance("fractured") * team * 100,
 					raidSettings.get().tfaBaseChance() * 100));
@@ -2910,7 +2939,7 @@ public class ExpectedDropsPanel extends PluginPanel
 	private java.util.Map<com.onrate.engine.tracking.RaidRecord, String> personalBestRaids(BossDefinition boss)
 	{
 		java.util.Map<com.onrate.engine.tracking.RaidRecord, String> raids = new java.util.IdentityHashMap<>();
-		for (RaidInsights.Bests b : tracker.raidInsights(boss.getName(), null).getBests())
+		for (RaidInsights.Bests b : raidInsights(boss.getName(), false).getBests())
 		{
 			if (b.getRaids() < 2)
 			{
@@ -3015,7 +3044,7 @@ public class ExpectedDropsPanel extends PluginPanel
 	private void renderRaidInsights(BossStats stats, boolean gp)
 	{
 		BossDefinition boss = stats.getBoss();
-		RaidInsights insights = tracker.raidInsights(boss.getName(), gp ? priceOf : null);
+		RaidInsights insights = raidInsights(boss.getName(), gp);
 		if (insights.isEmpty())
 		{
 			renderLogForecast(stats, insights);
@@ -3151,7 +3180,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			String petLabel = null;
 			if (raid)
 			{
-				RaidMissing m = raidMissing(stats, tracker.raidInsights(boss.getName(), null));
+				RaidMissing m = raidMissing(stats, raidInsights(boss.getName(), false));
 				names.addAll(m.names);
 				chances.addAll(m.chances);
 				pet = m.pet;
@@ -5609,7 +5638,15 @@ public class ExpectedDropsPanel extends PluginPanel
 		javax.swing.ToolTipManager tips = javax.swing.ToolTipManager.sharedInstance();
 		int[] usual = {tips.getDismissDelay()};
 		boolean[] inside = {false};
-		java.awt.Toolkit.getDefaultToolkit().addAWTEventListener(event ->
+		tooltipRestore = () ->
+		{
+			if (inside[0])
+			{
+				tips.setDismissDelay(usual[0]);
+				inside[0] = false;
+			}
+		};
+		tooltipListener = event ->
 		{
 			if (!(event instanceof MouseEvent) || !(event.getSource() instanceof java.awt.Component))
 			{
@@ -5638,7 +5675,28 @@ public class ExpectedDropsPanel extends PluginPanel
 				tips.setDismissDelay(usual[0]);
 				inside[0] = false;
 			}
-		}, java.awt.AWTEvent.MOUSE_EVENT_MASK);
+		};
+		java.awt.Toolkit.getDefaultToolkit().addAWTEventListener(tooltipListener, java.awt.AWTEvent.MOUSE_EVENT_MASK);
+	}
+
+	/** The listener {@link #keepTooltipsOpen()} added for the whole window, kept so it can be taken off again. */
+	private java.awt.event.AWTEventListener tooltipListener;
+	/** Puts RuneLite's own tooltip delay back if the mouse is over the panel right now. */
+	private Runnable tooltipRestore = () -> { };
+
+	/**
+	 * The plugin stopped: takes off what the panel added outside itself, so nothing of it stays behind in
+	 * RuneLite. That is the mouse listener for the whole window and, if the mouse is over the panel right
+	 * now, the long tooltip delay. Safe to call twice. Swing thread.
+	 */
+	public void dispose()
+	{
+		if (tooltipListener != null)
+		{
+			java.awt.Toolkit.getDefaultToolkit().removeAWTEventListener(tooltipListener);
+			tooltipListener = null;
+		}
+		tooltipRestore.run();
 	}
 
 	private boolean isMouseOverPanel()
@@ -7093,7 +7151,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		try
 		{
-			List<RaidInsights.Setup> setups = new ArrayList<>(tracker.raidInsights(boss.getName(), null).getSetups());
+			List<RaidInsights.Setup> setups = new ArrayList<>(raidInsights(boss.getName(), false).getSetups());
 			setups.removeIf(s -> Double.isNaN(s.getItemPerRaid(drop.getName())) || s.getItemPerRaid(drop.getName()) <= 0);
 			setups.sort(java.util.Comparator.comparing((RaidInsights.Setup s) -> !s.isEnough())
 				.thenComparing(s -> s.isEnough() ? -s.getItemPerHour(drop.getName()) : -s.getItemPerRaid(drop.getName())));

@@ -1245,7 +1245,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			{
 				int team = Math.max(1, raidSettings.get().teamSize("fractured"));
 				note.append(String.format(java.util.Locale.ROOT, "Raids On Rate didn't track use a team of %d (<i>TFA team size</i>) and an even share of the damage: "
-					+ "%.2f%% each. The team rolls %.2f%% (%.2f%% for a solo or duo, +4%% of that per player beyond two). "
+					+ "%.2f%% each. The team rolls %.2f%% (%.2f%% for a solo or duo, more for each bigger team). "
 					+ "Change these under <i>Raids</i> and <i>Raid purple chances</i> in the settings.",
 					team, raidSettings.get().uniqueChance("fractured") * 100, raidSettings.get().uniqueChance("fractured") * team * 100,
 					raidSettings.get().tfaBaseChance() * 100));

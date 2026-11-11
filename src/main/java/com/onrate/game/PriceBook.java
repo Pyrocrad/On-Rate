@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.IntToLongFunction;
 import net.runelite.api.Client;
 import net.runelite.api.ItemComposition;
 import net.runelite.client.game.ItemManager;
@@ -22,7 +23,8 @@ public final class PriceBook
 	private static final long REFRESH_MILLIS = 10 * 60_000;
 
 	private final BossCatalog catalog;
-	private final ItemManager itemManager;
+	/** RuneLite's price of an item id. */
+	private final IntToLongFunction itemPrice;
 	private final Map<String, Integer> itemIds = new ConcurrentHashMap<>();
 	/** GE price per normalized item name. Untradeables are 0. */
 	private final Map<String, Long> prices = new ConcurrentHashMap<>();
@@ -31,8 +33,14 @@ public final class PriceBook
 
 	public PriceBook(BossCatalog catalog, ItemManager itemManager)
 	{
+		this(catalog, itemManager::getItemPrice);
+	}
+
+	/** With the price of an item id given directly (RuneLite's item manager in the plugin). */
+	PriceBook(BossCatalog catalog, IntToLongFunction itemPrice)
+	{
 		this.catalog = catalog;
-		this.itemManager = itemManager;
+		this.itemPrice = itemPrice;
 	}
 
 	/** Remembers an id seen on the collection log page. */
@@ -82,7 +90,7 @@ public final class PriceBook
 		{
 			try
 			{
-				prices.put(e.getKey(), (long) Math.max(0, itemManager.getItemPrice(e.getValue())));
+				prices.put(e.getKey(), Math.max(0, itemPrice.applyAsLong(e.getValue())));
 			}
 			catch (RuntimeException ex)
 			{

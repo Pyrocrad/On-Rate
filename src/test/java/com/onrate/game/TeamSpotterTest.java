@@ -24,6 +24,23 @@ public class TeamSpotterTest
 	}
 
 	@Test
+	public void namesAreMatchedWhateverTheirCaseTagsOrSpaces()
+	{
+		assertEquals("nex", TeamSpotter.fightOf("<col=ffff00>Nex</col>"));
+		assertEquals("nex", TeamSpotter.fightOf("  NEX "));
+		assertEquals("hueycoatl", TeamSpotter.fightOf("THE HUEYCOATL"));
+		assertEquals("hueycoatl", TeamSpotter.fightOf("<col=ff0000>The Hueycoatl</col> tail"));
+		assertEquals("corporeal beast", TeamSpotter.fightOf("corporeal beast"));
+		// "the" alone, a boss name cut short, and a boss name inside another word
+		assertNull(TeamSpotter.fightOf("The "));
+		assertNull(TeamSpotter.fightOf("Ne"));
+		assertNull(TeamSpotter.fightOf(""));
+		assertNull(TeamSpotter.fightOf("Yamatai"));
+		assertNull(TeamSpotter.fightOf("Corporeal"));
+		assertNull(TeamSpotter.fightOf("Thenex"));
+	}
+
+	@Test
 	public void onlyPlayersWhoHitTheBossCount()
 	{
 		TeamSpotter spotter = new TeamSpotter();

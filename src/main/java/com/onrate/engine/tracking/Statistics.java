@@ -686,6 +686,15 @@ final class Statistics
 	 */
 	AccountStats accountStats(RaidSettings raids, ToLongFunction<String> prices)
 	{
+		return accountPending(raids, prices).finish();
+	}
+
+	/**
+	 * {@link #accountStats(RaidSettings, ToLongFunction)} up to the slow last step: everything read from
+	 * the saved state, with the GP value's luck left for {@link PendingAccount#finish()}.
+	 */
+	PendingAccount accountPending(RaidSettings raids, ToLongFunction<String> prices)
+	{
 		List<Double> valueExpected = new ArrayList<>();
 		List<Long> valuePrices = new ArrayList<>();
 		double expectedValue = 0;
@@ -836,6 +845,7 @@ final class Statistics
 		AccountStats account = new AccountStats(total, rows, killCounts);
 		account.setUnsynced(unsynced);
 		account.setItems(items);
+		PendingAccount pending = new PendingAccount(account);
 		if (prices != null)
 		{
 			double[] lambdas = new double[valueExpected.size()];
@@ -847,10 +857,53 @@ final class Statistics
 				itemPrices[i] = valuePrices.get(i);
 				itemCaps[i] = valueCaps.get(i);
 			}
-			double luck = ValueLuck.of(lambdas, itemPrices, itemCaps, receivedValue, 5000, 1234567L);
-			account.setValue(expectedValue, receivedValue, luck);
+			pending.withValue(lambdas, itemPrices, itemCaps, expectedValue, receivedValue);
 		}
-		return account;
+		return pending;
+	}
+
+	/**
+	 * The account's numbers with the luck of its GP value still to work out. That luck simulates
+	 * thousands of accounts and needs nothing of the saved state (only the numbers gathered here), so
+	 * {@link Tracker} runs {@link #finish()} after it has let go of its lock: a game event never waits
+	 * for it. The result is the same as working it out in one go.
+	 */
+	static final class PendingAccount
+	{
+		private final AccountStats account;
+		private boolean valued;
+		private double[] lambdas;
+		private long[] itemPrices;
+		private int[] itemCaps;
+		private double expectedValue;
+		private long receivedValue;
+
+		PendingAccount(AccountStats account)
+		{
+			this.account = account;
+		}
+
+		void withValue(double[] lambdas, long[] itemPrices, int[] itemCaps, double expectedValue, long receivedValue)
+		{
+			this.valued = true;
+			this.lambdas = lambdas;
+			this.itemPrices = itemPrices;
+			this.itemCaps = itemCaps;
+			this.expectedValue = expectedValue;
+			this.receivedValue = receivedValue;
+		}
+
+		/** Works out the GP value's luck (when prices were given) and hands out the account. Call once. */
+		AccountStats finish()
+		{
+			if (valued)
+			{
+				double luck = ValueLuck.of(lambdas, itemPrices, itemCaps, receivedValue, 5000, 1234567L);
+				account.setValue(expectedValue, receivedValue, luck);
+				valued = false;
+			}
+			return account;
+		}
 	}
 
 	/**

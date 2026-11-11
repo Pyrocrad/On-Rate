@@ -639,9 +639,10 @@
       "_todo": [
         "Completion message: 'Your The Fractured Archive completion count is: X.' The loot tracker name is assumed to be 'The Fractured Archive'.",
         "The game doesn't show contribution: FracturedContribution estimates it from hitsplats per room (NPC IDs from the OSRS Wiki). The soft cap on minion damage and Ocellus's split between phases aren't published.",
-        "Rates as of the loot mechanics post two weeks after release; Jagex said some numbers change in the following game update."
+        "Rates as of the game update of 11 November 2026 (loot scaling tweaks): a fixed team chance per raid size, fragments 1/14. Raids saved before it keep the earlier chance (1 in 14, +4% per player beyond two): see RateModel.fracturedChance.",
+        "Since that update, defence-reducing special attacks and freezing or stunning Xarth's zombies also give contribution. FracturedContribution only sees damage, so it reads low for a player who does those."
       ],
-      "note": "Each room hands out 100 contribution (Ocellus 300), split by damage. The team's chance of a purple is 1 in 14 for a solo or duo with no deaths, +4% of that per player beyond two, and it goes to a player with their share of the contribution, so a duo with even damage is 1 in 28 each. A death takes 10% of your expected contribution. The pet, folio and fragments roll for everyone at a flat rate, whatever your contribution. Fragments never repeat until you have all four. Elite clues (1/10) aren't on the collection log page, so they aren't counted.",
+      "note": "Each room hands out 100 contribution (Ocellus 300), split by damage. The team's chance of a purple with no deaths depends on its size: 1 in 16 for a solo or duo, 1 in 12.5 for three players, 10.5 for four, 9.5 for five, 8.5 for six, 8 for seven and 7.5 for eight. It goes to a player with their share of the contribution, so a duo with even damage is 1 in 32 each. A death takes 10% of your expected contribution. Raids from before the game update of 11 November 2026 keep the chance they had then (1 in 14, +4% of that per player beyond two). The pet, folio and fragments roll for everyone at a flat rate, whatever your contribution. Fragments never repeat until you have all four. Elite clues (1/10) aren't on the collection log page, so they aren't counted.",
       "drops": [
         {"name": "Rondache", "weight": 5},
         {"name": "Zorya's tome (uncharged)", "weight": 4, "match": ["Zorya's tome"]},
@@ -650,7 +651,7 @@
         {"name": "Obligator (uncharged)", "weight": 1, "match": ["Obligator"]},
         {"name": "Orion", "rate": "1/750", "pet": true, "note": "Rolled for everyone at the end of each raid, whatever your contribution or team."},
         {"name": "Archivist's folio (inert)", "rate": "1/15", "any": false, "match": ["Archivist's folio"], "note": "Rolled for everyone at the end of each raid, whatever your contribution or team. Not counted as a unique."},
-        {"name": "Fragment of living earth", "label": "Elemental fragments", "rate": "1/20", "max": 4, "any": false, "match": ["Fragment of deep water", "Fragment of whispering wind", "Fragment of burning fire"], "note": "Four fragments (earth, water, wind, fire). Each raid has a 1/20 chance of one you don't have yet, so no repeats until you have all four: one specific fragment goes 1/80, 1/60, 1/40, 1/20. Rolled for everyone, whatever your contribution. Not counted as a unique."}
+        {"name": "Fragment of living earth", "label": "Elemental fragments", "rate": "1/14", "max": 4, "any": false, "match": ["Fragment of deep water", "Fragment of whispering wind", "Fragment of burning fire"], "note": "Four fragments (earth, water, wind, fire). Each raid has a 1/14 chance of one you don't have yet (1/20 before the game update of 11 November 2026), so no repeats until you have all four: one specific fragment goes 1/56, 1/42, 1/28, 1/14. Rolled for everyone, whatever your contribution. Not counted as a unique."}
       ]
     }
   ]

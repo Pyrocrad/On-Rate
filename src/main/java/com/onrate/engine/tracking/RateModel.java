@@ -100,8 +100,8 @@ public final class RateModel
 	{
 		if ("fractured".equals(record.family) && (record.teamSize > 0 || record.contribution >= 0))
 		{
-			// the base chance follows the setting, so a balancing change applies to every raid;
-			// without a counted team, the team size setting
+			// the base chance follows the setting for raids since the update of 11 November 2026 (older
+			// ones keep the chance of their time); without a counted team, the team size setting
 			int team = record.teamSize > 0 ? record.teamSize : raids.teamSize(part.getRaid());
 			return fracturedChance(record, raids.tfaBaseChance(), team);
 		}
@@ -120,17 +120,20 @@ public final class RateModel
 
 	/**
 	 * The Fractured Archive: your chance from your contribution (or an even share of the team when
-	 * it is unknown) after your deaths.
+	 * it is unknown) after your deaths. A raid saved before the game update of 11 November 2026 keeps
+	 * the chance it had then (1 in 14, +4% per player beyond two, whatever {@code baseChance} is now);
+	 * raids since use the game's fixed chance for their team size, scaled from {@code baseChance}.
 	 */
 	static double fracturedChance(RaidRecord record, double baseChance, int teamSize)
 	{
 		int team = Math.max(1, teamSize);
+		boolean before = RaidChance.tfaBeforeChange(record.savedMillis);
 		if (record.contribution < 0)
 		{
-			return RaidChance.tfaEven(team, record.deaths, baseChance);
+			return before ? RaidChance.tfaEvenBefore(team, record.deaths) : RaidChance.tfaEven(team, record.deaths, baseChance);
 		}
 		double kept = RaidChance.tfaContributionAfterDeaths(record.contribution, team, record.deaths);
-		return RaidChance.tfa(kept, team, baseChance);
+		return before ? RaidChance.tfaBefore(kept, team) : RaidChance.tfa(kept, team, baseChance);
 	}
 
 	/**

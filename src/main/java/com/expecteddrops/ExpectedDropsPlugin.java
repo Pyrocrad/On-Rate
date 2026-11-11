@@ -179,7 +179,26 @@ public class ExpectedDropsPlugin extends Plugin
 	static final String[] OLD_SETTINGS = {
 		"toaUniqueChance", "tobUniqueChance", "tobHmUniqueChance", "coxCmUniqueChance",
 		"royalTitansMode", "royalTitansDuoKills", "sharedUnknownAsZero", "showDropHistory", "showTrip",
+		// The Fractured Archive's team chance from before the game update of 11 November 2026 (1 in 14):
+		// its setting has a new key, so the new chance (1 in 16) applies to everyone
+		"tfaTeamChance",
 	};
+
+	/**
+	 * Clears every {@link #OLD_SETTINGS} value that is still saved. Only those keys are touched, and
+	 * only when they hold something, so a second start changes nothing and the settings that replaced
+	 * them keep whatever the player set.
+	 */
+	static void clearOldSettings(java.util.function.Function<String, String> saved, java.util.function.Consumer<String> unset)
+	{
+		for (String key : OLD_SETTINGS)
+		{
+			if (saved.apply(key) != null)
+			{
+				unset.accept(key);
+			}
+		}
+	}
 
 	@Override
 	protected void startUp() throws Exception
@@ -190,13 +209,8 @@ public class ExpectedDropsPlugin extends Plugin
 		{
 			configManager.setConfiguration(ExpectedDropsConfig.GROUP, "luckColours", LuckColours.COLOUR_BLIND.name());
 		}
-		for (String key : OLD_SETTINGS)
-		{
-			if (configManager.getConfiguration(ExpectedDropsConfig.GROUP, key) != null)
-			{
-				configManager.unsetConfiguration(ExpectedDropsConfig.GROUP, key);
-			}
-		}
+		clearOldSettings(key -> configManager.getConfiguration(ExpectedDropsConfig.GROUP, key),
+			key -> configManager.unsetConfiguration(ExpectedDropsConfig.GROUP, key));
 		// Only the rates bundled with the plugin: On Rate reads and writes no files.
 		// Kill times and the Ladlor chart are read with RuneLite's Gson (the Plugin Hub refuses fresh ones).
 		com.onrate.engine.data.KillTimes.bundled(gson);
@@ -328,6 +342,19 @@ public class ExpectedDropsPlugin extends Plugin
 		overlayInfo = null;
 		clientToolbar.removeNavigation(navButton);
 		navButton = null;
+		ExpectedDropsPanel closing = panel;
+		if (closing != null)
+		{
+			// the panel listens to the whole window's mouse for its tooltips: take that off again
+			if (SwingUtilities.isEventDispatchThread())
+			{
+				closing.dispose();
+			}
+			else
+			{
+				SwingUtilities.invokeLater(closing::dispose);
+			}
+		}
 		panel = null;
 		tracker = null;
 		if (store != null)
@@ -472,7 +499,7 @@ public class ExpectedDropsPlugin extends Plugin
 	}
 
 	/** This trip at the boss you are killing, for the overlay. */
-	private void updateOverlayInfo()
+	private void updateOverlayInfo(Tracker tracker)
 	{
 		TripStats trip = tracker.tripStats();
 		if (trip == null)
@@ -767,6 +794,8 @@ public class ExpectedDropsPlugin extends Plugin
 
 	private void readDoomScoreboard()
 	{
+		// read once: shutDown clears it on another thread
+		Tracker tracker = this.tracker;
 		if (tracker == null)
 		{
 			return;
@@ -817,28 +846,35 @@ public class ExpectedDropsPlugin extends Plugin
 
 	private void changed(String boss, boolean fromKill)
 	{
-		if (tracker == null)
+		// read once: shutDown clears these on another thread
+		Tracker t = tracker;
+		PriceBook book = prices;
+		AccountPrecompute pc = precompute;
+		if (t == null)
 		{
 			return;
 		}
 		recordHistoryPoint(false);
 		// also when raid points come in after the kill, so the overlay shows them
-		updateOverlayInfo();
+		updateOverlayInfo(t);
 		save();
-		prices.refresh(false);
+		if (book != null)
+		{
+			book.refresh(false);
+		}
 		if (fromKill)
 		{
-			remindToSync(boss);
+			remindToSync(t, boss);
 		}
 		ExpectedDropsPanel p = panel;
-		if (p == null)
+		if (p == null || pc == null)
 		{
 			return;
 		}
 		boolean follow = fromKill && config.autoSwitch();
 		// the account and the Time page are worked out on a worker thread; the panel draws once they're ready
 		// a burst draws once; the newest boss to follow is kept even if a later event doesn't follow
-		precompute.request(raidSettings(), viewOptions().isGeValue() ? this::priceOf : null,
+		pc.request(raidSettings(), viewOptions().isGeValue() ? this::priceOf : null,
 			follow ? () -> p.showBoss(boss) : null, p::refresh);
 	}
 
@@ -876,7 +912,7 @@ public class ExpectedDropsPlugin extends Plugin
 	}
 
 	/** Once per session, tells the player in chat which page loads this boss's history. */
-	private void remindToSync(String boss)
+	private void remindToSync(Tracker tracker, String boss)
 	{
 		if (!config.syncReminders() || !remindedThisSession.add(boss))
 		{

@@ -1,8 +1,8 @@
 package com.onrate.game;
 
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 /**
  * Who fights a group boss with you: the other players seen hitting it. Only they share the kill,
@@ -30,20 +30,22 @@ final class TeamSpotter
 		{
 			return null;
 		}
-		String n = name.replaceAll("<[^>]*>", "").trim().toLowerCase(Locale.ROOT);
-		if (n.startsWith("the "))
-		{
-			n = n.substring(4);
-		}
+		// asked for every player in view on every game tick: no pattern is compiled and no text is
+		// built here (tags are rare in NPC names, and the names are compared in place)
+		String n = (name.indexOf('<') >= 0 ? TAGS.matcher(name).replaceAll("") : name).trim();
+		int from = n.regionMatches(true, 0, "the ", 0, 4) ? 4 : 0;
 		for (String fight : FIGHTS)
 		{
-			if (n.equals(fight) || n.startsWith(fight + " "))
+			int end = from + fight.length();
+			if (n.regionMatches(true, from, fight, 0, fight.length()) && (n.length() == end || n.charAt(end) == ' '))
 			{
 				return fight;
 			}
 		}
 		return null;
 	}
+
+	private static final Pattern TAGS = Pattern.compile("<[^>]*>");
 
 	synchronized void onHitting(String fight, String player, long nowMillis)
 	{

@@ -2,6 +2,7 @@ package com.onrate.engine;
 
 import com.onrate.engine.stats.RaidChance;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
@@ -103,30 +104,68 @@ public class RaidChanceTest
 	}
 
 	@Test
-	public void fracturedArchiveTeamBonusAddsFourPercentPerPlayerBeyondTwo()
+	public void fracturedArchiveTeamChanceIsFixedPerRaidSize()
 	{
-		// Jagex's loot post: 3-man x1.04, 5-man x1.12, 8-man x1.24 (added, not compounded)
-		assertEquals(1.0, RaidChance.tfaTeamMultiplier(1), 1e-12);
-		assertEquals(1.0, RaidChance.tfaTeamMultiplier(2), 1e-12);
-		assertEquals(1.04, RaidChance.tfaTeamMultiplier(3), 1e-12);
-		assertEquals(1.12, RaidChance.tfaTeamMultiplier(5), 1e-12);
-		assertEquals(1.24, RaidChance.tfaTeamMultiplier(8), 1e-12);
-		assertEquals(1.24, RaidChance.tfaTeamMultiplier(12), 1e-12);
-		// the wiki's 8-man team chance: 8.86%
-		assertEquals(0.0886, RaidChance.tfa(700, 8, RaidChance.TFA_BASE_CHANCE), 0.00005);
+		// Jagex's loot scaling post of 11 November 2026: the team's chance with a full contribution
+		double base = RaidChance.TFA_BASE_CHANCE;
+		assertEquals(1 / 16.0, base, 0);
+		double[] oneIn = {16, 16, 12.5, 10.5, 9.5, 8.5, 8, 7.5};
+		for (int team = 1; team <= 8; team++)
+		{
+			assertEquals(team + " players", 1 / oneIn[team - 1], RaidChance.tfa(700, team, base), 1e-12);
+		}
+		assertEquals(1.0, RaidChance.tfaTeamMultiplier(1), 0);
+		assertEquals(1.0, RaidChance.tfaTeamMultiplier(2), 0);
+		assertEquals(1.28, RaidChance.tfaTeamMultiplier(3), 1e-12);
+		assertEquals(2.0, RaidChance.tfaTeamMultiplier(7), 1e-12);
+		// no team is bigger than eight, or smaller than one
+		assertEquals(RaidChance.tfaTeamMultiplier(8), RaidChance.tfaTeamMultiplier(12), 0);
+		assertEquals(1.0, RaidChance.tfaTeamMultiplier(0), 0);
+		// a base chance the player changed moves every size with it
+		assertEquals(2 / 12.5, RaidChance.tfa(700, 3, 2 * base), 1e-12);
+	}
+
+	@Test
+	public void fracturedArchiveBeforeTheUpdateAddedFourPercentPerPlayerBeyondTwo()
+	{
+		// Jagex's first loot post: 3-man x1.04, 5-man x1.12, 8-man x1.24 (added, not compounded)
+		assertEquals(1.0, RaidChance.tfaTeamMultiplierBefore(1), 1e-12);
+		assertEquals(1.0, RaidChance.tfaTeamMultiplierBefore(2), 1e-12);
+		assertEquals(1.04, RaidChance.tfaTeamMultiplierBefore(3), 1e-12);
+		assertEquals(1.12, RaidChance.tfaTeamMultiplierBefore(5), 1e-12);
+		assertEquals(1.24, RaidChance.tfaTeamMultiplierBefore(8), 1e-12);
+		assertEquals(1.24, RaidChance.tfaTeamMultiplierBefore(12), 1e-12);
+		// the wiki's 8-man team chance of that time: 8.86%
+		assertEquals(0.0886, RaidChance.tfaBefore(700, 8), 0.00005);
+		assertEquals(1 / 28.0, RaidChance.tfaEvenBefore(2, 0), 1e-12);
+		assertEquals(1 / 14.0, RaidChance.tfaEvenBefore(1, 0), 1e-12);
+		assertEquals(0.3 / 14, RaidChance.tfaBefore(0.3 * 700, 2), 1e-12);
+		assertEquals(1.08 / 14 / 4, RaidChance.tfaEvenBefore(4, 0), 1e-12);
+		assertEquals(315 / 700.0 / 14, RaidChance.tfaEvenBefore(2, 1), 1e-12);
+		assertTrue(Double.isNaN(RaidChance.tfaBefore(-1, 2)));
+	}
+
+	@Test
+	public void fracturedArchiveUpdateWentLiveOnTheEleventhOfNovember2026()
+	{
+		assertEquals(java.time.Instant.parse("2026-11-11T11:30:00Z").toEpochMilli(), RaidChance.TFA_CHANGE_MILLIS);
+		assertTrue(RaidChance.tfaBeforeChange(RaidChance.TFA_CHANGE_MILLIS - 1));
+		assertFalse(RaidChance.tfaBeforeChange(RaidChance.TFA_CHANGE_MILLIS));
+		// a raid saved without a date can only be from an older version
+		assertTrue(RaidChance.tfaBeforeChange(0));
 	}
 
 	@Test
 	public void fracturedArchiveSplitsTheUniqueByContribution()
 	{
 		double base = RaidChance.TFA_BASE_CHANCE;
-		// a duo with even damage: 1 in 14 for the team, half each
-		assertEquals(1 / 28.0, RaidChance.tfaEven(2, 0, base), 1e-12);
-		assertEquals(1 / 14.0, RaidChance.tfaEven(1, 0, base), 1e-12);
+		// a duo with even damage: 1 in 16 for the team, half each
+		assertEquals(1 / 32.0, RaidChance.tfaEven(2, 0, base), 1e-12);
+		assertEquals(1 / 16.0, RaidChance.tfaEven(1, 0, base), 1e-12);
 		// 30% of the contribution is 30% of the team's purples
-		assertEquals(0.3 / 14, RaidChance.tfa(0.3 * 700, 2, base), 1e-12);
-		// a four with even damage: 1.08 / 14 for the team, a quarter each
-		assertEquals(1.08 / 14 / 4, RaidChance.tfaEven(4, 0, base), 1e-12);
+		assertEquals(0.3 / 16, RaidChance.tfa(0.3 * 700, 2, base), 1e-12);
+		// a four with even damage: 1 in 10.5 for the team, a quarter each
+		assertEquals(1 / 10.5 / 4, RaidChance.tfaEven(4, 0, base), 1e-12);
 		assertTrue(Double.isNaN(RaidChance.tfa(-1, 2, base)));
 		assertEquals(base, RaidChance.tfa(900, 2, base), 1e-12);
 	}
@@ -142,6 +181,6 @@ public class RaidChanceTest
 		assertEquals(0, RaidChance.tfaContributionAfterDeaths(20, 2, 1), 1e-12);
 		// unknown deaths count as none
 		assertEquals(350, RaidChance.tfaContributionAfterDeaths(350, 2, -1), 1e-12);
-		assertEquals(315 / 700.0 / 14, RaidChance.tfaEven(2, 1, RaidChance.TFA_BASE_CHANCE), 1e-12);
+		assertEquals(315 / 700.0 / 16, RaidChance.tfaEven(2, 1, RaidChance.TFA_BASE_CHANCE), 1e-12);
 	}
 }

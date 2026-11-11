@@ -72,6 +72,37 @@ public class OathplateShardsTest
 	}
 
 	@Test
+	public void theAnswerIsRememberedPerSetOfChancesAndNeverMixedUp()
+	{
+		double[] one = {1 / 613.0};
+		double first = OathplateShards.expectedKills(one);
+		// the same chances in another array get the same answer; asking a thousand more times costs nothing
+		long start = System.nanoTime();
+		for (int i = 0; i < 1_000; i++)
+		{
+			assertEquals(first, OathplateShards.expectedKills(new double[]{1 / 613.0}), 0);
+		}
+		long thousand = System.nanoTime() - start;
+		assertTrue("a thousand repeats took " + thousand / 1_000_000 + " ms: the simulation ran again", thousand < 2_000_000_000L);
+		// other chances are another answer, in either order of asking
+		double other = OathplateShards.expectedKills(new double[]{1 / 300.0});
+		assertTrue(other < first);
+		assertEquals(first, OathplateShards.expectedKills(one), 0);
+		// changing the caller's array afterwards changes nothing that was remembered
+		double[] mine = {1 / 613.0};
+		OathplateShards.expectedKills(mine);
+		mine[0] = 1 / 100.0;
+		assertEquals(first, OathplateShards.expectedKills(new double[]{1 / 613.0}), 0);
+		assertTrue(OathplateShards.expectedKills(mine) < other);
+		// more sets of chances than are remembered: the oldest is worked out again, to the same answer
+		for (int i = 0; i < 80; i++)
+		{
+			OathplateShards.expectedKills(new double[]{1 / (20.0 + i)});
+		}
+		assertEquals(first, OathplateShards.expectedKills(new double[]{1 / 613.0}), 0);
+	}
+
+	@Test
 	public void theHoverSaysWhatShardsAre()
 	{
 		String text = OathplateShards.describe(new double[]{1 / 600.0, 1 / 600.0}, 360);

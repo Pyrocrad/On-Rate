@@ -7,7 +7,11 @@ Updates come through the Plugin Hub. Each heading is the date of that update; **
 *Behind the scenes*
 - **Faster after a kill:** your account is worked out in the background, so the panel stays responsive during long sessions. Nothing you see changes: every number is checked against the previous version. Nothing is worked out while the panel is closed, numbers from before a change (a click, a setting, another account) are never drawn, and the panel still follows the newest boss when several events arrive at once.
 - **Safer saving:** your progress is always saved to the account it belongs to, even when you switch accounts mid-save. Damaged saved data no longer loses everything: the readable parts load and the damaged parts are left out.
-- **Safer stopping:** game events that arrive while On Rate is being turned off no longer cause errors.
+- **Safer stopping:** game events that arrive while On Rate is being turned off no longer cause errors. Turning it off also puts RuneLite's tooltip timing back and leaves nothing of the panel behind.
+- **Smoother during kills and raids:** working out the GP value no longer holds up the game right after a kill, a raid page works out its raid sections once instead of once per item, Yama's Oathplate figures are worked out once instead of at every redraw, and counting your team no longer does needless work every game tick.
+
+*Game update of 11 November 2026*
+- **The Fractured Archive's new loot rates:** the team's purple chance is now fixed per raid size (1 in 16 for a solo or duo, up to 1 in 7.5 for eight players) and elemental fragments are 1/14. Raids On Rate saved before the update keep the chance they had, so your luck so far doesn't shift. **TFA team (%)** in the settings goes back to the new default (6.25%), also if you had changed it.
 
 *New*
 - **Opens on Bosses:** the account overview always opens on its Bosses tab when RuneLite starts, instead of the tab you left it on. Your sort order and Items list are still remembered.

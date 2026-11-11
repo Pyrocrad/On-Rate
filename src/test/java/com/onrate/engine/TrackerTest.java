@@ -1566,11 +1566,92 @@ public class TrackerTest
 		assertEquals(1 - Math.exp(-1), row.getChanceAtLeastOne(), 1e-12);
 	}
 
+	/** A moment after the game update of 11 November 2026 that fixed the team chance per raid size. */
+	private static final long AFTER_TFA_CHANGE = RaidChance.TFA_CHANGE_MILLIS + 3_600_000;
+
 	@Test
-	public void fracturedArchiveUsesTheTeamAtTheEndAndKeepsFlatRatesFlat()
+	public void fracturedArchiveSinceTheUpdateUsesTheFixedChanceOfTheTeamSize()
 	{
-		double base = RaidChance.TFA_BASE_CHANCE;
-		RaidSettings duo = raid -> "fractured".equals(raid) ? RaidChance.tfaEven(2, 0, base) : 0;
+		// raids On Rate couldn't count use the setting: a duo, 1 in 16 for the team, 1 in 32 each
+		RaidSettings duo = raid -> "fractured".equals(raid) ? RaidChance.tfaEven(2, 0, RaidChance.TFA_BASE_CHANCE) : 0;
+		int[] around = {0};
+		tracker.setTeamSizeDetector(() -> around[0]);
+		long t = AFTER_TFA_CHANGE;
+		tracker.onChatMessage("Your The Fractured Archive completion count is: <col=ff0000>10</col>.", t);
+		assertEquals(10 / 32.0 * 5 / 15, row(tracker.stats("The Fractured Archive", duo), "Rondache").getExpected(), 1e-12);
+
+		// four players around you: 1 in 10.5 for the team, a quarter each
+		around[0] = 4;
+		tracker.onChatMessage("Your The Fractured Archive completion count is: <col=ff0000>11</col>.", t + 60_000);
+		// eight players, and you did 210 of the 700 with one death (a death takes 10% of 700 / 8)
+		around[0] = 8;
+		tracker.onRaidRecord(RaidRecord.fractured(0, 1, 210), t + 600_000);
+		tracker.onChatMessage("Your The Fractured Archive completion count is: <col=ff0000>12</col>.", t + 601_000);
+		List<RaidRecord> raids = tracker.raidRecords("The Fractured Archive");
+		assertEquals(2, raids.size());
+		double four = 1 / 10.5 / 4;
+		double eight = 1 / 7.5 * (210 - 8.75) / 700;
+		assertEquals(eight, RateModel.purpleChance(raids.get(1)), 1e-12);
+		// History, newest first: each raid at its own chance
+		List<HistoryRow> history = tracker.history("The Fractured Archive");
+		assertEquals(eight, history.get(0).getPurpleChance(), 1e-12);
+		assertEquals(four, history.get(1).getPurpleChance(), 1e-12);
+		BossStats after = tracker.stats("The Fractured Archive", duo);
+		assertEquals((10 / 32.0 + four + eight) * 5 / 15, row(after, "Rondache").getExpected(), 1e-12);
+		// the pet and folio don't depend on the purple or the team
+		assertEquals(12 / 750.0, row(after, "Orion").getExpected(), 1e-12);
+		assertEquals(12 / 15.0, row(after, "Archivist's folio (inert)").getExpected(), 1e-12);
+	}
+
+	@Test
+	public void fracturedArchiveRaidsFromBeforeTheUpdateKeepTheirChance()
+	{
+		RaidSettings duo = raid -> "fractured".equals(raid) ? RaidChance.tfaEven(2, 0, RaidChance.TFA_BASE_CHANCE) : 0;
+		tracker.setTeamSizeDetector(() -> 4);
+		// the last raid before the update and the first one after it, both in a team of four
+		tracker.onChatMessage("Your The Fractured Archive completion count is: <col=ff0000>1</col>.", RaidChance.TFA_CHANGE_MILLIS - 60_000);
+		tracker.onChatMessage("Your The Fractured Archive completion count is: <col=ff0000>2</col>.", AFTER_TFA_CHANGE);
+		List<RaidRecord> raids = tracker.raidRecords("The Fractured Archive");
+		assertEquals(2, raids.size());
+		double before = 1.08 / 14 / 4;
+		double since = 1 / 10.5 / 4;
+		assertEquals((before + since) * 5 / 15, row(tracker.stats("The Fractured Archive", duo), "Rondache").getExpected(), 1e-12);
+		// the setting's chance only moves the raid since the update
+		RaidSettings doubled = new RaidSettings()
+		{
+			@Override
+			public double uniqueChance(String raid)
+			{
+				return 0;
+			}
+
+			@Override
+			public double tfaBaseChance()
+			{
+				return 2 * RaidChance.TFA_BASE_CHANCE;
+			}
+		};
+		assertEquals((before + 2 * since) * 5 / 15, row(tracker.stats("The Fractured Archive", doubled), "Rondache").getExpected(), 1e-12);
+		// History shows each raid at its own chance
+		List<HistoryRow> history = tracker.history("The Fractured Archive");
+		assertEquals(since, history.get(0).getPurpleChance(), 1e-12);
+		assertEquals(before, history.get(1).getPurpleChance(), 1e-12);
+	}
+
+	@Test
+	public void fracturedArchiveFragmentsRollOneInFourteenARaid()
+	{
+		tracker.onChatMessage("Your The Fractured Archive completion count is: <col=ff0000>28</col>.", AFTER_TFA_CHANGE);
+		RowStats fragments = row(tracker.stats("The Fractured Archive", RAIDS), "Elemental fragments");
+		assertEquals(1 / 14.0, fragments.getRate(), 1e-12);
+		assertEquals(2.0, fragments.getExpected(), 1e-12);
+	}
+
+	@Test
+	public void fracturedArchiveBeforeTheUpdateUsedTheTeamAtTheEndAndKeptFlatRatesFlat()
+	{
+		// (this test's clock is long before the game update of 11 November 2026: the chances of that time)
+		RaidSettings duo = raid -> "fractured".equals(raid) ? RaidChance.tfaEvenBefore(2, 0) : 0;
 		int[] around = {0};
 		tracker.setTeamSizeDetector(() -> around[0]);
 		// raids where On Rate couldn't count the team use the setting: a duo, 1 in 28 each
@@ -1598,8 +1679,8 @@ public class TrackerTest
 	@Test
 	public void fracturedArchiveDamageShareJoinsTheRaidWhicheverComesFirst()
 	{
-		double base = RaidChance.TFA_BASE_CHANCE;
-		RaidSettings duo = raid -> "fractured".equals(raid) ? RaidChance.tfaEven(2, 0, base) : 0;
+		// (before the game update of 11 November 2026: the duo's 1 in 14)
+		RaidSettings duo = raid -> "fractured".equals(raid) ? RaidChance.tfaEvenBefore(2, 0) : 0;
 		tracker.setTeamSizeDetector(() -> 2);
 		// the damage share first, then the completion message
 		assertNull(tracker.onRaidRecord(RaidRecord.fractured(0, 0, 420), now));
@@ -1624,7 +1705,7 @@ public class TrackerTest
 	public void fracturedArchiveContributionAndDeathsSetTheChance()
 	{
 		RaidRecord carried = RaidRecord.fractured(2, 1, 420);
-		// 420 - 35 for the death, out of 700, of the duo's 1 in 14
+		// 420 - 35 for the death, out of 700, of the duo's 1 in 14 (a raid with no date is from before the update)
 		assertEquals(385 / 700.0 / 14, RateModel.purpleChance(carried), 1e-12);
 		assertTrue(Double.isNaN(RateModel.purpleChance(RaidRecord.fractured(2, 0, -1))));
 	}

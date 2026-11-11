@@ -31,11 +31,42 @@ public final class OathplateShards
 	 */
 	public static double expectedKills(double[] chances)
 	{
-		int n = chances.length;
-		if (n == 0)
+		if (chances.length == 0)
 		{
 			return 0;
 		}
+		// the same chances are asked for on every draw and after every kill, and the answer never
+		// changes (the simulation starts from the same seed): it is worked out once per set of chances
+		String key = java.util.Arrays.toString(chances);
+		synchronized (KNOWN)
+		{
+			Double known = KNOWN.get(key);
+			if (known != null)
+			{
+				return known;
+			}
+		}
+		double kills = simulate(chances);
+		synchronized (KNOWN)
+		{
+			KNOWN.put(key, kills);
+		}
+		return kills;
+	}
+
+	/** The last answers of {@link #expectedKills}, by the chances they are for. */
+	private static final java.util.Map<String, Double> KNOWN = new java.util.LinkedHashMap<String, Double>(16, 0.75f, true)
+	{
+		@Override
+		protected boolean removeEldestEntry(java.util.Map.Entry<String, Double> eldest)
+		{
+			return size() > 64;
+		}
+	};
+
+	private static double simulate(double[] chances)
+	{
+		int n = chances.length;
 		Random random = new Random(SEED);
 		boolean[] have = new boolean[n];
 		double total = 0;

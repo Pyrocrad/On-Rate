@@ -48,8 +48,9 @@ public class ConfigRaidSettingsTest
 		assertEquals(0.025, s.uniqueChance("toa"), 1e-12);
 		assertEquals(0.05, s.uniqueChance("toaExpert"), 1e-12);
 		assertEquals(0, s.uniqueChance("nothing"), 0);
-		// a duo with no deaths: 1 in 14 for the team, an even half each
-		assertEquals(1 / 28.0, s.uniqueChance("fractured"), 1e-12);
+		// a duo with no deaths: 1 in 16 for the team (since the update of 11 November 2026), an even half each
+		assertEquals(1 / 32.0, s.uniqueChance("fractured"), 1e-12);
+		assertEquals(1 / 16.0, s.tfaBaseChance(), 1e-12);
 	}
 
 	@Test

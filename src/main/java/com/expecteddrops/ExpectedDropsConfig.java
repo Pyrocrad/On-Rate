@@ -306,7 +306,7 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigSection(
 		name = "Raid purple chances",
 		description = "Used where On Rate has no raid points: raids from before you installed it, and Theatre of Blood. "
-			+ "The Fractured Archive team chance is used for every Archive raid. Most players can leave these alone.",
+			+ "The Fractured Archive team chance is used for every Archive raid since the game update of 11 November 2026. Most players can leave these alone.",
 		position = 40,
 		closedByDefault = true
 	)
@@ -464,15 +464,16 @@ public interface ExpectedDropsConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "tfaTeamChance",
+		keyName = "tfaSoloDuoChance",
 		name = "TFA team (%)",
-		description = "The team's chance of a unique per Fractured Archive raid for a solo or duo with no deaths: 1 in 14 (7.14%). "
-			+ "Each player beyond two adds 4% of it (x1.24 for eight), and you get your share of the damage. Every raid uses it, including ones where On Rate counted your team.",
+		description = "The team's chance of a unique per Fractured Archive raid for a solo or duo with no deaths: 1 in 16 (6.25%). "
+			+ "Bigger teams have their own chance, worked out from this one (1 in 12.5 for three players, up to 1 in 7.5 for eight), and you get your share of the damage. "
+			+ "Every raid since the game update of 11 November 2026 uses it, including ones where On Rate counted your team. Raids from before it keep the chance they had (1 in 14).",
 		position = 46,
 		section = raidChancesSection
 	)
 	default double tfaTeamChance()
 	{
-		return 100 / 14.0;
+		return 100 / 16.0;
 	}
 }
