@@ -160,6 +160,16 @@ public final class ItemTimes
 		return RateModel.effectiveRate(boss, drop, raids);
 	}
 
+	/**
+	 * Seconds per kill (or raid) for a boss, chosen as the Time page chooses it: your own average once you have
+	 * enough timed kills, else the OSRS Wiki estimate. NaN when there is neither.
+	 */
+	public static double secondsPerKill(Tracker tracker, KillTimes web, BossDefinition boss, BossStats stats)
+	{
+		PerKill p = boss == null || stats == null ? null : perKill(tracker, web, boss, stats);
+		return p == null || !(p.seconds > 0) ? Double.NaN : p.seconds;
+	}
+
 	/** Time per kill for a boss: kills (or each part, weighted by your kills of it) at your average or the estimate. */
 	private static PerKill perKill(Tracker tracker, KillTimes web, BossDefinition boss, BossStats stats)
 	{

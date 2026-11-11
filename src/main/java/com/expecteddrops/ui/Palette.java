@@ -23,9 +23,45 @@ public final class Palette
 	{
 	}
 
+	private static volatile Color customBad;
+	private static volatile Color customMid;
+
 	public static void setColourBlind(boolean on)
 	{
 		colourBlind = on;
+	}
+
+	/**
+	 * Picks the colours for dry to spooned. The ready-made sets keep spooned green (the
+	 * colour-blind one has its own blue); Custom takes the player's dry and on rate colours.
+	 */
+	public static void setScheme(LuckColours scheme, Color dry, Color onRate)
+	{
+		LuckColours s = scheme == null ? LuckColours.CLASSIC : scheme;
+		colourBlind = s == LuckColours.COLOUR_BLIND;
+		switch (s)
+		{
+			case PURPLE_AMBER:
+				customBad = new Color(110, 60, 170);
+				customMid = new Color(200, 150, 30);
+				break;
+			case PINK_GREY:
+				customBad = new Color(210, 90, 140);
+				customMid = new Color(140, 140, 140);
+				break;
+			case MONO:
+				customBad = new Color(110, 110, 110);
+				customMid = new Color(150, 150, 150);
+				break;
+			case CUSTOM:
+				customBad = dry;
+				customMid = onRate;
+				break;
+			default:
+				customBad = null;
+				customMid = null;
+				break;
+		}
 	}
 
 	/** Colour for a luck percentile 0..1 (grey when unknown). */
@@ -35,8 +71,8 @@ public final class Palette
 		{
 			return ColorScheme.MEDIUM_GRAY_COLOR;
 		}
-		Color bad = colourBlind ? CB_BAD : BAD;
-		Color mid = colourBlind ? CB_MID : MID;
+		Color bad = customBad != null ? customBad : colourBlind ? CB_BAD : BAD;
+		Color mid = customMid != null ? customMid : colourBlind ? CB_MID : MID;
 		Color good = colourBlind ? CB_GOOD : GOOD;
 		if (luck < 0.5)
 		{

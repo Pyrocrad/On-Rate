@@ -78,49 +78,6 @@ class VerdictTile extends JPanel
 		}
 	}
 
-	/** The luck line as a pill that grows with its text. */
-	private static final class LuckPill extends JLabel
-	{
-		private Color hue = Theme.TEXT_MUTED;
-
-		LuckPill()
-		{
-			setFont(FontManager.getRunescapeSmallFont());
-			setBorder(new EmptyBorder(2, 11, 2, 6));
-		}
-
-		void setHue(Color hue)
-		{
-			this.hue = hue;
-			setForeground(Palette.onTint(hue));
-		}
-
-		@Override
-		public java.awt.Dimension getMaximumSize()
-		{
-			// as wide as its text, never stretched across the tile
-			return getPreferredSize();
-		}
-
-		@Override
-		protected void paintComponent(java.awt.Graphics graphics)
-		{
-			if (getText() == null || getText().isEmpty())
-			{
-				return;
-			}
-			java.awt.Graphics2D g = (java.awt.Graphics2D) graphics.create();
-			g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
-			g.setColor(Palette.tint(hue));
-			int arc = getHeight() > 20 ? 12 : getHeight();
-			g.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, arc, arc);
-			g.setColor(hue);
-			g.fillOval(4, getInsets().top + getFontMetrics(getFont()).getHeight() / 2 - 1, 4, 4);
-			g.dispose();
-			super.paintComponent(graphics);
-		}
-	}
-
 	/**
 	 * Verdict size by default; smaller only when a long word ("Very spooned") doesn't fit the tile.
 	 * A word too wide even at the smallest size ("Extremely spooned") goes back to full size on two lines.

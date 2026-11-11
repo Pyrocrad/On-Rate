@@ -108,7 +108,12 @@ public class ExpectedDropsPanel extends PluginPanel
 	private final JLabel helpLabel = new JLabel("?");
 	private JPanel tabsRow;
 
-	private final JPanel welcomePanel = new JPanel();
+	private final Card welcomePanel = new Card();
+	/** The welcome guide's and the notice's old edge (a bar down the left), for when the card look is off. */
+	private javax.swing.border.Border welcomeBorder;
+	private javax.swing.border.Border timesNoticeBorder;
+	/** Inside a guide or notice card: the old padding, plus the outline. */
+	private static final javax.swing.border.Border CARD_PADDING = new EmptyBorder(Theme.M + 1, Theme.M + 1, Theme.M + 1, Theme.M + 1);
 	/** The verdict words in the welcome guide's key, with the luck each stands for: recoloured with the palette. */
 	private final List<JLabel> welcomeVerdicts = new ArrayList<>();
 	private static final double[] WELCOME_VERDICT_LUCK = {0.005, 0.05, 0.22, 0.40, 0.50, 0.60, 0.78, 0.95, 0.995};
@@ -182,6 +187,24 @@ public class ExpectedDropsPanel extends PluginPanel
 	 * panel it compares with has none of them.
 	 */
 	private boolean raidExtras = true;
+	/**
+	 * The verdict tiles' look for the rest of the panel: lists in rounded, outlined cards, the trip card with its
+	 * verdict edge, one pill and one tab style. Always on for players; the pixel parity test turns it off, because
+	 * the original panel it compares with is drawn the old way.
+	 */
+	private boolean boxes = true;
+	/**
+	 * The line under the verdict tiles takes turns with other true facts ({@link Texts#notableLines}), under any
+	 * verdict: the next one each time the page is opened or a kill comes in, or on a click. Always on for
+	 * players; the pixel parity test turns it off (the original shows one line, under "On rate" only).
+	 */
+	private boolean moreFacts = true;
+	/** Per page: which fact is up, and the expected count it was picked at (a kill changes it). */
+	private final java.util.Map<String, Integer> factTurns = new java.util.HashMap<>();
+	private final java.util.Map<String, Double> factSeenAt = new java.util.HashMap<>();
+	/** The page the line was last drawn for, and how many facts it had to choose from. */
+	private String factPage;
+	private int factCount;
 	/** Whether each raid section is open (they start folded, like History). */
 	private boolean setupsOpen;
 	private boolean bestsOpen;
@@ -200,6 +223,20 @@ public class ExpectedDropsPanel extends PluginPanel
 	/** True while the sort list gains or loses its GP value option, so that is not taken for a click. */
 	private boolean sortOptionsUpdating;
 	private final JPanel sortRow = new JPanel(new BorderLayout(4, 0));
+	private final JLabel sortLabel = new JLabel("Sort:");
+	/**
+	 * False draws the layout from before the View buttons: the key to the bars on the ITEMS line, no button on the Sort
+	 * row. Only the pixel comparison with the original panel turns it off (see PanelPixelParityTest).
+	 */
+	private boolean viewButtons = true;
+	/** Saves the chosen item view (the same setting as Display > Item view). */
+	private java.util.function.Consumer<ItemView> setItemView = view -> { };
+	/** The View button on the account overview's Sort row, and the one on a boss page's Items line. */
+	private final ViewChip accountViewChip = new ViewChip(view -> pickView(view));
+	private final ViewChip bossViewChip = new ViewChip(view -> pickView(view));
+	/** Boss pages: the "ITEMS" line with the View button, and the key to the bars under it. */
+	private final JPanel itemsHeading = new JPanel();
+	private final JLabel itemsLegend = new JLabel("bar = got · line = expected");
 	private final JLabel kcLabel = new JLabel();
 	private final JLabel syncLabel = new JLabel();
 	/** Boss pages: GE value received vs expected, weighed by price (the verdict only counts). */
@@ -330,8 +367,10 @@ public class ExpectedDropsPanel extends PluginPanel
 		top.add(spacer(Theme.M));
 
 		buildWelcome();
+		welcomeBorder = welcomePanel.getBorder();
 		top.add(welcomePanel);
 		buildTimesNotice();
+		timesNoticeBorder = timesNoticePanel.getBorder();
 		top.add(timesNoticePanel);
 		top.add(spacer(Theme.M));
 
@@ -467,6 +506,16 @@ public class ExpectedDropsPanel extends PluginPanel
 		notableLabel.setAlignmentX(LEFT_ALIGNMENT);
 		notableLabel.setBorder(new EmptyBorder(0, 0, Theme.S, 0));
 		notableLabel.setVisible(false);
+		// a click shows the next fact (see showTiles)
+		notableLabel.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mouseClicked(MouseEvent e)
+			{
+				nextFact();
+			}
+		});
+		Activatable.install(notableLabel, "Next fact", this::nextFact);
 		top.add(notableLabel);
 		lastUniqueLabel.setFont(FontManager.getRunescapeSmallFont());
 		lastUniqueLabel.setForeground(Theme.TEXT_MUTED);
@@ -528,6 +577,30 @@ public class ExpectedDropsPanel extends PluginPanel
 		top.add(topItemsPanel);
 		top.add(graphPanel);
 
+		// boss pages: "ITEMS" with the View button on its right; the key to the bars goes under it
+		itemsHeading.setLayout(new BoxLayout(itemsHeading, BoxLayout.Y_AXIS));
+		itemsHeading.setOpaque(false);
+		itemsHeading.setAlignmentX(LEFT_ALIGNMENT);
+		itemsHeading.setBorder(new EmptyBorder(0, 0, Theme.S, 0));
+		JPanel itemsLine = new JPanel(new BorderLayout(6, 0));
+		itemsLine.setOpaque(false);
+		itemsLine.setAlignmentX(LEFT_ALIGNMENT);
+		itemsLine.add(smallLabel("ITEMS", Theme.TEXT_MUTED), BorderLayout.WEST);
+		// icon and arrow only, as on the account overview's Sort row; the view's name is in its tooltip
+		bossViewChip.setCompact(true);
+		itemsLine.add(bossViewChip, BorderLayout.EAST);
+		itemsLine.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+		itemsHeading.add(itemsLine);
+		itemsLegend.setFont(FontManager.getRunescapeSmallFont());
+		itemsLegend.setForeground(Theme.TEXT_MUTED);
+		itemsLegend.setAlignmentX(LEFT_ALIGNMENT);
+		itemsLegend.setBorder(new EmptyBorder(Theme.HAIR, 0, 0, 0));
+		itemsLegend.setToolTipText(new Tip(null).line("The white line is how many you should have by now. A bar short of it is behind; "
+			+ "past it is ahead. Rare items have their line near the start.").small());
+		itemsHeading.add(itemsLegend);
+		itemsHeading.setVisible(false);
+		top.add(itemsHeading);
+
 		JPanel tabs = new JPanel(new GridLayout(1, 2, 2, 0));
 		tabsRow = tabs;
 		tabs.setOpaque(false);
@@ -542,7 +615,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		sortRow.setOpaque(false);
 		sortRow.setAlignmentX(LEFT_ALIGNMENT);
 		sortRow.setBorder(new EmptyBorder(Theme.S, 0, 0, 0));
-		JLabel sortLabel = new JLabel("Sort:");
 		sortLabel.setFont(FontManager.getRunescapeSmallFont());
 		sortLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		sortRow.add(sortLabel, BorderLayout.WEST);
@@ -557,6 +629,8 @@ public class ExpectedDropsPanel extends PluginPanel
 			refresh();
 		});
 		sortRow.add(sortSelect, BorderLayout.CENTER);
+		sortRow.add(accountViewChip, BorderLayout.EAST);
+		sortControls(true);
 		sortRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
 		top.add(sortRow);
 
@@ -906,6 +980,16 @@ public class ExpectedDropsPanel extends PluginPanel
 		boolean overlayWasOnScreen = overlayOfferOnScreen && overlayOfferLabel != null && overlayOfferLabel.isShowing();
 		overlayOfferOnScreen = false;
 		drawPage();
+		if (boxes)
+		{
+			// every run of list rows into one card, like the verdict tiles
+			Card.box(rowsPanel);
+			Card.box(topItemsPanel);
+		}
+		welcomePanel.setBoxed(boxes);
+		welcomePanel.setBorder(boxes ? CARD_PADDING : welcomeBorder);
+		timesNoticePanel.setBoxed(boxes);
+		timesNoticePanel.setBorder(boxes ? CARD_PADDING : timesNoticeBorder);
 		updateFooter();
 		// seen, and the player went on to another page or tab: never again on this account
 		if (overlayWasOnScreen && !overlayOfferOnScreen)
@@ -956,7 +1040,7 @@ public class ExpectedDropsPanel extends PluginPanel
 	}
 
 	/** The notice card, built like the welcome guide: in the panel, under the title. Hidden until it is due. */
-	private final JPanel timesNoticePanel = new JPanel();
+	private final Card timesNoticePanel = new Card();
 
 	private void buildTimesNotice()
 	{
@@ -1073,6 +1157,18 @@ public class ExpectedDropsPanel extends PluginPanel
 		setGraphOpen = opener == null ? open -> { } : opener;
 	}
 
+	/** Where the View button saves the item view; the same setting as in Display, so every page follows it. */
+	public void setItemViewSaver(java.util.function.Consumer<ItemView> saver)
+	{
+		setItemView = saver == null ? view -> { } : saver;
+	}
+
+	private void pickView(ItemView view)
+	{
+		setItemView.accept(view);
+		refresh();
+	}
+
 	/** Where the account overview's page choice is kept between sessions ("tab,sort,top"); see {@link #setAccountPageStore}. */
 	private java.util.function.Consumer<String> saveAccountPage = page -> { };
 	private boolean restoringAccountPage;
@@ -1117,6 +1213,17 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			restoringAccountPage = false;
 		}
+		refresh();
+	}
+
+	/**
+	 * Opens the account overview on its Bosses tab, whatever tab was saved. Called once after
+	 * {@link #setAccountPageStore}, so RuneLite always starts on Bosses; the sort order and the Items list
+	 * are still the saved ones, and the tab you pick afterwards is remembered for the rest of the session.
+	 */
+	public void startOnBossesTab()
+	{
+		accountTab = TAB_BOSSES;
 		refresh();
 	}
 
@@ -1187,6 +1294,11 @@ public class ExpectedDropsPanel extends PluginPanel
 		topItemsPanel.setVisible(account && o.isTopItems());
 		topItemsPanel.removeAll();
 		sortRow.setVisible(account);
+		sortControls(true);
+		accountViewChip.setView(o.getItemView());
+		bossViewChip.setView(o.getItemView());
+		itemsHeading.setVisible(false);
+		itemsLegend.setVisible(o.getItemView() == ItemView.TARGET_BARS);
 		tabsRow.setVisible(o.getItemView() == ItemView.DELVE_BARS);
 		syncLabel.setVisible(!account);
 		valueLabel.setVisible(false);
@@ -1212,6 +1324,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			repaint();
 			return;
 		}
+		itemsHeading.setVisible(viewButtons);
 
 		boolean raid = stats.getBoss().getRaid() != null;
 		boolean delve = stats.getLevelCounts() != null;
@@ -1319,7 +1432,8 @@ public class ExpectedDropsPanel extends PluginPanel
 				counted.add(stats.getRows().get(i));
 			}
 		}
-		showTiles(unsynced || sharedOnly ? null : any, value, lastValueTip, raid ? "purples" : "uniques", counted, true);
+		showTiles(unsynced || sharedOnly ? null : any, value, lastValueTip, raid ? "purples" : "uniques", counted, null,
+			moreFacts && !unsynced && !sharedOnly ? bossFacts(stats, counted, raid, delve) : java.util.Collections.emptyList(), true);
 		lastHintTip = null;
 		String hint = unsynced ? null : settingsHint(stats);
 		Color hintColor = ColorScheme.LIGHT_GRAY_COLOR;
@@ -1459,6 +1573,11 @@ public class ExpectedDropsPanel extends PluginPanel
 		receivedTab.setForeground(tab == Tab.RECEIVED ? Color.WHITE : ColorScheme.LIGHT_GRAY_COLOR);
 		expectedTab.setBorder(tabBorder(tab == Tab.EXPECTED));
 		receivedTab.setBorder(tabBorder(tab == Tab.RECEIVED));
+		// the card look: the same tabs as Bosses / Items / Recent (bold, one thin line under the row)
+		java.awt.Font font = boxes ? FontManager.getRunescapeBoldFont() : FontManager.getRunescapeSmallFont();
+		expectedTab.setFont(font);
+		receivedTab.setFont(font);
+		tabsRow.setBorder(boxes ? BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.OUTLINE) : null);
 	}
 
 	/**
@@ -1536,15 +1655,31 @@ public class ExpectedDropsPanel extends PluginPanel
 	private String notableText;
 
 	private void showTiles(RowStats any, double[] value, String valueTip, String what, List<RowStats> items,
-		boolean bossPage)
+		List<RowStats> bosses, List<String> pageFacts, boolean bossPage)
 	{
 		double luck = any == null ? Double.NaN : any.getLuck();
 		boolean tiles = !Double.isNaN(luck) && !Verdict.labelOf(luck).isEmpty();
 		// a boss page with next to nothing expected says so instead of a verdict (the account overview
 		// adds up every boss and keeps its verdicts)
 		boolean early = bossPage && tiles && any.getExpected() < Texts.TOO_EARLY_BELOW;
-		// "On rate" says little by itself: one notable fact under it, when there is one
-		String notable = !early && Verdict.isOnRate(luck) ? Texts.notableLine(items) : null;
+		String notable;
+		if (moreFacts)
+		{
+			// one true fact under any verdict, taking turns (the GP value only counts when its tile is shown)
+			double valueLuck = value != null && value[1] >= 1 ? value[2] : Double.NaN;
+			List<String> facts = early || !tiles ? java.util.Collections.emptyList()
+				: Texts.notableLines(items, bosses, luck, valueLuck, what, pageFacts);
+			factCount = facts.size();
+			notable = facts.isEmpty() ? null : facts.get(factTurn(any.getExpected()) % facts.size());
+			boolean more = factCount > 1;
+			notableLabel.setCursor(more ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR) : Cursor.getDefaultCursor());
+			notableLabel.setToolTipText(more ? "Click for another fact" : null);
+		}
+		else
+		{
+			// "On rate" says little by itself: one notable fact under it, when there is one
+			notable = !early && Verdict.isOnRate(luck) ? Texts.notableLine(items) : null;
+		}
 		notableText = notable;
 		notableLabel.setText(notable == null ? "" : "<html><body style='width: 165px'>" + html(notable) + "</body></html>");
 		notableLabel.setVisible(notable != null);
@@ -1591,6 +1726,40 @@ public class ExpectedDropsPanel extends PluginPanel
 				early ? "" : luckShort(value[2]), valueTip);
 			verdictTiles.add(valueTile);
 		}
+	}
+
+	/**
+	 * Which fact the line under the verdict shows on this page: the next one when the page has just been opened
+	 * or a kill changed its expected count, the same one on any other redraw (so it never flickers).
+	 */
+	private int factTurn(double expected)
+	{
+		String page = String.valueOf(bossSelect.getSelectedItem());
+		Integer turn = factTurns.get(page);
+		Double seenAt = factSeenAt.get(page);
+		if (turn == null)
+		{
+			turn = 0;
+		}
+		else if (!page.equals(factPage) || seenAt == null || seenAt != expected)
+		{
+			turn++;
+		}
+		factPage = page;
+		factTurns.put(page, turn);
+		factSeenAt.put(page, expected);
+		return turn;
+	}
+
+	/** A click on the line under the verdict: the next fact. */
+	private void nextFact()
+	{
+		if (!moreFacts || factCount < 2 || factPage == null)
+		{
+			return;
+		}
+		factTurns.merge(factPage, 1, Integer::sum);
+		refresh();
 	}
 
 	/** The big verdict ("ON RATE") and the line under it with the numbers behind it. */
@@ -1694,10 +1863,11 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			accountItems.add(h.getRow());
 		}
-		showTiles(account.getRows().isEmpty() ? null : total, accountValue, valueTooltip(account), "uniques", accountItems, false);
+		showTiles(account.getRows().isEmpty() ? null : total, accountValue, valueTooltip(account), "uniques", accountItems, account.getRows(),
+			java.util.Collections.emptyList(), false);
 
 		showLastUnique();
-		if (notableText != null && lastUniqueText != null)
+		if (!moreFacts && notableText != null && lastUniqueText != null)
 		{
 			// one quiet block under the tiles instead of two
 			lastUniqueLabel.setText(Theme.wrap(html(notableText + " " + lastUniqueText), Theme.TEXT_WIDTH));
@@ -1762,7 +1932,15 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		if (tabs && accountTab == TAB_ITEMS)
 		{
-			sortRow.setVisible(false);
+			// the Items tab has no sort list, but its lists follow the view: the button stays
+			if (viewButtons)
+			{
+				sortControls(false);
+			}
+			else
+			{
+				sortRow.setVisible(false);
+			}
 			renderItemsTab(account, o.getItemView());
 		}
 		else if (tabs && accountTab == TAB_RECENT)
@@ -2088,7 +2266,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		block.setMaximumSize(new Dimension(Integer.MAX_VALUE, block.getPreferredSize().height));
 		rowsPanel.add(spacer(Theme.HAIR));
-		rowsPanel.add(block);
+		rowsPanel.add(Card.row(block));
 		return true;
 	}
 
@@ -2346,13 +2524,18 @@ public class ExpectedDropsPanel extends PluginPanel
 			JLabel tag = smallLabel(pill, luckColor);
 			tag.setBorder(javax.swing.BorderFactory.createCompoundBorder(
 				javax.swing.BorderFactory.createLineBorder(luckColor), new EmptyBorder(0, Theme.S, 0, Theme.S)));
+			if (boxes)
+			{
+				// the card look: the tinted pill from under the verdict tiles, same word
+				tag = new LuckPill(pill, luckColor, 0);
+			}
 			JPanel east = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 0, 0));
 			east.setOpaque(false);
 			east.add(tag);
 			panel.add(east, BorderLayout.EAST);
 		}
 		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, panel.getPreferredSize().height));
-		return panel;
+		return Card.row(panel);
 	}
 
 	/** A single drop in the Drops view. Left click opens the boss; right click is the Remove from History menu. */
@@ -2428,7 +2611,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		// left click opens the boss; right click is the Remove from History menu
 		setTip(panel, dropTip(r, now), () -> showBoss(r.getBoss()), true);
 		withRemoveMenu(panel, r.getBoss(), r.getKill(), java.util.Collections.singletonList(d));
-		return panel;
+		return Card.row(panel);
 	}
 
 	/**
@@ -2778,6 +2961,16 @@ public class ExpectedDropsPanel extends PluginPanel
 		row.setOpaque(false);
 		row.setAlignmentX(LEFT_ALIGNMENT);
 		row.setBorder(new EmptyBorder(Theme.S, 0, Theme.S, 0));
+		// the card look: the same control as Items / Pets / Single drops / Time (a filled cell for the choice)
+		JPanel cells = row;
+		if (boxes)
+		{
+			cells = new JPanel(new GridLayout(1, labels.length, Theme.HAIR, 0));
+			cells.setBackground(Theme.SURFACE);
+			cells.setBorder(new EmptyBorder(Theme.HAIR, Theme.HAIR, Theme.HAIR, Theme.HAIR));
+			row.setLayout(new BorderLayout());
+			row.add(cells, BorderLayout.CENTER);
+		}
 		for (int i = 0; i < labels.length; i++)
 		{
 			int index = i;
@@ -2789,6 +2982,11 @@ public class ExpectedDropsPanel extends PluginPanel
 			label.setBorder(BorderFactory.createCompoundBorder(
 				BorderFactory.createMatteBorder(0, 0, 2, 0, on ? Theme.ACCENT : Theme.SURFACE_RAISED),
 				new EmptyBorder(Theme.HAIR, Theme.HAIR, Theme.HAIR, Theme.HAIR)));
+			if (boxes)
+			{
+				label.setOpaque(on);
+				label.setBorder(new EmptyBorder(Theme.HAIR, Theme.S, Theme.HAIR, Theme.S));
+			}
 			if (!on)
 			{
 				label.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
@@ -2807,7 +3005,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				pick.accept(index);
 				refresh();
 			});
-			row.add(label);
+			cells.add(label);
 		}
 		row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height));
 		return row;
@@ -2848,33 +3046,10 @@ public class ExpectedDropsPanel extends PluginPanel
 			return;
 		}
 		RaidInsights.Setup recent = insights.getRecent();
-		com.onrate.engine.data.BossPart usual = usualPart(stats);
-		List<String> missing = new ArrayList<>();
-		List<Double> chances = new ArrayList<>();
-		double pet = Double.NaN;
-		for (RowStats row : stats.getRows())
-		{
-			DropDefinition drop = row.isAny() ? null : findDrop(stats.getDrops(), row.getLabel());
-			if (drop == null || row.getReceived() > 0)
-			{
-				continue;
-			}
-			double p = recent != null ? recent.getItemPerRaid(drop.getName())
-				: usual == null || !com.onrate.engine.tracking.RateModel.fromPurplePublic(usual, drop) ? Double.NaN
-				: com.onrate.engine.tracking.RateModel.partRate(boss, usual, drop, raidSettings.get());
-			if (Double.isNaN(p))
-			{
-				// not from the purple (a flat roll like the Fractured Archive's folio): not part of this forecast
-				continue;
-			}
-			if (drop.isPet())
-			{
-				pet = p;
-				continue;
-			}
-			missing.add(row.getLabel());
-			chances.add(p);
-		}
+		RaidMissing m = raidMissing(stats, insights);
+		List<String> missing = m.names;
+		List<Double> chances = m.chances;
+		double pet = m.pet;
 		if (missing.isEmpty() && Double.isNaN(pet))
 		{
 			addHistoryNote("You have every unique and the pet. Nothing left for this log page.");
@@ -2908,6 +3083,123 @@ public class ExpectedDropsPanel extends PluginPanel
 			withPet[p.length] = pet;
 			addForecast(missing.isEmpty() ? "The pet" : "With the pet", withPet, avg);
 		}
+	}
+
+	/** What a raid's log still misses: the uniques with their chance a raid, and the pet's (NaN when you have it). */
+	private static final class RaidMissing
+	{
+		final List<String> names = new ArrayList<>();
+		final List<Double> chances = new ArrayList<>();
+		double pet = Double.NaN;
+	}
+
+	/** The missing uniques of a raid at how you raid now (your last raids, else the settings). */
+	private RaidMissing raidMissing(BossStats stats, RaidInsights insights)
+	{
+		BossDefinition boss = stats.getBoss();
+		RaidInsights.Setup recent = insights.getRecent();
+		com.onrate.engine.data.BossPart usual = usualPart(stats);
+		RaidMissing m = new RaidMissing();
+		for (RowStats row : stats.getRows())
+		{
+			DropDefinition drop = row.isAny() ? null : findDrop(stats.getDrops(), row.getLabel());
+			if (drop == null || row.getReceived() > 0)
+			{
+				continue;
+			}
+			double p = recent != null ? recent.getItemPerRaid(drop.getName())
+				: usual == null || !com.onrate.engine.tracking.RateModel.fromPurplePublic(usual, drop) ? Double.NaN
+				: com.onrate.engine.tracking.RateModel.partRate(boss, usual, drop, raidSettings.get());
+			if (Double.isNaN(p))
+			{
+				// not from the purple (a flat roll like the Fractured Archive's folio): not part of this forecast
+				continue;
+			}
+			if (drop.isPet())
+			{
+				m.pet = p;
+				continue;
+			}
+			m.names.add(row.getLabel());
+			m.chances.add(p);
+		}
+		return m;
+	}
+
+	/**
+	 * The facts a boss page adds to the line under the verdict: how long the rest of the log takes (once the
+	 * collection log page is loaded, so On Rate knows what you have) and the average pace of uniques. Hours come
+	 * from the same kill time as the Time page. None for Doom: its chances change with the delve level.
+	 */
+	private List<String> bossFacts(BossStats stats, List<RowStats> counted, boolean raid, boolean delve)
+	{
+		List<String> facts = new ArrayList<>();
+		if (delve)
+		{
+			return facts;
+		}
+		BossDefinition boss = stats.getBoss();
+		double seconds = com.onrate.engine.stats.ItemTimes.secondsPerKill(tracker,
+			com.onrate.engine.data.KillTimes.bundled(), boss, stats);
+		String units = com.onrate.engine.tracking.Tracker.unit(boss);
+		if (stats.isClogSynced())
+		{
+			// the missing items and, apart, the pet: the line gives the log with and without it
+			List<String> names = new ArrayList<>();
+			List<Double> chances = new ArrayList<>();
+			double pet = Double.NaN;
+			String petLabel = null;
+			if (raid)
+			{
+				RaidMissing m = raidMissing(stats, tracker.raidInsights(boss.getName(), null));
+				names.addAll(m.names);
+				chances.addAll(m.chances);
+				pet = m.pet;
+				petLabel = petName(stats);
+			}
+			else
+			{
+				for (RowStats r : counted)
+				{
+					if (r == null || r.isAny() || r.getReceived() > 0 || r.isComplete() || !(r.getRate() > 0))
+					{
+						continue;
+					}
+					DropDefinition drop = findDrop(stats.getDrops(), r.getLabel());
+					if (drop != null && drop.isPet())
+					{
+						pet = r.getRate();
+						petLabel = r.getLabel();
+						continue;
+					}
+					names.add(r.getLabel());
+					chances.add(r.getRate());
+				}
+			}
+			boolean petMissing = !Double.isNaN(pet);
+			double[] items = chances.stream().mapToDouble(Double::doubleValue).toArray();
+			long withoutPet = com.onrate.engine.stats.LogForecast.raidsFor(items, 0.5);
+			long withPet = withoutPet;
+			if (petMissing)
+			{
+				double[] all = java.util.Arrays.copyOf(items, items.length + 1);
+				all[items.length] = pet;
+				withPet = com.onrate.engine.stats.LogForecast.raidsFor(all, 0.5);
+			}
+			String only = names.size() == 1 && !petMissing ? names.get(0) : names.isEmpty() && petMissing ? petLabel : null;
+			String line = Texts.logLeftLine(withPet, withoutPet, petMissing, seconds, units, only);
+			if (line != null)
+			{
+				facts.add(line);
+			}
+		}
+		RowStats any = stats.getAnyRow();
+		String pace = Texts.averagePaceLine(any == null ? Double.NaN : any.getRate(), seconds, units, raid ? "purple" : "unique");
+		if (pace != null)
+		{
+			facts.add(pace);
+		}
+		return facts;
 	}
 
 	/** One forecast: its raids, and under it the hours at your average raid time when known. */
@@ -2953,7 +3245,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			c.setToolTipText(tip);
 		}
 		row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height));
-		return row;
+		return Card.row(row);
 	}
 
 	/** The raid's pet name, for the missing list. */
@@ -3117,7 +3409,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		row.add(bar);
 		row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height));
 		setTip(row, tip, null);
-		return row;
+		return Card.row(row);
 	}
 
 	private static String setupTip(String name, RaidInsights.Setup s, boolean gp)
@@ -3226,7 +3518,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		b.setToolTipText(otherTip);
 		line.add(b);
 		line.setMaximumSize(new Dimension(Integer.MAX_VALUE, 20));
-		return line;
+		return Card.row(line);
 	}
 
 	private static String bestTip(String title, RaidInsights.Best best, RaidInsights.Bests bests, String raid)
@@ -3470,7 +3762,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		line.add(text, BorderLayout.CENTER);
 		line.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
 		setTip(line, tip, null);
-		return line;
+		return Card.row(line);
 	}
 
 	/** One History line: kill count on the left, then what happened, then the loot or gap. */
@@ -3495,7 +3787,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		line.setMaximumSize(new Dimension(Integer.MAX_VALUE, 20));
 		setTip(line, tip, null);
-		return line;
+		return Card.row(line);
 	}
 
 	/** Bosses | Items tabs above the account list. */
@@ -3959,7 +4251,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			chip.setToolTipText(sourceChip(source).getToolTipText());
 		}
-		return panel;
+		return Card.row(panel);
 	}
 
 	/** The Items page: your driest and your luckiest items, a few of each with "show all". */
@@ -4116,7 +4408,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				grid[0] = new JPanel(new GridLayout(0, 3, 4, 8));
 				grid[0].setOpaque(false);
 				grid[0].setAlignmentX(LEFT_ALIGNMENT);
-				rowsPanel.add(grid[0]);
+				rowsPanel.add(Card.gridRow(grid[0]));
 			}
 			grid[0].add(itemRing(r, tip, open));
 			// the grid grows a cell at a time, so keep its height in step
@@ -4159,7 +4451,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		title.setToolTipText("<html><body style='width: 240px'>These drop from other bosses too, and the collection log has "
 			+ "one total for all of them. So each is judged on all those bosses' kills together, and shows the same numbers on "
 			+ "every boss that drops it. Hover one to see which bosses.<br><br>Know where yours came from? Right-click "
-			+ "it to judge it on each boss separately.</body></html>");
+			+ "it to move it to each boss separately.</body></html>");
 		rowsPanel.add(title);
 		String page = stats.getBoss().getClogPages().isEmpty() ? stats.getBoss().getName() : stats.getBoss().getClogPages().get(0);
 		boolean headerAdded = false;
@@ -4192,7 +4484,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			}
 			if (pool.isSplitNeedsAnswer() && pool.isSplittable())
 			{
-				missingLines.add(String.format(java.util.Locale.ROOT, "Your collection log has %s %s On Rate didn't see drop, so it's judged "
+				missingLines.add(String.format(java.util.Locale.ROOT, "Your collection log has %s %s On Rate didn't see drop, so it's counted "
 					+ "with the other bosses again. Right-click it to say where %s came from.",
 					pool.getOlderCopies() == 1 ? "a" : String.valueOf(pool.getOlderCopies()),
 					pool.getOlderCopies() == 1 ? pool.getLabel() : pool.getLabel() + " copies",
@@ -4525,9 +4817,9 @@ public class ExpectedDropsPanel extends PluginPanel
 		if (pool.isSplittable())
 		{
 			tip.note(pool.getAlsoFrom() != null
-				? "Know where yours came from? Right-click to judge it on each boss separately, with the ones from "
+				? "Know where yours came from? Right-click to move it to each boss separately, with the ones from "
 					+ pool.getAlsoFrom() + " left out."
-				: "Know which boss yours came from? Right-click to judge it on each boss separately.");
+				: "Know which boss yours came from? Right-click to move it to each boss separately.");
 		}
 		return tip.wide();
 	}
@@ -4656,7 +4948,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		return "<html><body style='width: 240px'>" + how + "<br><br>Hover an item for its drop rate, your chances "
 			+ "and your dry streak. Right-click one to leave it out of the calculations (a drop you got elsewhere, "
-			+ "or jars you don't care about), or to add a drop from before On Rate. Change the view in the settings (Display)."
+			+ "or jars you don't care about), or to add a drop from before On Rate. Change the view with the View button above the items, or in the settings (Display)."
 			+ "</body></html>";
 	}
 
@@ -4699,7 +4991,7 @@ public class ExpectedDropsPanel extends PluginPanel
 					grid.add(withLeaveOutMenu(itemRing(r, itemTooltip(r, stats, unit)), bossName, r, false));
 				}
 				grid.setMaximumSize(new Dimension(Integer.MAX_VALUE, grid.getPreferredSize().height));
-				rowsPanel.add(grid);
+				rowsPanel.add(Card.gridRow(grid));
 				break;
 			case GAUGE:
 				LuckGauge gauge = new LuckGauge();
@@ -4713,9 +5005,12 @@ public class ExpectedDropsPanel extends PluginPanel
 				}
 				break;
 			default:
-				rowsPanel.add(itemsHeader("ITEMS", "bar = got \u00b7 line = expected",
-					"The white line is how many you should have by now. A bar short of it is behind; past it is ahead. "
-						+ "Rare items have their line near the start."));
+				if (!viewButtons)
+				{
+					rowsPanel.add(itemsHeader("ITEMS", "bar = got · line = expected",
+						"The white line is how many you should have by now. A bar short of it is behind; past it is ahead. "
+							+ "Rare items have their line near the start."));
+				}
 				for (int i = 0; i < all.size(); i++)
 				{
 					if (i > 0)
@@ -4755,7 +5050,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				+ "Right-click to count it again.")
 			.wide();
 		setTip(panel, tip, null);
-		return panel;
+		return Card.row(panel);
 	}
 
 	/**
@@ -4773,7 +5068,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		if (splitKey != null)
 		{
 			// a shared item the player chose to judge per boss: it can go back, not be left out
-			JMenuItem back = new JMenuItem("Judge it with the other bosses again");
+			JMenuItem back = new JMenuItem("Move it back to Shared with other bosses");
 			back.addActionListener(e ->
 			{
 				tracker.unsplitPool(splitKey);
@@ -4933,7 +5228,7 @@ public class ExpectedDropsPanel extends PluginPanel
 	}
 
 	/**
-	 * Adds the right-click menu to a shared item: judge it on each boss separately. The copies
+	 * Adds the right-click menu to a shared item: move it to each boss separately. The copies
 	 * On Rate saw drop go to the boss that dropped them; the older ones it didn't see go where
 	 * the player says: a boss they have kills at, or "not from a boss" for an item other
 	 * monsters drop too (a visage from a regular dragon).
@@ -4948,7 +5243,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		int older = pool.getOlderCopies();
 		if (older == 0)
 		{
-			JMenuItem item = new JMenuItem("Judge it on each boss separately");
+			JMenuItem item = new JMenuItem("Move it to each boss separately");
 			item.addActionListener(e -> splitPool(pool, java.util.Collections.emptyMap()));
 			menu.add(item);
 			addPopup(c, menu);
@@ -4959,8 +5254,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			return c;
 		}
-		javax.swing.JMenu all = new javax.swing.JMenu(older == 1 ? "Judge per boss: my older one came from"
-			: "Judge per boss: all " + older + " older ones came from");
+		javax.swing.JMenu all = new javax.swing.JMenu(older == 1 ? "Move my older one to"
+			: "Move all " + older + " older ones to");
 		for (Map.Entry<String, String> w : where.entrySet())
 		{
 			JMenuItem item = new JMenuItem(w.getValue());
@@ -4970,7 +5265,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		menu.add(all);
 		if (older > 1 && where.size() > 1)
 		{
-			JMenuItem some = new JMenuItem("Judge per boss: split my " + older + " older ones...");
+			JMenuItem some = new JMenuItem("Split my " + older + " older ones between bosses...");
 			some.addActionListener(e -> askSplit(pool, where));
 			menu.add(some);
 		}
@@ -5020,7 +5315,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		content.add(form, BorderLayout.CENTER);
 		while (true)
 		{
-			int answer = JOptionPane.showConfirmDialog(this, content, "Judge " + pool.getLabel() + " per boss",
+			int answer = JOptionPane.showConfirmDialog(this, content, "Move " + pool.getLabel() + " to bosses",
 				JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
 			if (answer != JOptionPane.OK_OPTION)
 			{
@@ -5035,7 +5330,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			{
 				return;
 			}
-			JOptionPane.showMessageDialog(this, "They need to add up to " + older + ".", "Judge " + pool.getLabel() + " per boss",
+			JOptionPane.showMessageDialog(this, "They need to add up to " + older + ".", "Move " + pool.getLabel() + " to bosses",
 				JOptionPane.WARNING_MESSAGE);
 		}
 	}
@@ -5143,7 +5438,19 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 	}
 
-	/** The title over the item list ("ITEMS") with a key on the right. */
+	/**
+	 * The account overview's Sort row: the sort list shows on the Bosses tab; on the Items tab only the View
+	 * button stays. It is icon-only everywhere, like on the boss pages.
+	 */
+	private void sortControls(boolean withSort)
+	{
+		sortLabel.setVisible(withSort);
+		sortSelect.setVisible(withSort);
+		accountViewChip.setVisible(viewButtons);
+		accountViewChip.setCompact(true);
+	}
+
+	/** The title over the item list ("ITEMS") with a key on the right: the layout without the View button. */
 	private JPanel itemsHeader(String title, String key, String keyTip)
 	{
 		JPanel panel = new JPanel(new BorderLayout(6, 0));
@@ -5262,7 +5569,7 @@ public class ExpectedDropsPanel extends PluginPanel
 					grid.add(bossRing(shownRow(row, byValue), accountTooltip(row, account, byValue)));
 				}
 				grid.setMaximumSize(new Dimension(Integer.MAX_VALUE, grid.getPreferredSize().height));
-				rowsPanel.add(grid);
+				rowsPanel.add(Card.gridRow(grid));
 				break;
 			case GAUGE:
 				LuckGauge gauge = new LuckGauge();
@@ -5445,7 +5752,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		panel.add(bar, BorderLayout.SOUTH);
 		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, panel.getPreferredSize().height));
 		setTip(panel, tip, null);
-		return panel;
+		return Card.row(panel);
 	}
 
 	/** Account row: boss picture, then a luck bar with the boss name and its verdict. */
@@ -5513,7 +5820,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		panel.add(body, BorderLayout.CENTER);
 		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, panel.getPreferredSize().height));
 		setTip(panel, tip, onClick);
-		return panel;
+		return Card.row(panel);
 	}
 
 	/** Width of the "got / expected" column: "0 / 35.5" and "99 / 153" fit; the widest items need about 40. */
@@ -5592,11 +5899,13 @@ public class ExpectedDropsPanel extends PluginPanel
 		right.add(smallLabel(have ? Texts.haveText(r) : gotOfExpected(r),
 			Texts.isQuiet(r) ? Theme.TEXT_MUTED : Color.WHITE), BorderLayout.CENTER);
 		double luck = r.getLuck();
-		right.add(new Chip(Double.isNaN(luck) ? "-" : pct(luck), luckColor(luck)), BorderLayout.EAST);
+		String chip = Double.isNaN(luck) ? "-" : pct(luck);
+		// the card look: the tinted pill (white on the solid yellow or green chip is hard to read)
+		right.add(boxes ? new LuckPill(chip, luckColor(luck), 46) : new Chip(chip, luckColor(luck)), BorderLayout.EAST);
 		panel.add(right, BorderLayout.EAST);
 		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
 		setTip(panel, tip, onClick);
-		return panel;
+		return Card.row(panel);
 	}
 
 	/** Name on the left, the dry-to-spooned scale with your dot on the right. */
@@ -5625,7 +5934,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		panel.add(strip, BorderLayout.CENTER);
 		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
 		setTip(panel, tip, onClick);
-		return panel;
+		return Card.row(panel);
 	}
 
 	/** Item ring: chance of having it by now, or of the next one once you have it. */
@@ -5799,6 +6108,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			return;
 		}
+		// the card look: the trip shows a verdict, so it gets the tiles' coloured top edge
+		Color tripEdge = boxes && !Double.isNaN(trip.getLuck()) ? luckColor(trip.getLuck()).brighter() : null;
 		// a rounded card, like the verdict tiles
 		JPanel card = new JPanel()
 		{
@@ -5811,6 +6122,12 @@ public class ExpectedDropsPanel extends PluginPanel
 				g.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 8, 8);
 				g.setColor(Theme.OUTLINE);
 				g.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 8, 8);
+				if (tripEdge != null)
+				{
+					g.setClip(new java.awt.geom.RoundRectangle2D.Float(0, 0, getWidth() - 1, getHeight() - 1, 8, 8));
+					g.setColor(tripEdge);
+					g.fillRect(0, 0, getWidth(), 2);
+				}
 				g.dispose();
 			}
 		};
@@ -5861,17 +6178,28 @@ public class ExpectedDropsPanel extends PluginPanel
 		card.add(progressBar(fill, Double.isNaN(luck) ? Theme.QUIET_MARK : luckColor(luck)));
 		card.add(spacer(Theme.S));
 
-		JPanel tiles = new JPanel(new GridLayout(1, 2, 4, 0));
-		tiles.setOpaque(false);
-		tiles.setAlignmentX(LEFT_ALIGNMENT);
 		double perHour = trip.getKillsPerHour();
 		String capUnits = Character.toUpperCase(units.charAt(0)) + units.substring(1);
-		tiles.add(tile(Double.isNaN(perHour) ? capUnits : capUnits + " \u00b7 per hour",
-			Double.isNaN(perHour) ? String.format(java.util.Locale.ROOT, "%,d", trip.getKills())
-				: String.format(java.util.Locale.ROOT, "%,d \u00b7 %.0f/h", trip.getKills(), perHour)));
-		tiles.add(tile("Uniques / expected", trip.getReceived() + " / " + formatExpected(trip.getExpected())));
-		card.add(tiles);
-		card.add(spacer(Theme.S));
+		String killsLabel = Double.isNaN(perHour) ? capUnits : capUnits + " \u00b7 per hour";
+		String killsValue = Double.isNaN(perHour) ? String.format(java.util.Locale.ROOT, "%,d", trip.getKills())
+			: String.format(java.util.Locale.ROOT, "%,d \u00b7 %.0f/h", trip.getKills(), perHour);
+		String uniquesValue = trip.getReceived() + " / " + formatExpected(trip.getExpected());
+		if (boxes)
+		{
+			// the card look: plain label / value lines, like "Unique value" under them
+			card.add(cardRow(killsLabel, killsValue, Color.WHITE, null));
+			card.add(cardRow("Uniques / expected", uniquesValue, Color.WHITE, null));
+		}
+		else
+		{
+			JPanel tiles = new JPanel(new GridLayout(1, 2, 4, 0));
+			tiles.setOpaque(false);
+			tiles.setAlignmentX(LEFT_ALIGNMENT);
+			tiles.add(tile(killsLabel, killsValue));
+			tiles.add(tile("Uniques / expected", uniquesValue));
+			card.add(tiles);
+			card.add(spacer(Theme.S));
+		}
 
 		if (!trip.getDrops().isEmpty())
 		{
@@ -6100,7 +6428,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			c.setToolTipText(tip);
 		}
 		row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height));
-		return row;
+		return Card.row(row);
 	}
 
 	private static JPanel tile(String title, String value)
@@ -6616,7 +6944,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		bar.setToolTipText(tip);
 		icon.setToolTipText(tip);
 		count.setToolTipText(tip);
-		return panel;
+		return Card.row(panel);
 	}
 
 	/**
@@ -6966,9 +7294,9 @@ public class ExpectedDropsPanel extends PluginPanel
 		if (drop != null && !ownDrop)
 		{
 			// a shared item the player split: their own choice of where the older copies came from
-			tip.note("Other bosses drop this too. You chose to judge it on each boss separately: the copies On Rate "
+			tip.note("Other bosses drop this too. You moved it to each boss separately: the copies On Rate "
 				+ "saw drop count for the boss that dropped them, and the older ones where you said. "
-				+ "Right-click to judge it with the other bosses again.");
+				+ "Right-click to move it back to Shared with other bosses.");
 		}
 		if (multiple != null)
 		{
@@ -7082,10 +7410,12 @@ public class ExpectedDropsPanel extends PluginPanel
 		});
 	}
 
-	private static javax.swing.border.Border tabBorder(boolean selected)
+	private javax.swing.border.Border tabBorder(boolean selected)
 	{
+		// the card look: no grey underline under the tab that isn't selected, as on the account tabs
+		Color unselected = boxes ? ColorScheme.DARK_GRAY_COLOR : ColorScheme.MEDIUM_GRAY_COLOR;
 		return BorderFactory.createCompoundBorder(
-			BorderFactory.createMatteBorder(0, 0, 2, 0, selected ? Theme.ACCENT : ColorScheme.MEDIUM_GRAY_COLOR),
+			BorderFactory.createMatteBorder(0, 0, 2, 0, selected ? Theme.ACCENT : unselected),
 			new EmptyBorder(Theme.S, 0, Theme.HAIR, 0));
 	}
 

@@ -1,6 +1,7 @@
 package com.expecteddrops;
 
 import com.expecteddrops.ui.ExpectedDropsPanel;
+import com.expecteddrops.ui.LuckColours;
 import com.expecteddrops.ui.Palette;
 import com.expecteddrops.ui.ViewOptions;
 import com.google.gson.Gson;
@@ -50,7 +51,6 @@ import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
-import net.runelite.client.RuneLite;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.ChatColorType;
 import net.runelite.client.chat.ChatMessageBuilder;
@@ -71,6 +71,7 @@ import net.runelite.client.plugins.loottracker.LootReceived;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.overlay.OverlayManager;
+import net.runelite.client.util.Filepath;
 import net.runelite.client.util.ImageUtil;
 
 /**
@@ -183,6 +184,12 @@ public class ExpectedDropsPlugin extends Plugin
 	@Override
 	protected void startUp() throws Exception
 	{
+		// The old "Colour-blind colours" tick is now a choice in "Luck colours": carry it over once.
+		if ("true".equals(configManager.getConfiguration(ExpectedDropsConfig.GROUP, "colourBlind"))
+			&& configManager.getConfiguration(ExpectedDropsConfig.GROUP, "luckColours") == null)
+		{
+			configManager.setConfiguration(ExpectedDropsConfig.GROUP, "luckColours", LuckColours.COLOUR_BLIND.name());
+		}
 		for (String key : OLD_SETTINGS)
 		{
 			if (configManager.getConfiguration(ExpectedDropsConfig.GROUP, key) != null)
@@ -237,8 +244,11 @@ public class ExpectedDropsPlugin extends Plugin
 		panel.setProfileState(ExpectedDropsPanel.ProfileState.NOT_LOGGED_IN);
 		panel.setSlayerLevel(() -> slayerLevel);
 		panel.setGraphOpener(open -> configManager.setConfiguration(ExpectedDropsConfig.GROUP, "showLuckGraph", String.valueOf(open)));
+		panel.setItemViewSaver(view -> configManager.setConfiguration(ExpectedDropsConfig.GROUP, "itemView", view));
 		panel.setAccountPageStore(config.accountPage(),
 			page -> configManager.setConfiguration(ExpectedDropsConfig.GROUP, "accountPage", page));
+		// the sort order and Items list come back as saved, but the panel always opens on the Bosses tab
+		panel.startOnBossesTab();
 		panel.setOverlayOffer(config::showOverlay,
 			() -> "true".equals(configManager.getRSProfileConfiguration(ExpectedDropsConfig.GROUP, OVERLAY_OFFER_KEY)),
 			() -> configManager.setRSProfileConfiguration(ExpectedDropsConfig.GROUP, OVERLAY_OFFER_KEY, "true"),
@@ -392,9 +402,35 @@ public class ExpectedDropsPlugin extends Plugin
 			// a Leagues or other seasonal profile: the files can't tell its raids from the main game's
 			return;
 		}
+		Filepath folder = raidDataFolder;
+		if (folder == null)
+		{
+			// the player hasn't picked Raid Data Tracker's folder yet: nothing is read
+			return;
+		}
 		importer.start(profile,
-			() -> RaidDataImport.read(new java.io.File(RuneLite.RUNELITE_DIR, RaidDataImport.FOLDER), accountHash),
+			() -> RaidDataImport.read(folder, accountHash),
 			t, name -> changed(name, false));
+	}
+
+	/** Raid Data Tracker's folder, as the player picked it with RuneLite's file chooser (not kept between runs). */
+	private volatile Filepath raidDataFolder;
+
+	/** Asks for Raid Data Tracker's folder, then reads it for the account that is logged in. */
+	private void chooseRaidDataFolder()
+	{
+		Filepath.Chooser chooser = new Filepath.Chooser()
+			.setIsOpen()
+			.setAcceptsDirectories()
+			.setFileHidingEnabled(false)
+			.setDialogTitle("Choose the Raid Data Tracker folder (raid-data tracker)");
+		List<Filepath> picked = chooser.showDialog(client);
+		if (picked == null || picked.isEmpty())
+		{
+			return;
+		}
+		raidDataFolder = picked.get(0);
+		clientThread.invokeLater(this::importRaidTimes);
 	}
 
 	/** Saved once On Rate has opened its panel for a new player. */
@@ -430,8 +466,9 @@ public class ExpectedDropsPlugin extends Plugin
 
 	ViewOptions viewOptions()
 	{
+		Palette.setScheme(config.luckColours(), config.dryColour(), config.onRateColour());
 		return new ViewOptions(config.itemView(), config.showGeValue(), config.showLuckGraph(),
-			config.showTrip(), config.colourBlind(), config.showTopItems());
+			config.showTrip(), config.luckColours() == LuckColours.COLOUR_BLIND, config.showTopItems());
 	}
 
 	/** This trip at the boss you are killing, for the overlay. */
@@ -450,7 +487,7 @@ public class ExpectedDropsPlugin extends Plugin
 			overlayInfo = null;
 			return;
 		}
-		Palette.setColourBlind(config.colourBlind());
+		Palette.setScheme(config.luckColours(), config.dryColour(), config.onRateColour());
 		String units = Tracker.unit(stats.getBoss());
 		String one = Tracker.unitOne(stats.getBoss());
 		String tripText = String.format(java.util.Locale.ROOT, "%,d %s · %d unique%s", trip.getKills(), trip.getKills() == 1 ? one : units,
@@ -595,7 +632,7 @@ public class ExpectedDropsPlugin extends Plugin
 
 	/** Settings the panel writes itself while the player clicks around: they change no numbers. */
 	private static final Set<String> UI_STATE_KEYS = new HashSet<>(java.util.Arrays.asList(
-		Keys.LAST_PAGE, "showLuckGraph", "showWelcome", "showOverlay", Keys.FIRST_RUN, Keys.TIMES_NOTICE, Keys.NEWS_NOTICE));
+		Keys.LAST_PAGE, "showLuckGraph", "itemView", "showWelcome", "showOverlay", Keys.FIRST_RUN, Keys.TIMES_NOTICE, Keys.NEWS_NOTICE));
 
 	/** The Loot Tracker was turned on or off: the panel's note follows. */
 	@Subscribe
@@ -625,6 +662,16 @@ public class ExpectedDropsPlugin extends Plugin
 	@Subscribe
 	public void onConfigChanged(ConfigChanged event)
 	{
+		if (ExpectedDropsConfig.GROUP.equals(event.getGroup()) && "chooseRaidDataFolder".equals(event.getKey()))
+		{
+			if ("true".equals(event.getNewValue()))
+			{
+				// a switch that acts as a button: back off first, then the chooser opens
+				configManager.setConfiguration(ExpectedDropsConfig.GROUP, "chooseRaidDataFolder", false);
+				SwingUtilities.invokeLater(this::chooseRaidDataFolder);
+			}
+			return;
+		}
 		if (ExpectedDropsConfig.GROUP.equals(event.getGroup()) && panel != null
 			&& !DATA_KEY.equals(event.getKey()) && !event.getKey().startsWith(KILLS_KEY)
 			&& !event.getKey().startsWith(RAIDS_KEY))

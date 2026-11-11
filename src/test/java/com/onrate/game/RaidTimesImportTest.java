@@ -80,7 +80,7 @@ public class RaidTimesImportTest
 			"{\"accountHash\":" + ME + ",\"raidComplete\":true,\"date\":1000000,\"challengeMode\":false,\"raidTime\":1500}",
 			"{\"accountHash\":" + ME + ",\"raidComplete\":true,\"date\":2000000,\"challengeMode\":false,\"raidTime\":1800}")
 			.getBytes(StandardCharsets.UTF_8));
-		read = () -> RaidDataImport.read(root, ME);
+		read = () -> RaidDataImport.read(net.runelite.client.util.Filepath.Unchecked.getRooted(root.toPath()), ME);
 	}
 
 	private int imported()

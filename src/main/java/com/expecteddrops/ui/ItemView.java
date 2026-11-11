@@ -16,6 +16,18 @@ public enum ItemView
 		this.label = label;
 	}
 
+	/** The name on the panel's View button: the settings label without the parenthesis. */
+	public String shortName()
+	{
+		switch (this)
+		{
+			case DELVE_BARS:
+				return "Bars with tabs";
+			default:
+				return label;
+		}
+	}
+
 	@Override
 	public String toString()
 	{

@@ -115,7 +115,7 @@ public class SplitSharedMenuTest
 		panel.showBoss("Dagannoth Kings");
 		panel.refresh();
 
-		JMenu from = (JMenu) entry(panel, "Judge per boss: all 3 older ones came from");
+		JMenu from = (JMenu) entry(panel, "Move all 3 older ones to");
 		assertNotNull(from);
 		List<String> bosses = new ArrayList<>();
 		for (int i = 0; i < from.getItemCount(); i++)
@@ -123,14 +123,14 @@ public class SplitSharedMenuTest
 			bosses.add(from.getItem(i).getText());
 		}
 		assertEquals(Arrays.asList("Dagannoth Kings", "Wintertodt"), bosses);
-		assertNotNull(entry(panel, "Judge per boss: split my 3 older ones..."));
+		assertNotNull(entry(panel, "Split my 3 older ones between bosses..."));
 		from.getItem(0).doClick();
 		assertEquals("dragon axe", tracker.splitPoolOf("Dagannoth Kings", "Dragon axe"));
 
 		// now a row of the Kings' own, with the way back on it
 		panel.refresh();
-		assertNull(entry(panel, "Judge per boss: all 3 older ones came from"));
-		JMenuItem back = entry(panel, "Judge it with the other bosses again");
+		assertNull(entry(panel, "Move all 3 older ones to"));
+		JMenuItem back = entry(panel, "Move it back to Shared with other bosses");
 		assertNotNull(back);
 		back.doClick();
 		assertNull(tracker.splitPoolOf("Dagannoth Kings", "Dragon axe"));
@@ -145,7 +145,7 @@ public class SplitSharedMenuTest
 		ExpectedDropsPanel panel = panel(tracker);
 		panel.showBoss("Vorkath");
 		panel.refresh();
-		JMenu from = (JMenu) entry(panel, "Judge per boss: my older one came from");
+		JMenu from = (JMenu) entry(panel, "Move my older one to");
 		assertNotNull(from);
 		// King Black Dragon has no kills here, so only Vorkath and "not from a boss"
 		assertEquals(2, from.getItemCount());
@@ -155,6 +155,6 @@ public class SplitSharedMenuTest
 		assertEquals("draconic visage", tracker.splitPoolOf("Vorkath", "Draconic visage"));
 		// split, but the one copy is no boss's: Vorkath has the row with none
 		panel.refresh();
-		assertNotNull(entry(panel, "Judge it with the other bosses again"));
+		assertNotNull(entry(panel, "Move it back to Shared with other bosses"));
 	}
 }

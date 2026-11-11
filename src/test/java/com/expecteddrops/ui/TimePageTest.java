@@ -131,6 +131,23 @@ public class TimePageTest
 	}
 
 	@Test
+	public void theSavedTabIsNotReopenedButTheBossesTabIs() throws Exception
+	{
+		ExpectedDropsPanel panel = panel(tracker());
+		List<String> saved = new ArrayList<>();
+		panel.showBoss(ExpectedDropsPanel.ACCOUNT);
+		panel.setAccountPageStore("1," + firstSort(panel) + "," + ExpectedDropsPanel.TOP_TIME, saved::add);
+		List<String> items = new ArrayList<>();
+		texts(panel, items);
+		assertTrue(items.contains("QUICKEST"));
+		// what the plugin does right after: start on Bosses, whatever was saved
+		panel.startOnBossesTab();
+		List<String> bosses = new ArrayList<>();
+		texts(panel, bosses);
+		assertFalse(bosses.toString(), bosses.contains("QUICKEST"));
+	}
+
+	@Test
 	public void itemsYouHaveAreLeftOut() throws Exception
 	{
 		Tracker tracker = tracker();

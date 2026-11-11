@@ -795,6 +795,204 @@ final class Texts
 		return String.format(java.util.Locale.ROOT, "Driest: %s, drier than %s of players.", name, sharePct(bestShare));
 	}
 
+	/** An item this close to its expected count (a quarter either way) is "about on rate" for its own line. */
+	static final double CLOSE_TO_EXPECTED = 0.25;
+
+	/**
+	 * The true sentences the line under the verdict takes turns with, in a fixed order: the
+	 * {@link #notableLine} first (it may be about a dry item; nothing after it is), then neutral facts. Every
+	 * fact needs enough data behind it (half a unique expected, as for "Too early"), and none says a drop is
+	 * due or coming.
+	 *
+	 * @param items  the items of the page (a boss's drops, or the account's highlighted items)
+	 * @param bosses the account's boss rows on the account overview, or null on a boss page
+	 * @param countLuck the luck of the uniques verdict, NaN when unknown
+	 * @param valueLuck the luck of the GP value verdict, NaN when it isn't shown
+	 * @param what "uniques", or "purples" at a raid
+	 */
+	static List<String> notableLines(List<RowStats> items, List<RowStats> bosses, double countLuck, double valueLuck,
+		String what)
+	{
+		return notableLines(items, bosses, countLuck, valueLuck, what, java.util.Collections.emptyList());
+	}
+
+	/** The same, with the page's own facts (the log forecast, the average pace) after the first ones. */
+	static List<String> notableLines(List<RowStats> items, List<RowStats> bosses, double countLuck, double valueLuck,
+		String what, List<String> pageFacts)
+	{
+		List<String> facts = new ArrayList<>();
+		String first = notableLine(items);
+		if (first != null)
+		{
+			facts.add(first);
+		}
+		facts.addAll(pageFacts);
+		// the two verdicts on different sides: what that means, in words
+		Verdict count = Verdict.of(countLuck);
+		Verdict value = Verdict.of(valueLuck);
+		if (count != null && value != null && count.isDry() && value.isSpooned())
+		{
+			facts.add("Fewer " + what + " than expected, but more valuable ones.");
+		}
+		else if (count != null && value != null && count.isSpooned() && value.isDry())
+		{
+			facts.add("More " + what + " than expected, but less valuable ones.");
+		}
+		if (bosses == null)
+		{
+			// the item closest to its expected count, when one is close
+			RowStats close = null;
+			double closest = CLOSE_TO_EXPECTED;
+			int have = 0;
+			int total = 0;
+			for (RowStats r : items)
+			{
+				if (r == null || r.isAny())
+				{
+					continue;
+				}
+				total++;
+				if (r.getReceived() > 0 || r.isComplete())
+				{
+					have++;
+				}
+				if (r.getReceived() >= 1 && r.getExpected() >= TOO_EARLY_BELOW)
+				{
+					double off = Math.abs(r.getReceived() - r.getExpected()) / r.getExpected();
+					if (off <= closest)
+					{
+						closest = off;
+						close = r;
+					}
+				}
+			}
+			if (close != null)
+			{
+				facts.add(String.format(java.util.Locale.ROOT, "%s: %,d got, %s expected.", close.getLabel(),
+					close.getReceived(), formatExpected(close.getExpected())));
+			}
+			if (total >= 2 && have > 0)
+			{
+				facts.add(have == total && total == 2 ? "You have both " + what + " here."
+					: have == total ? String.format(java.util.Locale.ROOT, "You have all %d %s here.", total, what)
+					: String.format(java.util.Locale.ROOT, "You have %d of the %d %s here.", have, total, what));
+			}
+		}
+		else
+		{
+			// how the bosses split, and which one gave the most
+			int dry = 0;
+			int on = 0;
+			int lucky = 0;
+			RowStats most = null;
+			for (RowStats b : bosses)
+			{
+				Verdict v = b == null || b.getExpected() < TOO_EARLY_BELOW ? null : Verdict.of(b.getLuck());
+				if (v == null)
+				{
+					continue;
+				}
+				if (v.isDry())
+				{
+					dry++;
+				}
+				else if (v.isSpooned())
+				{
+					lucky++;
+				}
+				else
+				{
+					on++;
+				}
+				if (b.getReceived() > 0 && (most == null || b.getReceived() > most.getReceived()))
+				{
+					most = b;
+				}
+			}
+			if (dry + on + lucky >= 2)
+			{
+				facts.add(String.format(java.util.Locale.ROOT, "Of %d bosses: %d drier than average, %d on rate, %d luckier.",
+					dry + on + lucky, dry, on, lucky));
+			}
+			if (most != null)
+			{
+				facts.add(String.format(java.util.Locale.ROOT, "Most %s: %s, %,d.", what, most.getLabel(), most.getReceived()));
+			}
+		}
+		return facts;
+	}
+
+	/**
+	 * The log forecast as a sentence. With the pet still missing it gives both: "Rest of the log, 50% chance:
+	 * 1,520 more kills (~790 h) with the pet, 1,010 (~520 h) without." Else one figure: "Rest of the log: 50%
+	 * chance within 1,010 more kills (~520 h)." A chance, not a promise, and the same whatever came before. Null
+	 * when nothing is missing or it can't be done.
+	 *
+	 * @param withPet    kills (or raids) after which half of players with these chances would have everything,
+	 *                   the pet included
+	 * @param withoutPet the same without the pet (equal to {@code withPet} when the pet isn't missing)
+	 * @param petMissing whether the pet is still missing
+	 * @param seconds    seconds per kill, NaN when unknown (then no hours)
+	 * @param units      "kills", "raids"
+	 * @param onlyItem   the one item still missing (the pet when it's the last), or null when there are more
+	 */
+	static String logLeftLine(long withPet, long withoutPet, boolean petMissing, double seconds, String units, String onlyItem)
+	{
+		if (withPet <= 0)
+		{
+			return null;
+		}
+		if (petMissing && withoutPet > 0 && withoutPet < withPet)
+		{
+			return String.format(java.util.Locale.ROOT, "Rest of the log, 50%% chance: %,d more %s%s with the pet, %,d%s without.",
+				withPet, units, aboutTime(withPet * seconds), withoutPet, aboutTime(withoutPet * seconds));
+		}
+		String what = onlyItem == null ? "Rest of the log" : "Last item for the log, " + onlyItem;
+		return String.format(java.util.Locale.ROOT, "%s: 50%% chance within %,d more %s%s.", what, withPet, units,
+			aboutTime(withPet * seconds));
+	}
+
+	/**
+	 * The average pace: "On average one unique every 82 kills (~9.5 h)." Each kill is its own roll, so this
+	 * is the same after a long wait as after a drop. Null when nothing is expected.
+	 *
+	 * @param perKill uniques expected per kill
+	 * @param seconds seconds per kill, NaN when unknown (then no hours)
+	 * @param units   "kills", "raids"
+	 * @param one     "unique", "purple"
+	 */
+	static String averagePaceLine(double perKill, double seconds, String units, String one)
+	{
+		if (!(perKill > 0))
+		{
+			return null;
+		}
+		double every = 1 / perKill;
+		String count = every >= 10 ? String.format(java.util.Locale.ROOT, "%,d", Math.round(every))
+			: String.format(java.util.Locale.ROOT, "%.1f", every);
+		return String.format(java.util.Locale.ROOT, "On average one %s every %s %s%s.", one, count, units,
+			aboutTime(every * seconds));
+	}
+
+	/** " (~790 h)", " (~9.5 h)", " (~40 min)", or "" when the time isn't known. */
+	static String aboutTime(double seconds)
+	{
+		if (!(seconds > 0) || Double.isInfinite(seconds))
+		{
+			return "";
+		}
+		double hours = seconds / 3600;
+		if (hours < 1)
+		{
+			return String.format(java.util.Locale.ROOT, " (~%d min)", Math.max(1, Math.round(hours * 60)));
+		}
+		if (hours < 10)
+		{
+			return String.format(java.util.Locale.ROOT, " (~%.1f h)", hours);
+		}
+		return String.format(java.util.Locale.ROOT, " (~%,d h)", Math.round(hours));
+	}
+
 	/**
 	 * For the "Unique value" hover: the item most of the value comes from, when one item is at
 	 * least half of it ("Most of it is the Crystal tool seed (95%)."), else null.

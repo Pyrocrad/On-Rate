@@ -1,10 +1,12 @@
 package com.expecteddrops;
 
+import java.awt.Color;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
 import com.expecteddrops.ui.ItemView;
+import com.expecteddrops.ui.LuckColours;
 import net.runelite.client.config.Range;
 
 @ConfigGroup(ExpectedDropsConfig.GROUP)
@@ -172,16 +174,54 @@ public interface ExpectedDropsConfig extends Config
 		return false;
 	}
 
+	/** Old setting, now the "Colour-blind" luck colours: read once on start-up, kept so it is not lost. */
 	@ConfigItem(
 		keyName = "colourBlind",
 		name = "Colour-blind colours",
-		description = "Use orange to blue instead of red to green for dry to spooned",
+		description = "Replaced by Luck colours",
 		position = 14,
+		hidden = true,
 		section = displaySection
 	)
 	default boolean colourBlind()
 	{
 		return false;
+	}
+
+	@ConfigItem(
+		keyName = "luckColours",
+		name = "Luck colours",
+		description = "The colours for dry to spooned. Pick Custom to choose your own dry and on rate colours.",
+		position = 14,
+		section = displaySection
+	)
+	default LuckColours luckColours()
+	{
+		return LuckColours.CLASSIC;
+	}
+
+	@ConfigItem(
+		keyName = "dryColour",
+		name = "Custom: dry colour",
+		description = "Used when Luck colours is Custom. The colour for dry; spooned stays green.",
+		position = 15,
+		section = displaySection
+	)
+	default Color dryColour()
+	{
+		return new Color(170, 40, 30);
+	}
+
+	@ConfigItem(
+		keyName = "onRateColour",
+		name = "Custom: on rate colour",
+		description = "Used when Luck colours is Custom. The colour for on rate, the middle between dry and spooned.",
+		position = 16,
+		section = displaySection
+	)
+	default Color onRateColour()
+	{
+		return new Color(170, 150, 20);
 	}
 
 	@ConfigSection(
@@ -288,14 +328,28 @@ public interface ExpectedDropsConfig extends Config
 		keyName = "importRaidTimes",
 		name = "Import raids from Raid Data Tracker",
 		description = "If you also use the Raid Data Tracker plugin, read your Chambers of Xeric and Tombs of Amascut "
-			+ "raids from its saved files when you log in: their times, points, team and raid level, so those raids use their own "
-			+ "purple chance and show on the raid pages straight away. Only read, nothing in that plugin changes.",
+			+ "raids from its saved files: their times, points, team and raid level, so those raids use their own "
+			+ "purple chance and show on the raid pages straight away. Only read, nothing in that plugin changes. "
+			+ "Pick its folder with the setting below.",
 		position = 32,
 		section = raidsSection
 	)
 	default boolean importRaidTimes()
 	{
 		return true;
+	}
+
+	@ConfigItem(
+		keyName = "chooseRaidDataFolder",
+		name = "Choose Raid Data Tracker folder",
+		description = "Switch this on to pick the folder Raid Data Tracker saves to (.runelite/raid-data tracker). "
+			+ "On Rate reads only that folder, and asks again each time RuneLite starts. It switches itself back off.",
+		position = 33,
+		section = raidsSection
+	)
+	default boolean chooseRaidDataFolder()
+	{
+		return false;
 	}
 
 	@ConfigItem(

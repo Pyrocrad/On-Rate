@@ -89,6 +89,14 @@ public class PanelPixelParityTest
 			// the raid sections and PB tags are new: the original panel has none, so they are
 			// left out of the comparison (RaidSectionsTest covers them)
 			set(p, "raidExtras", false);
+			// the card look (lists in outlined cards, one pill and tab style) is new too: the comparison draws
+			// the old look, so it still checks every number and row pixel for pixel (CardLookTest covers the cards)
+			set(p, "boxes", false);
+			// the line under the verdict taking turns with other facts is new: the original shows one line
+			set(p, "moreFacts", false);
+			// the View buttons (boss pages' ITEMS line, account Sort row) are new: the comparison draws the old layout
+			// (ViewChipTest covers the button)
+			set(p, "viewButtons", false);
 		}
 		panelClass.getMethod("onActivate").invoke(p);
 		return p;
@@ -142,8 +150,8 @@ public class PanelPixelParityTest
 		return image;
 	}
 
-	/** Shows the same page on both panels and compares the pictures. */
-	private static void compare(String name, Object[] panels, PageSetter page) throws Exception
+	/** Draws the same page on both panels, one after the other: the original's picture, then the integrated one's. */
+	private static BufferedImage[] draw(Object[] panels, PageSetter page) throws Exception
 	{
 		BufferedImage[] shots = new BufferedImage[2];
 		for (int k = 0; k < 2; k++)
@@ -163,34 +171,57 @@ public class PanelPixelParityTest
 			settle();
 			onSwing(() -> shots[index] = render(panel));
 		}
-		pages++;
-		BufferedImage a = shots[0];
-		BufferedImage b = shots[1];
+		return shots;
+	}
+
+	/** Pixels that differ between two pictures: {count, first x, first y}; count -1 when the sizes differ. */
+	private static int[] difference(BufferedImage a, BufferedImage b)
+	{
+		if (a.getWidth() != b.getWidth() || a.getHeight() != b.getHeight())
+		{
+			return new int[]{-1, -1, -1};
+		}
 		int differing = 0;
 		int firstX = -1;
 		int firstY = -1;
-		if (a.getWidth() == b.getWidth() && a.getHeight() == b.getHeight())
+		for (int y = 0; y < a.getHeight(); y++)
 		{
-			for (int y = 0; y < a.getHeight(); y++)
+			for (int x = 0; x < a.getWidth(); x++)
 			{
-				for (int x = 0; x < a.getWidth(); x++)
+				if (a.getRGB(x, y) != b.getRGB(x, y) && differing++ == 0)
 				{
-					pixels++;
-					if (a.getRGB(x, y) != b.getRGB(x, y))
-					{
-						if (differing++ == 0)
-						{
-							firstX = x;
-							firstY = y;
-						}
-					}
+					firstX = x;
+					firstY = y;
 				}
 			}
 		}
-		else
+		return new int[]{differing, firstX, firstY};
+	}
+
+	/** Shows the same page on both panels and compares the pictures. */
+	private static void compare(String name, Object[] panels, PageSetter page) throws Exception
+	{
+		long minuteBefore = System.currentTimeMillis() / 60_000;
+		BufferedImage[] shots = draw(panels, page);
+		int[] diff = difference(shots[0], shots[1]);
+		// The trip card reads the clock ("Idle 12 min"): when the minute turns between the two pictures, the
+		// same page says 12 on one and 13 on the other. Only then, draw both once more, well inside a minute:
+		// a real difference shows again, a clock tick doesn't.
+		if (diff[0] != 0 && System.currentTimeMillis() / 60_000 != minuteBefore)
 		{
-			differing = -1;
+			shots = draw(panels, page);
+			diff = difference(shots[0], shots[1]);
 		}
+		pages++;
+		BufferedImage a = shots[0];
+		BufferedImage b = shots[1];
+		if (diff[0] >= 0)
+		{
+			pixels += (long) a.getWidth() * a.getHeight();
+		}
+		int differing = diff[0];
+		int firstX = diff[1];
+		int firstY = diff[2];
 		if (differing == 0 && name.startsWith("seed0-TARGET_BARS-"))
 		{
 			// a sample of pages side by side (original | integrated) for people to look at

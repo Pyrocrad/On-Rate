@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.List;
 import java.util.Map;
+import net.runelite.client.util.Filepath;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -24,6 +25,11 @@ public class RaidDataImportTest
 	private static String line(long account, boolean complete, long date, String extra)
 	{
 		return "{\"accountHash\":" + account + ",\"raidComplete\":" + complete + ",\"date\":" + date + "," + extra + "}";
+	}
+
+	private static Filepath fp(File f)
+	{
+		return Filepath.Unchecked.getRooted(f.toPath());
 	}
 
 	private File log(File root, String folder, String... lines) throws IOException
@@ -42,7 +48,7 @@ public class RaidDataImportTest
 		log(root, "cox",
 			line(ME, true, 1000, "\"challengeMode\":false,\"raidTime\":1500"),
 			line(ME, true, 2000, "\"challengeMode\":true,\"raidTime\":2400"));
-		RaidDataImport.Times times = RaidDataImport.read(root, ME);
+		RaidDataImport.Times times = RaidDataImport.read(fp(root), ME);
 		Map<String, List<long[]>> cox = times.byBoss().get("Chambers of Xeric");
 		assertEquals(1_500_000, cox.get("Normal").get(0)[1]);
 		assertEquals(1000, cox.get("Normal").get(0)[0]);
@@ -56,7 +62,7 @@ public class RaidDataImportTest
 		File root = tmp.newFolder("raid-data tracker");
 		log(root, "cox", line(ME, true, 1000, "\"raidTime\":1500"));
 		log(root, "somebody/cox", line(ME, true, 5000, "\"raidTime\":1600"));
-		RaidDataImport.Times times = RaidDataImport.read(root, ME);
+		RaidDataImport.Times times = RaidDataImport.read(fp(root), ME);
 		assertEquals(2, times.byBoss().get("Chambers of Xeric").get("Normal").size());
 		// the other plugin's folder has a space in its name
 		assertEquals("raid-data tracker", RaidDataImport.FOLDER);
@@ -74,8 +80,8 @@ public class RaidDataImportTest
 			"{\"accountHash\":\"wrong type\"}",
 			"",
 			line(ME, true, 4000, "\"raidTime\":1500"));
-		assertEquals(2, RaidDataImport.read(root, ME).count());
-		assertEquals(1, RaidDataImport.read(root, 12345L).count());
+		assertEquals(2, RaidDataImport.read(fp(root), ME).count());
+		assertEquals(1, RaidDataImport.read(fp(root), 12345L).count());
 	}
 
 	@Test
@@ -87,7 +93,7 @@ public class RaidDataImportTest
 			line(ME, true, 2000, "\"raidTime\":100"),
 			line(ME, true, 3000, "\"raidTime\":99999"),
 			line(ME, true, 4000, "\"raidTime\":1500"));
-		assertEquals(1, RaidDataImport.read(root, ME).count());
+		assertEquals(1, RaidDataImport.read(fp(root), ME).count());
 	}
 
 	@Test
@@ -102,7 +108,7 @@ public class RaidDataImportTest
 			line(ME, true, 4000, "\"raidLevel\":300,\"raidTime\":-1,\"toaCompTime\":2100"),
 			// no raid level: the mode can't be told
 			line(ME, true, 5000, "\"raidLevel\":-1,\"raidTime\":2400,\"toaCompTime\":2100"));
-		Map<String, List<long[]>> toa = RaidDataImport.read(root, ME).byBoss().get("Tombs of Amascut");
+		Map<String, List<long[]>> toa = RaidDataImport.read(fp(root), ME).byBoss().get("Tombs of Amascut");
 		assertEquals(2400_000L, toa.get("Expert Mode").get(0)[1]);
 		assertEquals(2500_000L, toa.get("Normal").get(0)[1]);
 		assertEquals(1500_000L, toa.get("Entry Mode").get(0)[1]);
@@ -117,7 +123,7 @@ public class RaidDataImportTest
 		log(root, "tob", line(ME, true, 1000, "\"tobCompTime\":1400,\"raidTime\":2000"));
 		log(root, "unknown", line(ME, true, 2000, "\"raidTime\":1500"));
 		log(root, "cox", line(ME, true, 3000, "\"raidTime\":1500"));
-		RaidDataImport.Times times = RaidDataImport.read(root, ME);
+		RaidDataImport.Times times = RaidDataImport.read(fp(root), ME);
 		assertNull(times.byBoss().get("Theatre of Blood"));
 		assertEquals(1, times.count());
 	}
@@ -125,17 +131,17 @@ public class RaidDataImportTest
 	@Test
 	public void noPluginNoTimesAndNothingIsWritten() throws IOException
 	{
-		assertEquals(0, RaidDataImport.read(new File(tmp.getRoot(), "missing"), ME).count());
+		assertEquals(0, RaidDataImport.read(fp(new File(tmp.getRoot(), "missing")), ME).count());
 		assertEquals(0, RaidDataImport.read(null, ME).count());
 		File root = tmp.newFolder("rdt");
 		File file = log(root, "cox", line(ME, true, 1000, "\"raidTime\":1500"));
 		long size = file.length();
 		long changed = file.lastModified();
-		assertEquals(0, RaidDataImport.read(root, -1).count());
-		RaidDataImport.read(root, ME);
+		assertEquals(0, RaidDataImport.read(fp(root), -1).count());
+		RaidDataImport.read(fp(root), ME);
 		assertEquals(size, file.length());
 		assertEquals(changed, file.lastModified());
-		assertNull(RaidDataImport.read(root, ME).byBoss().get("Tombs of Amascut"));
+		assertNull(RaidDataImport.read(fp(root), ME).byBoss().get("Tombs of Amascut"));
 	}
 
 	@Test
@@ -154,7 +160,7 @@ public class RaidDataImportTest
 		log(root, "toa",
 			line(ME, true, 5000, "\"raidLevel\":225,\"raidTime\":2410,\"totalPoints\":26596,\"personalPoints\":26595,"
 				+ "\"teamSize\":3,\"completionCount\":40,\"specialLoot\":\"Osmumten\u0027s fang\",\"specialLootInOwnName\":true"));
-		RaidDataImport.Times times = RaidDataImport.read(root, ME);
+		RaidDataImport.Times times = RaidDataImport.read(fp(root), ME);
 
 		List<RaidDataImport.Raid> cox = times.raids().get("Chambers of Xeric");
 		assertEquals(2, cox.size());

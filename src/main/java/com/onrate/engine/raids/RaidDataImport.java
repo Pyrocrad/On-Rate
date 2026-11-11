@@ -4,18 +4,19 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import net.runelite.client.util.Filepath;
 
 /**
  * Reads your raid times from the Raid Data Tracker plugin's log files, so raids start on your own
- * times instead of waiting for five timed raids. Read only: it never writes to that plugin's folder.
+ * times instead of waiting for five timed raids. Read only: it never writes to that plugin's folder, and
+ * it reads only the folder the player picked with RuneLite's file chooser.
  *
  * <p>The plugin keeps one file per raid, {@code raid_tracker_data.log}, with one JSON object per
  * line, in {@code .runelite/raid-data tracker/<name>/<raid>/} (the folder name has a space in it; older
@@ -135,43 +136,65 @@ public final class RaidDataImport
 	}
 
 	/**
-	 * The times of {@code accountHash} found under the other plugin's folder, or none when the
-	 * folder isn't there (the plugin isn't installed). Unreadable files and lines are skipped.
+	 * The times of {@code accountHash} found under the folder the player chose (Raid Data Tracker's
+	 * folder, or the {@code .runelite} folder that holds it), or none when it has no raid logs.
+	 * Unreadable files and lines are skipped.
 	 */
-	public static Times read(File root, long accountHash)
+	public static Times read(Filepath chosen, long accountHash)
 	{
 		Times times = new Times();
-		if (root == null || !root.isDirectory() || accountHash == -1)
+		if (chosen == null || !chosen.isDirectory() || accountHash == -1)
 		{
 			return times;
 		}
-		List<File> folders = new ArrayList<>();
-		folders.add(root);
-		File[] users = root.listFiles(File::isDirectory);
-		if (users != null)
+		Filepath root = chosen;
+		try
 		{
-			for (File u : users)
+			Filepath inside = chosen.joinSegment(FOLDER);
+			if (inside.isDirectory())
 			{
-				folders.add(u);
+				root = inside;
 			}
 		}
-		for (File folder : folders)
+		catch (RuntimeException e)
+		{
+			// read the folder as it was chosen
+		}
+		Filepath top = root;
+		List<Filepath> folders = new ArrayList<>();
+		folders.add(top);
+		try (Stream<Filepath> children = top.walk(1))
+		{
+			folders.addAll(children.filter(f -> !f.equals(top) && f.isDirectory()).collect(Collectors.toList()));
+		}
+		catch (IOException | RuntimeException e)
+		{
+			// unreadable folder: the top level only
+		}
+		for (Filepath folder : folders)
 		{
 			for (String raid : RAIDS)
 			{
-				File log = new File(new File(folder, raid), LOG_NAME);
-				if (log.isFile())
+				try
 				{
-					readLog(log, raid, accountHash, times);
+					Filepath log = folder.joinSegment(raid).joinSegment(LOG_NAME);
+					if (log.isFile())
+					{
+						readLog(log, raid, accountHash, times);
+					}
+				}
+				catch (RuntimeException e)
+				{
+					// skip this folder
 				}
 			}
 		}
 		return times;
 	}
 
-	private static void readLog(File log, String raid, long accountHash, Times times)
+	private static void readLog(Filepath log, String raid, long accountHash, Times times)
 	{
-		try (BufferedReader reader = Files.newBufferedReader(log.toPath(), StandardCharsets.UTF_8))
+		try (BufferedReader reader = log.openBufferedReader())
 		{
 			String line;
 			while ((line = reader.readLine()) != null)
