@@ -300,7 +300,7 @@
       "drops": [
         {"name": "Kq head", "rate": "1/128"},
         {"name": "Dragon chainbody", "rate": "1/128", "alsoFrom": "dust devils and smoke devils"},
-        {"name": "Dragon 2h sword", "rate": "1/256", "clogShared": true},
+        {"name": "Dragon 2h sword", "rate": "1/256", "alsoFrom": "Chaos Elemental, Callisto, Artio, Vet'ion, Calvar'ion, Venenatis, Spindel and Scorpia"},
         {"name": "Dragon pickaxe", "rate": "1/400"},
         {"name": "Jar of sand", "rate": "1/2000"},
         {"name": "Kalphite princess", "rate": "1/3000", "pet": true}

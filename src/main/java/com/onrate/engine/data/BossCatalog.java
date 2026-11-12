@@ -23,7 +23,7 @@ public class BossCatalog
 	private final Map<String, BossDefinition> byLootName = new HashMap<>();
 	private final Map<String, List<BossDefinition>> byClogPage = new HashMap<>();
 	private final Set<String> clogSharedItems = new HashSet<>();
-	/** Items flagged clogShared in the data (dragon 2h sword, thrownaxes...): not tracked anywhere. */
+	/** Items flagged clogShared in the data (dragon thrownaxes and knives): not tracked anywhere. */
 	private final Set<String> untrackedItems = new HashSet<>();
 	/** Display names of the shared items that were left out, for the panel. */
 	private final Set<String> excludedItems = new java.util.TreeSet<>();
@@ -87,7 +87,7 @@ public class BossCatalog
 		// Leave those items out of the boss pages: their log total can't be split per boss.
 		// Items several bosses drop are pooled for the account instead (all those bosses'
 		// expected added up against the one log total); flagged items that also come from
-		// outside the bosses (dragon 2h sword) can't be pooled and are left out entirely.
+		// outside the bosses (dragon thrownaxes) can't be pooled and are left out entirely.
 		List<BossDefinition> sorted = new ArrayList<>();
 		for (BossDefinition boss : bosses)
 		{

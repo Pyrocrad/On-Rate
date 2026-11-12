@@ -4,6 +4,9 @@ Updates come through the Plugin Hub. Each heading is the date of that update; **
 
 **Next update**
 
+*Changes that affect your numbers*
+- **Kalphite Queen:** the Dragon 2h sword now appears at 1/256 and counts toward uniques and GP value. Its hover warns that the collection log includes swords from other bosses; right-click to leave it out if yours came from elsewhere.
+
 *Behind the scenes*
 - **Faster after a kill:** your account is worked out in the background, so the panel stays responsive during long sessions. Nothing you see changes: every number is checked against the previous version. Nothing is worked out while the panel is closed, numbers from before a change (a click, a setting, another account) are never drawn, and the panel still follows the newest boss when several events arrive at once.
 - **Safer saving:** your progress is always saved to the account it belongs to, even when you switch accounts mid-save. Damaged saved data no longer loses everything: the readable parts load and the damaged parts are left out.

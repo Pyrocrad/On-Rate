@@ -571,7 +571,7 @@ public class TrackerTest
 		// their bosses, so they would count as expected but never as received
 		for (String item : new String[]{"Dragon pickaxe", "Godsword shard 1", "Godsword shard 2", "Godsword shard 3",
 			"Chromium ingot", "Virtus mask", "Virtus robe top", "Virtus robe bottom", "Dragon chainbody",
-			"Draconic visage", "Uncut onyx", "Pet chaos elemental", "Dragon 2h sword", "Dragon thrownaxe", "Dragon knife"})
+			"Draconic visage", "Uncut onyx", "Pet chaos elemental", "Dragon thrownaxe", "Dragon knife"})
 		{
 			assertTrue(item, catalog.getExcludedItems().contains(item));
 			for (BossDefinition boss : catalog.getBosses())
@@ -646,7 +646,7 @@ public class TrackerTest
 		}
 		assertTrue(chaos);
 		// flagged items that also come from outside the bosses are never pooled
-		assertFalse(catalog.getPools().containsKey("dragon 2h sword"));
+		assertFalse(catalog.getPools().containsKey("dragon thrownaxe"));
 	}
 
 	@Test
@@ -946,7 +946,7 @@ public class TrackerTest
 	{
 		assertTrue(catalog.isUntracked("Dragon thrownaxe"));
 		assertTrue(catalog.isUntracked("dragon knife"));
-		assertTrue(catalog.isUntracked("Dragon 2h sword"));
+		assertFalse(catalog.isUntracked("Dragon 2h sword"));
 		// pooled items and normal rows are still tracked
 		assertFalse(catalog.isUntracked("Dragon axe"));
 		assertFalse(catalog.isUntracked("Dragon pickaxe"));
@@ -2992,6 +2992,7 @@ public class TrackerTest
 		expected.put("Kraken/Kraken tentacle", "cave krakens");
 		expected.put("Amoxliatl/Glacial temotli", "Frost Nagua");
 		expected.put("Tempoross/Dragon harpoon", "wyrms");
+		expected.put("Kalphite Queen/Dragon 2h sword", "Chaos Elemental, Callisto, Artio, Vet'ion, Calvar'ion, Venenatis, Spindel and Scorpia");
 		// already marked before
 		expected.put("Araxxor/Araxyte head", "araxytes");
 		expected.put("Cerberus/Smouldering stone", "hellhounds");
@@ -3022,6 +3023,30 @@ public class TrackerTest
 		expectedPools.put("Draconic visage", "other dragons and skeletal wyverns");
 		expectedPools.put("Uncut onyx", "Zalcano and the Fortis Colosseum");
 		assertEquals(expectedPools, pools);
+	}
+
+	@Test
+	public void kalphiteQueenDragon2hCountsLogAndLootAndCanBeLeftOut()
+	{
+		tracker.onClogPage("Kalphite Queen", Collections.singletonList("Kalphite Queen kills: 256"),
+			Collections.singletonMap("Dragon 2h sword", 1));
+		BossStats stats = tracker.stats("Kalphite Queen", RAIDS);
+		assertEquals(1, row(stats, "Dragon 2h sword").getReceived());
+		assertEquals(1.0, row(stats, "Dragon 2h sword").getExpected(), 1e-9);
+		assertEquals(1, stats.getAnyRow().getReceived());
+		assertFalse(catalog.getExcludedItems().contains("Dragon 2h sword"));
+
+		tracker.onLoot("Kalphite Queen", 1,
+			Collections.singletonList(new Tracker.LootItem("Dragon 2h sword", 1)), now);
+		stats = tracker.stats("Kalphite Queen", RAIDS);
+		assertEquals(2, row(stats, "Dragon 2h sword").getReceived());
+		assertEquals("Dragon 2h sword", tracker.recentDrops(10).get(0).getDrop().getName());
+		double expectedWithoutSword = stats.getAnyRow().getExpected() - row(stats, "Dragon 2h sword").getExpected();
+		// The log includes other bosses' drops; allow the player to exclude this row.
+		tracker.setLeftOut("Kalphite Queen", "Dragon 2h sword", true);
+		stats = tracker.stats("Kalphite Queen", RAIDS);
+		assertEquals(0, stats.getAnyRow().getReceived());
+		assertEquals(expectedWithoutSword, stats.getAnyRow().getExpected(), 1e-9);
 	}
 
 	@Test
