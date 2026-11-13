@@ -227,7 +227,6 @@ public class ExpectedDropsPanel extends PluginPanel
 	private String helpPage;
 	private JPanel tabsRow;
 
-	private Border timesNoticeBorder;
 	/** Inside a guide or notice card: the old padding, plus the outline. */
 	private static final Border CARD_PADDING = new EmptyBorder(Theme.M + 1, Theme.M + 1, Theme.M + 1, Theme.M + 1);
 	private final JLabel setupHeader = new JLabel();
@@ -482,16 +481,6 @@ public class ExpectedDropsPanel extends PluginPanel
 	/** Opens or closes the Luck over time section (remembered; see {@link #setGraphOpener}). */
 	private Consumer<Boolean> setGraphOpen = open -> { };
 	private final JLabel graphTitle = new JLabel();
-	/** Once, during a long trip: a line on the trip card offering the in-game overlay. */
-	private JLabel overlayOfferLabel;
-	private BooleanSupplier overlayOn = () -> true;
-	private BooleanSupplier overlayOfferSeen = () -> true;
-	private Runnable markOverlayOfferSeen = () -> { };
-	private Runnable turnOnOverlay = () -> { };
-	private boolean overlayOfferOnScreen;
-	/** A trip this long (kills, or minutes) is when the overlay is worth offering. */
-	static final int OVERLAY_OFFER_KILLS = 30;
-	static final int OVERLAY_OFFER_MINUTES = 45;
 	private final JLabel summaryLabel = new JLabel();
 	private final JLabel levelsLabel = new JLabel();
 	private final JButton expectedTab = new JButton("Expected");
@@ -588,9 +577,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		buildFoldCard(helpCard, helpText);
 		top.add(helpCard);
 
-		buildTimesNotice();
-		timesNoticeBorder = timesNoticePanel.getBorder();
-		top.add(timesNoticePanel);
 		gapM(top);
 
 		small(setupHeader);
@@ -1202,7 +1188,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		profileState = state;
 		refresh();
-		showTimesNoticeWhenReady();
 	}
 
 	/** For tests: whether the "Loot Tracker is off" note is shown. */
@@ -1343,9 +1328,6 @@ public class ExpectedDropsPanel extends PluginPanel
 			closeFolds();
 		}
 		timeIndex = null;
-		// the graph offer was on screen and this redraw may move on from it (see the end)
-		boolean overlayWasOnScreen = overlayOfferOnScreen && overlayOfferLabel != null && overlayOfferLabel.isShowing();
-		overlayOfferOnScreen = false;
 		insightsThisDraw.clear();
 		drawing = true;
 		try
@@ -1363,16 +1345,9 @@ public class ExpectedDropsPanel extends PluginPanel
 			Card.box(rowsPanel);
 			Card.box(topItemsPanel);
 		}
-		timesNoticePanel.setBoxed(boxes);
 		helpCard.setBoxed(boxes);
 		aboutCard.setBoxed(boxes);
-		timesNoticePanel.setBorder(boxes ? CARD_PADDING : timesNoticeBorder);
 		updateFooter();
-		// seen, and the player went on to another page or tab: never again on this account
-		if (overlayWasOnScreen && !overlayOfferOnScreen)
-		{
-			markOverlayOfferSeen.run();
-		}
 	}
 
 	/** True while {@link #draw()} runs: only then are a raid's insights shared between the parts of the page. */
@@ -1392,185 +1367,6 @@ public class ExpectedDropsPanel extends PluginPanel
 			return tracker.raidInsights(bossName, gp ? priceOf : null);
 		}
 		return insightsThisDraw.computeIfAbsent(bossName + (gp ? "|gp" : "|"), k -> tracker.raidInsights(bossName, gp ? priceOf : null));
-	}
-
-	/** Whether the one-time notice about the times feature is still due, and marking it shown. */
-	private BooleanSupplier timesNoticeDue = () -> false;
-	private Runnable markTimesNoticeShown = () -> { };
-
-	/**
-	 * The one-time notice about the Time page, for players who had On Rate before it: a card in the panel,
-	 * like the welcome guide. It appears the first time the panel is on screen, and is marked as shown
-	 * then, so it never comes back, whatever the player does with it. The plugin decides who it is for (a new install is
-	 * never due).
-	 */
-	public void setTimesNotice(BooleanSupplier due, Runnable markShown)
-	{
-		timesNoticeDue = due == null ? () -> false : due;
-		markTimesNoticeShown = markShown == null ? () -> { } : markShown;
-		addHierarchyListener(e ->
-		{
-			if ((e.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0)
-			{
-				showTimesNoticeWhenReady();
-			}
-		});
-		showTimesNoticeWhenReady();
-	}
-
-	/**
-	 * Shows the notice only when the panel is on screen and an account is loaded. Until then nothing is
-	 * taken, so the notice is not marked shown before the player can see it (for instance while the panel is
-	 * still on the log-in or loading message); it is tried again when either changes.
-	 */
-	void showTimesNoticeWhenReady()
-	{
-		if (profileLoaded() && isShowing())
-		{
-			showTimesNoticeOnce();
-		}
-	}
-
-	/** The notice's paragraphs: what is new and where to find it. */
-	static String[] timesNoticeParagraphs()
-	{
-		return new String[]{
-			"On Rate now times your kills and raids. The <font color='#ffffff'>Time</font> page (Items tab) shows how long each "
-				+ "item you don't have takes on average, from the OSRS Wiki's kill speed until you have your own.",
-			"Raid pages have three new sections under History: <font color='#ffffff'>purple chance by setup</font> (which of "
-				+ "your team sizes, modes and raid levels gets the most purples an hour), your personal bests, and your points over time.",
-			"If you use the Raid Data Tracker plugin, On Rate can read your raids from it, so those sections fill straight "
-				+ "away. Choose its folder under Raids in On Rate's settings; that has to be done again each time RuneLite starts. "
-				+ "You can turn the import off there too.",
-			"This message only shows once.",
-		};
-	}
-
-	/** The notice card, built like the welcome guide: in the panel, under the title. Hidden until it is due. */
-	private final Card timesNoticePanel = new Card();
-	/** The notice's "Show me" button: the Time page lives on the Items tab, so it needs that tab to be on. */
-	private final JButton timesNoticeShow = new JButton("Show me");
-
-	private void buildTimesNotice()
-	{
-		timesNoticePanel.setLayout(new BoxLayout(timesNoticePanel, BoxLayout.Y_AXIS));
-		left(timesNoticePanel);
-		darker(timesNoticePanel);
-		timesNoticePanel.setBorder(BorderFactory.createCompoundBorder(
-			BorderFactory.createMatteBorder(0, 3, 0, 0, Theme.OUTLINE),
-			new EmptyBorder(Theme.M, Theme.M, Theme.M, Theme.M)));
-		JLabel title = new JLabel("New in On Rate");
-		bold(title);
-		title.setForeground(Theme.TEXT);
-		left(title);
-		timesNoticePanel.add(title);
-		String[] paragraphs = timesNoticeParagraphs();
-		for (int i = 0; i < paragraphs.length; i++)
-		{
-			boolean last = i == paragraphs.length - 1;
-			JLabel text = smallLabel(Theme.wrap(paragraphs[i], Theme.CARD_TEXT_WIDTH), Theme.TEXT_MUTED);
-			left(text);
-			text.setBorder(last ? new EmptyBorder(Theme.S, 0, 0, 0)
-				: BorderFactory.createCompoundBorder(BorderFactory.createMatteBorder(i == 0 ? 0 : 1, 0, 0, 0, Theme.DIVIDER),
-					new EmptyBorder(i == 0 ? Theme.HAIR : Theme.S + 1, 0, Theme.S + 1, 0)));
-			timesNoticePanel.add(text);
-		}
-		JButton show = timesNoticeShow;
-		small(show);
-		show.setFocusPainted(false);
-		show.setToolTipText("Opens the Time page; the raid sections are on each raid's page");
-		show.addActionListener(e ->
-		{
-			if (!options.get().isTopItems())
-			{
-				// no Items tab, so no Time page: say so and keep the notice, instead of closing it on nothing
-				syncTimesNoticeShow();
-				return;
-			}
-			closeTimesNotice();
-			openTimePage();
-		});
-		JButton gotIt = new JButton("Got it");
-		small(gotIt);
-		gotIt.setFocusPainted(false);
-		gotIt.addActionListener(e -> closeTimesNotice());
-		JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, Theme.S, 0));
-		clear(buttons);
-		left(buttons);
-		buttons.setBorder(new EmptyBorder(Theme.S, 0, 0, 0));
-		buttons.add(show);
-		buttons.add(gotIt);
-		fullWidth(buttons);
-		timesNoticePanel.add(buttons);
-		fullWidth(timesNoticePanel);
-		hide(timesNoticePanel);
-	}
-
-	/** Disables "Show me" and says why while the Items tab is off; the Time page is part of that tab. */
-	private void syncTimesNoticeShow()
-	{
-		boolean itemsOn = options.get().isTopItems();
-		timesNoticeShow.setEnabled(itemsOn);
-		timesNoticeShow.setToolTipText(itemsOn ? "Opens the Time page; the raid sections are on each raid's page"
-			: "The Time page is part of the Items tab, which is off. Turn on Items tab under Display in the settings");
-	}
-
-	private void closeTimesNotice()
-	{
-		hide(timesNoticePanel);
-		revalidate();
-		repaint();
-	}
-
-	/** True when the notice is due now, and marks it shown: it must never come back, however it is closed. */
-	boolean takeTimesNotice()
-	{
-		if (!timesNoticeDue.getAsBoolean())
-		{
-			return false;
-		}
-		markTimesNoticeShown.run();
-		return true;
-	}
-
-	/** Shows the card when it is due: marked shown first, so it stays through this session's redraws but never returns. */
-	void showTimesNoticeOnce()
-	{
-		if (takeTimesNotice())
-		{
-			syncTimesNoticeShow();
-			fullWidth(timesNoticePanel);
-			timesNoticePanel.setVisible(true);
-			revalidate();
-			repaint();
-		}
-	}
-
-	/** Whether the notice card is on screen. */
-	boolean isTimesNoticeVisible()
-	{
-		return timesNoticePanel.isVisible();
-	}
-
-	/** Goes to the account overview's Items tab, on its Time page. */
-	public void openTimePage()
-	{
-		accountTab = TAB_ITEMS;
-		topMode = TOP_TIME;
-		showBoss(ACCOUNT);
-	}
-
-	/**
-	 * The overlay offer: during a long trip at one boss, one line on the trip card that turns
-	 * the in-game overlay on when clicked. Shown once per account (remembered as for the graph
-	 * offer), never when the overlay is on, and not in a session that already showed a tip.
-	 */
-	public void setOverlayOffer(BooleanSupplier on, BooleanSupplier seen, Runnable markSeen, Runnable turnOn)
-	{
-		overlayOn = on == null ? () -> true : on;
-		overlayOfferSeen = seen == null ? () -> true : seen;
-		markOverlayOfferSeen = markSeen == null ? () -> { } : markSeen;
-		turnOnOverlay = turnOn == null ? () -> { } : turnOn;
 	}
 
 	/**
@@ -7894,12 +7690,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		});
 		foot.add(reset, BorderLayout.EAST);
 		card.add(foot);
-		// the overlay is not shown at raids, the Inferno or the Fight Caves, so it is not offered there
-		if ((tripBoss == null || !Tracker.isLongRun(tripBoss))
-			&& (trip.getKills() >= OVERLAY_OFFER_KILLS || minutes >= OVERLAY_OFFER_MINUTES))
-		{
-			addOverlayOffer(card);
-		}
 		fullWidth(card);
 		rowsPanel.add(card);
 		gapM(rowsPanel);
@@ -7953,33 +7743,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		lastUniqueLabel.setText(Theme.wrap(html(text), Theme.TEXT_WIDTH));
 		lastUniqueLabel.setToolTipText("From History: the drops On Rate saw since you installed it. Items you left out don't count.");
 		lastUniqueLabel.setVisible(true);
-	}
-
-	/** The overlay offer line at the bottom of a long trip's card, when it's due (see {@link #setOverlayOffer}). */
-	private void addOverlayOffer(JPanel card)
-	{
-		if (overlayOn.getAsBoolean() || overlayOfferSeen.getAsBoolean())
-		{
-			return;
-		}
-		JLabel offer = smallLabel(Theme.wrap("Long trip? The in-game overlay shows this on screen. Click to turn it on.",
-			Theme.TEXT_WIDTH - 30), Theme.TEXT_MUTED);
-		offer.setIcon(Theme.infoIcon());
-		offer.setVerticalTextPosition(SwingConstants.TOP);
-		left(offer);
-		offer.setBorder(new EmptyBorder(Theme.S, 0, 0, 0));
-		hand(offer);
-		offer.setToolTipText("Turns on In-game overlay in the settings (Display). This note shows only once.");
-		onClick(offer, () ->
-		{
-			overlayOfferOnScreen = false;
-			hide(offer);
-			markOverlayOfferSeen.run();
-			turnOnOverlay.run();
-		});
-		card.add(offer);
-		overlayOfferLabel = offer;
-		overlayOfferOnScreen = true;
 	}
 
 	/** "<br><br>Most of it is the Crystal tool seed (95%)." for the value hover, or "" when it's spread out. */
