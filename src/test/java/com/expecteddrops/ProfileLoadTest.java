@@ -134,7 +134,7 @@ public class ProfileLoadTest
 			.on("getAccountHash", 1234L));
 		SwingUtilities.invokeAndWait(() ->
 		{
-			panel = new ExpectedDropsPanel(tracker, null, () -> RAIDS, s -> -1, () -> { }, () -> false, () -> { }, name -> 0L,
+			panel = new ExpectedDropsPanel(tracker, null, () -> RAIDS, s -> -1, () -> { }, name -> 0L,
 				() -> new ViewOptions(ItemView.TARGET_BARS, false, false, false, false, true));
 			// as startUp leaves it: nobody's data is loaded yet
 			panel.setProfileState(ProfileState.NOT_LOGGED_IN);

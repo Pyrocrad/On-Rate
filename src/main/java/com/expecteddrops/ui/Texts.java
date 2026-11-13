@@ -185,10 +185,6 @@ final class Texts
 		return basis.replace("Wiki rate:", "Wiki kill speed:").replace("else the wiki rate)", "else the wiki's kill speed)");
 	}
 
-	/** The welcome guide's "Hide guide" button: how to get the guide back. */
-	static final String HIDE_GUIDE_TIP = "Hides this guide. To show it again, turn on 'Show welcome guide' in On Rate's "
-		+ "settings (the cog next to On Rate in the Configuration panel).";
-
 	/** Account page before any RuneLite profile is loaded. */
 	static final String LOG_IN_FIRST = "Log in to see your account.";
 

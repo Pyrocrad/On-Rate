@@ -32,7 +32,6 @@ Every boss has a drop rate and you have a kill count. On Rate does the sum for y
 <td align="center" valign="top"><img src="docs/single-drops.png" width="330" alt="Items tab, Single drops: your luckiest single drops (Spirit shield, Holy elixir, Ancient icon, Vorkath's head, Twisted bow) and your longest waits (Ancient icon, Bruma torch, Venator shard), each judged against its drop rate"><br><sub><b>See your luckiest drops and longest waits</b><br>each judged against its drop rate</sub></td>
 </tr>
 <tr>
-<td align="center" valign="top"><img src="docs/first-run.png" width="330" alt="The welcome guide on first run: three setup steps and the line '6 of 62 pages opened, next: Nex', above the account overview"><br><sub><b>Know which log pages to open next</b><br>the welcome guide counts them off</sub></td>
 <td align="center" valign="top"><img src="docs/fractured-archive.png" width="330" alt="The Fractured Archive boss page: 2 uniques against 4.22 expected, with a bar for each item showing what you got against what you should have"><br><sub><b>Find your boss by name</b><br>The Fractured Archive, got against expected</sub></td>
 </tr>
 </table>
@@ -51,7 +50,7 @@ Newest bosses: The Fractured Archive, Fortis Colosseum, Tempoross, Wintertodt.
 
 No account and nothing to configure: install it, open your collection log, and kill something.
 
-1. **Install On Rate** from the Plugin Hub. The panel opens with a short welcome guide.
+1. **Install On Rate** from the Plugin Hub. Open the On Rate panel from the sidebar.
 2. **Open your collection log** and click the page of each boss you do. That loads your kill count and past drops, and the boss shows its verdict. Until then it says *Not synced*: a verdict without your past drops would say *dry* for the wrong reason, so On Rate waits. The top of the panel lists the bosses you killed that aren't loaded yet.
 3. **Keep the Loot Tracker plugin on and go kill something.** On Rate reads new drops from it and the panel follows your kills.
 4. **Optional:** in the settings, change **Team bosses** if you solo Royal Titans or Yama (both count as duo by default), or pick another **Item view**.

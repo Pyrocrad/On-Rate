@@ -32,7 +32,7 @@ public class ViewButtonVisibilityTest
 
 	private static ExpectedDropsPanel panel() throws Exception
 	{
-		return new ExpectedDropsPanel(tracker(), null, () -> RAIDS, s -> -1, () -> { }, () -> false, () -> { }, name -> 0L,
+		return new ExpectedDropsPanel(tracker(), null, () -> RAIDS, s -> -1, () -> { }, name -> 0L,
 			() -> new ViewOptions(ItemView.TARGET_BARS, false, false, false, false, true));
 	}
 

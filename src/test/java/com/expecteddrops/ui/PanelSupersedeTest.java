@@ -113,7 +113,7 @@ public class PanelSupersedeTest
 		worker = new Tasks();
 		swing = new Tasks();
 		pre = new AccountPrecompute(tracker, worker::add, swing::add, () -> true);
-		panel = new ExpectedDropsPanel(tracker, null, () -> RAIDS, s -> -1, () -> { }, () -> false, () -> { },
+		panel = new ExpectedDropsPanel(tracker, null, () -> RAIDS, s -> -1, () -> { },
 			s -> 1_000_000L, () -> new ViewOptions(ItemView.TARGET_BARS, true, false, false, false, true));
 		panel.setSize(225, 4000);
 		panel.setPrecomputed(pre);

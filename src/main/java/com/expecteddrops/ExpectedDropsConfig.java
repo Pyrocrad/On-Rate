@@ -21,17 +21,6 @@ public interface ExpectedDropsConfig extends Config
 		return true;
 	}
 
-	@ConfigItem(
-		keyName = "showWelcome",
-		name = "Show welcome guide",
-		description = "Show the getting-started guide at the top of the panel",
-		position = 2
-	)
-	default boolean showWelcome()
-	{
-		return true;
-	}
-
 	@ConfigSection(
 		name = "Chat messages",
 		description = "What On Rate says in your chat box",

@@ -48,7 +48,7 @@ public class RaidSectionsTest
 	private static ExpectedDropsPanel panel(Tracker tracker, boolean gp) throws Exception
 	{
 		RaidSettings raids = raid -> 0.035;
-		ExpectedDropsPanel panel = new ExpectedDropsPanel(tracker, null, () -> raids, s -> -1, () -> { }, () -> false, () -> { },
+		ExpectedDropsPanel panel = new ExpectedDropsPanel(tracker, null, () -> raids, s -> -1, () -> { },
 			s -> "Twisted bow".equals(s) ? 1_000_000_000L : 0L, () -> new ViewOptions(ItemView.TARGET_BARS, gp, false, false, false, true));
 		panel.setSize(225, 6000);
 		return panel;

@@ -48,7 +48,7 @@ public class BossUnitWordsTest
 		List<String> out = new ArrayList<>();
 		SwingUtilities.invokeAndWait(() ->
 		{
-			ExpectedDropsPanel p = new ExpectedDropsPanel(tracker, null, () -> RAIDS, s -> -1, () -> { }, () -> false, () -> { },
+			ExpectedDropsPanel p = new ExpectedDropsPanel(tracker, null, () -> RAIDS, s -> -1, () -> { },
 				name -> 0L, () -> new ViewOptions(ItemView.TARGET_BARS, false, false, false, false, true));
 			p.onActivate();
 			p.showBoss(boss);

@@ -43,7 +43,7 @@ public class RecentTabTest
 		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>201</col>.", NOW);
 		tracker.onLoot("Vorkath", 1, Collections.singletonList(new Tracker.LootItem("Vorkath's head", 1)), NOW);
 		RaidSettings raids = raid -> 0.03;
-		ExpectedDropsPanel panel = new ExpectedDropsPanel(tracker, null, () -> raids, s -> -1, () -> { }, () -> false, () -> { },
+		ExpectedDropsPanel panel = new ExpectedDropsPanel(tracker, null, () -> raids, s -> -1, () -> { },
 			s -> 1_000_000L, () -> new ViewOptions(ItemView.TARGET_BARS, true, false, false, false, true));
 		panel.setSize(225, 4000);
 		set(panel, "accountTab", 2);

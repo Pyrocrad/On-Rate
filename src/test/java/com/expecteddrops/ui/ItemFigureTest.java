@@ -344,7 +344,7 @@ public class ItemFigureTest
 	private static ExpectedDropsPanel laidOut(Tracker tracker, int tab, int mode) throws Exception
 	{
 		RaidSettings raids = raid -> 0.03;
-		ExpectedDropsPanel panel = new ExpectedDropsPanel(tracker, null, () -> raids, s -> -1, () -> { }, () -> false, () -> { },
+		ExpectedDropsPanel panel = new ExpectedDropsPanel(tracker, null, () -> raids, s -> -1, () -> { },
 			s -> 1_000_000L, () -> new ViewOptions(ItemView.TARGET_BARS, true, false, false, false, true));
 		set(panel, "accountTab", tab);
 		set(panel, "topMode", mode);

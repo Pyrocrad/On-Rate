@@ -46,7 +46,7 @@ public class TimeHoverTest
 	private static ExpectedDropsPanel panel(Tracker tracker) throws Exception
 	{
 		RaidSettings raids = raid -> 0.035;
-		ExpectedDropsPanel panel = new ExpectedDropsPanel(tracker, null, () -> raids, s -> -1, () -> { }, () -> false, () -> { },
+		ExpectedDropsPanel panel = new ExpectedDropsPanel(tracker, null, () -> raids, s -> -1, () -> { },
 			s -> 0L, () -> new ViewOptions(ItemView.TARGET_BARS, false, false, false, false, true));
 		panel.setSize(225, 6000);
 		return panel;

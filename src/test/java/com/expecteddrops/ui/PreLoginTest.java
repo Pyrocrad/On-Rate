@@ -35,7 +35,7 @@ public class PreLoginTest
 		{
 			// the welcome guide is on, as for a new player
 			ExpectedDropsPanel p = new ExpectedDropsPanel(new Tracker(Bundled.catalog(new Gson())), null, () -> RAIDS, s -> -1,
-				() -> { }, () -> true, () -> { }, name -> 0L,
+				() -> { }, name -> 0L,
 				() -> new ViewOptions(ItemView.TARGET_BARS, false, false, false, false, true));
 			p.onActivate();
 			for (ProfileState state : states)

@@ -33,7 +33,7 @@ public class HelpFoldTest
 	private static ExpectedDropsPanel panel()
 	{
 		ExpectedDropsPanel p = new ExpectedDropsPanel(new Tracker(Bundled.catalog(new Gson())), null, () -> RAIDS, s -> -1,
-			() -> { }, () -> false, () -> { }, name -> 0L,
+			() -> { }, name -> 0L,
 			() -> new ViewOptions(ItemView.TARGET_BARS, false, false, false, false, true));
 		p.onActivate();
 		return p;
@@ -118,19 +118,4 @@ public class HelpFoldTest
 		assertFalse(r[1]);
 	}
 
-	@Test
-	public void theWelcomeGuideSaysClick() throws Exception
-	{
-		String[] text = new String[1];
-		SwingUtilities.invokeAndWait(() ->
-		{
-			ExpectedDropsPanel p = new ExpectedDropsPanel(new Tracker(Bundled.catalog(new Gson())), null, () -> RAIDS, s -> -1,
-				() -> { }, () -> true, () -> { }, name -> 0L,
-				() -> new ViewOptions(ItemView.TARGET_BARS, false, false, false, false, true));
-			p.onActivate();
-			JLabel l = find(p, "Click the ? for help.");
-			text[0] = l == null ? null : l.getText();
-		});
-		assertEquals("Click the ? for help.", text[0]);
-	}
 }

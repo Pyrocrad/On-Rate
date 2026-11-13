@@ -73,7 +73,7 @@ public class GreenLogSortTest
 
 	private static ExpectedDropsPanel panel(Tracker tracker) throws Exception
 	{
-		ExpectedDropsPanel panel = new ExpectedDropsPanel(tracker, null, () -> RAIDS, s -> -1, () -> { }, () -> false, () -> { },
+		ExpectedDropsPanel panel = new ExpectedDropsPanel(tracker, null, () -> RAIDS, s -> -1, () -> { },
 			name -> 1L, () -> new ViewOptions(ItemView.TARGET_BARS, false, false, false, false, true));
 		panel.showBoss(ExpectedDropsPanel.ACCOUNT);
 		panel.refresh();

@@ -81,7 +81,7 @@ public class ValueSortTest
 	private static ExpectedDropsPanel panel(Tracker tracker, boolean geValue) throws Exception
 	{
 		// every item is worth 1m, except that a different price per item makes the order depend on the item
-		ExpectedDropsPanel panel = new ExpectedDropsPanel(tracker, null, () -> RAIDS, s -> -1, () -> { }, () -> false, () -> { },
+		ExpectedDropsPanel panel = new ExpectedDropsPanel(tracker, null, () -> RAIDS, s -> -1, () -> { },
 			name -> 1_000_000L + Math.abs(name.hashCode() % 50) * 1_000_000L,
 			() -> new ViewOptions(ItemView.TARGET_BARS, geValue, false, false, false, true));
 		panel.showBoss(ExpectedDropsPanel.ACCOUNT);
@@ -149,7 +149,7 @@ public class ValueSortTest
 	{
 		Tracker tracker = seededTracker();
 		boolean[] geValue = {true};
-		ExpectedDropsPanel panel = new ExpectedDropsPanel(tracker, null, () -> RAIDS, s -> -1, () -> { }, () -> false, () -> { },
+		ExpectedDropsPanel panel = new ExpectedDropsPanel(tracker, null, () -> RAIDS, s -> -1, () -> { },
 			name -> 1_000_000L, () -> new ViewOptions(ItemView.TARGET_BARS, geValue[0], false, false, false, true));
 		panel.showBoss(ExpectedDropsPanel.ACCOUNT);
 		JComboBox<Object> box = sortBox(panel);

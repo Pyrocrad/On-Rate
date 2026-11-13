@@ -157,7 +157,7 @@ public class NotableFactsTest
 			{
 				RaidSettings raids = raid -> 0.03;
 				ExpectedDropsPanel p = new ExpectedDropsPanel(new Tracker(Bundled.catalog(new Gson())), null, () -> raids,
-					s -> -1, () -> { }, () -> false, () -> { }, name -> 0L,
+					s -> -1, () -> { }, name -> 0L,
 					() -> new ViewOptions(ItemView.TARGET_BARS, false, false, false, false, true));
 				Field select = ExpectedDropsPanel.class.getDeclaredField("bossSelect");
 				select.setAccessible(true);

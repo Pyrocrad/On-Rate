@@ -672,15 +672,13 @@ public class ReadmeShots
 		set(target, field, Enum.valueOf((Class<Enum>) type, value));
 	}
 
-	private static ExpectedDropsPanel panel(Tracker tracker, ItemManager items, ItemView view, boolean welcome) throws Exception
+	private static ExpectedDropsPanel panel(Tracker tracker, ItemManager items, ItemView view) throws Exception
 	{
 		ExpectedDropsPanel[] out = new ExpectedDropsPanel[1];
 		onSwing(() ->
 		{
 			ViewOptions options = new ViewOptions(view, true, true, false, false, true);
 			out[0] = new ExpectedDropsPanel(tracker, items, () -> RAID_SETTINGS, (ToIntFunction<String>) ReadmeShots::idFor, () ->
-			{
-			}, () -> welcome, () ->
 			{
 			}, (ToLongFunction<String>) ReadmeShots::price, () -> options);
 			out[0].onActivate();
@@ -902,7 +900,7 @@ public class ReadmeShots
 		}
 
 		// 1. Time page, Ladlor chart
-		ExpectedDropsPanel p = panel(full, items, ItemView.TARGET_BARS, false);
+		ExpectedDropsPanel p = panel(full, items, ItemView.TARGET_BARS);
 		onSwing(() ->
 		{
 			try
@@ -922,33 +920,6 @@ public class ReadmeShots
 		showAccount(p, 1, 3);
 		BufferedImage drops = draw(p, 860);
 		save(drops, dir, "shot-single-drops.png");
-
-		// 3. First run: the welcome guide with its progress bar
-		ExpectedDropsPanel welcome = panel(firstRun, items, ItemView.TARGET_BARS, true);
-		showAccount(welcome, 0, 0);
-		BufferedImage first = draw(welcome, 700);
-		save(first, dir, "shot-first-run.png");
-		// PREVIEW ONLY (never for the README): the plugin sets the progress panel's maximum height when the
-		// panel is built, with an empty label, so the bar is squeezed to nothing. This lifts that limit here
-		// to show what the bar looks like when it is given room.
-		onSwing(() ->
-		{
-			try
-			{
-				Field fb = welcome.getClass().getDeclaredField("welcomeProgressBar");
-				fb.setAccessible(true);
-				Container par = ((Component) fb.get(welcome)).getParent();
-				par.setMaximumSize(new java.awt.Dimension(Integer.MAX_VALUE, par.getPreferredSize().height));
-				Container card = par.getParent();
-				card.setMaximumSize(new java.awt.Dimension(Integer.MAX_VALUE, card.getPreferredSize().height));
-				card.revalidate();
-			}
-			catch (Exception e)
-			{
-				throw new IllegalStateException(e);
-			}
-		});
-		save(draw(welcome, 700), dir, "preview-first-run-with-bar.png");
 
 		// 4. The Fractured Archive
 		showBoss(p, "The Fractured Archive");
@@ -971,7 +942,7 @@ public class ReadmeShots
 		ItemView[] order = {ItemView.COMPACT, ItemView.GAUGE, ItemView.RINGS, ItemView.DELVE_BARS};
 		for (int i = 0; i < order.length; i++)
 		{
-			ExpectedDropsPanel v = panel(full, items, order[i], false);
+			ExpectedDropsPanel v = panel(full, items, order[i]);
 			showBoss(v, "Chambers of Xeric");
 			views[i] = draw(v, 520);
 		}

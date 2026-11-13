@@ -82,7 +82,7 @@ public class ShareLinkTest
 
 	private static ExpectedDropsPanel panel(Tracker tracker, String page) throws Exception
 	{
-		ExpectedDropsPanel panel = new ExpectedDropsPanel(tracker, null, () -> RAIDS, s -> -1, () -> { }, () -> false, () -> { },
+		ExpectedDropsPanel panel = new ExpectedDropsPanel(tracker, null, () -> RAIDS, s -> -1, () -> { },
 			name -> 1_000_000L, () -> new ViewOptions(ItemView.TARGET_BARS, true, false, false, false, true));
 		panel.showBoss(page);
 		panel.refresh();

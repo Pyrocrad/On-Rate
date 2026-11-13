@@ -24,8 +24,7 @@ public class LootTrackerNoteTest
 
 	private static ExpectedDropsPanel panel()
 	{
-		return new ExpectedDropsPanel(new Tracker(Bundled.catalog(new Gson())), null, () -> RAIDS, s -> -1, () -> { },
-			() -> false, () -> { }, name -> 0L, () -> new ViewOptions(ItemView.TARGET_BARS, false, false, false, false, true));
+		return new ExpectedDropsPanel(new Tracker(Bundled.catalog(new Gson())), null, () -> RAIDS, s -> -1, () -> { }, name -> 0L, () -> new ViewOptions(ItemView.TARGET_BARS, false, false, false, false, true));
 	}
 
 	@Test

@@ -59,7 +59,7 @@ public class RaidInsightsPerDrawTest
 	private static ExpectedDropsPanel panel(Tracker tracker, boolean gp)
 	{
 		RaidSettings raids = raid -> 0.035;
-		ExpectedDropsPanel panel = new ExpectedDropsPanel(tracker, null, () -> raids, s -> -1, () -> { }, () -> false, () -> { },
+		ExpectedDropsPanel panel = new ExpectedDropsPanel(tracker, null, () -> raids, s -> -1, () -> { },
 			s -> 1_000_000L, () -> new ViewOptions(ItemView.TARGET_BARS, gp, false, false, false, true));
 		panel.setSize(225, 6000);
 		return panel;

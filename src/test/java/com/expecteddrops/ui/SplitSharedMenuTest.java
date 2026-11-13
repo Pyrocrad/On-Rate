@@ -47,7 +47,7 @@ public class SplitSharedMenuTest
 	private static ExpectedDropsPanel panel(Tracker tracker)
 	{
 		RaidSettings raids = raid -> 0.03;
-		ExpectedDropsPanel panel = new ExpectedDropsPanel(tracker, null, () -> raids, s -> -1, () -> { }, () -> false, () -> { },
+		ExpectedDropsPanel panel = new ExpectedDropsPanel(tracker, null, () -> raids, s -> -1, () -> { },
 			s -> 1_000_000L, () -> new ViewOptions(ItemView.TARGET_BARS, true, false, false, false, true));
 		panel.setSize(225, 4000);
 		return panel;
