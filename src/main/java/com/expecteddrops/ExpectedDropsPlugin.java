@@ -236,7 +236,7 @@ public class ExpectedDropsPlugin extends Plugin
 			return p != null && p.isOnScreen();
 		});
 		panel = new ExpectedDropsPanel(tracker, itemManager, this::raidSettings, this::itemIdFor, this::save,
-			config::showWelcome, this::dismissWelcome, this::priceOf, this::viewOptions);
+			this::priceOf, this::viewOptions);
 		panel.setPrecomputed(precompute);
 		// nobody's data is loaded until a profile is: the panel says to log in (loadProfile updates it)
 		panel.setProfileState(ExpectedDropsPanel.ProfileState.NOT_LOGGED_IN);
@@ -249,10 +249,6 @@ public class ExpectedDropsPlugin extends Plugin
 			state -> configManager.setConfiguration(ExpectedDropsConfig.GROUP, "foldState", state));
 		// the sort order and Items list come back as saved, but the panel always opens on the Bosses tab
 		panel.startOnBossesTab();
-		panel.setOverlayOffer(config::showOverlay,
-			() -> "true".equals(configManager.getRSProfileConfiguration(ExpectedDropsConfig.GROUP, OVERLAY_OFFER_KEY)),
-			() -> configManager.setRSProfileConfiguration(ExpectedDropsConfig.GROUP, OVERLAY_OFFER_KEY, "true"),
-			() -> configManager.setConfiguration(ExpectedDropsConfig.GROUP, "showOverlay", "true"));
 		clog = new ClogReader(client, itemManager, tracker, prices, first ->
 		{
 			save();
@@ -282,8 +278,6 @@ public class ExpectedDropsPlugin extends Plugin
 		overlay = new OnRateOverlay(this, config, () -> overlayInfo);
 		overlayManager.add(overlay);
 
-		prepareTimesNotice();
-		openPanelOnce();
 		updateLootTrackerStatus();
 
 		raidPoints = new RaidPointsReader(client, clientThread, tracker, boss -> changed(boss, false), config::readRaidPoints);
@@ -360,35 +354,6 @@ public class ExpectedDropsPlugin extends Plugin
 		rolls = null;
 	}
 
-	/** Saved once the "New in On Rate" notice was shown (or not needed): it is only for players who had On Rate before. */
-	static final String TIMES_NOTICE_KEY = Keys.NEWS_NOTICE;
-
-	/**
-	 * True for a player who had On Rate before the times feature: the panel was opened for them once
-	 * (the first-run flag), or they turned the welcome guide off. A new install is false.
-	 */
-	static boolean hadOnRateBefore(String firstRunDone, boolean showWelcome)
-	{
-		return firstRunDone != null || !showWelcome;
-	}
-
-	/**
-	 * A new player has nothing new to be told about, so mark the notice as seen for them; a player who
-	 * had On Rate before gets it once, the next time they open the panel (see ExpectedDropsPanel#setTimesNotice).
-	 * Runs before {@link #openPanelOnce()} sets the first-run flag.
-	 */
-	private void prepareTimesNotice()
-	{
-		if (configManager.getConfiguration(ExpectedDropsConfig.GROUP, TIMES_NOTICE_KEY) == null
-			&& !hadOnRateBefore(configManager.getConfiguration(ExpectedDropsConfig.GROUP, FIRST_RUN_KEY), config.showWelcome()))
-		{
-			configManager.setConfiguration(ExpectedDropsConfig.GROUP, TIMES_NOTICE_KEY, "true");
-		}
-		panel.setTimesNotice(
-			() -> configManager.getConfiguration(ExpectedDropsConfig.GROUP, TIMES_NOTICE_KEY) == null,
-			() -> configManager.setConfiguration(ExpectedDropsConfig.GROUP, TIMES_NOTICE_KEY, "true"));
-	}
-
 	/**
 	 * Reads your raid times from the Raid Data Tracker plugin's files, if it is installed and the
 	 * setting is on. The files are read off the client thread; the times are added on it, and only if
@@ -449,26 +414,6 @@ public class ExpectedDropsPlugin extends Plugin
 		{
 			p.refresh();
 		}
-	}
-
-	/** Saved once On Rate has opened its panel for a new player. */
-	private static final String FIRST_RUN_KEY = Keys.FIRST_RUN;
-	/** Per account: the one-time offer of the in-game overlay was seen (see ExpectedDropsPanel#setOverlayOffer). */
-	private static final String OVERLAY_OFFER_KEY = Keys.OVERLAY_OFFER;
-
-	/**
-	 * The very first time On Rate starts for a player, open its panel so they see the
-	 * welcome guide. Never again after that.
-	 */
-	private void openPanelOnce()
-	{
-		if (configManager.getConfiguration(ExpectedDropsConfig.GROUP, FIRST_RUN_KEY) != null || !config.showWelcome())
-		{
-			return;
-		}
-		configManager.setConfiguration(ExpectedDropsConfig.GROUP, FIRST_RUN_KEY, "true");
-		NavigationButton button = navButton;
-		SwingUtilities.invokeLater(() -> clientToolbar.openPanel(button));
 	}
 
 	/** Notes who is hitting a group boss, each game tick. */
@@ -653,7 +598,7 @@ public class ExpectedDropsPlugin extends Plugin
 
 	/** Settings the panel writes itself while the player clicks around: they change no numbers. */
 	private static final Set<String> UI_STATE_KEYS = new HashSet<>(Arrays.asList(
-		Keys.LAST_PAGE, "foldState", "showLuckGraph", "itemView", "showWelcome", "showOverlay", Keys.FIRST_RUN, Keys.TIMES_NOTICE, Keys.NEWS_NOTICE));
+		Keys.LAST_PAGE, "foldState", "showLuckGraph", "itemView", "showOverlay"));
 
 	/** The Loot Tracker was turned on or off: the panel's note follows. */
 	@Subscribe
@@ -918,15 +863,6 @@ public class ExpectedDropsPlugin extends Plugin
 			return;
 		}
 		postChat(reminder);
-	}
-
-	/**
-	 * "Hide guide" on the welcome guide: hide it. The player stays in On Rate's panel; the guide comes
-	 * back with "Show welcome guide" in the settings.
-	 */
-	private void dismissWelcome()
-	{
-		configManager.setConfiguration(ExpectedDropsConfig.GROUP, "showWelcome", "false");
 	}
 
 	private void loadProfile()
