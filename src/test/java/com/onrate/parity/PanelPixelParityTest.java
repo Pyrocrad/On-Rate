@@ -106,6 +106,9 @@ public class PanelPixelParityTest
 			set(p, "delveTimes", false);
 			// the "Trips this session" list on the Recent tab is new (TripListTest covers it)
 			set(p, "tripList", false);
+			// the Recent tab as tiles with a Uniques / By boss / Trips switch is new: the original is the plain text list
+			// (RecentTabTest covers it)
+			set(p, "recentTabs", false);
 			// History's "show more" link (10, 50, all) is new: the comparison keeps the fixed 10 rows (HistoryMoreTest)
 			set(p, "historyMore", false);
 			// the "top 5 of N / show all" notes on the Pets groups and Recent are new: the original caps them without one

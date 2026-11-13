@@ -4,6 +4,9 @@ Updates come through the Plugin Hub. Each heading is the date of that update; **
 
 **Next update**
 
+*Redesigned*
+- **Recent tab as tiles and pages:** **Today** and **Last 7 days** are two tiles at the top (kills, uniques, coloured when clearly more or fewer than expected; hover for the numbers). Under them a switch shows one list at a time: **Uniques** (your latest uniques, top 10 of N with show all), **By boss** (a row per boss for the last 7 days, click to open it) or **Trips** (this session's finished trips). Nothing is counted differently.
+
 *Forecast*
 - **UNIQUES FORECAST on more bosses:** the folded forecast table under History (Raid extras) now shows for every single-fight boss, not a fixed list. Team and estimate bosses (Nex, Yama, Zalcano, God Wars, Royal Titans, Barrows, Brutus, Tempoross and others) have it with a note that the chances use your average share or estimate. Vorkath forecasts only his real rolls and says the head is guaranteed at kill 50. Combined pages (Dagannoth Kings, Gauntlet, Callisto and Artio...) get one small table per part. Doom forecasts at the delve levels you did so far. Fortis Colosseum, Moons of Peril, Wintertodt and Chaos Elemental have none. The "rest of the log" line under the verdict follows the same rule. Drop rates and verdicts are unchanged.
 - **Doom times from your first delve:** on the Time page, each delve level uses your own average time from its first timed delve (it was 20), and the wiki time for levels you haven't timed. The Doom forecast uses the same time per delve, so both pages show the same hours.

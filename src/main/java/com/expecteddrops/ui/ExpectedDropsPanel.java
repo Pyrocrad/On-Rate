@@ -2252,6 +2252,23 @@ public class ExpectedDropsPanel extends PluginPanel
 	/** The boss's pet as its picture (every boss has one), else its first unique. */
 	private void setHeaderIcon(BossDefinition boss)
 	{
+		String item = bossIconItem(boss);
+		int id = item == null ? -1 : itemIdFor.applyAsInt(item);
+		if (id > 0 && itemManager != null)
+		{
+			itemManager.getImage(id).addTo(headerIcon);
+		}
+		else
+		{
+			headerIcon.setText(initials(boss.getName()));
+			headerIcon.setFont(FontManager.getRunescapeBoldFont());
+			headerIcon.setForeground(Theme.TEXT_MUTED);
+		}
+	}
+
+	/** The item whose picture stands for a boss: its pet, else its first unique, else a shared pet; null if none. */
+	private String bossIconItem(BossDefinition boss)
+	{
 		String item = null;
 		for (DropDefinition drop : boss.getDrops())
 		{
@@ -2270,17 +2287,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			// a boss whose drops are all shared (Chaos Elemental): its pet from those
 			item = sharedItemOf(boss, true);
 		}
-		int id = item == null ? -1 : itemIdFor.applyAsInt(item);
-		if (id > 0 && itemManager != null)
-		{
-			itemManager.getImage(id).addTo(headerIcon);
-		}
-		else
-		{
-			headerIcon.setText(initials(boss.getName()));
-			headerIcon.setFont(FontManager.getRunescapeBoldFont());
-			headerIcon.setForeground(Theme.TEXT_MUTED);
-		}
+		return item;
 	}
 
 	/** The account overview: every boss with kills added up, plus one row per boss. */
@@ -2844,6 +2851,11 @@ public class ExpectedDropsPanel extends PluginPanel
 	/** The account's Recent tab: today, the last 7 days and the latest uniques across every boss. */
 	private void renderRecentTab()
 	{
+		if (recentTabs)
+		{
+			renderRecentSwitched();
+			return;
+		}
 		long nowMs = System.currentTimeMillis();
 		boolean days = renderDays("Today", tracker.recentDays(1, nowMs));
 		days |= renderDays("Last 7 days", tracker.recentDays(7, nowMs));
@@ -2896,6 +2908,223 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			rowsPanel.add(spacer(Theme.HAIR));
 			rowsPanel.add(recentDropRow(r, now));
+		}
+	}
+
+	/** The Recent tab's pages: the latest uniques, the last 7 days by boss, and this session's trips. */
+	private static final int RECENT_UNIQUES = 0;
+	private static final int RECENT_BOSSES = 1;
+	private static final int RECENT_TRIPS = 2;
+
+	/**
+	 * The Recent tab as tiles (Today, Last 7 days) with a switch under them (Uniques, By boss, Trips) and one list at a
+	 * time, like the Items tab. Always on for players; the pixel parity test turns it off, because the original
+	 * Recent tab is the plain text one (RecentTabTest covers this one).
+	 */
+	private boolean recentTabs = true;
+	private int recentView = RECENT_UNIQUES;
+
+	/** One of the two tiles above the Recent switch: kills and uniques for these days, coloured when clearly more or fewer than expected. */
+	private VerdictTile recentTile(String title, com.onrate.engine.tracking.BossDays total)
+	{
+		double luck = Luck.of(total.getUniques(), total.getExpected());
+		boolean clear = !Double.isNaN(luck) && total.getExpected() > 0 && (luck < 0.35 || luck > 0.65);
+		Color colour = clear ? Palette.onRow(luckColor(luck).brighter()) : Theme.TEXT;
+		String mark = clear && uniqueMarks
+			? Texts.uniquesMark(luck, total.getExpected(), FontManager.getRunescapeFont().canDisplay(Texts.MARK_MORE.charAt(0))) : "";
+		Tip tip = new Tip(title)
+			.row("Kills", String.format(java.util.Locale.ROOT, "%,d", total.getKills()))
+			.row("Uniques", String.format(java.util.Locale.ROOT, "%,d", total.getUniques()))
+			.row("Expected", "about " + formatExpected(total.getExpected()));
+		if (clear)
+		{
+			tip.row("Compared", capital(luckPercent(Poisson.shares(total.getUniques(), total.getExpected()), total.getUniques())), colour);
+		}
+		VerdictTile tile = new VerdictTile(title.toUpperCase(Locale.ROOT));
+		tile.set(String.format(java.util.Locale.ROOT, "%,d %s", total.getKills(), total.getKills() == 1 ? "kill" : "kills"), colour,
+			String.format(java.util.Locale.ROOT, "%,d %s%s", total.getUniques(), total.getUniques() == 1 ? "unique" : "uniques",
+				mark.isEmpty() ? "" : " " + mark),
+			"", tip.wide());
+		return tile;
+	}
+
+	/** A segment of the Recent switch, drawn like the Items tab's. */
+	private JLabel recentSwitch(String text, int view)
+	{
+		boolean selected = recentView == view;
+		Runnable pick = () ->
+		{
+			recentView = view;
+			refresh();
+		};
+		JLabel label = smallLabel(text, selected ? Theme.TEXT : Theme.TEXT_MUTED);
+		label.setHorizontalAlignment(SwingConstants.CENTER);
+		label.setOpaque(selected);
+		label.setBackground(Theme.SURFACE_SELECTED);
+		label.setBorder(new EmptyBorder(Theme.HAIR, Theme.S, Theme.HAIR, Theme.S));
+		if (!selected)
+		{
+			label.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
+			label.addMouseListener(new MouseAdapter()
+			{
+				@Override
+				public void mouseClicked(MouseEvent e)
+				{
+					pick.run();
+				}
+			});
+		}
+		return Activatable.install(label, text + (selected ? ", selected" : ""), pick);
+	}
+
+	/** The Recent tab: the two tiles, the switch, and the page the switch is on. */
+	private void renderRecentSwitched()
+	{
+		long nowMs = System.currentTimeMillis();
+		List<com.onrate.engine.tracking.BossDays> week = tracker.recentDays(7, nowMs);
+		JPanel tiles = new JPanel(new GridLayout(1, 2, 4, 0));
+		tiles.setOpaque(false);
+		tiles.setAlignmentX(LEFT_ALIGNMENT);
+		tiles.add(recentTile("Today", tracker.recentDays(1, nowMs).get(0)));
+		tiles.add(recentTile("Last 7 days", week.get(0)));
+		tiles.setMaximumSize(new Dimension(Integer.MAX_VALUE, tiles.getPreferredSize().height));
+		rowsPanel.add(tiles);
+		rowsPanel.add(spacer(Theme.S));
+
+		JPanel switcher = new JPanel(new GridLayout(1, 3, Theme.HAIR, Theme.HAIR));
+		switcher.setBackground(Theme.SURFACE);
+		switcher.setAlignmentX(LEFT_ALIGNMENT);
+		switcher.setBorder(new EmptyBorder(Theme.HAIR, Theme.HAIR, Theme.HAIR, Theme.HAIR));
+		switcher.add(recentSwitch("Uniques", RECENT_UNIQUES));
+		switcher.add(recentSwitch("By boss", RECENT_BOSSES));
+		switcher.add(recentSwitch("Trips", RECENT_TRIPS));
+		switcher.setMaximumSize(new Dimension(Integer.MAX_VALUE, switcher.getPreferredSize().height));
+		rowsPanel.add(switcher);
+		rowsPanel.add(spacer(Theme.S));
+
+		if (recentView == RECENT_BOSSES)
+		{
+			renderRecentBosses(week);
+		}
+		else if (recentView == RECENT_TRIPS)
+		{
+			renderRecentTrips(nowMs);
+		}
+		else
+		{
+			renderRecentUniques();
+		}
+	}
+
+	/** A quiet note under the switch. */
+	private void recentNote(String text)
+	{
+		JLabel note = smallLabel("<html><body style='width: " + Theme.TEXT_WIDTH + "px'>" + text + "</body></html>",
+			ColorScheme.LIGHT_GRAY_COLOR);
+		note.setAlignmentX(LEFT_ALIGNMENT);
+		note.setBorder(new EmptyBorder(0, 0, Theme.S, 0));
+		rowsPanel.add(note);
+	}
+
+	/** Recent, Uniques: the latest uniques as cards, with the "top 10 of N, show all" heading. */
+	private void renderRecentUniques()
+	{
+		List<com.onrate.engine.tracking.RecentDrop> recent = tracker.recentDrops(Integer.MAX_VALUE);
+		if (recent.isEmpty())
+		{
+			recentNote("No uniques seen yet. They show up here from now on.");
+			return;
+		}
+		int total = recent.size();
+		int shown = recentAll ? total : Math.min(RECENT_SHOWN, total);
+		dropListTitle("LATEST UNIQUES", shown, total, RECENT_SHOWN, () -> recentAll = !recentAll,
+			"Your latest uniques across every boss, newest first.");
+		long now = System.currentTimeMillis();
+		for (com.onrate.engine.tracking.RecentDrop r : recent.subList(0, shown))
+		{
+			rowsPanel.add(spacer(Theme.HAIR));
+			com.onrate.engine.tracking.KillEntry.DropEntry d = r.getDrop();
+			BossDefinition boss = tracker.getCatalog().byName(r.getBoss());
+			String unit = boss == null ? "kill" : com.onrate.engine.tracking.Tracker.unitOne(boss);
+			String after = afterText(d, unit);
+			JPanel card = threeLineRow(d.getName(), d.getName(), whereText(boss, r.getBoss(), r.getKill()),
+				daysAgo(r.getKill().getTime(), now) + (after.isEmpty() ? "" : " · " + after), multipleColor(d), null);
+			setTip(card, dropTip(r, now), () -> showBoss(r.getBoss()), true);
+			withRemoveMenu(card, r.getBoss(), r.getKill(), java.util.Collections.singletonList(d));
+			rowsPanel.add(card);
+		}
+	}
+
+	/** Recent, By boss: a row per boss for the last 7 days, kills on the left and uniques on the right. */
+	private void renderRecentBosses(List<com.onrate.engine.tracking.BossDays> week)
+	{
+		if (week.size() < 2)
+		{
+			recentNote("No kills in the last 7 days.");
+			return;
+		}
+		recentNote("The last 7 days. Click a boss to open it.");
+		for (com.onrate.engine.tracking.BossDays d : week.subList(1, week.size()))
+		{
+			BossDefinition boss = tracker.getCatalog().byName(d.getBoss());
+			String units = boss == null ? "kills" : com.onrate.engine.tracking.Tracker.unit(boss);
+			String unitsHere = d.getKills() == 1 ? units.substring(0, units.length() - 1) : units;
+			double luck = Luck.of(d.getUniques(), d.getExpected());
+			boolean clear = !Double.isNaN(luck) && d.getExpected() > 0 && (luck < 0.35 || luck > 0.65);
+			Color colour = clear ? Palette.onRow(luckColor(luck).brighter()) : Theme.TEXT;
+			JPanel panel = new JPanel(new BorderLayout(6, 0));
+			panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+			panel.setBorder(new EmptyBorder(Theme.S, Theme.S, Theme.S, Theme.S));
+			panel.setAlignmentX(LEFT_ALIGNMENT);
+			panel.add(itemIcon(boss == null ? null : bossIconItem(boss), d.getBoss(), 28), BorderLayout.WEST);
+			JPanel text = new JPanel(new GridLayout(2, 1, 0, 0));
+			text.setOpaque(false);
+			JLabel name = smallLabel(d.getBoss(), Color.WHITE);
+			name.setFont(FontManager.getRunescapeFont());
+			text.add(name);
+			text.add(smallLabel(String.format(java.util.Locale.ROOT, "%,d %s", d.getKills(), unitsHere), ColorScheme.LIGHT_GRAY_COLOR));
+			panel.add(text, BorderLayout.CENTER);
+			JPanel east = new JPanel(new GridLayout(2, 1, 0, 0));
+			east.setOpaque(false);
+			JLabel count = smallLabel(String.format(java.util.Locale.ROOT, "%,d", d.getUniques()), colour);
+			count.setFont(FontManager.getRunescapeFont());
+			count.setHorizontalAlignment(SwingConstants.RIGHT);
+			east.add(count);
+			JLabel what = smallLabel(d.getUniques() == 1 ? "unique" : "uniques", ColorScheme.LIGHT_GRAY_COLOR);
+			what.setHorizontalAlignment(SwingConstants.RIGHT);
+			east.add(what);
+			panel.add(east, BorderLayout.EAST);
+			panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, panel.getPreferredSize().height));
+			Tip tip = new Tip(d.getBoss() + ", last 7 days")
+				.row(capital(units), String.format(java.util.Locale.ROOT, "%,d", d.getKills()))
+				.row("Uniques", String.format(java.util.Locale.ROOT, "%,d", d.getUniques()))
+				.row("Expected", "about " + formatExpected(d.getExpected()));
+			if (clear)
+			{
+				tip.row("Compared", capital(luckPercent(Poisson.shares(d.getUniques(), d.getExpected()), d.getUniques())), colour);
+			}
+			addUniqueNames(tip, false, d, week);
+			String bossName = d.getBoss();
+			setTip(panel, tip.wide(), () -> showBoss(bossName));
+			rowsPanel.add(spacer(Theme.HAIR));
+			rowsPanel.add(Card.row(panel));
+		}
+	}
+
+	/** Recent, Trips: this session's finished trips. */
+	private void renderRecentTrips(long nowMs)
+	{
+		List<com.onrate.engine.tracking.TripStats> trips = tripList ? tracker.recentTrips(nowMs) : java.util.Collections.emptyList();
+		if (trips.isEmpty())
+		{
+			recentNote("No finished trips yet.");
+			return;
+		}
+		recentNote("Kept until RuneLite closes or you switch account.");
+		for (com.onrate.engine.tracking.TripStats t : trips)
+		{
+			rowsPanel.add(spacer(Theme.HAIR));
+			rowsPanel.add(tripRow(t, nowMs));
 		}
 	}
 
