@@ -14,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
@@ -93,5 +94,37 @@ public class AlsoFromNoteTest
 			}
 		}
 		assertTrue(seen);
+	}
+
+	@Test
+	public void aSharedItemHoverOnlyMentionsRightClickWhenTheMenuIsThere() throws Exception
+	{
+		Tracker tracker = tracker();
+		Method m = ExpectedDropsPanel.class.getDeclaredMethod("poolTooltip", SharedPool.class, RowStats.class, boolean.class);
+		m.setAccessible(true);
+		for (SharedPool pool : tracker.sharedPools(raid -> 0.03))
+		{
+			String without = (String) m.invoke(null, pool, pool.toRow(), false);
+			assertFalse(pool.getItemName(), without.contains("Right-click"));
+			String with = (String) m.invoke(null, pool, pool.toRow(), ExpectedDropsPanel.hasSplitMenu(pool, true));
+			assertEquals(pool.getItemName(), ExpectedDropsPanel.hasSplitMenu(pool, true), with.contains("Right-click"));
+			if (pool.getOlderCopies() > 0 && pool.isSplittable() && pool.getKey() != null)
+			{
+				// older copies need somewhere to go
+				assertFalse(ExpectedDropsPanel.hasSplitMenu(pool, false));
+			}
+		}
+	}
+
+	@Test
+	public void theAnyUniqueRowHasNoLeaveOutMenu() throws Exception
+	{
+		Tracker tracker = tracker();
+		BossStats stats = tracker.stats("Kraken", raid -> 0.03);
+		assertFalse(ExpectedDropsPanel.hasLeaveOutMenu(stats.getAnyRow()));
+		for (RowStats row : stats.getRows())
+		{
+			assertEquals(row.getLabel(), row.getIconItem() != null, ExpectedDropsPanel.hasLeaveOutMenu(row));
+		}
 	}
 }

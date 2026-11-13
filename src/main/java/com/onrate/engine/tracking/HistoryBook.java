@@ -419,10 +419,20 @@ final class HistoryBook
 	 */
 	boolean addPastDrop(String bossName, String itemName, int kc, boolean first, String partName)
 	{
+		return tryAddPastDrop(bossName, itemName, kc, first, partName) == PastDropResult.ADDED;
+	}
+
+	/** As {@link #addPastDrop(String, String, int, boolean, String)}, saying why a refused drop was refused. */
+	PastDropResult tryAddPastDrop(String bossName, String itemName, int kc, boolean first, String partName)
+	{
 		BossDefinition boss = catalog.byName(bossName);
-		if (boss == null || kc < 1)
+		if (boss == null)
 		{
-			return false;
+			return PastDropResult.UNKNOWN;
+		}
+		if (kc < 1)
+		{
+			return PastDropResult.COUNT_TOO_LOW;
 		}
 		BossPart part = null;
 		for (BossPart candidate : boss.getParts())
@@ -432,10 +442,13 @@ final class HistoryBook
 				part = candidate;
 			}
 		}
-		if (boss.hasParts() != (part != null) || (partName != null && part == null)
-			|| kc > pastDropLimit(bossName, partName))
+		if (boss.hasParts() != (part != null) || (partName != null && part == null))
 		{
-			return false;
+			return PastDropResult.UNKNOWN;
+		}
+		if (kc > pastDropLimit(bossName, partName))
+		{
+			return PastDropResult.COUNT_TOO_HIGH;
 		}
 		DropDefinition drop = null;
 		for (DropDefinition d : boss.getDrops())
@@ -447,7 +460,7 @@ final class HistoryBook
 		}
 		if (drop == null)
 		{
-			return false;
+			return PastDropResult.UNKNOWN;
 		}
 		BossProgress progress = ctx.state().get(boss.getName());
 		String shown = drop.getDisplayName();
@@ -472,7 +485,7 @@ final class HistoryBook
 				}
 				else if (sameSpot)
 				{
-					return false;
+					return PastDropResult.SAW_AT_COUNT;
 				}
 				else if (d.isEntered())
 				{
@@ -487,7 +500,7 @@ final class HistoryBook
 			// History already lists every copy: when exactly one was added by hand, the new one corrects it
 			if (enteredElsewhere.size() != 1)
 			{
-				return false;
+				return PastDropResult.ALL_COPIES_LISTED;
 			}
 			swap = enteredElsewhere.get(0);
 		}
@@ -566,13 +579,13 @@ final class HistoryBook
 			{
 				if (d.getName().equals(shown))
 				{
-					return false;
+					return PastDropResult.SAW_AT_COUNT;
 				}
 			}
 		}
 		else if (index == 0 && progress.kills.size() >= MAX_KILLS)
 		{
-			return false;
+			return PastDropResult.HISTORY_FULL;
 		}
 		KillEntry.DropEntry entry = new KillEntry.DropEntry();
 		entry.name = shown;
@@ -645,7 +658,7 @@ final class HistoryBook
 			progress.lastDropKc.put(key, kc);
 			progress.milestone.remove(key);
 		}
-		return true;
+		return PastDropResult.ADDED;
 	}
 
 	/**

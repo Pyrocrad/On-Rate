@@ -49,15 +49,15 @@ class LuckStrip extends JComponent
 		int y = getHeight() / 2;
 		if (!bands)
 		{
-			g.setColor(TRACK);
+			g.setColor(Palette.barFill(TRACK, Theme.SURFACE));
 			g.fillRect(4, y - 1, w, 2);
-			g.setColor(MIDDLE);
+			g.setColor(Palette.isHigherContrast() ? Color.WHITE : MIDDLE);
 			g.fillRect(4 + w / 2, y - 4, 1, 8);
 		}
 		for (int i = 0; bands && i < BANDS.length - 1; i++)
 		{
 			double mid = (BANDS[i] + BANDS[i + 1]) / 2;
-			g.setColor(Palette.blend(Palette.luck(mid), ColorScheme.DARKER_GRAY_COLOR, 0.35));
+			g.setColor(Palette.barFill(Palette.blend(Palette.luck(mid), ColorScheme.DARKER_GRAY_COLOR, 0.35), ColorScheme.DARKER_GRAY_COLOR));
 			int x0 = 4 + (int) Math.round(BANDS[i] * w);
 			int x1 = 4 + (int) Math.round(BANDS[i + 1] * w);
 			g.fillRect(x0, y - 2, x1 - x0, 4);

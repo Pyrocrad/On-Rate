@@ -261,6 +261,8 @@ public class ExpectedDropsPlugin extends Plugin
 		panel.setItemViewSaver(view -> configManager.setConfiguration(ExpectedDropsConfig.GROUP, "itemView", view));
 		panel.setAccountPageStore(config.accountPage(),
 			page -> configManager.setConfiguration(ExpectedDropsConfig.GROUP, "accountPage", page));
+		panel.setFoldStateStore(config.foldState(),
+			state -> configManager.setConfiguration(ExpectedDropsConfig.GROUP, "foldState", state));
 		// the sort order and Items list come back as saved, but the panel always opens on the Bosses tab
 		panel.startOnBossesTab();
 		panel.setOverlayOffer(config::showOverlay,
@@ -458,6 +460,11 @@ public class ExpectedDropsPlugin extends Plugin
 		}
 		raidDataFolder = picked.get(0);
 		clientThread.invokeLater(this::importRaidTimes);
+		ExpectedDropsPanel p = panel;
+		if (p != null)
+		{
+			p.refresh();
+		}
 	}
 
 	/** Saved once On Rate has opened its panel for a new player. */
@@ -494,6 +501,7 @@ public class ExpectedDropsPlugin extends Plugin
 	ViewOptions viewOptions()
 	{
 		Palette.setScheme(config.luckColours(), config.dryColour(), config.onRateColour());
+		Palette.setHigherContrast(config.higherContrastBars());
 		return new ViewOptions(config.itemView(), config.showGeValue(), config.showLuckGraph(),
 			config.showTrip(), config.luckColours() == LuckColours.COLOUR_BLIND, config.showTopItems());
 	}
@@ -515,6 +523,7 @@ public class ExpectedDropsPlugin extends Plugin
 			return;
 		}
 		Palette.setScheme(config.luckColours(), config.dryColour(), config.onRateColour());
+		Palette.setHigherContrast(config.higherContrastBars());
 		String units = Tracker.unit(stats.getBoss());
 		String one = Tracker.unitOne(stats.getBoss());
 		String tripText = String.format(java.util.Locale.ROOT, "%,d %s · %d unique%s", trip.getKills(), trip.getKills() == 1 ? one : units,
@@ -522,9 +531,10 @@ public class ExpectedDropsPlugin extends Plugin
 		double tripLuck = trip.getLuck();
 		String tripExpected = trip.getExpected() >= 10 ? String.format(java.util.Locale.ROOT, "%.1f", trip.getExpected())
 			: String.format(java.util.Locale.ROOT, "%.2f", trip.getExpected());
+		boolean early = !Double.isNaN(tripLuck) && Verdict.tripTooEarly(trip.getExpected());
 		overlayInfo = new OverlayInfo(trip.getBoss(), tripText, tripExpected,
-			Double.isNaN(tripLuck) ? "-" : Verdict.labelOf(tripLuck),
-			Double.isNaN(tripLuck) ? java.awt.Color.WHITE : Palette.luck(tripLuck).brighter(),
+			Double.isNaN(tripLuck) ? "-" : early ? "Too early" : Verdict.labelOf(tripLuck),
+			Double.isNaN(tripLuck) ? java.awt.Color.WHITE : early ? java.awt.Color.LIGHT_GRAY : Palette.text(Palette.luck(tripLuck).brighter()),
 			trip.getLastMillis());
 	}
 
@@ -659,7 +669,7 @@ public class ExpectedDropsPlugin extends Plugin
 
 	/** Settings the panel writes itself while the player clicks around: they change no numbers. */
 	private static final Set<String> UI_STATE_KEYS = new HashSet<>(java.util.Arrays.asList(
-		Keys.LAST_PAGE, "showLuckGraph", "itemView", "showWelcome", "showOverlay", Keys.FIRST_RUN, Keys.TIMES_NOTICE, Keys.NEWS_NOTICE));
+		Keys.LAST_PAGE, "foldState", "showLuckGraph", "itemView", "showWelcome", "showOverlay", Keys.FIRST_RUN, Keys.TIMES_NOTICE, Keys.NEWS_NOTICE));
 
 	/** The Loot Tracker was turned on or off: the panel's note follows. */
 	@Subscribe

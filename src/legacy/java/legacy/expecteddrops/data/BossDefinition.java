@@ -43,6 +43,8 @@ public class BossDefinition
 	private Integer waves;
 	/** True while content is prepared but not released to players: kept out of the catalog entirely. */
 	private Boolean hidden;
+	/** False keeps the UNIQUES FORECAST table off this page (Moons of Peril, Wintertodt); null means shown. */
+	private Boolean logForecast;
 
 	public BossDefinition()
 	{
@@ -66,6 +68,12 @@ public class BossDefinition
 	public String getName()
 	{
 		return name;
+	}
+
+	/** Whether this boss page may show the UNIQUES FORECAST table (on unless "logForecast": false). */
+	public boolean isLogForecast()
+	{
+		return !Boolean.FALSE.equals(logForecast);
 	}
 
 	/** Prepared in bosses.json but not shown yet (no page, no tracking, no collection log sync). */

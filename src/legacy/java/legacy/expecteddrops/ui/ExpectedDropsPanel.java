@@ -1244,21 +1244,21 @@ public class ExpectedDropsPanel extends PluginPanel
 			if ("fractured".equals(stats.getBoss().getRaid()))
 			{
 				int team = Math.max(1, raidSettings.get().teamSize("fractured"));
-				note.append(String.format(java.util.Locale.ROOT, "Raids On Rate didn't track use a team of %d (<i>TFA team size</i>) and an even share of the damage: "
+				note.append(String.format(java.util.Locale.ROOT, "Raids On Rate didn't track use a team of %d (<i>Fractured Archive team size</i>) and an even share of the damage: "
 					+ "%.2f%% each. The team rolls %.2f%% (%.2f%% for a solo or duo, more for each bigger team). "
-					+ "Change these under <i>Raids</i> and <i>Raid purple chances</i> in the settings.",
+					+ "Change these under <i>Raids</i> and <i>Raid purple chances</i> in On Rate's settings.",
 					team, raidSettings.get().uniqueChance("fractured") * 100, raidSettings.get().uniqueChance("fractured") * team * 100,
 					raidSettings.get().tfaBaseChance() * 100));
 			}
 			else
 			{
-				note.append("Purple chance for raids without points: ").append(modes).append(". Change these under <i>Raid purple chances</i> in the settings.");
+				note.append("Purple chance for raids without points: ").append(modes).append(". Change these under <i>Raid purple chances</i> in On Rate's settings.");
 			}
 			note.append(raidPointsNote(stats.getBoss()));
 		}
 		else if (raid)
 		{
-			note.append(String.format(java.util.Locale.ROOT, "Assumes a %.1f%% chance of a purple per raid (change it under Raid purple chances in the settings).",
+			note.append(String.format(java.util.Locale.ROOT, "Assumes a %.1f%% chance of a purple per raid (change it under Raid purple chances in On Rate's settings).",
 				stats.getRaidUniqueChance() * 100));
 		}
 		String teamNote = stats.getBoss().getTeam() == null || stats.getBoss().isDetectTeam() ? null
@@ -1969,7 +1969,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			rowsPanel.add(spacer(Theme.M));
 		}
 		List<legacy.expecteddrops.tracking.RecentDrop> recent = tracker.recentDrops(10);
-		if (!recent.isEmpty() && days)
+		if (!recent.isEmpty())
 		{
 			JLabel latest = smallLabel("LATEST UNIQUES", ColorScheme.LIGHT_GRAY_COLOR);
 			latest.setAlignmentX(LEFT_ALIGNMENT);
@@ -2766,7 +2766,7 @@ public class ExpectedDropsPanel extends PluginPanel
 	/** The lists of the Time page, chosen from its dropdown. */
 	private enum TimeView
 	{
-		ITEMS("Items"), CHART("Ladlor chart"), PETS("Pets"), RAIDS("Raids");
+		ITEMS("Items"), CHART("Ladlor's chart"), PETS("Pets"), RAIDS("Raids");
 
 		private final String label;
 
@@ -2974,7 +2974,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			what = perBoss.size() + " bosses";
 		}
-		Tip tip = new Tip(t.getName()).line("Ladlor chart, step " + t.getStep(), Theme.TEXT_MUTED)
+		Tip tip = new Tip(t.getName()).line("Ladlor's chart, step " + t.getStep(), Theme.TEXT_MUTED)
 			.row("Average time", t.hasTime() ? (t.isEstimated() ? "~" : "") + time : "no estimate yet");
 		if (t.hasTime())
 		{
@@ -5050,7 +5050,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		// how long since the last kill, and when the trip ends by itself
 		long idleMinutes = Math.max(0, (System.currentTimeMillis() - trip.getLastMillis()) / 60_000);
 		long limitMinutes = tracker.tripIdleLimitMillis() / 60_000;
-		String idle = idleMinutes < 2 ? "Last kill just now"
+		String tripUnit = tripBoss == null ? "kill" : legacy.expecteddrops.tracking.Tracker.unitOne(tripBoss);
+		String idle = idleMinutes < 2 ? "Last " + tripUnit + " just now"
 			: limitMinutes > idleMinutes ? String.format(java.util.Locale.ROOT, "Idle %d min \u00b7 ends in %d min", idleMinutes, limitMinutes - idleMinutes)
 			: String.format(java.util.Locale.ROOT, "Idle %d min", idleMinutes);
 		card.add(spacer(Theme.S));
@@ -5064,7 +5065,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		reset.setBorderPainted(false);
 		reset.setContentAreaFilled(false);
 		reset.setForeground(Theme.TEXT_MUTED);
-		reset.setToolTipText("The next kill starts a new trip. A trip also ends after 30 minutes without a kill "
+		reset.setToolTipText("The next " + tripUnit + " starts a new trip. A trip also ends after 30 minutes without a " + tripUnit + " "
 			+ "(2 hours for raids, the Inferno and the Fight Caves).");
 		reset.addActionListener(e ->
 		{

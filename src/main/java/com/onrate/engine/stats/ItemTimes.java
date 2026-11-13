@@ -34,8 +34,8 @@ public final class ItemTimes
 	public static final int MIN_TIMED_RAIDS = 5;
 	/** Timed kills needed before your own average replaces the estimate (any boss that isn't a raid). */
 	public static final int MIN_TIMED_KILLS = 20;
-	/** Timed delves of one level needed before your own average replaces the estimate for that level. */
-	public static final int MIN_TIMED_DELVES = 20;
+	/** Timed delves of one level needed before your own average replaces the wiki time for that level: the first one counts, so a player who struggles at delve 7 or 8 gets their own time early. */
+	public static final int MIN_TIMED_DELVES = 1;
 
 	private ItemTimes()
 	{
@@ -49,6 +49,8 @@ public final class ItemTimes
 		boolean usesOwn;
 		boolean lowConfidence;
 		String basis;
+		/** Titles of the wiki guides behind the estimated part of the time, without repeats. */
+		List<String> guides = new ArrayList<>();
 		/** The part of a combined page the chances are taken from when there are no kills, else null. */
 		BossPart assumedPart;
 	}
@@ -99,7 +101,9 @@ public final class ItemTimes
 
 	private static String unit(BossDefinition boss)
 	{
-		return boss.getRaid() != null ? "raid" : "kill";
+		// the time is per kill, not per reward roll, so a rolls boss (Tempoross, Wintertodt) stays "kill"
+		String one = Tracker.unitOne(boss);
+		return "roll".equals(one) ? "kill" : one;
 	}
 
 	private static void addBoss(List<ItemTime> out, Tracker tracker, KillTimes web, RaidSettings raids,
@@ -142,6 +146,10 @@ public final class ItemTimes
 			ItemTime item = new ItemTime(boss.getName(), row.getShownLabel(), row.getIconItem(), drop != null && drop.isPet(),
 				hasAny(row), time.seconds / chance, time.seconds, chance, time.estimated, time.usesOwn, time.lowConfidence,
 				boss.getRaid() != null, time.basis, unit(boss)).withReceived(row.getReceived());
+			if (time.estimated)
+			{
+				item.withGuides(time.guides);
+			}
 			if ("Yama".equals(boss.getName()) && row.getIconItem() != null && row.getIconItem().startsWith("Oathplate ") && !hasAny(row))
 			{
 				item.withHint(OathplateShards.describe(new double[]{chance}, time.seconds));
@@ -187,6 +195,7 @@ public final class ItemTimes
 		boolean usesOwn = false;
 		boolean low = false;
 		List<String> bases = new ArrayList<>();
+		List<String> guides = new ArrayList<>();
 		for (BossPart part : boss.getParts())
 		{
 			int n = counts == null ? 0 : counts.getOrDefault(part.getName(), 0);
@@ -204,6 +213,13 @@ public final class ItemTimes
 			estimated |= p.estimated;
 			usesOwn |= p.usesOwn;
 			low |= p.lowConfidence;
+			for (String g : p.guides)
+			{
+				if (!guides.contains(g))
+				{
+					guides.add(g);
+				}
+			}
 			bases.add(part.getName() + ": " + p.basis);
 		}
 		if (weights > 0)
@@ -214,6 +230,7 @@ public final class ItemTimes
 			result.usesOwn = usesOwn;
 			result.lowConfidence = low;
 			result.basis = String.join(" ", bases);
+			result.guides = guides;
 			return result;
 		}
 		// nothing done here yet: the first mode that has a time, with its own chances
@@ -252,6 +269,13 @@ public final class ItemTimes
 		result.seconds = e.getSecondsPerKill();
 		result.estimated = true;
 		result.lowConfidence = e.isLowConfidence();
+		for (String g : e.getGuides())
+		{
+			if (g != null && !result.guides.contains(g))
+			{
+				result.guides.add(g);
+			}
+		}
 		result.basis = String.format(Locale.ROOT, "Wiki rate: %s %ss an hour, from the OSRS Wiki's money-making guide. It includes banking and assumes strong gear and stats, "
 				+ "so most players are slower. Your own average takes over at %d timed %ss; you have %d.",
 			trim(e.getKillsPerHour()), unit, need, unit, have);
@@ -264,6 +288,24 @@ public final class ItemTimes
 	}
 
 	// ---- Doom of Mokhaiotl
+
+	/**
+	 * Seconds one delve takes at the levels you did (each level at your own average, else the wiki time), the
+	 * figure the Time page uses for Doom. NaN with no delves of yours or no time to go on.
+	 */
+	public static double doomSecondsPerDelve(Tracker tracker, KillTimes web, BossDefinition boss, BossStats stats)
+	{
+		List<ItemTime> out = new ArrayList<>();
+		addDoom(out, tracker, web, boss, stats);
+		for (ItemTime t : out)
+		{
+			if ("delve".equals(t.getUnit()) && t.getSecondsPerKill() > 0)
+			{
+				return t.getSecondsPerKill();
+			}
+		}
+		return Double.NaN;
+	}
 
 	private static void addDoom(List<ItemTime> out, Tracker tracker, KillTimes web, BossDefinition boss, BossStats stats)
 	{

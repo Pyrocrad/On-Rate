@@ -39,7 +39,7 @@ public class TfaSettingTest
 		Method m = ExpectedDropsConfig.class.getMethod("tfaTeamChance");
 		ConfigItem item = m.getAnnotation(ConfigItem.class);
 		assertEquals("tfaSoloDuoChance", item.keyName());
-		assertEquals("TFA team (%)", item.name());
+		assertEquals("Fractured Archive team purple chance (%)", item.name());
 		assertEquals(6.25, new ExpectedDropsConfig()
 		{
 		}.tfaTeamChance(), 0);

@@ -13,6 +13,37 @@ import org.junit.Test;
 public class TextsTest
 {
 	@Test
+	public void tripCardNamesTheBossesUnit()
+	{
+		assertEquals("Last kill just now", Texts.tripIdle(0, 30, "kill"));
+		assertEquals("Last raid just now", Texts.tripIdle(1, 120, "raid"));
+		assertEquals("Last chest just now", Texts.tripIdle(1, 30, "chest"));
+		assertEquals("Last delve just now", Texts.tripIdle(1, 30, "delve"));
+		assertEquals("Last run just now", Texts.tripIdle(1, 30, "run"));
+		assertEquals("Last roll just now", Texts.tripIdle(1, 30, "roll"));
+		assertEquals("Idle 10 min \u00b7 ends in 20 min", Texts.tripIdle(10, 30, "raid"));
+		assertEquals("Idle 40 min", Texts.tripIdle(40, 30, "raid"));
+		assertEquals("The next kill starts a new trip. A trip also ends after 30 minutes without a kill "
+			+ "(2 hours for raids, the Inferno and the Fight Caves).", Texts.tripResetTip("kill"));
+		assertTrue(Texts.tripResetTip("chest").startsWith("The next chest starts a new trip."));
+		assertTrue(Texts.tripResetTip("chest").contains("without a chest "));
+	}
+
+	@Test
+	public void collectionLogLineSaysWhatIsLeft()
+	{
+		assertEquals("1 boss you killed not loaded yet", Texts.setupHeader(1, 10, 50));
+		assertEquals("3 bosses you killed not loaded yet", Texts.setupHeader(3, 0, 50));
+		assertEquals("Collection log: 0 of 50 pages opened", Texts.setupHeader(0, 0, 50));
+		assertEquals("Collection log: 0 of 1 page opened", Texts.setupHeader(0, 0, 1));
+		assertEquals("Collection log: 1 page not opened yet", Texts.setupHeader(0, 49, 50));
+		assertEquals("Collection log: 18 pages not opened yet", Texts.setupHeader(0, 32, 50));
+		// nothing left (or nothing to load): no line
+		assertNull(Texts.setupHeader(0, 50, 50));
+		assertNull(Texts.setupHeader(0, 0, 0));
+	}
+
+	@Test
 	public void noneSaysHowManyHaveNone()
 	{
 		assertEquals("74% have none", Texts.luckShort(Poisson.shares(0, 0.30), 0));
@@ -31,6 +62,27 @@ public class TextsTest
 		// 2 of 1.65: the middle of the range
 		assertEquals("about average", Texts.luckShort(Poisson.shares(2, 1.65), 2));
 		assertEquals("18% of players have fewer, 15% as many, 67% more", Texts.sharesLine(Poisson.shares(4, 5.67), 4));
+	}
+
+	@Test
+	public void tripRowsSayTooEarlyUnderHalfAnExpectedUnique()
+	{
+		assertEquals("Too early", Texts.tripVerdict(com.onrate.engine.math.Luck.of(1, 0.03), 0.03));
+		assertEquals("Too early", Texts.tripVerdict(com.onrate.engine.math.Luck.of(0, 0.49), 0.49));
+		assertNull(Texts.tripVerdict(Double.NaN, 0));
+		assertEquals(com.onrate.engine.math.Verdict.labelOf(0.02), Texts.tripVerdict(0.02, 2.09));
+		assertEquals(com.onrate.engine.math.Verdict.labelOf(0.97), Texts.tripVerdict(0.97, 0.84));
+	}
+
+	@Test
+	public void tripRowTexts()
+	{
+		assertEquals("3 min", Texts.tripLength(3 * 60_000L));
+		assertEquals("1h 22m", Texts.tripLength(82 * 60_000L));
+		assertEquals("under 1 min", Texts.tripLength(20_000L));
+		assertEquals("96 kills \u00b7 3 uniques", Texts.tripCounts(96, "kills", 3));
+		assertEquals("240 kills \u00b7 no uniques", Texts.tripCounts(240, "kills", 0));
+		assertEquals("4 raids \u00b7 1 unique", Texts.tripCounts(4, "raids", 1));
 	}
 
 	@Test
@@ -118,6 +170,20 @@ public class TextsTest
 		assertEquals("drier than 70%", Texts.luckPercent(0.30));
 		assertEquals("drier than 99.99% (<1 in 10,000 players)", Texts.luckPercent(0.00001));
 		assertEquals("drier than 97% (1 in 33 players)", Texts.luckPercent(0.03));
+	}
+
+	@Test
+	public void hoverNoteRepeatsTheTileWording()
+	{
+		// 4 of 5.67: drier than 67%, and the tile says 1 in 3 as dry
+		assertEquals(" (1 in 3 as dry)", Texts.luckShortNote(Poisson.shares(4, 5.67), 4));
+		// 1 of 0.16: luckier than 85%, the tile says 1 in 7 as lucky
+		assertEquals(" (1 in 7 as lucky)", Texts.luckShortNote(Poisson.shares(1, 0.16), 1));
+		// none received: the tile's "74% have none"
+		assertEquals(" (74% have none)", Texts.luckShortNote(Poisson.shares(0, 0.30), 0));
+		// nothing to add for "about average" or without shares
+		assertEquals("", Texts.luckShortNote(Poisson.shares(2, 1.65), 2));
+		assertEquals("", Texts.luckShortNote(null, 2));
 	}
 
 	@Test

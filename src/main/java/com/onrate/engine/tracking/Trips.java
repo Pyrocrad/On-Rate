@@ -35,6 +35,14 @@ final class Trips
 	private Trip trip;
 	/** This boss's numbers just before the kill being counted (for the trip card and Recent). */
 	private Trip beforeThisKill;
+	/** Most finished trips kept for the Recent tab. */
+	static final int MAX_FINISHED = 5;
+	/** Trips shorter than this many kills are not listed: too few to say anything. */
+	static final int MIN_LISTED_KILLS = 3;
+	/** Finished trips of this session, newest first. Not saved, like the trip itself. */
+	private final List<TripStats> finished = new ArrayList<>();
+	/** The trip already archived into {@link #finished} (or skipped), so it is never listed twice. */
+	private Trip archived;
 
 	Trips(TrackerContext ctx, Statistics statistics, SharedItems sharedItems, List<Note> outbox)
 	{
@@ -56,11 +64,14 @@ final class Trips
 	{
 		trip = null;
 		beforeThisKill = null;
+		finished.clear();
+		archived = null;
 	}
 
-	/** This boss was reset: its trip ends. */
+	/** This boss was reset: its trip ends, and its finished trips go with it. */
 	void forget(String bossName)
 	{
+		finished.removeIf(t -> t.getBoss().equals(bossName));
 		if (trip != null && trip.boss.equals(bossName))
 		{
 			trip = null;
@@ -131,6 +142,11 @@ final class Trips
 	void beforeKill(BossDefinition boss, long nowMillis)
 	{
 		beforeThisKill = null;
+		// the numbers are still the old trip's final ones here, before this kill is counted
+		if (trip != null && !continuesTrip(boss, nowMillis))
+		{
+			archiveTrip();
+		}
 		BossStats s = statistics.stats(boss.getName(), ctx.settings());
 		if (s == null)
 		{
@@ -159,6 +175,8 @@ final class Trips
 			trip.lastMillis = nowMillis;
 			return;
 		}
+		// normally archived by beforeKill already; this covers a kill count message with no beforeKill
+		archiveTrip();
 		BossStats s = statistics.stats(boss.getName(), ctx.settings());
 		if (s == null)
 		{
@@ -192,7 +210,49 @@ final class Trips
 	/** Forget the current trip; the next kill starts a new one. */
 	void resetTrip()
 	{
+		archiveTrip();
 		trip = null;
+	}
+
+	/** Lists the current trip as finished (once), when it has enough kills. */
+	private void archiveTrip()
+	{
+		if (trip == null || trip == archived)
+		{
+			return;
+		}
+		archived = trip;
+		TripStats stats = tripStats();
+		if (stats == null || stats.getKills() < MIN_LISTED_KILLS)
+		{
+			return;
+		}
+		finished.add(0, stats);
+		while (finished.size() > MAX_FINISHED)
+		{
+			finished.remove(finished.size() - 1);
+		}
+	}
+
+	/**
+	 * The latest finished trips, newest first (at most {@link #MAX_FINISHED}). A current trip that
+	 * has already been idle past its limit counts as finished too, so it shows without waiting
+	 * for the next kill to end it.
+	 */
+	List<TripStats> recentTrips(long nowMillis)
+	{
+		List<TripStats> out = new ArrayList<>();
+		BossDefinition boss = trip == null ? null : catalog.byName(trip.boss);
+		if (boss != null && trip != archived && nowMillis - trip.lastMillis > tripIdleMillis(boss))
+		{
+			TripStats current = tripStats();
+			if (current != null && current.getKills() >= MIN_LISTED_KILLS)
+			{
+				out.add(current);
+			}
+		}
+		out.addAll(finished);
+		return out.size() > MAX_FINISHED ? new ArrayList<>(out.subList(0, MAX_FINISHED)) : out;
 	}
 
 	/** The current trip's numbers, or null when there is no trip. */

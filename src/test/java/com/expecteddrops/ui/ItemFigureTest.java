@@ -438,6 +438,8 @@ public class ItemFigureTest
 		strips(bosses, bossStrips);
 		int itemRow = itemStrips.get(0).getParent().getParent().getParent().getHeight();
 		java.awt.Container bossRowParent = bossStrips.get(0).getParent().getParent();
-		assertEquals(bossRowParent.getHeight(), itemRow);
+		// a long boss name now wraps onto two lines (name wrapping), so the Bosses row may be taller; the figure never is
+		assertTrue("the figure makes the row taller: " + itemRow + " vs " + bossRowParent.getHeight(),
+			itemRow <= bossRowParent.getHeight());
 	}
 }

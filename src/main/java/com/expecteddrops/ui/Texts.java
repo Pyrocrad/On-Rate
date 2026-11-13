@@ -18,6 +18,51 @@ final class Texts
 	{
 	}
 
+	/**
+	 * Trip card: how long since the last completion, and when the trip ends by itself. {@code unitOne} is
+	 * the boss's word for one ("kill", "raid", "chest"...), {@code limitMinutes} the idle limit.
+	 */
+	static String tripIdle(long idleMinutes, long limitMinutes, String unitOne)
+	{
+		if (idleMinutes < 2)
+		{
+			return "Last " + unitOne + " just now";
+		}
+		return limitMinutes > idleMinutes
+			? String.format(java.util.Locale.ROOT, "Idle %d min \u00b7 ends in %d min", idleMinutes, limitMinutes - idleMinutes)
+			: String.format(java.util.Locale.ROOT, "Idle %d min", idleMinutes);
+	}
+
+	/** Trip card: tooltip of the "New trip" button, with the boss's word for one ("kill", "raid", "chest"...). */
+	static String tripResetTip(String unitOne)
+	{
+		return "The next " + unitOne + " starts a new trip. A trip also ends after 30 minutes without a " + unitOne + " "
+			+ "(2 hours for raids, the Inferno and the Fight Caves).";
+	}
+
+	/**
+	 * The collection log line: what is left to open, never what is done. {@code killedBosses} counts bosses
+	 * (not pages) you killed whose page is not loaded yet; {@code done} of {@code total} log pages are loaded.
+	 * Null when nothing is left, because the line is then hidden.
+	 */
+	static String setupHeader(int killedBosses, int done, int total)
+	{
+		if (killedBosses > 0)
+		{
+			return String.format(java.util.Locale.ROOT, "%,d boss%s you killed not loaded yet", killedBosses, killedBosses == 1 ? "" : "es");
+		}
+		int left = total - done;
+		if (total < 1 || left < 1)
+		{
+			return null;
+		}
+		if (done <= 0)
+		{
+			return String.format(java.util.Locale.ROOT, "Collection log: 0 of %,d page%s opened", total, total == 1 ? "" : "s");
+		}
+		return String.format(java.util.Locale.ROOT, "Collection log: %,d page%s not opened yet", left, left == 1 ? "" : "s");
+	}
+
 	/** Boss page: a log page of this boss was opened but could not be read. */
 	static final String LOG_PAGE_UNREADABLE = "Log page opened but not readable. The game may have changed; please report it.";
 
@@ -673,6 +718,16 @@ final class Texts
 		return luckShort(Luck.tieAware(fewer, same));
 	}
 
+	/**
+	 * The tile wording as a bracket for the end of a hover sentence: " (1 in 3 as dry)", or "" when
+	 * there is nothing to add ("about average", or no shares).
+	 */
+	static String luckShortNote(double[] shares, int received)
+	{
+		String text = luckShort(shares, received);
+		return text.isEmpty() || text.equals("about average") ? "" : " (" + text + ")";
+	}
+
 	/** The same from the luck value alone (GP value, the luck graph). */
 	static String luckShort(double luck)
 	{
@@ -708,6 +763,39 @@ final class Texts
 	static boolean isQuiet(com.onrate.engine.stats.RowStats r)
 	{
 		return r != null && !r.isAny() && r.getReceived() == 0 && r.getExpected() < TOO_EARLY_BELOW;
+	}
+
+	/**
+	 * The verdict word for a finished trip in the Recent list: "Too early" under
+	 * {@link #TOO_EARLY_BELOW} expected uniques (a handful of kills can't tell dry from lucky), else the
+	 * usual verdict word. Null when nothing was expected.
+	 */
+	static String tripVerdict(double luck, double expected)
+	{
+		if (Double.isNaN(luck) || expected <= 0)
+		{
+			return null;
+		}
+		return expected < TOO_EARLY_BELOW ? "Too early" : Verdict.labelOf(luck);
+	}
+
+	/** A trip's length as "3 min" or "1h 22m"; "under 1 min" when shorter than a minute. */
+	static String tripLength(long millis)
+	{
+		long minutes = Math.max(0, millis / 60_000);
+		if (minutes < 1)
+		{
+			return "under 1 min";
+		}
+		return minutes >= 60 ? String.format(java.util.Locale.ROOT, "%dh %02dm", minutes / 60, minutes % 60) : minutes + " min";
+	}
+
+	/** First line of a trip row: "96 kills \u00b7 3 uniques" (units as the boss calls them, e.g. "kills" or "raids"). */
+	static String tripCounts(int kills, String units, int uniques)
+	{
+		String unit = kills == 1 && units.endsWith("s") ? units.substring(0, units.length() - 1) : units;
+		return String.format(java.util.Locale.ROOT, "%,d %s \u00b7 %s", kills, unit,
+			uniques == 0 ? "no uniques" : uniques == 1 ? "1 unique" : uniques + " uniques");
 	}
 
 	/**
@@ -1131,6 +1219,25 @@ final class Texts
 		}
 		return String.format(java.util.Locale.ROOT, "%s of players have fewer, %s as many%s", pct(fewer), pct(same),
 			more < 0.0005 ? "" : ", " + pct(more) + " more");
+	}
+
+	/** Marks for a unique count clearly above / below expected (a plain +/- when the font has no triangles). */
+	static final String MARK_MORE = "\u25b2";
+	static final String MARK_FEWER = "\u25bc";
+
+	/**
+	 * The mark after a Recent unique count: more than expected (luck above the Verdict band) or fewer (below it),
+	 * and nothing inside the band, when luck or expected is unknown, or nothing was expected. Neutral on purpose:
+	 * no word, and no "too early" gate, because the hover gives the expected number.
+	 */
+	static String uniquesMark(double luck, double expected, boolean triangles)
+	{
+		if (Double.isNaN(luck) || expected <= 0 || (luck >= Verdict.DRY_BELOW && luck <= Verdict.SPOONED_ABOVE))
+		{
+			return "";
+		}
+		boolean more = luck > Verdict.SPOONED_ABOVE;
+		return triangles ? (more ? MARK_MORE : MARK_FEWER) : (more ? "+" : "-");
 	}
 
 	/** First letter upper case, for a short line used on its own. */

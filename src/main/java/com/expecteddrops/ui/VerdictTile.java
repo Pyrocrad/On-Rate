@@ -153,15 +153,37 @@ class VerdictTile extends JPanel
 		{
 			return false;
 		}
-		java.awt.FontMetrics fm = label.getFontMetrics(label.getFont());
-		StringBuilder shown = new StringBuilder();
+		String text = wrapIfLong(plain, label.getFontMetrics(label.getFont()), room, 0);
+		if (!text.equals(label.getText()))
+		{
+			label.setText(text);
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * {@code plain} as it is when it fits {@code room} pixels in the font of {@code fm}, otherwise broken at spaces into
+	 * lines of at most {@code room} pixels, as an HTML string (only then: text that needs no break stays plain).
+	 * Measured with the real font, because a CSS width in an HTML label is not in pixels.
+	 *
+	 * @param maxLines 0 for as many lines as it takes; otherwise at most this many, the last one ending in "..."
+	 *     when the rest of the name does not fit (and a single word wider than the room is cut the same way)
+	 */
+	static String wrapIfLong(String plain, java.awt.FontMetrics fm, int room, int maxLines)
+	{
+		if (plain == null || plain.isEmpty() || room <= 0)
+		{
+			return plain;
+		}
+		java.util.List<String> lines = new java.util.ArrayList<>();
 		StringBuilder line = new StringBuilder();
 		for (String word : plain.split(" "))
 		{
 			String longer = line.length() == 0 ? word : line + " " + word;
 			if (line.length() > 0 && fm.stringWidth(longer) > room)
 			{
-				shown.append(Texts.html(line.toString())).append("<br>");
+				lines.add(line.toString());
 				line = new StringBuilder(word);
 			}
 			else
@@ -169,14 +191,45 @@ class VerdictTile extends JPanel
 				line = new StringBuilder(longer);
 			}
 		}
-		shown.append(Texts.html(line.toString()));
-		String text = shown.indexOf("<br>") < 0 ? plain : "<html>" + shown + "</html>";
-		if (!text.equals(label.getText()))
+		lines.add(line.toString());
+		if (maxLines > 0)
 		{
-			label.setText(text);
-			return true;
+			while (lines.size() > maxLines)
+			{
+				// the rest of the name goes onto the last line, which is then cut short
+				String last = lines.remove(lines.size() - 1);
+				lines.set(lines.size() - 1, lines.get(lines.size() - 1) + " " + last);
+			}
+			for (int i = 0; i < lines.size(); i++)
+			{
+				boolean overflow = fm.stringWidth(lines.get(i)) > room;
+				if (overflow)
+				{
+					lines.set(i, ellipsize(lines.get(i), fm, room));
+				}
+			}
 		}
-		return false;
+		if (lines.size() == 1)
+		{
+			return lines.get(0);
+		}
+		StringBuilder shown = new StringBuilder("<html>");
+		for (int i = 0; i < lines.size(); i++)
+		{
+			shown.append(i > 0 ? "<br>" : "").append(Texts.html(lines.get(i).replace("&", "&amp;")));
+		}
+		return shown.append("</html>").toString();
+	}
+
+	/** {@code text} cut from the end, with "..." added, until it fits {@code room} pixels. */
+	private static String ellipsize(String text, java.awt.FontMetrics fm, int room)
+	{
+		String cut = text;
+		while (cut.length() > 1 && fm.stringWidth(cut + "...") > room)
+		{
+			cut = cut.substring(0, cut.length() - 1);
+		}
+		return cut.trim() + "...";
 	}
 
 	void set(String verdict, Color color, String numbersText, String luckText, String tip)

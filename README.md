@@ -21,18 +21,18 @@ Every boss has a drop rate and you have a kill count. On Rate does the sum for y
 - **How lucky each drop really was:** hover any item for its drop rate, your dry streak and how many players would have fewer or more. The **Single drops** view lists your luckiest drops and longest waits, each judged by how long it took against its drop rate.
 - **History per boss:** the kills On Rate saw and what they dropped, and how long each kill or raid took (read from the game's own time message). The boss page shows your average time.
 - **Your best way to raid:** raid pages show your purple chance and GP value an hour for each setup you did (team size, mode or raid level), your personal bests, and your points over your last 40 raids.
-- **Live while you play:** a trip card for the boss you are killing (kills, uniques, expected, value per hour) and an optional in-game overlay. Raid purple chances use your own raid points, and at Nex, Yama, the Hueycoatl, Corp and Zalcano it counts your team.
-- **Time to get what you're missing:** the **Time** page shows how long, on average, each item you don't have takes to get, including every step of the Ladlor chart. [How it works](docs/HOW-IT-WORKS.md#the-time-page).
+- **Live while you play:** a trip card for the boss you are killing (kills, uniques, expected, value per hour) and an optional in-game overlay. Raid purple chances use your own raid points, and at Nex, Yama, the Hueycoatl, Corp and Zalcano it counts your team (History shows your kills by team size).
+- **Time to get what you're missing:** the **Time** page shows how long, on average, each item you don't have takes to get, including every step of the Ladlor's chart. [How it works](docs/HOW-IT-WORKS.md#the-time-page).
 - **Your past drops, imported:** it reads them from the collection log, then updates by itself after every kill.
 - **Private:** no web requests. Everything is saved in RuneLite's own settings, per account. The only files it reads are Raid Data Tracker's (read only, never written).
 
 <table>
 <tr>
-<td align="center" valign="top"><img src="docs/time-ladlor-chart.png" width="330" alt="The Time page on the account overview, Ladlor chart list: each item you are missing in the chart's order, with its step and the average time to get it, such as Hallowfell at about 3.2 hours and Bow of Faerdhinen at about 128 hours"><br><sub><b>See how long each missing item will take</b><br>the Ladlor chart, step by step</sub></td>
+<td align="center" valign="top"><img src="docs/time-ladlor-chart.png" width="330" alt="The Time page on the account overview, Ladlor's chart list: each item you are missing in the chart's order, with its step and the average time to get it, such as Hallowfell at about 3.2 hours and Bow of Faerdhinen at about 128 hours"><br><sub><b>See how long each missing item will take</b><br>the Ladlor's chart, step by step</sub></td>
 <td align="center" valign="top"><img src="docs/single-drops.png" width="330" alt="Items tab, Single drops: your luckiest single drops (Spirit shield, Holy elixir, Ancient icon, Vorkath's head, Twisted bow) and your longest waits (Ancient icon, Bruma torch, Venator shard), each judged against its drop rate"><br><sub><b>See your luckiest drops and longest waits</b><br>each judged against its drop rate</sub></td>
 </tr>
 <tr>
-<td align="center" valign="top"><img src="docs/first-run.png" width="330" alt="The welcome guide on first run: three setup steps and the line '6 of 62 pages loaded, next: Nex', above the account overview"><br><sub><b>Know which log pages to open next</b><br>the welcome guide counts them off</sub></td>
+<td align="center" valign="top"><img src="docs/first-run.png" width="330" alt="The welcome guide on first run: three setup steps and the line '6 of 62 pages opened, next: Nex', above the account overview"><br><sub><b>Know which log pages to open next</b><br>the welcome guide counts them off</sub></td>
 <td align="center" valign="top"><img src="docs/fractured-archive.png" width="330" alt="The Fractured Archive boss page: 2 uniques against 4.22 expected, with a bar for each item showing what you got against what you should have"><br><sub><b>Find your boss by name</b><br>The Fractured Archive, got against expected</sub></td>
 </tr>
 </table>
@@ -71,6 +71,8 @@ The **?** at the top of the panel explains what you're looking at.
 - **Drops from before On Rate:** On Rate only sees drops that happen while it runs, so older ones have no known wait. If you remember the kill count, right-click the item (one you have) on its boss page and choose **I got this at kill...** (or *raid*, *delve*...), then type the count. It is added to the boss's History without a date and your dry streak counts from it. Open **Items > Single drops** on the account overview to see how lucky or dry that single drop was. Your unique counts and expected don't change. With several copies it asks if this was your first one; on pages with several modes or bosses (Chambers normal or Challenge Mode, Callisto or Artio...) it asks which one first.
 - Pets and Royal Titans prayer scrolls count once, like in the collection log.
 - Raids without points (everything from before you installed On Rate) use an average purple chance, which you can change under **Raid purple chances** in the settings.
+- If you also use the **Raid Data Tracker** plugin, On Rate can read your raids from it: their times, points, team size and raid level, so the raid pages use your whole raid history. Pick its folder under Raids in the settings; the choice is not kept, so do it again each time RuneLite starts. See [docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md#the-time-page).
+- Raids without points (everything from before you installed On Rate) use an average purple chance, which you can change under **Raid purple chances** in On Rate's settings (the two team sizes are under **Raids**).
 - If you also use the **Raid Data Tracker** plugin, On Rate can read your raids from it: their times, points, team size and raid level, so the raid pages use your whole raid history. See [docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md#the-time-page).
 
 Every part of the panel, every setting and every assumption is explained in [docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md). What changed in each version is in [CHANGELOG.md](CHANGELOG.md).
@@ -78,7 +80,7 @@ Every part of the panel, every setting and every assumption is explained in [doc
 ## If something looks off
 
 - **A boss says *Not synced*:** open that boss's page in your collection log. The line at the top of the panel lists the bosses you killed that aren't loaded yet.
-- **A boss page says *Too early*:** less than half a unique is expected so far, and a few kills can't tell dry from lucky. It becomes a verdict as kills add up.
+- **A boss page says *Too early*:** less than half a unique is expected so far, and a few kills can't tell dry from lucky. It becomes a verdict as kills add up. The trip card and the overlay say it under 0.05 of a unique expected.
 - **Everything looks dry:** the rates are solo base rates without boosts (see *Straight about the maths*). Raids from before you installed On Rate use an average purple chance, which you can change in the settings.
 - **Nex, Yama, Royal Titans or other team bosses look wrong:** check the **Team bosses** settings. Royal Titans and Yama count as duo by default.
 - **A drop rate looks wrong:** see Feedback below.
@@ -87,7 +89,7 @@ Every part of the panel, every setting and every assumption is explained in [doc
 
 ## Feedback
 
-Found a bug or a wrong drop rate, or have an idea? Join the **[On Rate Discord](https://discord.gg/gh9fx6T9zn)** or [open an issue on GitHub](https://github.com/Pyrocrad/On-Rate/issues/new/choose) (it asks for the details that help). For a wrong rate, please include the boss, the item and a link to the wiki page; for a bug, a screenshot helps a lot. Want to fix a rate yourself? See [CONTRIBUTING.md](CONTRIBUTING.md).
+Found a bug or a wrong drop rate, or have an idea? The **Feedback** link at the bottom of the panel opens the GitHub issue chooser in your browser. You can also join the **[On Rate Discord](https://discord.gg/gh9fx6T9zn)** or [open an issue on GitHub](https://github.com/Pyrocrad/On-Rate/issues/new/choose) (it asks for the details that help). For a wrong rate, please include the boss, the item and a link to the wiki page; for a bug, a screenshot helps a lot. Want to fix a rate yourself? See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 <details>
 <summary><b>Prefer another look?</b> Four more item views</summary>

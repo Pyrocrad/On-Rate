@@ -210,6 +210,12 @@ public class Tracker
 		dayCounts.forgetDaysForTest();
 	}
 
+	/** Kill count of each part of a combined page (Dagannoth Kings...), by part name; 0 when none is known. */
+	public synchronized Map<String, Integer> partKills(BossDefinition boss)
+	{
+		return Statistics.partKills(boss, ctx.state().peek(boss.getName()));
+	}
+
 	/** True when the player left this item out of the calculations for this boss. */
 	public synchronized boolean isLeftOut(String bossName, String itemName)
 	{
@@ -520,6 +526,12 @@ public class Tracker
 	public synchronized boolean addPastDrop(String bossName, String itemName, int kc, boolean first, String partName)
 	{
 		return historyBook.addPastDrop(bossName, itemName, kc, first, partName);
+	}
+
+	/** As {@link #addPastDrop(String, String, int, boolean, String)}, saying why a refused drop was refused. */
+	public synchronized PastDropResult tryAddPastDrop(String bossName, String itemName, int kc, boolean first, String partName)
+	{
+		return historyBook.tryAddPastDrop(bossName, itemName, kc, first, partName);
 	}
 
 	/** Group bosses: how many kills On Rate saw per team size. Empty for other bosses. */
@@ -997,8 +1009,12 @@ public class Tracker
 
 	/** {@link #unit} for one: "kill", "raid", "delve" or "chest". */
 	/** "1 kill", "5 kills": the unit of a boss for a count. */
-	private static String units(BossDefinition boss, int count)
+	public static String units(BossDefinition boss, int count)
 	{
+		if (boss == null)
+		{
+			return count == 1 ? "kill" : "kills";
+		}
 		return count == 1 ? unitOne(boss) : unit(boss);
 	}
 
@@ -1510,6 +1526,15 @@ public class Tracker
 	public synchronized void resetTrip()
 	{
 		trips.resetTrip();
+	}
+
+	/**
+	 * Trips finished since RuneLite opened or this account was loaded, newest first (at most 5).
+	 * Not saved. A trip left idle past its limit counts as finished.
+	 */
+	public synchronized List<TripStats> recentTrips(long nowMillis)
+	{
+		return trips.recentTrips(nowMillis);
 	}
 
 	/** The last unique On Rate saw in History (any boss), or null; with when History starts. */

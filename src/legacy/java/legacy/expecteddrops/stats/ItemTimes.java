@@ -31,7 +31,7 @@ public final class ItemTimes
 	/** Timed kills needed before your own average replaces the estimate (any boss that isn't a raid). */
 	public static final int MIN_TIMED_KILLS = 20;
 	/** Timed delves of one level needed before your own average replaces the estimate for that level. */
-	public static final int MIN_TIMED_DELVES = 20;
+	public static final int MIN_TIMED_DELVES = 1;
 
 	private ItemTimes()
 	{
@@ -95,7 +95,9 @@ public final class ItemTimes
 
 	private static String unit(BossDefinition boss)
 	{
-		return boss.getRaid() != null ? "raid" : "kill";
+		// the time is per kill, not per reward roll, so a rolls boss (Tempoross, Wintertodt) stays "kill"
+		String one = Tracker.unitOne(boss);
+		return "roll".equals(one) ? "kill" : one;
 	}
 
 	private static void addBoss(List<ItemTime> out, Tracker tracker, KillTimes web, RaidSettings raids,

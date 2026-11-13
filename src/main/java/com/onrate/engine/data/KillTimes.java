@@ -18,8 +18,12 @@ public final class KillTimes
 {
 	private static KillTimes bundled;
 
+	/** The only place a guide link may point at: the OSRS Wiki's article address. */
+	private static final String WIKI_BASE = "https://oldschool.runescape.wiki/w/";
+
 	private final Map<String, Raw> bosses;
 	private final Doom doom;
+	private final String guideBase;
 
 	/** A figure from the file: kills (raids, completions) per hour, and where it comes from. */
 	public static final class Estimate
@@ -111,6 +115,7 @@ public final class KillTimes
 
 	private static final class FileFormat
 	{
+		String guideUrl;
 		Map<String, Raw> bosses;
 		Doom doom;
 	}
@@ -119,6 +124,7 @@ public final class KillTimes
 	{
 		this.bosses = file.bosses == null ? Collections.emptyMap() : file.bosses;
 		this.doom = file.doom == null ? new Doom() : file.doom;
+		this.guideBase = file.guideUrl;
 	}
 
 	public static KillTimes load(Gson gson, Reader reader)
@@ -194,5 +200,33 @@ public final class KillTimes
 	public Doom doom()
 	{
 		return doom;
+	}
+
+	/**
+	 * The address of the OSRS Wiki page with this title (a guide from {@link Estimate#getGuides()}): spaces become
+	 * underscores and anything else a link can't hold is percent-encoded, while {@code ' ( ) /} and letters and digits
+	 * stay as they are. Null for an empty title, or when the file's base address is not the OSRS Wiki's.
+	 */
+	public String guideUrl(String title)
+	{
+		if (title == null || title.trim().isEmpty() || !WIKI_BASE.equals(guideBase))
+		{
+			return null;
+		}
+		StringBuilder sb = new StringBuilder(WIKI_BASE);
+		for (byte b : title.trim().replace(' ', '_').getBytes(StandardCharsets.UTF_8))
+		{
+			char c = (char) (b & 0xff);
+			if (c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || "_-.~'()/,:!".indexOf(c) >= 0)
+			{
+				sb.append(c);
+			}
+			else
+			{
+				sb.append('%').append(Character.toUpperCase(Character.forDigit((b >> 4) & 0xf, 16)))
+					.append(Character.toUpperCase(Character.forDigit(b & 0xf, 16)));
+			}
+		}
+		return sb.toString();
 	}
 }

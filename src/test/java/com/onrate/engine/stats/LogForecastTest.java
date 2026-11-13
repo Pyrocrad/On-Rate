@@ -79,4 +79,17 @@ public class LogForecastTest
 		// within a few percent of half
 		assertEquals(0.5, doneByHalf / (double) players, 0.04);
 	}
+
+	@Test
+	public void severalItemsAtDifferentChances()
+	{
+		// Grotesque Guardians: gloves 1/250, hammer 1/375, core 1/500 (each item is its own roll, chances multiply)
+		double[] p = {1 / 250.0, 1 / 375.0, 1 / 500.0};
+		assertEquals(592, LogForecast.raidsFor(p, 0.5));
+		assertEquals(1334, LogForecast.raidsFor(p, 0.9));
+		// with the 1/3000 pet
+		double[] withPet = {1 / 250.0, 1 / 375.0, 1 / 500.0, 1 / 3000.0};
+		assertEquals(2133, LogForecast.raidsFor(withPet, 0.5));
+		assertEquals(6907, LogForecast.raidsFor(withPet, 0.9));
+	}
 }

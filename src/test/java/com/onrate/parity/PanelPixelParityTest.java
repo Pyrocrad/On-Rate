@@ -90,13 +90,47 @@ public class PanelPixelParityTest
 			// left out of the comparison (RaidSectionsTest covers them)
 			set(p, "raidExtras", false);
 			// the card look (lists in outlined cards, one pill and tab style) is new too: the comparison draws
-			// the old look, so it still checks every number and row pixel for pixel (CardLookTest covers the cards)
+			// the old look, so it still checks every number and row pixel for pixel (CardLookTest covers the cards); the Luck over time window row belongs to it too (LuckWindowTest)
 			set(p, "boxes", false);
 			// the line under the verdict taking turns with other facts is new: the original shows one line
 			set(p, "moreFacts", false);
+			// the trip card's "Too early" under 0.05 expected is new: the original shows a verdict from the first kill
+			set(p, "tripEarly", false);
+			// the Teams row (kills per team size) under History at group bosses is new: the original has none
+			// (RaidSectionsTest covers it)
+			set(p, "teamSplit", false);
 			// the View buttons (boss pages' ITEMS line, account Sort row) are new: the comparison draws the old layout
 			// (ViewChipTest covers the button)
 			set(p, "viewButtons", false);
+			// the Doom "Time · per level" row is new: the original has no Time row on a delve page (TimeHoverTest covers it)
+			set(p, "delveTimes", false);
+			// the "Trips this session" list on the Recent tab is new (TripListTest covers it)
+			set(p, "tripList", false);
+			// History's "show more" link (10, 50, all) is new: the comparison keeps the fixed 10 rows (HistoryMoreTest)
+			set(p, "historyMore", false);
+			// the "top 5 of N / show all" notes on the Pets groups and Recent are new: the original caps them without one
+			// (CappedListNotesTest covers the lists)
+			set(p, "cappedListNotes", false);
+			// the trip card's thin bar is gone: the original still draws it, so the comparison turns it back on
+			set(p, "tripBar", true);
+			// the collection log line says what is left to open (new wording); the original says what to load
+			set(p, "setupWording", false);
+			// the notes' width (Theme.TEXT_WIDTH instead of 190/170 px that clipped) is a fix: the original clips (NoteWidthTest)
+			set(p, "fixedNoteWidths", false);
+			// Higher-contrast bars is new (default off): pinned off so the comparison draws the old bar shades
+			// (PaletteBarContrastTest covers it)
+			com.expecteddrops.ui.Palette.setHigherContrast(false);
+			// the triangle after a coloured unique count on the Recent tab is new: the original draws the colour only
+			set(p, "uniqueMarks", false);
+			// long names breaking onto more lines is new: the original cuts them off with "..." (NameWrapTest covers the breaks)
+			set(p, "wrapNames", false);
+			// focusable item rows with a name and a tooltip on focus are new (ItemRowNamesTest covers them)
+			set(p, "itemNames", false);
+			// text colours lifted to a 4.5:1 contrast are new: the comparison draws the old colours
+			// (PaletteContrastTest covers them)
+			Field readable = Class.forName("com.expecteddrops.ui.Palette").getDeclaredField("readableText");
+			readable.setAccessible(true);
+			readable.set(null, false);
 		}
 		panelClass.getMethod("onActivate").invoke(p);
 		return p;

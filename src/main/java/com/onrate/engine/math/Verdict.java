@@ -26,6 +26,17 @@ public enum Verdict
 	public static final double SPOONED_ABOVE = 0.65;
 	/** Under this many expected uniques there is nothing to read yet ("Too early"). */
 	public static final double TOO_EARLY_BELOW = 0.5;
+	/**
+	 * The smaller cut-off for one trip (the trip card and the overlay): under this many expected uniques a trip
+	 * says "Too early" instead of a verdict. A trip is short by nature, so it keeps a lower bar than a boss page.
+	 */
+	public static final double TRIP_TOO_EARLY_BELOW = 0.05;
+
+	/** Whether a trip with this many uniques expected is too small to judge ({@code NaN} is not: it has its own dash). */
+	public static boolean tripTooEarly(double expected)
+	{
+		return expected < TRIP_TOO_EARLY_BELOW;
+	}
 
 	private final String label;
 

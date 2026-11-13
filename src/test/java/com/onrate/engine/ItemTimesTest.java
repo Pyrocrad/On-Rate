@@ -240,6 +240,29 @@ public class ItemTimesTest
 	}
 
 	@Test
+	public void aWikiBasedTimeNamesItsGuideAndYourOwnTimesDoNot()
+	{
+		ItemTime wiki = find("Zulrah", "Tanzanite fang");
+		assertNotNull(wiki);
+		assertTrue(wiki.isEstimated());
+		assertEquals(java.util.Collections.singletonList("Killing Zulrah"), wiki.guideTitles());
+		// a copy for "any unique" keeps the guides
+		assertEquals(wiki.guideTitles(), wiki.forAnyUnique(0.01).guideTitles());
+		zulrahKills(ItemTimes.MIN_TIMED_KILLS, 0);
+		ItemTime own = find("Zulrah", "Tanzanite fang");
+		assertFalse(own.isEstimated());
+		assertTrue(own.guideTitles().isEmpty());
+	}
+
+	@Test
+	public void doomHasNoGuideTitles()
+	{
+		ItemTime cloth = find("Doom of Mokhaiotl", "Mokhaiotl cloth");
+		assertNotNull(cloth);
+		assertTrue(cloth.guideTitles().isEmpty());
+	}
+
+	@Test
 	public void longTimesRead()
 	{
 		assertEquals("<1 min", ItemTime.formatLong(20));

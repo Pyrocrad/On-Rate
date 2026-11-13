@@ -1,6 +1,6 @@
 # Where the drop rates come from
 
-Every rate On Rate uses is in [`bosses.json`](../src/main/resources/com/expecteddrops/bosses.json). This page says where each one comes from and when it was last checked, so a question like "why does it say 1/381?" has an answer.
+Every rate On Rate uses is in [`bosses.json`](../src/main/resources/com/onrate/bosses.json). This page says where each one comes from and when it was last checked, so a question like "why does it say 1/381?" has an answer.
 
 Unless a line says otherwise, rates come from the boss's page on the [Old School RuneScape Wiki](https://oldschool.runescape.wiki), at full contribution (solo) and without diary, Combat Achievement or Slayer task boosts.
 

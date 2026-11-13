@@ -6,7 +6,7 @@ Thanks for helping. The most useful thing you can do is tell us when a number is
 
 Open a [Wrong drop rate](https://github.com/Pyrocrad/On-Rate/issues/new/choose) issue with the boss, the item, the rate On Rate uses (hover the item to see it) and a link to the OSRS Wiki page that states the rate.
 
-Want to fix it yourself? Rates live in `src/main/resources/com/expecteddrops/bosses.json`.
+Want to fix it yourself? Rates live in `src/main/resources/com/onrate/bosses.json`.
 
 1. Look the item up on the [OSRS Wiki](https://oldschool.runescape.wiki) and change its `rate`.
 2. Add a row to **Fixed in this check** in [docs/RATES.md](docs/RATES.md).

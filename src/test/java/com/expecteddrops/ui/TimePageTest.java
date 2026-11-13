@@ -61,11 +61,30 @@ public class TimePageTest
 		return ((Enum<?>) ((JComboBox<Object>) f.get(panel)).getSelectedItem()).name();
 	}
 
+	/** True when some text contains the part (a note may carry an extra sentence, such as the Slayer one). */
+	private static boolean anyContains(List<String> texts, String part)
+	{
+		for (String t : texts)
+		{
+			if (t.contains(part))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
 	private static void texts(Component c, List<String> out)
 	{
 		if (c instanceof JLabel && ((JLabel) c).getText() != null)
 		{
-			out.add(((JLabel) c).getText());
+			String text = ((JLabel) c).getText();
+			out.add(text);
+			// long names and notes wrap with <html> and <br>: also list the plain text a player reads
+			if (text.startsWith("<html>"))
+			{
+				out.add(text.replaceAll("<br\\s*/?>", " ").replaceAll("<[^>]*>", "").replaceAll("\\s+", " ").trim());
+			}
 		}
 		if (c instanceof Container)
 		{
@@ -171,7 +190,7 @@ public class TimePageTest
 
 	private static JComboBox<?> viewBox(Component c)
 	{
-		if (c instanceof JComboBox && ((JComboBox<?>) c).getItemCount() == 4 && "Ladlor chart".equals(String.valueOf(((JComboBox<?>) c).getItemAt(1))))
+		if (c instanceof JComboBox && ((JComboBox<?>) c).getItemCount() == 4 && "Ladlor's chart".equals(String.valueOf(((JComboBox<?>) c).getItemAt(1))))
 		{
 			return (JComboBox<?>) c;
 		}
@@ -218,13 +237,13 @@ public class TimePageTest
 		{
 			options.add(box.getItemAt(i).toString());
 		}
-		assertEquals(java.util.Arrays.asList("Items", "Ladlor chart", "Pets", "Raids"), options);
+		assertEquals(java.util.Arrays.asList("Items", "Ladlor's chart", "Pets", "Raids"), options);
 	}
 
 	@Test
 	public void theChartListIsInChartOrder() throws Exception
 	{
-		List<String> texts = pick(panel(tracker()), "Ladlor chart");
+		List<String> texts = pick(panel(tracker()), "Ladlor's chart");
 		assertTrue(texts.toString(), texts.contains("IN CHART ORDER"));
 		int first = texts.indexOf("Hallowfell");
 		int later = texts.indexOf("Bow of Faerdhinen");
@@ -239,7 +258,7 @@ public class TimePageTest
 		assertTrue(texts.toString(), texts.stream().anyMatch(t -> t.startsWith("~")));
 		assertFalse(texts.toString(), texts.contains("wiki"));
 		assertFalse(texts.toString(), texts.contains("yours"));
-		List<String> chart = pick(panel(tracker()), "Ladlor chart");
+		List<String> chart = pick(panel(tracker()), "Ladlor's chart");
 		assertTrue(chart.toString(), chart.stream().anyMatch(t -> t.startsWith("~")));
 		assertFalse(chart.toString(), chart.contains("wiki"));
 	}
@@ -254,7 +273,7 @@ public class TimePageTest
 			tracker.onChatMessage("Your Mad Angel kill count is: <col=ff0000>" + (i + 1) + "</col>.", at);
 			tracker.onChatMessage("Fight duration: <col=ff0000>1:00.00</col>.", at + 500);
 		}
-		List<String> chart = pick(panel(tracker), "Ladlor chart");
+		List<String> chart = pick(panel(tracker), "Ladlor's chart");
 		assertTrue(chart.toString(), chart.contains("yours"));
 		// the chart row says its step and what is missing
 		assertTrue(chart.toString(), chart.contains("Step 15 \u00b7 The Mad Angel"));
@@ -263,7 +282,7 @@ public class TimePageTest
 	@Test
 	public void theChartSaysHowMuchIsLeftInAll() throws Exception
 	{
-		List<String> chart = pick(panel(tracker()), "Ladlor chart");
+		List<String> chart = pick(panel(tracker()), "Ladlor's chart");
 		assertTrue(chart.toString(), chart.stream().anyMatch(t -> t.contains("items left, about") && t.contains(" h")));
 	}
 
@@ -443,6 +462,23 @@ public class TimePageTest
 	}
 
 	@Test
+	public void theNoticeIsNotTakenWhileThePanelIsNotOnScreenOrNoAccountIsLoaded() throws Exception
+	{
+		ExpectedDropsPanel panel = panel(tracker());
+		int[] marked = {0};
+		panel.setTimesNotice(() -> marked[0] == 0, () -> marked[0]++);
+		// a panel that is not on screen (as in tests) never takes the notice
+		panel.showTimesNoticeWhenReady();
+		assertEquals(0, marked[0]);
+		assertFalse(panel.isTimesNoticeVisible());
+		// nor does one still waiting for an account
+		panel.setProfileState(ExpectedDropsPanel.ProfileState.LOADING);
+		panel.showTimesNoticeWhenReady();
+		assertEquals(0, marked[0]);
+		assertFalse(panel.isTimesNoticeVisible());
+	}
+
+	@Test
 	public void showMeOpensTheTimePage() throws Exception
 	{
 		ExpectedDropsPanel panel = panel(tracker());
@@ -456,6 +492,19 @@ public class TimePageTest
 	}
 
 	@Test
+	public void showMeIsDisabledAndExplainedWhenTheItemsTabIsOff() throws Exception
+	{
+		ExpectedDropsPanel panel = new ExpectedDropsPanel(tracker(), null, () -> RAIDS, s -> -1, () -> { }, () -> false, () -> { }, name -> 0L,
+			() -> new ViewOptions(ItemView.TARGET_BARS, false, false, false, false, false));
+		panel.setTimesNotice(() -> true, () -> { });
+		panel.showTimesNoticeOnce();
+		javax.swing.JButton show = find(panel, "Show me");
+		assertFalse(show.isEnabled());
+		assertTrue(show.getToolTipText(), show.getToolTipText().contains("Items tab"));
+		assertTrue(panel.isTimesNoticeVisible());
+	}
+
+	@Test
 	public void theNoticeSaysWhereTheTimePageIsAndAboutRaidDataTracker()
 	{
 		String text = String.join(" ", ExpectedDropsPanel.timesNoticeParagraphs());
@@ -463,6 +512,9 @@ public class TimePageTest
 		assertTrue(text.contains("Raid Data Tracker"));
 		assertTrue(text.contains("only shows once"));
 		assertTrue(text.contains("purple chance by setup"));
+		// the folder is chosen by the player and not kept: the notice must not say raids are read at login
+		assertTrue(text.contains("each time RuneLite starts"));
+		assertFalse(text.contains("when you log in"));
 	}
 
 	private static javax.swing.JButton find(Component c, String text)
@@ -515,6 +567,31 @@ public class TimePageTest
 	}
 
 	@Test
+	public void aWikiBasedTimeRowNamesItsGuideInTheHover() throws Exception
+	{
+		// before any timed kills every time on the page is the wiki's: each hover names the guide it comes from
+		ExpectedDropsPanel panel = panel(tracker());
+		open(panel, ExpectedDropsPanel.TOP_TIME);
+		List<String> tips = new ArrayList<>();
+		tooltips(panel, tips);
+		List<String> withGuide = new ArrayList<>();
+		for (String t : tips)
+		{
+			if (t.contains("Wiki guide"))
+			{
+				withGuide.add(t);
+			}
+		}
+		assertFalse(tips.toString(), withGuide.isEmpty());
+		for (String t : withGuide)
+		{
+			assertTrue(t, t.contains("Time based on"));
+			assertTrue(t, t.contains("Right-click to open it on the wiki"));
+			assertFalse(t, t.toLowerCase(java.util.Locale.ROOT).contains("recommended"));
+		}
+	}
+
+	@Test
 	public void aTimeRowAlwaysComesWithItsSource() throws Exception
 	{
 		// whichever way it is: every hover that has the row also says where the time comes from
@@ -557,5 +634,27 @@ public class TimePageTest
 		String joined = String.join("\n", all);
 		assertTrue(joined, joined.contains("kill speed"));
 		assertFalse(joined, joined.contains("wiki's rate") || joined.contains("Wiki's rate") || joined.contains("Wiki rate:"));
+	}
+
+	@Test
+	public void theTimeListIsSavedAsAFourthFieldAndComesBack() throws Exception
+	{
+		ExpectedDropsPanel panel = panel(tracker());
+		List<String> saved = new ArrayList<>();
+		panel.showBoss(ExpectedDropsPanel.ACCOUNT);
+		panel.setAccountPageStore("1," + firstSort(panel) + "," + ExpectedDropsPanel.TOP_TIME + ",PETS", saved::add);
+		// restoring saves nothing, and the saved list is the one the page opens on
+		assertTrue(saved.toString(), saved.isEmpty());
+		List<String> out = new ArrayList<>();
+		texts(panel, out);
+		assertTrue(out.toString(), anyContains(out, "Pets you don't have, quickest first."));
+		// an unknown list name keeps the usual first list
+		ExpectedDropsPanel unknown = panel(tracker());
+		unknown.showBoss(ExpectedDropsPanel.ACCOUNT);
+		unknown.setAccountPageStore("1," + firstSort(unknown) + "," + ExpectedDropsPanel.TOP_TIME + ",NOPE", saved::add);
+		List<String> items = new ArrayList<>();
+		texts(unknown, items);
+		assertTrue(items.toString(), items.contains("QUICKEST"));
+		assertFalse(items.toString(), anyContains(items, "Pets you don't have, quickest first."));
 	}
 }

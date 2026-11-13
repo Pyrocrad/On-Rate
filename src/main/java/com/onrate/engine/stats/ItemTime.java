@@ -1,5 +1,7 @@
 package com.onrate.engine.stats;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -23,6 +25,7 @@ public class ItemTime
 	private final String basis;
 	private final String unit;
 	private String hint;
+	private List<String> guides = Collections.emptyList();
 	private int received;
 
 	ItemTime(String boss, String label, String iconItem, boolean pet, boolean have, double secondsPerDrop,
@@ -56,6 +59,21 @@ public class ItemTime
 		return this;
 	}
 
+	/**
+	 * Titles of the OSRS Wiki guides the wiki part of the time per kill comes from; empty when none of it does
+	 * (your own times only, Doom). Named without a get prefix on purpose: see EngineParityTest.
+	 */
+	public List<String> guideTitles()
+	{
+		return guides;
+	}
+
+	ItemTime withGuides(List<String> guides)
+	{
+		this.guides = guides == null ? Collections.emptyList() : Collections.unmodifiableList(new java.util.ArrayList<>(guides));
+		return this;
+	}
+
 	/** How many of the item you have (the collection log's count). */
 	public int getReceived()
 	{
@@ -69,7 +87,7 @@ public class ItemTime
 	public ItemTime forAnyUnique(double chancePerKill)
 	{
 		return new ItemTime(boss, "Any unique", iconItem, false, have, secondsPerKill / chancePerKill, secondsPerKill, chancePerKill,
-			estimated, usesOwn, lowConfidence, raid, basis, unit).withHint(hint);
+			estimated, usesOwn, lowConfidence, raid, basis, unit).withHint(hint).withGuides(guides);
 	}
 
 	ItemTime withReceived(int received)

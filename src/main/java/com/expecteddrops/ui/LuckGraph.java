@@ -7,15 +7,23 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
+import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.awt.geom.Line2D;
+import java.awt.Rectangle;
 import java.awt.RenderingHints;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import javax.swing.AbstractAction;
 import javax.swing.JComponent;
+import javax.swing.KeyStroke;
 import javax.swing.ToolTipManager;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
@@ -27,7 +35,9 @@ import net.runelite.client.ui.FontManager;
 class LuckGraph extends JComponent
 {
 	private static final int HEIGHT = 110;
-	private static final int PAD_LEFT = 44;
+	/** Smallest left margin; the real one is widened to fit the axis words (see {@link #leftPad}). */
+	private static final int PAD_LEFT_MIN = 44;
+	private static final String[] AXIS_WORDS = {"Spooned", "On rate", "Dry"};
 	private static final int PAD_RIGHT = 6;
 	private static final int PAD_TOP = 6;
 	private static final int PAD_BOTTOM = 16;
@@ -38,8 +48,17 @@ class LuckGraph extends JComponent
 	private static final Color LINE = new Color(225, 225, 225);
 
 	private List<HistoryPoint> points = new ArrayList<>();
+	/** The days the plot spans: first to last point, or the window set with {@link #setWindow}. */
+	private long fromDay;
+	private long toDay;
+	/** A window is on: the first point may be a carry-in from before it, and the hover says "in total". */
+	private boolean windowed;
 	/** The point the mouse is nearest to, or -1. */
 	private int hover = -1;
+	/** Left margin, measured from the axis-word font the first time it is needed. */
+	private int padLeft = -1;
+	/** True while the marker was put there with the keyboard (it goes when the focus does). */
+	private boolean keyboardHover;
 
 	LuckGraph()
 	{
@@ -47,6 +66,7 @@ class LuckGraph extends JComponent
 		setMaximumSize(new Dimension(Integer.MAX_VALUE, HEIGHT));
 		setAlignmentX(LEFT_ALIGNMENT);
 		ToolTipManager.sharedInstance().registerComponent(this);
+		installKeyboard();
 		addMouseMotionListener(new java.awt.event.MouseMotionAdapter()
 		{
 			@Override
@@ -79,6 +99,63 @@ class LuckGraph extends JComponent
 		return accessibleContext;
 	}
 
+	/**
+	 * Keyboard way to read the graph: Tab to it, then Left and Right (Home, End) move the marker from point to
+	 * point; the point's text is the same as the tooltip and is set as the description for screen readers.
+	 */
+	private void installKeyboard()
+	{
+		setFocusable(true);
+		addFocusListener(new FocusAdapter()
+		{
+			@Override
+			public void focusGained(FocusEvent e)
+			{
+				repaint();
+			}
+
+			@Override
+			public void focusLost(FocusEvent e)
+			{
+				if (keyboardHover)
+				{
+					keyboardHover = false;
+					setHover(-1);
+				}
+				repaint();
+			}
+		});
+		bindKey(KeyEvent.VK_LEFT, "markerLeft", () -> moveMarker(hover < 0 ? points.size() - 1 : hover - 1));
+		bindKey(KeyEvent.VK_RIGHT, "markerRight", () -> moveMarker(hover < 0 ? points.size() - 1 : hover + 1));
+		bindKey(KeyEvent.VK_HOME, "markerFirst", () -> moveMarker(0));
+		bindKey(KeyEvent.VK_END, "markerLast", () -> moveMarker(points.size() - 1));
+	}
+
+	private void bindKey(int key, String name, Runnable run)
+	{
+		getInputMap(WHEN_FOCUSED).put(KeyStroke.getKeyStroke(key, 0), name);
+		getActionMap().put(name, new AbstractAction()
+		{
+			@Override
+			public void actionPerformed(java.awt.event.ActionEvent e)
+			{
+				run.run();
+			}
+		});
+	}
+
+	private void moveMarker(int index)
+	{
+		if (points.isEmpty())
+		{
+			return;
+		}
+		int clamped = Math.max(0, Math.min(points.size() - 1, index));
+		keyboardHover = true;
+		setHover(clamped);
+		getAccessibleContext().setAccessibleDescription(textFor(clamped).replace("<br>", ", ").replaceAll("<[^>]*>", ""));
+	}
+
 	private void setHover(int index)
 	{
 		if (index != hover)
@@ -88,12 +165,16 @@ class LuckGraph extends JComponent
 		}
 	}
 
-	/** Index of the point whose x is closest to {@code x}, or -1 without points. */
+	/** Index of the point whose x is closest to {@code x}, or -1 without points. A carry-in from before the window is skipped. */
 	private int nearest(int x)
 	{
 		int best = -1;
 		for (int i = 0; i < points.size(); i++)
 		{
+			if (points.get(i).getDay() < fromDay)
+			{
+				continue;
+			}
 			if (best < 0 || Math.abs(xFor(points.get(i).getDay()) - x) < Math.abs(xFor(points.get(best).getDay()) - x))
 			{
 				best = i;
@@ -105,13 +186,53 @@ class LuckGraph extends JComponent
 	void setPoints(List<HistoryPoint> points)
 	{
 		this.points = points == null ? new ArrayList<>() : points;
+		windowed = false;
+		if (!this.points.isEmpty())
+		{
+			fromDay = this.points.get(0).getDay();
+			toDay = this.points.get(this.points.size() - 1).getDay();
+		}
 		hover = -1;
 		repaint();
 	}
 
+	/**
+	 * Draws {@code points} (see {@link LuckWindow#select}) over the days {@code from} to {@code to}. A first point before
+	 * {@code from} is drawn at the left edge, and the line runs flat to {@code to}.
+	 */
+	void setWindow(List<HistoryPoint> points, long from, long to)
+	{
+		this.points = points == null ? new ArrayList<>() : points;
+		fromDay = from;
+		toDay = Math.max(from, to);
+		windowed = true;
+		hover = -1;
+		repaint();
+	}
+
+	/** The left margin: the widest axis word plus 6 px (2 px in front, 4 px before the plot), never under 44. */
+	static int leftPad(FontMetrics fm)
+	{
+		int widest = 0;
+		for (String word : AXIS_WORDS)
+		{
+			widest = Math.max(widest, fm.stringWidth(word));
+		}
+		return Math.max(PAD_LEFT_MIN, widest + 6);
+	}
+
+	private int padLeft()
+	{
+		if (padLeft < 0)
+		{
+			padLeft = leftPad(getFontMetrics(FontManager.getRunescapeSmallFont()));
+		}
+		return padLeft;
+	}
+
 	private int plotWidth()
 	{
-		return Math.max(1, getWidth() - PAD_LEFT - PAD_RIGHT);
+		return Math.max(1, getWidth() - padLeft() - PAD_RIGHT);
 	}
 
 	private int plotHeight()
@@ -121,13 +242,12 @@ class LuckGraph extends JComponent
 
 	private int xFor(long day)
 	{
-		long first = points.get(0).getDay();
-		long last = points.get(points.size() - 1).getDay();
-		if (last == first)
+		if (toDay == fromDay)
 		{
-			return PAD_LEFT + plotWidth() / 2;
+			return padLeft() + plotWidth() / 2;
 		}
-		return PAD_LEFT + (int) Math.round((day - first) * (double) plotWidth() / (last - first));
+		long clamped = Math.max(fromDay, Math.min(toDay, day));
+		return padLeft() + (int) Math.round((clamped - fromDay) * (double) plotWidth() / (toDay - fromDay));
 	}
 
 	private int yFor(double luck)
@@ -149,11 +269,11 @@ class LuckGraph extends JComponent
 		double dry = Verdict.DRY_BELOW;
 		double spooned = Verdict.SPOONED_ABOVE;
 		g.setColor(withAlpha(ExpectedDropsPanel.luckColor(0.9), 40));
-		g.fillRect(PAD_LEFT, yFor(1), w, yFor(spooned) - yFor(1));
+		g.fillRect(padLeft(), yFor(1), w, yFor(spooned) - yFor(1));
 		g.setColor(withAlpha(ExpectedDropsPanel.luckColor(0.5), 40));
-		g.fillRect(PAD_LEFT, yFor(spooned), w, yFor(dry) - yFor(spooned));
+		g.fillRect(padLeft(), yFor(spooned), w, yFor(dry) - yFor(spooned));
 		g.setColor(withAlpha(ExpectedDropsPanel.luckColor(0.1), 40));
-		g.fillRect(PAD_LEFT, yFor(dry), w, yFor(0) - yFor(dry));
+		g.fillRect(padLeft(), yFor(dry), w, yFor(0) - yFor(dry));
 
 		g.setFont(FontManager.getRunescapeSmallFont());
 		g.setColor(ColorScheme.LIGHT_GRAY_COLOR);
@@ -163,7 +283,7 @@ class LuckGraph extends JComponent
 		g.drawString("Dry", 2, yFor(0) - 1);
 		g.setColor(ColorScheme.MEDIUM_GRAY_COLOR);
 		g.setStroke(new BasicStroke(1, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10, new float[]{3, 3}, 0));
-		g.drawLine(PAD_LEFT, yFor(0.5), PAD_LEFT + w, yFor(0.5));
+		g.drawLine(padLeft(), yFor(0.5), padLeft() + w, yFor(0.5));
 
 		if (points.isEmpty())
 		{
@@ -173,20 +293,20 @@ class LuckGraph extends JComponent
 
 		// dates under the plot: the first, the last and, when there is room, the middle one
 		g.setColor(ColorScheme.LIGHT_GRAY_COLOR);
-		long firstDay = points.get(0).getDay();
-		long lastDay = points.get(points.size() - 1).getDay();
+		long firstDay = fromDay;
+		long lastDay = toDay;
 		String first = LocalDate.ofEpochDay(firstDay).format(DATE);
 		String last = LocalDate.ofEpochDay(lastDay).format(DATE);
 		int baseline = getHeight() - 3;
-		g.drawString(first, PAD_LEFT, baseline);
+		g.drawString(first, padLeft(), baseline);
 		int lastWidth = g.getFontMetrics().stringWidth(last);
-		g.drawString(last, PAD_LEFT + w - lastWidth, baseline);
+		g.drawString(last, padLeft() + w - lastWidth, baseline);
 		if (lastDay - firstDay >= 4)
 		{
 			String middle = LocalDate.ofEpochDay((firstDay + lastDay) / 2).format(DATE);
 			int middleWidth = g.getFontMetrics().stringWidth(middle);
-			int mx = PAD_LEFT + (w - middleWidth) / 2;
-			if (mx > PAD_LEFT + g.getFontMetrics().stringWidth(first) + 6 && mx + middleWidth < PAD_LEFT + w - lastWidth - 6)
+			int mx = padLeft() + (w - middleWidth) / 2;
+			if (mx > padLeft() + g.getFontMetrics().stringWidth(first) + 6 && mx + middleWidth < padLeft() + w - lastWidth - 6)
 			{
 				g.drawString(middle, mx, baseline);
 			}
@@ -233,8 +353,15 @@ class LuckGraph extends JComponent
 			g.setStroke(new BasicStroke(2f));
 			g.drawOval(hx - 4, hy - 4, 9, 9);
 		}
+		// in a window the line stays flat from the last point to the last day of the window
+		if (latest.getDay() < toDay)
+		{
+			g.setColor(LINE);
+			g.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+			g.drawLine(xFor(latest.getDay()), yFor(latest.getLuck()), xFor(toDay), yFor(latest.getLuck()));
+		}
 		// the latest point, with its verdict beside it
-		int x = xFor(latest.getDay());
+		int x = xFor(Math.max(latest.getDay(), toDay));
 		int y = yFor(latest.getLuck());
 		Color latestColor = ExpectedDropsPanel.luckColor(latest.getLuck()).brighter();
 		g.setColor(LINE);
@@ -244,13 +371,93 @@ class LuckGraph extends JComponent
 		{
 			g.setFont(FontManager.getRunescapeSmallFont());
 			int tw = g.getFontMetrics().stringWidth(verdict);
-			int tx = Math.max(PAD_LEFT, Math.min(x - tw / 2, PAD_LEFT + w - tw));
-			// above the dot, or below it when the dot is near the top
-			int ty = y - 7 > PAD_TOP + 8 ? y - 7 : y + 15;
+			FontMetrics fm = g.getFontMetrics();
+			int[] spot = placeEndLabel(lineSegments(), x, y, tw, fm.getAscent(), fm.getDescent(),
+				padLeft(), padLeft() + w, 0, PAD_TOP + plotHeight());
+			if (spot[2] == 1)
+			{
+				// no clear spot: a dark backing keeps the word readable where the line passes behind it
+				g.setColor(withAlpha(ColorScheme.DARKER_GRAY_COLOR, 220));
+				g.fillRect(spot[0] - 2, spot[1] - fm.getAscent() - 1, tw + 4, fm.getAscent() + fm.getDescent() + 2);
+			}
 			g.setColor(latestColor);
-			g.drawString(verdict, tx, ty);
+			g.drawString(verdict, spot[0], spot[1]);
+		}
+		if (hasFocus())
+		{
+			g.setColor(Theme.ACCENT);
+			g.setStroke(new BasicStroke(1f));
+			g.drawRect(0, 0, getWidth() - 1, getHeight() - 1);
 		}
 		g.dispose();
+	}
+
+	/** The drawn polyline as straight segments (flat across days without a point, as in the paint). */
+	List<Line2D> lineSegments()
+	{
+		List<Line2D> out = new ArrayList<>();
+		for (int i = 1; i < points.size(); i++)
+		{
+			HistoryPoint a = points.get(i - 1);
+			HistoryPoint b = points.get(i);
+			int ax = xFor(a.getDay());
+			int ay = yFor(a.getLuck());
+			long dayBefore = b.getDay() - 1;
+			if (dayBefore > a.getDay())
+			{
+				out.add(new Line2D.Float(ax, ay, xFor(dayBefore), ay));
+				out.add(new Line2D.Float(xFor(dayBefore), ay, xFor(b.getDay()), yFor(b.getLuck())));
+			}
+			else
+			{
+				out.add(new Line2D.Float(ax, ay, xFor(b.getDay()), yFor(b.getLuck())));
+			}
+		}
+		return out;
+	}
+
+	/**
+	 * Where the end verdict word goes: {x, baseline y, backing}. It tries above the dot, then below,
+	 * and takes the first spot inside the plot that the line does not cross. When every spot is
+	 * crossed, it takes the first one inside the plot and asks for a dark backing (backing = 1).
+	 */
+	static int[] placeEndLabel(List<Line2D> line, int x, int y, int textWidth, int ascent, int descent,
+		int left, int right, int top, int bottom)
+	{
+		int tx = Math.max(left, Math.min(x - textWidth / 2, right - textWidth));
+		int[] baselines = {y - 7, y + 15};
+		int firstInside = -1;
+		for (int i = 0; i < baselines.length; i++)
+		{
+			Rectangle box = new Rectangle(tx - 2, baselines[i] - ascent - 1, textWidth + 4, ascent + descent + 2);
+			if (box.y < top || box.y + box.height > bottom)
+			{
+				continue;
+			}
+			if (firstInside < 0)
+			{
+				firstInside = i;
+			}
+			boolean crossed = false;
+			for (Line2D segment : line)
+			{
+				if (segment.intersects(box))
+				{
+					crossed = true;
+					break;
+				}
+			}
+			if (!crossed)
+			{
+				return new int[]{tx, baselines[i], 0};
+			}
+		}
+		if (firstInside >= 0)
+		{
+			return new int[]{tx, baselines[firstInside], 1};
+		}
+		// no room either way (a very short plot): keep it above the dot, backed
+		return new int[]{tx, Math.max(top + ascent + 1, baselines[0]), 1};
 	}
 
 	@Override
@@ -260,8 +467,19 @@ class LuckGraph extends JComponent
 		{
 			return null;
 		}
-		HistoryPoint nearest = points.get(nearest(event.getX()));
-		return String.format(java.util.Locale.ROOT, "<html><b>%s</b><br>%s: %s<br>%d got, %.1f expected</html>",
+		int index = nearest(event.getX());
+		if (index < 0)
+		{
+			return null;
+		}
+		return textFor(index);
+	}
+
+	/** The tooltip of one point: its date, verdict and got / expected. */
+	private String textFor(int index)
+	{
+		HistoryPoint nearest = points.get(index);
+		return String.format(java.util.Locale.ROOT, "<html><b>%s</b><br>%s: %s<br>%d got, %.1f expected" + (windowed ? " in total" : "") + "</html>",
 			LocalDate.ofEpochDay(nearest.getDay()).format(LONG_DATE), Verdict.labelOf(nearest.getLuck()),
 			Texts.html(Texts.luckPercent(nearest.getLuck())), nearest.getReceived(), nearest.getExpected());
 	}

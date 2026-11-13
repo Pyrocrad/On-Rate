@@ -1,5 +1,5 @@
 {
- "name": "Ladlor chart",
+ "name": "Ladlor's chart",
  "_readme": "The boss drops on the Ladlor ironman progression chart, in the order of the chart (left to right, row by row), read from screenshots of it. A chart item is counted as the drop that gives it (Voidwaker is its three pieces, Bandos godsword the hilt, Masori the plain pieces, crystal armour its seeds: 'count' is how many); what you make from them is not counted. Quest, shop, skilling and crafted-only items are left out. A chart item you already have every drop of is not shown, and Slayer bosses above your Slayer level are hidden. 'step' is the item's place in the chart.",
  "items": [
   {
@@ -289,6 +289,17 @@
    ]
   },
   {
+   "step": 50,
+   "name": "Horn of Bran",
+   "icon": "Horn of Bran",
+   "needs": [
+    {
+     "boss": "The Fractured Archive",
+     "drop": "Horn of Bran"
+    }
+   ]
+  },
+  {
    "step": 51,
    "name": "Ultor ring",
    "icon": "Ultor vestige",
@@ -353,6 +364,28 @@
     {
      "boss": "Chambers of Xeric",
      "drop": "Ancestral hat"
+    }
+   ]
+  },
+  {
+   "step": 53,
+   "name": "Ascension crossbows",
+   "icon": "Ascension crossbows",
+   "needs": [
+    {
+     "boss": "The Fractured Archive",
+     "drop": "Ascension crossbows"
+    }
+   ]
+  },
+  {
+   "step": 53,
+   "name": "Zorya's tome",
+   "icon": "Zorya's tome (uncharged)",
+   "needs": [
+    {
+     "boss": "The Fractured Archive",
+     "drop": "Zorya's tome (uncharged)"
     }
    ]
   },
@@ -430,6 +463,17 @@
     {
      "boss": "Tombs of Amascut",
      "drop": "Elidinis' ward"
+    }
+   ]
+  },
+  {
+   "step": 54,
+   "name": "Obligator",
+   "icon": "Obligator (uncharged)",
+   "needs": [
+    {
+     "boss": "The Fractured Archive",
+     "drop": "Obligator (uncharged)"
     }
    ]
   }

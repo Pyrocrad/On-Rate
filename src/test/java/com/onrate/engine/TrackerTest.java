@@ -20,6 +20,7 @@ import com.onrate.engine.stats.RaidSettings;
 import com.onrate.engine.stats.RowStats;
 import com.onrate.engine.stats.SharedPool;
 import com.onrate.engine.tracking.Note;
+import com.onrate.engine.tracking.PastDropResult;
 import com.onrate.engine.tracking.BossDays;
 import com.onrate.engine.tracking.RaidRecord;
 import com.onrate.engine.tracking.SaveData;
@@ -2403,6 +2404,26 @@ public class TrackerTest
 	}
 
 	@Test
+	public void unitsCoverAllSixWordsAndAreNullSafe()
+	{
+		String[][] expected = {
+			{"Tempoross", "rolls", "roll"}, {"Wintertodt", "rolls", "roll"},
+			{"Fortis Colosseum", "runs", "run"}, {"Tombs of Amascut", "raids", "raid"},
+			{"Doom of Mokhaiotl", "delves", "delve"}, {"Barrows", "chests", "chest"},
+			{"Moons of Peril", "chests", "chest"}, {"Vorkath", "kills", "kill"},
+			{"Royal Titans", "kills", "kill"}, {"Yama", "kills", "kill"}};
+		for (String[] e : expected)
+		{
+			BossDefinition boss = catalog.byName(e[0]);
+			assertEquals(e[0], e[1], Tracker.units(boss, 2));
+			assertEquals(e[0], e[1], Tracker.units(boss, 0));
+			assertEquals(e[0], e[2], Tracker.units(boss, 1));
+		}
+		assertEquals("kills", Tracker.units(null, 5));
+		assertEquals("kill", Tracker.units(null, 1));
+	}
+
+	@Test
 	public void daysCountKillsUniquesAndExpected()
 	{
 		long today = System.currentTimeMillis();
@@ -3345,6 +3366,31 @@ public class TrackerTest
 	{
 		tracker.onClogPage("Vorkath", Collections.singletonList("Vorkath kills: 350"), vorkathPage(7, 0));
 		assertTrue(tracker.wouldZeroSaved("Vorkath", vorkathPage(0, 0)));
+	}
+
+	@Test
+	public void tryAddPastDropSaysWhyItWasRefused()
+	{
+		Map<String, Integer> page = new LinkedHashMap<>();
+		page.put("Steel ring", 3);
+		tracker.onClogPage("Deranged Archaeologist", Collections.singletonList("Deranged Archaeologist kills: 40"), page);
+		for (int kc = 41; kc <= 100; kc++)
+		{
+			tracker.onChatMessage("Your Deranged Archaeologist kill count is: <col=ff0000>" + kc + "</col>.", now + kc);
+		}
+		String boss = "Deranged Archaeologist";
+		assertEquals(PastDropResult.COUNT_TOO_LOW, tracker.tryAddPastDrop(boss, "Steel ring", 0, false, null));
+		assertEquals(PastDropResult.COUNT_TOO_HIGH, tracker.tryAddPastDrop(boss, "Steel ring", 101, false, null));
+		assertEquals(PastDropResult.UNKNOWN, tracker.tryAddPastDrop(boss, "Not an item", 30, false, null));
+		assertEquals(PastDropResult.UNKNOWN, tracker.tryAddPastDrop("Nobody", "Steel ring", 30, false, null));
+		assertEquals(PastDropResult.ADDED, tracker.tryAddPastDrop(boss, "Steel ring", 30, false, null));
+		// the same call again replaces the entry, as addPastDrop does
+		assertEquals(PastDropResult.ADDED, tracker.tryAddPastDrop(boss, "Steel ring", 30, false, null));
+		assertTrue(PastDropResult.COUNT_TOO_HIGH.isRetryable());
+		assertTrue(PastDropResult.SAW_AT_COUNT.isRetryable());
+		assertFalse(PastDropResult.ALL_COPIES_LISTED.isRetryable());
+		assertFalse(PastDropResult.HISTORY_FULL.isRetryable());
+		assertFalse(PastDropResult.ADDED.isRetryable());
 	}
 
 	@Test

@@ -195,7 +195,8 @@ public class ValueSortTest
 		List<String> order = new ArrayList<>();
 		for (String text : shown)
 		{
-			String name = text.replaceAll("<[^>]*>", "").replace(" *", "").trim();
+			// a long name wraps with a <br>: that is a space between the words
+			String name = text.replaceAll("<br\\s*/?>", " ").replaceAll("<[^>]*>", "").replace(" *", "").trim();
 			if (luck.containsKey(name) && !order.contains(name))
 			{
 				order.add(name);

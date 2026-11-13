@@ -91,4 +91,36 @@ public class PaletteSchemeTest
 		Palette.setScheme(LuckColours.MONO, null, null);
 		assertNotEquals(GREEN, Palette.luck(Double.NaN));
 	}
+
+	@Test
+	public void customTextIsLiftedToReadableContrastButNotTheColour()
+	{
+		Color darkDry = new Color(40, 0, 80);
+		Palette.setScheme(LuckColours.CUSTOM, darkDry, new Color(60, 60, 0));
+		assertEquals(darkDry, Palette.luck(0));
+		Color text = Palette.text(Palette.luck(0));
+		assertTrue(Palette.contrast(text, Theme.SURFACE_RAISED) >= Palette.TEXT_CONTRAST);
+		assertNotEquals(darkDry, text);
+	}
+
+	@Test
+	public void customTextThatAlreadyReadsIsLeftAlone()
+	{
+		Palette.setScheme(LuckColours.CUSTOM, Color.WHITE, Color.WHITE);
+		assertEquals(Color.WHITE, Palette.text(Color.WHITE));
+	}
+
+	@Test
+	public void readySetsKeepTheirTextColour()
+	{
+		for (LuckColours s : LuckColours.values())
+		{
+			if (s != LuckColours.CUSTOM)
+			{
+				Palette.setScheme(s, null, null);
+				Color dry = Palette.luck(0).brighter();
+				assertEquals(dry, Palette.text(dry));
+			}
+		}
+	}
 }

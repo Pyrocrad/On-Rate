@@ -22,7 +22,7 @@ import net.runelite.client.ui.FontManager;
 
 /**
  * Your last raids of one mode, one dot each: your points (or that raid's purple chance), an
- * orange line for the average of the last {@link #AVERAGE} raids, and a purple diamond for a raid
+ * white line for the average of the last {@link #AVERAGE} raids, and a purple diamond for a raid
  * that brought a unique.
  */
 class RaidPointsGraph extends JComponent
@@ -75,9 +75,15 @@ class RaidPointsGraph extends JComponent
 			accessibleContext = new AccessibleJComponent()
 			{
 			};
-			accessibleContext.setAccessibleName("Your points per raid over your last raids, all modes together");
+			accessibleContext.setAccessibleName(accessibleName(chance));
 		}
 		return accessibleContext;
+	}
+
+	/** The screen-reader name for the graph: it follows the mode (points or purple chance). */
+	static String accessibleName(boolean chance)
+	{
+		return (chance ? "Your purple chance per raid" : "Your points per raid") + " over your last raids, all modes together";
 	}
 
 	/**
@@ -87,6 +93,7 @@ class RaidPointsGraph extends JComponent
 	void setPoints(List<RaidInsights.Point> all, boolean chance)
 	{
 		this.chance = chance;
+		getAccessibleContext().setAccessibleName(accessibleName(chance));
 		List<RaidInsights.Point> kept = new ArrayList<>();
 		for (RaidInsights.Point p : all)
 		{
@@ -242,7 +249,7 @@ class RaidPointsGraph extends JComponent
 				g.fillOval(x - 2, y - 2, 5, 5);
 			}
 		}
-		g.setColor(Theme.ACCENT);
+		g.setColor(Theme.TEXT);
 		g.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
 		for (int i = 1; i < points.size(); i++)
 		{

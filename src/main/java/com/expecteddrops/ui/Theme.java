@@ -52,6 +52,10 @@ public final class Theme
 	public static final int TIP_SHORT = 180;
 	public static final int TIP_WIDE = 240;
 
+	/** Wrapped text inside a boxed card, which has less room than the page, and the width of a dialog. */
+	public static final int CARD_TEXT_WIDTH = 148;
+	public static final int DIALOG_WIDTH = 240;
+
 	private Theme()
 	{
 	}

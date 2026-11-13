@@ -58,7 +58,7 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigItem(
 		keyName = "dropMessages",
 		name = "Drop messages",
-		description = "When a unique drops, say in chat how many kills it took against the drop rate. Also sums up each trip when it ends.",
+		description = "When a unique drops, say in chat how many kills it took against the drop rate.",
 		position = 5,
 		section = chatSection
 	)
@@ -85,6 +85,20 @@ public interface ExpectedDropsConfig extends Config
 		position = 6
 	)
 	String displaySection = "display";
+
+	@ConfigItem(
+		keyName = "foldState",
+		name = "Open sections",
+		description = "Which folded sections (History, Personal bests, Points over time) were left open. "
+			+ "Changed from the panel, so it's not listed here",
+		position = 7,
+		section = displaySection,
+		hidden = true
+	)
+	default String foldState()
+	{
+		return "";
+	}
 
 	@ConfigItem(
 		keyName = "itemView",
@@ -127,7 +141,7 @@ public interface ExpectedDropsConfig extends Config
 	@ConfigItem(
 		keyName = "showTopItems",
 		name = "Items tab",
-		description = "Show the Items tab on the account overview: your driest and luckiest items, pets and single drops across every boss",
+		description = "Show the Items tab on the account overview: your driest and luckiest items, pets, single drops and how long the items you don't have take (the Time page). Turning it off hides all of these",
 		position = 9,
 		section = displaySection
 	)
@@ -222,6 +236,19 @@ public interface ExpectedDropsConfig extends Config
 	default Color onRateColour()
 	{
 		return new Color(170, 150, 20);
+	}
+
+	@ConfigItem(
+		keyName = "higherContrastBars",
+		name = "Higher-contrast bars",
+		description = "Draw the progress and item bars with a lighter fill, so they stand out more from their track. "
+			+ "Only the shade changes; the numbers and text stay the same.",
+		position = 17,
+		section = displaySection
+	)
+	default boolean higherContrastBars()
+	{
+		return false;
 	}
 
 	@ConfigSection(
@@ -330,7 +357,8 @@ public interface ExpectedDropsConfig extends Config
 		description = "If you also use the Raid Data Tracker plugin, read your Chambers of Xeric and Tombs of Amascut "
 			+ "raids from its saved files: their times, points, team and raid level, so those raids use their own "
 			+ "purple chance and show on the raid pages straight away. Only read, nothing in that plugin changes. "
-			+ "Pick its folder with the setting below.",
+			+ "Nothing is read until you pick its folder with the setting below, which has to be done again each "
+			+ "time RuneLite starts.",
 		position = 32,
 		section = raidsSection
 	)
@@ -354,7 +382,7 @@ public interface ExpectedDropsConfig extends Config
 
 	@ConfigItem(
 		keyName = "coxUniqueChance",
-		name = "CoX Normal (%)",
+		name = "Chambers of Xeric purple chance, Normal (%)",
 		description = "Your chance of a unique per normal Chambers raid, for raids without points. Every 8,676 of your personal points is 1%, so 30,000 points is about 3.5%. Left as it is, On Rate uses your own average once it has seen 10 raids of this mode.",
 		position = 32,
 		section = raidChancesSection
@@ -366,7 +394,7 @@ public interface ExpectedDropsConfig extends Config
 
 	@ConfigItem(
 		keyName = "coxCmPurpleChance",
-		name = "CoX Challenge Mode (%)",
+		name = "Chambers of Xeric purple chance, Challenge Mode (%)",
 		description = "Your chance of a unique per Challenge Mode raid, for raids without points. Same formula as normal mode; a Challenge Mode raid is usually 6.3 to 6.9%. Left as it is, On Rate uses your own average once it has seen 10 raids of this mode.",
 		position = 33,
 		section = raidChancesSection
@@ -378,7 +406,7 @@ public interface ExpectedDropsConfig extends Config
 
 	@ConfigItem(
 		keyName = "tobTeamChance",
-		name = "ToB Normal team (%)",
+		name = "Theatre of Blood team purple chance, Normal (%)",
 		description = "The team's chance of a unique per normal Theatre of Blood raid: about 1 in 9.1 raids (11%) with no deaths. On Rate divides it by the team size to get yours.",
 		position = 34,
 		section = raidChancesSection
@@ -390,7 +418,7 @@ public interface ExpectedDropsConfig extends Config
 
 	@ConfigItem(
 		keyName = "tobHmTeamChance",
-		name = "ToB Hard Mode team (%)",
+		name = "Theatre of Blood team purple chance, Hard Mode (%)",
 		description = "The team's chance of a unique per Hard Mode raid: about 1 in 7.7 raids (13%). On Rate divides it by the team size to get yours.",
 		position = 35,
 		section = raidChancesSection
@@ -402,7 +430,7 @@ public interface ExpectedDropsConfig extends Config
 
 	@ConfigItem(
 		keyName = "tobTeamSize",
-		name = "ToB team size",
+		name = "Theatre of Blood team size",
 		description = "How many players you usually raid Theatre of Blood with. Your share of the team's purples is 1 / team size. Raids where On Rate read the end-of-raid board use their real team size. Left as it is, On Rate uses your usual team once it has counted 10 raids.",
 		position = 36,
 		section = raidsSection
@@ -415,7 +443,7 @@ public interface ExpectedDropsConfig extends Config
 
 	@ConfigItem(
 		keyName = "toaEntryUniqueChance",
-		name = "ToA Entry Mode (%)",
+		name = "Tombs of Amascut purple chance, Entry Mode (%)",
 		description = "Your chance of a unique per Entry Mode raid without points. Very low: at low raid levels most uniques turn into other loot. Left as it is, On Rate uses your own average once it has seen 10 raids of this mode.",
 		position = 37,
 		section = raidChancesSection
@@ -427,7 +455,7 @@ public interface ExpectedDropsConfig extends Config
 
 	@ConfigItem(
 		keyName = "toaNormalUniqueChance",
-		name = "ToA Normal (%)",
+		name = "Tombs of Amascut purple chance, Normal (%)",
 		description = "Your chance of a unique per normal Tombs raid without points. It depends on raid level and your points; the OSRS Wiki's ToA page has a calculator. Left as it is, On Rate uses your own average once it has seen 10 raids of this mode.",
 		position = 38,
 		section = raidChancesSection
@@ -439,7 +467,7 @@ public interface ExpectedDropsConfig extends Config
 
 	@ConfigItem(
 		keyName = "toaExpertUniqueChance",
-		name = "ToA Expert Mode (%)",
+		name = "Tombs of Amascut purple chance, Expert Mode (%)",
 		description = "Your chance of a unique per Expert Mode raid without points. It depends on raid level and your points; the OSRS Wiki's ToA page has a calculator. Left as it is, On Rate uses your own average once it has seen 10 raids of this mode.",
 		position = 39,
 		section = raidChancesSection
@@ -451,7 +479,7 @@ public interface ExpectedDropsConfig extends Config
 
 	@ConfigItem(
 		keyName = "tfaTeamSize",
-		name = "TFA team size",
+		name = "Fractured Archive team size",
 		description = "How many players you usually do The Fractured Archive with (1 to 8), for raids where On Rate couldn't count your team. "
 			+ "Assumes an even share of the damage. Raids from now on use the players around you at the end. Left as it is, On Rate uses your usual team once it has counted 10 raids.",
 		position = 45,
@@ -465,7 +493,7 @@ public interface ExpectedDropsConfig extends Config
 
 	@ConfigItem(
 		keyName = "tfaSoloDuoChance",
-		name = "TFA team (%)",
+		name = "Fractured Archive team purple chance (%)",
 		description = "The team's chance of a unique per Fractured Archive raid for a solo or duo with no deaths: 1 in 16 (6.25%). "
 			+ "Bigger teams have their own chance, worked out from this one (1 in 12.5 for three players, up to 1 in 7.5 for eight), and you get your share of the damage. "
 			+ "Every raid since the game update of 11 November 2026 uses it, including ones where On Rate counted your team. Raids from before it keep the chance they had (1 in 14).",

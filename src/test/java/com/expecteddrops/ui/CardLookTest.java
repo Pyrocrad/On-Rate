@@ -82,6 +82,25 @@ public class CardLookTest
 	}
 
 	@Test
+	public void aSummaryHeadingRowOpensTheCardOfItsPartRows()
+	{
+		JLabel heading = new JLabel("Average purple chance from points");
+		heading.setBorder(new EmptyBorder(Theme.HAIR, 0, Theme.HAIR, 0));
+		JPanel host = host(row(), row(), gap(Theme.S), Card.row(heading), gap(Theme.HAIR), row(), gap(Theme.HAIR), row());
+		Card.box(host);
+		// the rows above, a gap, then one card: the heading and its part rows
+		assertEquals(3, host.getComponentCount());
+		assertTrue(host.getComponent(0) instanceof Card);
+		assertFalse(host.getComponent(1) instanceof Card);
+		assertEquals(Theme.S, host.getComponent(1).getPreferredSize().height);
+		Card summary = (Card) host.getComponent(2);
+		// heading, line, row, line, row
+		assertEquals(5, summary.getComponentCount());
+		assertSame(heading, summary.getComponent(0));
+		assertEquals(Theme.S, heading.getInsets().left);
+	}
+
+	@Test
 	public void unmarkedPanelsAreLeftAlone()
 	{
 		JPanel trip = new JPanel();

@@ -52,7 +52,7 @@ class TargetBar extends JComponent
 		int h = getHeight();
 		g.setColor(TRACK);
 		g.fillRect(0, 2, w, h - 4);
-		g.setColor(color);
+		g.setColor(Palette.barFill(color, TRACK));
 		g.fillRect(0, 2, (int) Math.round(w * fill), h - 4);
 		if (marker >= 0)
 		{

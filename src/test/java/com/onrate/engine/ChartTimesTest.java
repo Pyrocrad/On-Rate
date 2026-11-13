@@ -133,7 +133,7 @@ public class ChartTimesTest
 			step = t.getStep();
 		}
 		assertEquals("Hallowfell", items.get(0).getName());
-		assertEquals("Elidinis' ward", items.get(items.size() - 1).getName());
+		assertEquals("Obligator", items.get(items.size() - 1).getName());
 		// the chart's own order inside a step: Ancestral top before hat, hat before bottom
 		List<String> names = new ArrayList<>();
 		for (ChartTime t : items)
@@ -255,12 +255,12 @@ public class ChartTimesTest
 	@Test
 	public void whenOnlyPartIsYourOwnTheTagSaysBoth()
 	{
-		// Doom: level 2 from 20 timed delves of yours, level 3 from the wiki rate
+		// Doom: level 2 from your timed delves, level 3 (done, but never timed) from the wiki rate
 		for (int i = 0; i < 20; i++)
 		{
 			tracker.onChatMessage("Delve level: 2 duration: <col=ff0000>1:00.00</col>", 1_000_000 + i * 600_000L);
 		}
-		tracker.onChatMessage("Delve level: 3 duration: <col=ff0000>1:10.00</col>", 1_000_000 + 21 * 600_000L);
+		tracker.onDelveScoreboard(java.util.Collections.singletonMap(3, 5));
 		ItemTime cloth = drop("Doom of Mokhaiotl", "Mokhaiotl cloth");
 		assertTrue(cloth.isEstimated());
 		assertTrue(cloth.usesOwnTimes());
