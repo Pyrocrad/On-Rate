@@ -1,13 +1,15 @@
 package com.onrate.engine.tracking;
 
+import java.util.List;
+
 /** A boss's kills, uniques and expected over a stretch of days (Recent tab). */
 public class BossDays
 {
 	private final String boss;
 	private final DayCount count;
-	private final java.util.List<String> uniqueNames;
+	private final List<String> uniqueNames;
 
-	BossDays(String boss, DayCount count, java.util.List<String> uniqueNames)
+	BossDays(String boss, DayCount count, List<String> uniqueNames)
 	{
 		this.boss = boss;
 		this.count = count;
@@ -15,7 +17,7 @@ public class BossDays
 	}
 
 	/** The uniques in those days that History knows the name of, oldest first ("Tyrannical ring"). */
-	public java.util.List<String> getUniqueNames()
+	public List<String> getUniqueNames()
 	{
 		return uniqueNames;
 	}
@@ -41,3 +43,4 @@ public class BossDays
 		return count.expected;
 	}
 }
+

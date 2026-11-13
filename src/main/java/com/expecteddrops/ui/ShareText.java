@@ -3,9 +3,7 @@ package com.expecteddrops.ui;
 import com.onrate.engine.math.Rates;
 import com.onrate.engine.math.Verdict;
 
-import com.onrate.engine.stats.AccountStats;
-import com.onrate.engine.stats.ItemHighlight;
-import com.onrate.engine.stats.RowStats;
+import com.onrate.engine.stats.*;
 import java.util.Locale;
 
 /**

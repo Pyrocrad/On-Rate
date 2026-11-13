@@ -1,8 +1,11 @@
 package com.onrate.engine.tracking;
 
-import com.onrate.engine.data.BossCatalog;
-import com.onrate.engine.data.BossDefinition;
-import com.onrate.engine.data.DropDefinition;
+import java.util.HashSet;
+import java.time.Instant;
+import java.util.Set;
+import java.time.ZoneId;
+
+import com.onrate.engine.data.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -24,7 +27,7 @@ final class DayCounts
 	/** Days kept for the Recent tab's day counts. */
 	static final int DAYS_KEPT = 14;
 	/** Bosses whose History was already added to the day counts this session. */
-	private final java.util.Set<String> daysFilled = new java.util.HashSet<>();
+	private final Set<String> daysFilled = new HashSet<>();
 
 	DayCounts(TrackerContext ctx, Statistics statistics)
 	{
@@ -48,7 +51,7 @@ final class DayCounts
 	/** The day counter of a boss on the day of this time (local time zone), created when missing. */
 	DayCount dayCount(String bossName, long millis)
 	{
-		long day = java.time.Instant.ofEpochMilli(millis).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toEpochDay();
+		long day = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate().toEpochDay();
 		Map<String, Map<String, DayCount>> days = ctx.state().days();
 		if (!days.containsKey(String.valueOf(day)))
 		{
@@ -89,8 +92,8 @@ final class DayCounts
 		{
 			return;
 		}
-		java.time.ZoneId zone = java.time.ZoneId.systemDefault();
-		long today = java.time.Instant.ofEpochMilli(nowMillis).atZone(zone).toLocalDate().toEpochDay();
+		ZoneId zone = ZoneId.systemDefault();
+		long today = Instant.ofEpochMilli(nowMillis).atZone(zone).toLocalDate().toEpochDay();
 		Map<Long, List<KillEntry>> toAdd = new HashMap<>();
 		for (KillEntry k : p.kills)
 		{
@@ -98,7 +101,7 @@ final class DayCounts
 			{
 				continue;
 			}
-			long day = java.time.Instant.ofEpochMilli(k.time).atZone(zone).toLocalDate().toEpochDay();
+			long day = Instant.ofEpochMilli(k.time).atZone(zone).toLocalDate().toEpochDay();
 			if (day > today || day <= today - DAYS_KEPT)
 			{
 				continue;
@@ -144,14 +147,14 @@ final class DayCounts
 		{
 			return names;
 		}
-		java.time.ZoneId zone = java.time.ZoneId.systemDefault();
+		ZoneId zone = ZoneId.systemDefault();
 		for (KillEntry k : p.kills)
 		{
 			if (!k.isDateKnown())
 			{
 				continue;
 			}
-			long day = java.time.Instant.ofEpochMilli(k.time).atZone(zone).toLocalDate().toEpochDay();
+			long day = Instant.ofEpochMilli(k.time).atZone(zone).toLocalDate().toEpochDay();
 			if (day < fromDay || day > toDay)
 			{
 				continue;
@@ -185,7 +188,7 @@ final class DayCounts
 		{
 			fillDaysFromHistory(boss, nowMillis);
 		}
-		long today = java.time.Instant.ofEpochMilli(nowMillis).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toEpochDay();
+		long today = Instant.ofEpochMilli(nowMillis).atZone(ZoneId.systemDefault()).toLocalDate().toEpochDay();
 		Map<String, DayCount> perBoss = new HashMap<>();
 		DayCount total = new DayCount();
 		for (Map.Entry<String, Map<String, DayCount>> d : ctx.state().days().entrySet())
@@ -246,3 +249,4 @@ final class DayCounts
 		day.expected = Math.max(0, day.expected + change);
 	}
 }
+

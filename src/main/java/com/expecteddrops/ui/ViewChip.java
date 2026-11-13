@@ -1,5 +1,7 @@
 package com.expecteddrops.ui;
 
+import java.awt.Color;
+
 import java.awt.BasicStroke;
 import java.awt.Component;
 import java.awt.Cursor;
@@ -11,10 +13,7 @@ import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.function.Consumer;
-import javax.swing.Icon;
-import javax.swing.JMenuItem;
-import javax.swing.JPanel;
-import javax.swing.JPopupMenu;
+import javax.swing.*;
 import javax.swing.border.LineBorder;
 import net.runelite.client.ui.FontManager;
 
@@ -60,7 +59,7 @@ final class ViewChip extends JPanel
 			@Override
 			public void mouseClicked(MouseEvent e)
 			{
-				if (javax.swing.SwingUtilities.isLeftMouseButton(e))
+				if (SwingUtilities.isLeftMouseButton(e))
 				{
 					open();
 				}
@@ -270,9 +269,9 @@ final class ViewChip extends JPanel
 	static final class ViewIcon implements Icon
 	{
 		private final ItemView view;
-		private final java.awt.Color color;
+		private final Color color;
 
-		ViewIcon(ItemView view, java.awt.Color color)
+		ViewIcon(ItemView view, Color color)
 		{
 			this.view = view;
 			this.color = color;
@@ -330,3 +329,4 @@ final class ViewChip extends JPanel
 		}
 	}
 }
+

@@ -1,5 +1,7 @@
 package com.onrate.engine.data;
 
+import java.util.function.Predicate;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -201,13 +203,13 @@ public class BossDefinition
 	}
 
 	/** Drops the uniques that match, e.g. items several bosses share. */
-	void removeDrops(java.util.function.Predicate<DropDefinition> remove)
+	void removeDrops(Predicate<DropDefinition> remove)
 	{
 		if (drops == null)
 		{
 			return;
 		}
-		List<DropDefinition> kept = new java.util.ArrayList<>();
+		List<DropDefinition> kept = new ArrayList<>();
 		for (DropDefinition drop : drops)
 		{
 			if (!remove.test(drop))
@@ -257,3 +259,4 @@ public class BossDefinition
 		return name;
 	}
 }
+

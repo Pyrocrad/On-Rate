@@ -1,5 +1,9 @@
 package com.onrate.engine.tracking;
 
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
+
 import com.onrate.engine.data.BossCatalog;
 import com.onrate.engine.data.BossDefinition;
 import java.util.ArrayList;
@@ -98,7 +102,7 @@ final class FightTimes
 		for (int i = progress.raids.size() - 1, looked = 0; i >= 0 && looked < 10; i--, looked++)
 		{
 			RaidRecord record = progress.raids.get(i);
-			if (record.kc == entry.partKc && java.util.Objects.equals(record.part, entry.part))
+			if (record.kc == entry.partKc && Objects.equals(record.part, entry.part))
 			{
 				if (record.durationMillis != time.getMillis())
 				{
@@ -116,7 +120,7 @@ final class FightTimes
 		for (int i = progress.kills.size() - 1, looked = 0; i >= 0 && looked < 10; i--, looked++)
 		{
 			KillEntry kill = progress.kills.get(i);
-			if (kill.partKc != null && kill.partKc == kc && java.util.Objects.equals(kill.part, part)
+			if (kill.partKc != null && kill.partKc == kc && Objects.equals(kill.part, part)
 				&& kill.durationMillis != null)
 			{
 				return kill.durationMillis;
@@ -146,7 +150,7 @@ final class FightTimes
 			progress.importedTimes = new HashMap<>();
 		}
 		List<long[]> known = progress.importedTimes.computeIfAbsent(part, k -> new ArrayList<>());
-		java.util.Set<Long> have = new java.util.HashSet<>();
+		Set<Long> have = new HashSet<>();
 		for (long[] k : known)
 		{
 			have.add(k[0]);
@@ -306,3 +310,4 @@ final class FightTimes
 		return times.isEmpty() ? null : new TimeStats(times, last);
 	}
 }
+

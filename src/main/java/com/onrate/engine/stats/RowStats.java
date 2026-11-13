@@ -1,5 +1,8 @@
 package com.onrate.engine.stats;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.onrate.engine.math.Luck;
 import com.onrate.engine.math.Poisson;
 
@@ -39,10 +42,10 @@ public class RowStats
 	{
 		private int sure;
 		private double plain;
-		private final java.util.List<Double> cappedMeans = new java.util.ArrayList<>();
-		private final java.util.List<Integer> caps = new java.util.ArrayList<>();
+		private final List<Double> cappedMeans = new ArrayList<>();
+		private final List<Integer> caps = new ArrayList<>();
 		/** Items sure on one kill for a player with none yet: {kills, rate, kill with the guarantee}. */
-		private final java.util.List<double[]> guaranteed = new java.util.ArrayList<>();
+		private final List<double[]> guaranteed = new ArrayList<>();
 
 		/** {@code count} copies that drop for certain. */
 		public Parts addSure(int count)
@@ -380,7 +383,7 @@ public class RowStats
 	}
 
 	/**
-	 * Luck (0..1, 0.5 = average) behind the verdict, tie-aware (see {@link com.onrate.engine.math.Luck#tieAware}).
+	 * Luck (0..1, 0.5 = average) behind the verdict, tie-aware (see {@link Luck#tieAware}).
 	 * NaN if nothing expected yet.
 	 */
 	public double getLuck()
@@ -406,3 +409,4 @@ public class RowStats
 		return cap > 0 ? Poisson.sharesCapped(received, expected, cap) : Poisson.shares(received, expected);
 	}
 }
+

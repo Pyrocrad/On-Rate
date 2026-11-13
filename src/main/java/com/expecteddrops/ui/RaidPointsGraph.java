@@ -1,5 +1,8 @@
 package com.expecteddrops.ui;
 
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseMotionAdapter;
+
 import com.onrate.engine.tracking.RaidInsights;
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -49,7 +52,7 @@ class RaidPointsGraph extends JComponent
 		setMaximumSize(new Dimension(Integer.MAX_VALUE, HEIGHT));
 		setAlignmentX(LEFT_ALIGNMENT);
 		ToolTipManager.sharedInstance().registerComponent(this);
-		addMouseMotionListener(new java.awt.event.MouseMotionAdapter()
+		addMouseMotionListener(new MouseMotionAdapter()
 		{
 			@Override
 			public void mouseMoved(MouseEvent e)
@@ -57,7 +60,7 @@ class RaidPointsGraph extends JComponent
 				setHover(nearest(e.getX()));
 			}
 		});
-		addMouseListener(new java.awt.event.MouseAdapter()
+		addMouseListener(new MouseAdapter()
 		{
 			@Override
 			public void mouseExited(MouseEvent e)
@@ -299,3 +302,4 @@ class RaidPointsGraph extends JComponent
 		return tip.small();
 	}
 }
+

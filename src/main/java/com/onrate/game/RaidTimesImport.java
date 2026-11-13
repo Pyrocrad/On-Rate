@@ -1,5 +1,10 @@
 package com.onrate.game;
 
+import java.util.ArrayList;
+import com.onrate.engine.tracking.ImportedRaid;
+import java.util.LinkedHashSet;
+import java.util.Set;
+
 import com.onrate.engine.raids.RaidDataImport;
 import com.onrate.engine.tracking.Tracker;
 import java.util.List;
@@ -104,7 +109,7 @@ public final class RaidTimesImport
 			log.debug("Raid Data Tracker times read for another profile were not imported");
 			return;
 		}
-		java.util.Set<String> bosses = new java.util.LinkedHashSet<>();
+		Set<String> bosses = new LinkedHashSet<>();
 		for (Map.Entry<String, Map<String, List<long[]>>> boss : times.byBoss().entrySet())
 		{
 			int added = 0;
@@ -120,10 +125,10 @@ public final class RaidTimesImport
 		// the whole raids: their points, team and raid level, saved like the raids On Rate saw
 		for (Map.Entry<String, List<RaidDataImport.Raid>> boss : times.raids().entrySet())
 		{
-			List<com.onrate.engine.tracking.ImportedRaid> raids = new java.util.ArrayList<>();
+			List<ImportedRaid> raids = new ArrayList<>();
 			for (RaidDataImport.Raid r : boss.getValue())
 			{
-				raids.add(new com.onrate.engine.tracking.ImportedRaid(r.part, r.kc, r.when, r.millis, r.teamSize,
+				raids.add(new ImportedRaid(r.part, r.kc, r.when, r.millis, r.teamSize,
 					r.personalPoints, r.totalPoints, r.raidLevel, r.unique));
 			}
 			// the uniques are kept in memory even when no raid is new, so the graph can name them
@@ -141,3 +146,4 @@ public final class RaidTimesImport
 		stopped = true;
 	}
 }
+

@@ -1,5 +1,6 @@
 package com.expecteddrops.ui;
 
+
 import com.onrate.engine.math.Verdict;
 
 import com.onrate.engine.tracking.HistoryPoint;
@@ -12,19 +13,13 @@ import java.awt.Graphics2D;
 import java.awt.geom.Line2D;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
-import java.awt.event.FocusAdapter;
-import java.awt.event.FocusEvent;
-import java.awt.event.KeyEvent;
-import java.awt.event.MouseEvent;
+import java.awt.event.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import javax.swing.AbstractAction;
-import javax.swing.JComponent;
-import javax.swing.KeyStroke;
-import javax.swing.ToolTipManager;
+import javax.swing.*;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 
@@ -67,7 +62,7 @@ class LuckGraph extends JComponent
 		setAlignmentX(LEFT_ALIGNMENT);
 		ToolTipManager.sharedInstance().registerComponent(this);
 		installKeyboard();
-		addMouseMotionListener(new java.awt.event.MouseMotionAdapter()
+		addMouseMotionListener(new MouseMotionAdapter()
 		{
 			@Override
 			public void mouseMoved(MouseEvent e)
@@ -75,7 +70,7 @@ class LuckGraph extends JComponent
 				setHover(nearest(e.getX()));
 			}
 		});
-		addMouseListener(new java.awt.event.MouseAdapter()
+		addMouseListener(new MouseAdapter()
 		{
 			@Override
 			public void mouseExited(MouseEvent e)
@@ -137,7 +132,7 @@ class LuckGraph extends JComponent
 		getActionMap().put(name, new AbstractAction()
 		{
 			@Override
-			public void actionPerformed(java.awt.event.ActionEvent e)
+			public void actionPerformed(ActionEvent e)
 			{
 				run.run();
 			}
@@ -479,7 +474,7 @@ class LuckGraph extends JComponent
 	private String textFor(int index)
 	{
 		HistoryPoint nearest = points.get(index);
-		return String.format(java.util.Locale.ROOT, "<html><b>%s</b><br>%s: %s<br>%d got, %.1f expected" + (windowed ? " in total" : "") + "</html>",
+		return String.format(Locale.ROOT, "<html><b>%s</b><br>%s: %s<br>%d got, %.1f expected" + (windowed ? " in total" : "") + "</html>",
 			LocalDate.ofEpochDay(nearest.getDay()).format(LONG_DATE), Verdict.labelOf(nearest.getLuck()),
 			Texts.html(Texts.luckPercent(nearest.getLuck())), nearest.getReceived(), nearest.getExpected());
 	}
@@ -489,3 +484,4 @@ class LuckGraph extends JComponent
 		return new Color(c.getRed(), c.getGreen(), c.getBlue(), alpha);
 	}
 }
+

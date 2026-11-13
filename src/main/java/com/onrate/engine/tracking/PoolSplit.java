@@ -1,5 +1,7 @@
 package com.onrate.engine.tracking;
 
+import java.util.Collections;
+
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -26,7 +28,7 @@ class PoolSplit
 	int olderCopies()
 	{
 		int n = 0;
-		for (Integer v : older == null ? java.util.Collections.<Integer>emptyList() : older.values())
+		for (Integer v : older == null ? Collections.<Integer>emptyList() : older.values())
 		{
 			n += v == null ? 0 : v;
 		}
@@ -39,3 +41,4 @@ class PoolSplit
 		return n == null ? 0 : n;
 	}
 }
+

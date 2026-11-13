@@ -1,10 +1,19 @@
 package com.expecteddrops.ui;
 
+import java.util.ArrayList;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.GradientPaint;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.util.List;
+import java.awt.RenderingHints;
+import java.awt.geom.RoundRectangle2D;
+
 import java.awt.Color;
 import java.awt.Component;
-import javax.swing.BoxLayout;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
+import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import net.runelite.client.ui.FontManager;
 
@@ -48,18 +57,18 @@ class VerdictTile extends JPanel
 
 	/** The card: a quiet gradient, a hairline outline and a coloured top edge. */
 	@Override
-	protected void paintComponent(java.awt.Graphics graphics)
+	protected void paintComponent(Graphics graphics)
 	{
-		java.awt.Graphics2D g = (java.awt.Graphics2D) graphics.create();
-		g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+		Graphics2D g = (Graphics2D) graphics.create();
+		g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 		int w = getWidth();
 		int h = getHeight();
-		g.setPaint(new java.awt.GradientPaint(0, 0, Theme.SURFACE_RAISED, w, h, Theme.SURFACE));
+		g.setPaint(new GradientPaint(0, 0, Theme.SURFACE_RAISED, w, h, Theme.SURFACE));
 		g.fillRoundRect(0, 0, w - 1, h - 1, 8, 8);
 		g.setColor(Theme.OUTLINE);
 		g.drawRoundRect(0, 0, w - 1, h - 1, 8, 8);
 		// the coloured edge, clipped to the card's rounded corners
-		g.setClip(new java.awt.geom.RoundRectangle2D.Float(0, 0, w - 1, h - 1, 8, 8));
+		g.setClip(new RoundRectangle2D.Float(0, 0, w - 1, h - 1, 8, 8));
 		g.setColor(accent);
 		g.fillRect(0, 0, w, 2);
 		g.dispose();
@@ -72,9 +81,9 @@ class VerdictTile extends JPanel
 	private static final class FullWidthLabel extends JLabel
 	{
 		@Override
-		public java.awt.Dimension getMaximumSize()
+		public Dimension getMaximumSize()
 		{
-			return new java.awt.Dimension(Integer.MAX_VALUE, getPreferredSize().height);
+			return new Dimension(Integer.MAX_VALUE, getPreferredSize().height);
 		}
 	}
 
@@ -106,7 +115,7 @@ class VerdictTile extends JPanel
 		if (text != null && !text.isEmpty())
 		{
 			float size = WORD_SIZE;
-			java.awt.Font base = Theme.verdictFont();
+			Font base = Theme.verdictFont();
 			while (size > WORD_MIN_SIZE && word.getFontMetrics(base.deriveFont(size)).stringWidth(text) > room)
 			{
 				size -= 1f;
@@ -138,7 +147,7 @@ class VerdictTile extends JPanel
 			// a label that wrapped (or shrank) needs a different height: lay the tile and its row out again,
 			// or the second line is cut off. Later, not now: a revalidate made while the tile is being laid
 			// out is wiped when that layout pass ends (Swing marks the tile valid again afterwards)
-			javax.swing.SwingUtilities.invokeLater(this::revalidate);
+			SwingUtilities.invokeLater(this::revalidate);
 		}
 	}
 
@@ -170,13 +179,13 @@ class VerdictTile extends JPanel
 	 * @param maxLines 0 for as many lines as it takes; otherwise at most this many, the last one ending in "..."
 	 *     when the rest of the name does not fit (and a single word wider than the room is cut the same way)
 	 */
-	static String wrapIfLong(String plain, java.awt.FontMetrics fm, int room, int maxLines)
+	static String wrapIfLong(String plain, FontMetrics fm, int room, int maxLines)
 	{
 		if (plain == null || plain.isEmpty() || room <= 0)
 		{
 			return plain;
 		}
-		java.util.List<String> lines = new java.util.ArrayList<>();
+		List<String> lines = new ArrayList<>();
 		StringBuilder line = new StringBuilder();
 		for (String word : plain.split(" "))
 		{
@@ -222,7 +231,7 @@ class VerdictTile extends JPanel
 	}
 
 	/** {@code text} cut from the end, with "..." added, until it fits {@code room} pixels. */
-	private static String ellipsize(String text, java.awt.FontMetrics fm, int room)
+	private static String ellipsize(String text, FontMetrics fm, int room)
 	{
 		String cut = text;
 		while (cut.length() > 1 && fm.stringWidth(cut + "...") > room)
@@ -253,3 +262,4 @@ class VerdictTile extends JPanel
 		repaint();
 	}
 }
+

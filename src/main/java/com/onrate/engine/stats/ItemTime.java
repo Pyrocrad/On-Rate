@@ -1,5 +1,7 @@
 package com.onrate.engine.stats;
 
+import java.util.ArrayList;
+
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -70,7 +72,7 @@ public class ItemTime
 
 	ItemTime withGuides(List<String> guides)
 	{
-		this.guides = guides == null ? Collections.emptyList() : Collections.unmodifiableList(new java.util.ArrayList<>(guides));
+		this.guides = guides == null ? Collections.emptyList() : Collections.unmodifiableList(new ArrayList<>(guides));
 		return this;
 	}
 
@@ -210,3 +212,4 @@ public class ItemTime
 		return String.format(Locale.ROOT, "%,.0f h", Math.round(hours / 1000) * 1000.0);
 	}
 }
+

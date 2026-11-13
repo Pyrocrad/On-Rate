@@ -1,5 +1,9 @@
 package com.onrate.engine.math;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 /**
  * The nine words a luck value can earn, driest first. One definition shared by every list,
  * tile, overlay, trip card and graph.
@@ -67,14 +71,14 @@ public enum Verdict
 	}
 
 	/** Every word, driest first. */
-	public static java.util.List<String> labels()
+	public static List<String> labels()
 	{
-		java.util.List<String> labels = new java.util.ArrayList<>();
+		List<String> labels = new ArrayList<>();
 		for (Verdict v : values())
 		{
 			labels.add(v.label);
 		}
-		return java.util.Collections.unmodifiableList(labels);
+		return Collections.unmodifiableList(labels);
 	}
 
 	/** The verdict for a luck percentile, or null when there is nothing to judge (NaN). */
@@ -158,3 +162,4 @@ public enum Verdict
 	/** Lower edge of each band, plus 1 at the end. */
 	private static final double[] LOWER = {0, 0.01, 0.10, 0.35, 0.45, 0.55, 0.65, 0.90, 0.99, 1};
 }
+

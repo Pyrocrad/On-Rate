@@ -1,5 +1,7 @@
 package com.onrate.engine.data;
 
+import java.util.regex.Matcher;
+
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -30,7 +32,7 @@ public final class ValueFormula
 	public static ValueFormula parse(String text)
 	{
 		ValueFormula f = new ValueFormula();
-		java.util.regex.Matcher sums = SUM_SPLIT.matcher(text);
+		Matcher sums = SUM_SPLIT.matcher(text);
 		int start = 0;
 		char sign = '+';
 		while (true)
@@ -51,7 +53,7 @@ public final class ValueFormula
 	{
 		List<String> factors = new ArrayList<>();
 		List<Character> ops = new ArrayList<>();
-		java.util.regex.Matcher m = PRODUCT_SPLIT.matcher(term);
+		Matcher m = PRODUCT_SPLIT.matcher(term);
 		int start = 0;
 		while (m.find())
 		{
@@ -133,3 +135,4 @@ public final class ValueFormula
 		return Math.max(0, (long) total);
 	}
 }
+

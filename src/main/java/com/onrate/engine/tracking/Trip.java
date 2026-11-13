@@ -1,5 +1,7 @@
 package com.onrate.engine.tracking;
 
+import java.util.HashMap;
+
 import java.util.Map;
 
 /** Where a trip started: the numbers of its boss just before its first kill. Not saved. */
@@ -13,7 +15,7 @@ class Trip
 	final int startReceived;
 	final Map<String, Integer> receivedPerRow;
 	/** Shared items (godsword shards...) this boss had dropped when the trip started, by pool key. */
-	Map<String, Integer> poolSeenStart = new java.util.HashMap<>();
+	Map<String, Integer> poolSeenStart = new HashMap<>();
 
 	Trip(String boss, long startMillis, int startKc, double startExpected, int startReceived,
 		Map<String, Integer> receivedPerRow)
@@ -27,3 +29,4 @@ class Trip
 		this.receivedPerRow = receivedPerRow;
 	}
 }
+

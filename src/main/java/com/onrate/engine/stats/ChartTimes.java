@@ -1,5 +1,9 @@
 package com.onrate.engine.stats;
 
+import java.util.Arrays;
+import com.onrate.engine.data.KillTimes;
+import java.util.function.Predicate;
+
 import com.onrate.engine.data.BossCatalog;
 import com.onrate.engine.data.LadlorChart;
 import com.onrate.engine.tracking.Tracker;
@@ -29,7 +33,7 @@ public final class ChartTimes
 	}
 
 	/** Items of the chart you are still missing something of, in chart order. */
-	public static List<ChartTime> compute(Tracker tracker, com.onrate.engine.data.KillTimes web, RaidSettings raids, LadlorChart chart)
+	public static List<ChartTime> compute(Tracker tracker, KillTimes web, RaidSettings raids, LadlorChart chart)
 	{
 		return compute(tracker, web, raids, chart, boss -> true);
 	}
@@ -38,8 +42,8 @@ public final class ChartTimes
 	 * The chart items you are missing something of, leaving out any that needs a drop of a boss
 	 * {@code allowed} doesn't let through (a Slayer boss above your level).
 	 */
-	public static List<ChartTime> compute(Tracker tracker, com.onrate.engine.data.KillTimes web, RaidSettings raids, LadlorChart chart,
-		java.util.function.Predicate<String> allowed)
+	public static List<ChartTime> compute(Tracker tracker, KillTimes web, RaidSettings raids, LadlorChart chart,
+		Predicate<String> allowed)
 	{
 		List<ItemTime> all = ItemTimes.compute(tracker, web, raids, allowed);
 		Map<String, Map<String, ItemTime>> byBoss = new LinkedHashMap<>();
@@ -256,7 +260,7 @@ public final class ChartTimes
 	public static double expectedKillsForAll(double[] chances)
 	{
 		int[] ones = new int[chances.length];
-		java.util.Arrays.fill(ones, 1);
+		Arrays.fill(ones, 1);
 		return expectedKillsForAll(chances, ones);
 	}
 
@@ -339,3 +343,4 @@ public final class ChartTimes
 		return expected;
 	}
 }
+

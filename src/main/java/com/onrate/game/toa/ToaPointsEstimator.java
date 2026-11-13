@@ -35,6 +35,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package com.onrate.game.toa;
 
+import java.util.Arrays;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -136,7 +138,7 @@ public class ToaPointsEstimator
 	}
 
 	// these have a cap at 3 "downs"
-	static final Set<Integer> P2_WARDENS = Collections.unmodifiableSet(new HashSet<>(java.util.Arrays.asList(
+	static final Set<Integer> P2_WARDENS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
 		NpcID.TOA_WARDEN_ELIDINIS_PHASE2_MAGE,
 		NpcID.TOA_WARDEN_ELIDINIS_PHASE2_RANGE,
 		NpcID.TOA_WARDEN_ELIDINIS_PHASE2_EXPOSED,
@@ -145,7 +147,7 @@ public class ToaPointsEstimator
 		NpcID.TOA_WARDEN_TUMEKEN_PHASE2_EXPOSED
 	)));
 
-	static final Set<Integer> MVP_ITEMS = Collections.unmodifiableSet(new HashSet<>(java.util.Arrays.asList(
+	static final Set<Integer> MVP_ITEMS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
 		ItemID.TOA_ZEBAK_FANG,
 		ItemID.TOA_KEPHRI_POO,
 		ItemID.TOA_BABA_BANANA,
@@ -324,3 +326,4 @@ public class ToaPointsEstimator
 	}
 
 }
+

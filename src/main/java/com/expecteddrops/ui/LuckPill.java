@@ -1,5 +1,9 @@
 package com.expecteddrops.ui;
 
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+
 import java.awt.Color;
 import java.awt.Dimension;
 import javax.swing.JLabel;
@@ -57,14 +61,14 @@ class LuckPill extends JLabel
 	}
 
 	@Override
-	protected void paintComponent(java.awt.Graphics graphics)
+	protected void paintComponent(Graphics graphics)
 	{
 		if (getText() == null || getText().isEmpty())
 		{
 			return;
 		}
-		java.awt.Graphics2D g = (java.awt.Graphics2D) graphics.create();
-		g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+		Graphics2D g = (Graphics2D) graphics.create();
+		g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 		g.setColor(Palette.tint(hue));
 		int arc = getHeight() > 20 ? 12 : getHeight();
 		g.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, arc, arc);
@@ -74,3 +78,4 @@ class LuckPill extends JLabel
 		super.paintComponent(graphics);
 	}
 }
+

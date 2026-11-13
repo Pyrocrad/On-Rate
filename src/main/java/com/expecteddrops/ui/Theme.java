@@ -1,5 +1,10 @@
 package com.expecteddrops.ui;
 
+import java.awt.Font;
+import net.runelite.client.ui.FontManager;
+import java.awt.FontMetrics;
+import java.util.Locale;
+
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Component;
@@ -69,7 +74,7 @@ public final class Theme
 	/** {@code #rrggbb} for a colour, for use inside HTML text. */
 	public static String hex(Color c)
 	{
-		return String.format(java.util.Locale.ROOT, "#%06x", c.getRGB() & 0xFFFFFF);
+		return String.format(Locale.ROOT, "#%06x", c.getRGB() & 0xFFFFFF);
 	}
 
 	/** A small "i" in a circle, in front of information lines (not warnings, not luck). */
@@ -117,10 +122,10 @@ public final class Theme
 				g.setColor(OUTLINE);
 				g.setStroke(new BasicStroke(1f));
 				g.drawOval(x, y, 14, 14);
-				g.setFont(net.runelite.client.ui.FontManager.getRunescapeSmallFont());
+				g.setFont(FontManager.getRunescapeSmallFont());
 				g.setColor(TEXT_MUTED);
 				String text = String.valueOf(number);
-				java.awt.FontMetrics fm = g.getFontMetrics();
+				FontMetrics fm = g.getFontMetrics();
 				g.drawString(text, x + (15 - fm.stringWidth(text)) / 2, y + (15 - fm.getHeight()) / 2 + fm.getAscent());
 				g.dispose();
 			}
@@ -140,20 +145,21 @@ public final class Theme
 	}
 
 	/** Item and secondary numbers in lists: the regular weight, so names stay the bold ones. */
-	static java.awt.Font numberFont()
+	static Font numberFont()
 	{
-		return net.runelite.client.ui.FontManager.getRunescapeFont();
+		return FontManager.getRunescapeFont();
 	}
 
 	/** The font of the verdicts at the top ("On rate") and of the names and numbers in the lists. */
-	static java.awt.Font rowFont()
+	static Font rowFont()
 	{
-		return net.runelite.client.ui.FontManager.getRunescapeBoldFont().deriveFont(java.awt.Font.PLAIN, 16f);
+		return FontManager.getRunescapeBoldFont().deriveFont(Font.PLAIN, 16f);
 	}
 
 	/** The verdict in the tiles at the top ("Very spooned"): bold and a little bigger than the lists. */
-	static java.awt.Font verdictFont()
+	static Font verdictFont()
 	{
-		return net.runelite.client.ui.FontManager.getRunescapeBoldFont().deriveFont(18f);
+		return FontManager.getRunescapeBoldFont().deriveFont(18f);
 	}
 }
+

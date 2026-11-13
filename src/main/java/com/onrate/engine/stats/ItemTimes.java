@@ -1,15 +1,12 @@
 package com.onrate.engine.stats;
 
-import com.onrate.engine.tracking.RateModel;
+import java.util.function.Predicate;
+
+import com.onrate.engine.tracking.*;
 
 import com.onrate.engine.math.Rates;
 
-import com.onrate.engine.data.BossDefinition;
-import com.onrate.engine.data.BossPart;
-import com.onrate.engine.data.DropDefinition;
-import com.onrate.engine.data.KillTimes;
-import com.onrate.engine.tracking.TimeStats;
-import com.onrate.engine.tracking.Tracker;
+import com.onrate.engine.data.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -62,7 +59,7 @@ public final class ItemTimes
 	}
 
 	/** {@link #compute(Tracker, KillTimes, RaidSettings)} for the bosses {@code allowed} lets through (the ones you can fight). */
-	public static List<ItemTime> compute(Tracker tracker, KillTimes web, RaidSettings raids, java.util.function.Predicate<String> allowed)
+	public static List<ItemTime> compute(Tracker tracker, KillTimes web, RaidSettings raids, Predicate<String> allowed)
 	{
 		List<ItemTime> result = new ArrayList<>();
 		for (BossDefinition boss : tracker.getCatalog().getBosses())
@@ -417,3 +414,4 @@ public final class ItemTimes
 		}
 	}
 }
+

@@ -1,9 +1,12 @@
 package com.onrate.engine.tracking;
 
-import com.onrate.engine.data.BossCatalog;
-import com.onrate.engine.data.BossDefinition;
-import com.onrate.engine.data.BossPart;
-import com.onrate.engine.data.DropDefinition;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.Set;
+
+import com.onrate.engine.data.*;
 import com.onrate.engine.stats.RaidChance;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -58,7 +61,7 @@ final class RaidRecords
 	private final Map<String, Map<String, String>> importedUniques = new HashMap<>();
 	/** Tombs of Amascut raids from Raid Data Tracker, for the raid sections only; never saved. */
 	private final Map<String, List<RaidRecord>> sectionOnly = new HashMap<>();
-	private final Map<RaidRecord, String> sectionUniques = new java.util.IdentityHashMap<>();
+	private final Map<RaidRecord, String> sectionUniques = new IdentityHashMap<>();
 
 	RaidRecords(TrackerContext ctx, Statistics statistics, DayCounts dayCounts)
 	{
@@ -354,13 +357,13 @@ final class RaidRecords
 			parts.put(p.getName(), p);
 		}
 		BossProgress progress = ctx.state().get(bossName);
-		java.util.Set<String> have = new java.util.HashSet<>();
+		Set<String> have = new HashSet<>();
 		for (RaidRecord r : progress.raids)
 		{
 			have.add(r.part + "#" + r.kc);
 		}
 		List<ImportedRaid> sorted = new ArrayList<>(imported);
-		sorted.sort(java.util.Comparator.comparingLong(r -> r.when));
+		sorted.sort(Comparator.comparingLong(r -> r.when));
 		Map<String, Integer> lastKc = new HashMap<>();
 		Map<String, String> uniques = importedUniques.computeIfAbsent(bossName, k -> new HashMap<>());
 		boolean toa = "toa".equals(boss.getRaid());
@@ -465,7 +468,7 @@ final class RaidRecords
 	List<RaidRecord> sectionOnly(String bossName)
 	{
 		List<RaidRecord> r = sectionOnly.get(bossName);
-		return r == null ? java.util.Collections.emptyList() : r;
+		return r == null ? Collections.emptyList() : r;
 	}
 
 	/** Your unique from each of those raids. */
@@ -478,7 +481,7 @@ final class RaidRecords
 	Map<String, String> importedUniques(String bossName)
 	{
 		Map<String, String> u = importedUniques.get(bossName);
-		return u == null ? java.util.Collections.emptyMap() : u;
+		return u == null ? Collections.emptyMap() : u;
 	}
 
 	/** Completions of this raid mode whose purple chance came from your points. */
@@ -529,3 +532,4 @@ final class RaidRecords
 		return sum;
 	}
 }
+

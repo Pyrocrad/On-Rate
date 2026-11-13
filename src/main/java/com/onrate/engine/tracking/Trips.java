@@ -1,8 +1,8 @@
 package com.onrate.engine.tracking;
 
-import com.onrate.engine.data.BossCatalog;
-import com.onrate.engine.data.BossDefinition;
-import com.onrate.engine.data.DropDefinition;
+import java.util.function.ToLongFunction;
+
+import com.onrate.engine.data.*;
 import com.onrate.engine.stats.BossStats;
 import com.onrate.engine.stats.RowStats;
 import java.util.ArrayList;
@@ -83,7 +83,7 @@ final class Trips
 	 * GE value the current trip's own kills should give (their delve level, raid points, team),
 	 * or NaN without a trip or when History lacks one of its kills.
 	 */
-	double tripValue(java.util.function.ToLongFunction<String> prices)
+	double tripValue(ToLongFunction<String> prices)
 	{
 		if (trip == null)
 		{
@@ -329,3 +329,4 @@ final class Trips
 			sharedExpected, sharedReceived, sharedNames);
 	}
 }
+

@@ -1,5 +1,6 @@
 package com.onrate.engine.data;
 
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -20,7 +21,7 @@ public class DropDefinition
 	/** A drop that is guaranteed on this kill (Vorkath's head on the 50th): that kill's roll becomes a sure drop. */
 	private Integer guaranteedAt;
 	/** Tombs of Amascut: weight from a raid level on (e.g. {"400": 4}); below the lowest key the normal weight. */
-	private java.util.Map<String, Double> levelWeights;
+	private Map<String, Double> levelWeights;
 	/** Items that drop in stacks: average stack size. The collection log counts items, not drops. */
 	private Double stack;
 	/** Most copies the collection log can count (2 for the two Royal Titans prayer scrolls). */
@@ -96,7 +97,7 @@ public class DropDefinition
 		int best = Integer.MIN_VALUE;
 		if (levelWeights != null)
 		{
-			for (java.util.Map.Entry<String, Double> e : levelWeights.entrySet())
+			for (Map.Entry<String, Double> e : levelWeights.entrySet())
 			{
 				int level = Integer.parseInt(e.getKey());
 				if (level <= raidLevel && level > best)
@@ -271,3 +272,4 @@ public class DropDefinition
 		this.match = match;
 	}
 }
+

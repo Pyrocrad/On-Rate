@@ -1,5 +1,7 @@
 package com.expecteddrops.ui;
 
+import javax.swing.SwingUtilities;
+
 import java.awt.BasicStroke;
 import java.awt.Cursor;
 import java.awt.Dimension;
@@ -39,7 +41,7 @@ final class PetsSwitch extends JPanel
 			@Override
 			public void mouseClicked(MouseEvent e)
 			{
-				if (javax.swing.SwingUtilities.isLeftMouseButton(e))
+				if (SwingUtilities.isLeftMouseButton(e))
 				{
 					toggle();
 				}
@@ -111,3 +113,4 @@ final class PetsSwitch extends JPanel
 		g.dispose();
 	}
 }
+

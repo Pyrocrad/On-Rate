@@ -15,21 +15,6 @@ repositories {
 
 def runeLiteVersion = 'latest.release'
 
-// The original On Rate, untouched apart from its package (legacy.expecteddrops, so it can sit next to the
-// original UI classes). Compiled only so the tests can run it next to this plugin on identical input. Never shipped.
-sourceSets {
-	legacy
-	test {
-		compileClasspath += sourceSets.legacy.output
-		runtimeClasspath += sourceSets.legacy.output
-	}
-}
-
-configurations {
-	legacyCompileOnly.extendsFrom compileOnly
-	legacyAnnotationProcessor.extendsFrom annotationProcessor
-}
-
 dependencies {
 	compileOnly group: 'net.runelite', name: 'client', version: runeLiteVersion
 

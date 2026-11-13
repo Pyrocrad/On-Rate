@@ -1,5 +1,14 @@
 package com.expecteddrops.ui;
 
+import java.time.temporal.ChronoUnit;
+import java.util.Collections;
+import java.time.Instant;
+import com.onrate.engine.tracking.KillEntry;
+import java.util.Locale;
+import java.util.Map;
+import com.onrate.engine.tracking.Tracker;
+import java.time.ZoneId;
+
 import com.onrate.engine.math.Luck;
 import com.onrate.engine.math.Verdict;
 
@@ -29,8 +38,8 @@ final class Texts
 			return "Last " + unitOne + " just now";
 		}
 		return limitMinutes > idleMinutes
-			? String.format(java.util.Locale.ROOT, "Idle %d min \u00b7 ends in %d min", idleMinutes, limitMinutes - idleMinutes)
-			: String.format(java.util.Locale.ROOT, "Idle %d min", idleMinutes);
+			? String.format(Locale.ROOT, "Idle %d min \u00b7 ends in %d min", idleMinutes, limitMinutes - idleMinutes)
+			: String.format(Locale.ROOT, "Idle %d min", idleMinutes);
 	}
 
 	/** Trip card: tooltip of the "New trip" button, with the boss's word for one ("kill", "raid", "chest"...). */
@@ -49,7 +58,7 @@ final class Texts
 	{
 		if (killedBosses > 0)
 		{
-			return String.format(java.util.Locale.ROOT, "%,d boss%s you killed not loaded yet", killedBosses, killedBosses == 1 ? "" : "es");
+			return String.format(Locale.ROOT, "%,d boss%s you killed not loaded yet", killedBosses, killedBosses == 1 ? "" : "es");
 		}
 		int left = total - done;
 		if (total < 1 || left < 1)
@@ -58,9 +67,9 @@ final class Texts
 		}
 		if (done <= 0)
 		{
-			return String.format(java.util.Locale.ROOT, "Collection log: 0 of %,d page%s opened", total, total == 1 ? "" : "s");
+			return String.format(Locale.ROOT, "Collection log: 0 of %,d page%s opened", total, total == 1 ? "" : "s");
 		}
-		return String.format(java.util.Locale.ROOT, "Collection log: %,d page%s not opened yet", left, left == 1 ? "" : "s");
+		return String.format(Locale.ROOT, "Collection log: %,d page%s not opened yet", left, left == 1 ? "" : "s");
 	}
 
 	/** Boss page: a log page of this boss was opened but could not be read. */
@@ -80,7 +89,7 @@ final class Texts
 	 */
 	static String raidPointsLine(String family, String part, int measured, int estimated)
 	{
-		String raids = String.format(java.util.Locale.ROOT, "%,d %s raid%s", measured, part, measured == 1 ? "" : "s");
+		String raids = String.format(Locale.ROOT, "%,d %s raid%s", measured, part, measured == 1 ? "" : "s");
 		if ("fractured".equals(family))
 		{
 			return raids + " used your share of the damage (On Rate's estimate) instead of the setting.";
@@ -94,7 +103,7 @@ final class Texts
 			return raids + " used your estimated points instead of the setting: the game's exact points didn't come, "
 				+ "so On Rate worked them out from your hits.";
 		}
-		return raids + String.format(java.util.Locale.ROOT, " used your points instead of the setting: the exact points the game "
+		return raids + String.format(Locale.ROOT, " used your points instead of the setting: the exact points the game "
 			+ "sent, or On Rate's estimate for the %,d where they didn't come.", estimated);
 	}
 
@@ -109,7 +118,7 @@ final class Texts
 			return "";
 		}
 		boolean team = raid != null && (raid.startsWith("tob") || "fractured".equals(raid));
-		return String.format(java.util.Locale.ROOT, " (%s over your last %d raids; you may have raided differently before)",
+		return String.format(Locale.ROOT, " (%s over your last %d raids; you may have raided differently before)",
 			team ? "your usual team" : "your average", raids);
 	}
 
@@ -119,21 +128,21 @@ final class Texts
 	 */
 	static String itemSetupText(double perRaid, double perHour)
 	{
-		String raid = "1 in " + String.format(java.util.Locale.ROOT, "%,d", Math.round(1 / perRaid)) + " raids";
+		String raid = "1 in " + String.format(Locale.ROOT, "%,d", Math.round(1 / perRaid)) + " raids";
 		if (Double.isNaN(perHour) || perHour <= 0)
 		{
 			return raid;
 		}
 		double hours = 1 / perHour;
-		String h = hours < 10 ? String.format(java.util.Locale.ROOT, "%.1f", hours)
-			: String.format(java.util.Locale.ROOT, "%,d", Math.round(hours));
+		String h = hours < 10 ? String.format(Locale.ROOT, "%.1f", hours)
+			: String.format(Locale.ROOT, "%,d", Math.round(hours));
 		return raid + " · 1 per ~" + h + " h";
 	}
 
 	/** A forecast table cell: raids ("1,236"), or a dash when the items can't all drop at these chances. */
 	static String raidsText(long raids)
 	{
-		return raids < 0 ? "—" : String.format(java.util.Locale.ROOT, "%,d", raids);
+		return raids < 0 ? "—" : String.format(Locale.ROOT, "%,d", raids);
 	}
 
 	/** The same in hours at your average raid time ("~741 h"); a dash when unknown. */
@@ -143,13 +152,13 @@ final class Texts
 		{
 			return "—";
 		}
-		return String.format(java.util.Locale.ROOT, "~%,d h", Math.round(raids * avgMillis / 3_600_000.0));
+		return String.format(Locale.ROOT, "~%,d h", Math.round(raids * avgMillis / 3_600_000.0));
 	}
 
 	/** A chance as "1 in 805"; a dash when it can't happen. */
 	static String oneIn(double chance)
 	{
-		return !(chance > 0) ? "—" : String.format(java.util.Locale.ROOT, "1 in %,d", Math.round(1 / chance));
+		return !(chance > 0) ? "—" : String.format(Locale.ROOT, "1 in %,d", Math.round(1 / chance));
 	}
 
 	/** What's missing from a raid's log page: "4 uniques + pet", "1 unique", "Pet only". */
@@ -272,10 +281,10 @@ final class Texts
 			// added by hand from memory: the kill count is known, the date isn't
 			return "date unknown";
 		}
-		long days = java.time.temporal.ChronoUnit.DAYS.between(
-			java.time.Instant.ofEpochMilli(time).atZone(java.time.ZoneId.systemDefault()).toLocalDate(),
-			java.time.Instant.ofEpochMilli(now).atZone(java.time.ZoneId.systemDefault()).toLocalDate());
-		return days <= 0 ? "today" : days == 1 ? "yesterday" : String.format(java.util.Locale.ROOT, "%,d days ago", days);
+		long days = ChronoUnit.DAYS.between(
+			Instant.ofEpochMilli(time).atZone(ZoneId.systemDefault()).toLocalDate(),
+			Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault()).toLocalDate());
+		return days <= 0 ? "today" : days == 1 ? "yesterday" : String.format(Locale.ROOT, "%,d days ago", days);
 	}
 
 	/**
@@ -284,7 +293,7 @@ final class Texts
 	 * The "1 in N" is how many players are as quick (or as slow) as you; it is left out when it is
 	 * under 1 in 10.
 	 */
-	static String dropLuck(com.onrate.engine.tracking.KillEntry.DropEntry d)
+	static String dropLuck(KillEntry.DropEntry d)
 	{
 		if (d.getMultiple() == null || d.isAtLeast())
 		{
@@ -316,7 +325,7 @@ final class Texts
 	}
 
 	/** {@link #dropLuck} for a list row: "1 in 34 players this quick", "1 in 30 players wait this long". */
-	static String dropLuckShort(com.onrate.engine.tracking.KillEntry.DropEntry d)
+	static String dropLuckShort(KillEntry.DropEntry d)
 	{
 		return d.getMultiple() == null || d.isAtLeast() ? "" : waitLuckShort(d.getMultiple(), false);
 	}
@@ -347,19 +356,19 @@ final class Texts
 
 	private static String shareText(double share)
 	{
-		return share >= 0.9995 ? ">99.9%" : share >= 0.995 ? String.format(java.util.Locale.ROOT, "%.1f%%", share * 100)
-			: share < 0.005 ? "<1%" : String.format(java.util.Locale.ROOT, "%.0f%%", share * 100);
+		return share >= 0.9995 ? ">99.9%" : share >= 0.995 ? String.format(Locale.ROOT, "%.1f%%", share * 100)
+			: share < 0.005 ? "<1%" : String.format(Locale.ROOT, "%.0f%%", share * 100);
 	}
 
 	/** 3 significant digits: 25, 1,030, 41,200. */
 	private static String oneInText(double n)
 	{
 		double scale = Math.pow(10, Math.max(0, Math.floor(Math.log10(n)) - 2));
-		return String.format(java.util.Locale.ROOT, "%,.0f", Math.round(n / scale) * scale);
+		return String.format(Locale.ROOT, "%,.0f", Math.round(n / scale) * scale);
 	}
 
 	/** "after 7 kills (0.1x)", "your first one", or "" when the gap is unknown. */
-	static String afterText(com.onrate.engine.tracking.KillEntry.DropEntry d, String unit)
+	static String afterText(KillEntry.DropEntry d, String unit)
 	{
 		if (d.isFirst())
 		{
@@ -371,9 +380,9 @@ final class Texts
 		}
 		if (d.isAtLeast())
 		{
-			return String.format(java.util.Locale.ROOT, "after %,d+ %ss", d.getSince(), unit);
+			return String.format(Locale.ROOT, "after %,d+ %ss", d.getSince(), unit);
 		}
-		return String.format(java.util.Locale.ROOT, "after %,d %s%s", d.getSince(), unit, d.getSince() == 1 ? "" : "s")
+		return String.format(Locale.ROOT, "after %,d %s%s", d.getSince(), unit, d.getSince() == 1 ? "" : "s")
 			+ (d.getMultiple() == null ? "" : " (" + formatMultiple(d.getMultiple()) + ")");
 	}
 
@@ -381,28 +390,28 @@ final class Texts
 	 * "Vorkath 437", or for a page with several bosses the one that dropped it with its own
 	 * kill count ("Callisto 96"); raid modes other than Normal get a short tag ("CoX CM 12").
 	 */
-	static String whereText(BossDefinition boss, String bossName, com.onrate.engine.tracking.KillEntry kill)
+	static String whereText(BossDefinition boss, String bossName, KillEntry kill)
 	{
 		if (boss != null && boss.hasParts() && kill.getPart() != null && kill.getPartKc() != null)
 		{
 			if (boss.getRaid() == null)
 			{
-				return String.format(java.util.Locale.ROOT, "%s %,d", kill.getPart(), kill.getPartKc());
+				return String.format(Locale.ROOT, "%s %,d", kill.getPart(), kill.getPartKc());
 			}
 			if (!"Normal".equals(kill.getPart()))
 			{
-				return String.format(java.util.Locale.ROOT, "%s %s %,d", bossName, shortMode(kill.getPart()), kill.getPartKc());
+				return String.format(Locale.ROOT, "%s %s %,d", bossName, shortMode(kill.getPart()), kill.getPartKc());
 			}
-			return String.format(java.util.Locale.ROOT, "%s %,d", bossName, kill.getPartKc());
+			return String.format(Locale.ROOT, "%s %,d", bossName, kill.getPartKc());
 		}
-		return String.format(java.util.Locale.ROOT, "%s %,d", bossName, kill.getKc());
+		return String.format(Locale.ROOT, "%s %,d", bossName, kill.getKc());
 	}
 
 	/**
 	 * Where a saved kill happened, for hover rows: the page's boss, or for a page with several
 	 * bosses the one it was ("Corrupted Gauntlet", "Artio"), or a raid with its mode ("Tombs of Amascut, Expert Mode").
 	 */
-	static String whereName(BossDefinition boss, String bossName, com.onrate.engine.tracking.KillEntry kill)
+	static String whereName(BossDefinition boss, String bossName, KillEntry kill)
 	{
 		if (boss != null && boss.hasParts() && kill.getPart() != null && kill.getPartKc() != null)
 		{
@@ -417,31 +426,31 @@ final class Texts
 	}
 
 	/** The kill count of a saved kill as a number: the mode's or boss's own on a page with several, else the page's. */
-	static String killCount(BossDefinition boss, com.onrate.engine.tracking.KillEntry kill)
+	static String killCount(BossDefinition boss, KillEntry kill)
 	{
 		boolean own = boss != null && boss.hasParts() && kill.getPart() != null && kill.getPartKc() != null;
-		return String.format(java.util.Locale.ROOT, "%,d", own ? kill.getPartKc() : kill.getKc());
+		return String.format(Locale.ROOT, "%,d", own ? kill.getPartKc() : kill.getKc());
 	}
 
 	/**
 	 * The kill count of a saved kill without the boss, for hover rows: "437", or with the mode or
 	 * boss of a combined page and its own count ("Challenge Mode 12", "Artio 40").
 	 */
-	static String killValue(BossDefinition boss, com.onrate.engine.tracking.KillEntry kill)
+	static String killValue(BossDefinition boss, KillEntry kill)
 	{
 		if (boss != null && boss.hasParts() && kill.getPart() != null && kill.getPartKc() != null)
 		{
-			return String.format(java.util.Locale.ROOT, "%s %,d", kill.getPart(), kill.getPartKc());
+			return String.format(Locale.ROOT, "%s %,d", kill.getPart(), kill.getPartKc());
 		}
-		return String.format(java.util.Locale.ROOT, "%,d", kill.getKc());
+		return String.format(Locale.ROOT, "%,d", kill.getKc());
 	}
 
 	/** {@link #killValue} with what is counted in front when there is no mode: "Raid 115", "Kill 437". */
-	static String killText(BossDefinition boss, com.onrate.engine.tracking.KillEntry kill)
+	static String killText(BossDefinition boss, KillEntry kill)
 	{
 		boolean mode = boss != null && boss.hasParts() && kill.getPart() != null && kill.getPartKc() != null;
 		return mode ? killValue(boss, kill)
-			: capital(boss == null ? "kill" : com.onrate.engine.tracking.Tracker.unitOne(boss)) + " " + killValue(boss, kill);
+			: capital(boss == null ? "kill" : Tracker.unitOne(boss)) + " " + killValue(boss, kill);
 	}
 
 	static String shortMode(String part)
@@ -463,7 +472,7 @@ final class Texts
 
 	static String formatPoints(int points)
 	{
-		return points >= 10_000 ? String.format(java.util.Locale.ROOT, "%.1fk", points / 1000.0) : String.format(java.util.Locale.ROOT, "%,d", points);
+		return points >= 10_000 ? String.format(Locale.ROOT, "%.1fk", points / 1000.0) : String.format(Locale.ROOT, "%,d", points);
 	}
 
 	/** "Vorkath", "Vorkath and Zulrah", "Vorkath, Zulrah and Cerberus". */
@@ -510,10 +519,10 @@ final class Texts
 		if (luck < 0.5)
 		{
 			long n = Math.max(2, Math.round(1 / Math.max(luck, 0.0001)));
-			return String.format(java.util.Locale.ROOT, "About 1 in %,d players is this dry (or drier)", n);
+			return String.format(Locale.ROOT, "About 1 in %,d players is this dry (or drier)", n);
 		}
 		long n = Math.max(2, Math.round(1 / Math.max(1 - luck, 0.0001)));
-		return String.format(java.util.Locale.ROOT, "About 1 in %,d players is this lucky (or luckier)", n);
+		return String.format(Locale.ROOT, "About 1 in %,d players is this lucky (or luckier)", n);
 	}
 
 	/** Chance of at least one more in the next {@code kills}, at {@code rate} per kill. */
@@ -542,7 +551,7 @@ final class Texts
 		{
 			return null;
 		}
-		return String.format(java.util.Locale.ROOT, "%s the %s rate", formatMultiple(multiple), row.isAny() ? "unique" : "drop");
+		return String.format(Locale.ROOT, "%s the %s rate", formatMultiple(multiple), row.isAny() ? "unique" : "drop");
 	}
 
 	/** The dry streak as a footnote line, or null when unknown. */
@@ -557,21 +566,21 @@ final class Texts
 		{
 			return "Dry streak: your last one came before On Rate, so it counts from your next " + unit + ".";
 		}
-		String kills = String.format(java.util.Locale.ROOT, "%,d %s%s", row.getStreak(), unit, row.getStreak() == 1 ? "" : "s");
+		String kills = String.format(Locale.ROOT, "%,d %s%s", row.getStreak(), unit, row.getStreak() == 1 ? "" : "s");
 		double m = row.getStreakMultiple();
 		boolean multiple = !Double.isNaN(m) && row.getRate() > 0;
 		if (!row.isStreakExact())
 		{
 			// only a minimum is known: the last one came before On Rate
-			return "Dry streak: at least " + kills + (multiple ? String.format(java.util.Locale.ROOT, " (%s the drop rate or more)", formatMultiple(m)) : "")
+			return "Dry streak: at least " + kills + (multiple ? String.format(Locale.ROOT, " (%s the drop rate or more)", formatMultiple(m)) : "")
 				+ ". Your last one came before On Rate started tracking.";
 		}
-		return String.format(java.util.Locale.ROOT, "Dry streak: %s %s", kills, row.isAny() ? "since your last unique" : "since your last one")
-			+ (multiple ? String.format(java.util.Locale.ROOT, " (%s the drop rate)", formatMultiple(m)) : "") + ".";
+		return String.format(Locale.ROOT, "Dry streak: %s %s", kills, row.isAny() ? "since your last unique" : "since your last one")
+			+ (multiple ? String.format(Locale.ROOT, " (%s the drop rate)", formatMultiple(m)) : "") + ".";
 	}
 
 	/** Two-column table of completions per delve level, like the Doom plugin's header. */
-	static String levelTable(java.util.Map<Integer, Integer> levels)
+	static String levelTable(Map<Integer, Integer> levels)
 	{
 		StringBuilder sb = new StringBuilder("<html><table cellpadding=0 cellspacing=0>");
 		int half = (BossDefinition.DELVE_LEVELS + 1) / 2;
@@ -589,33 +598,33 @@ final class Texts
 	}
 
 	/** "184 raids · 182 Normal · 2 CM" or "Callisto 96 · Artio 624", short enough for the header. */
-	static String partLine(java.util.Map<String, Integer> parts, boolean raid, int total)
+	static String partLine(Map<String, Integer> parts, boolean raid, int total)
 	{
 		List<String> shown = new ArrayList<>();
-		for (java.util.Map.Entry<String, Integer> e : parts.entrySet())
+		for (Map.Entry<String, Integer> e : parts.entrySet())
 		{
 			if (e.getValue() > 0)
 			{
 				String name = raid ? shortMode(e.getKey()) : e.getKey().replace("Dagannoth ", "");
-				shown.add(raid ? String.format(java.util.Locale.ROOT, "%,d %s", e.getValue(), name) : String.format(java.util.Locale.ROOT, "%s %,d", name, e.getValue()));
+				shown.add(raid ? String.format(Locale.ROOT, "%,d %s", e.getValue(), name) : String.format(Locale.ROOT, "%s %,d", name, e.getValue()));
 			}
 		}
 		if (raid)
 		{
-			shown.add(0, String.format(java.util.Locale.ROOT, "%,d raids", total));
+			shown.add(0, String.format(Locale.ROOT, "%,d raids", total));
 		}
 		return String.join(" \u00b7 ", shown);
 	}
 
 	/** "Callisto 96 · Artio 624" or "182 Normal · 2 Challenge Mode"; parts with 0 are left out. */
-	static String partTable(java.util.Map<String, Integer> parts, boolean raid)
+	static String partTable(Map<String, Integer> parts, boolean raid)
 	{
 		List<String> shown = new ArrayList<>();
-		for (java.util.Map.Entry<String, Integer> e : parts.entrySet())
+		for (Map.Entry<String, Integer> e : parts.entrySet())
 		{
 			if (e.getValue() > 0)
 			{
-				shown.add(raid ? String.format(java.util.Locale.ROOT, "%,d %s", e.getValue(), e.getKey()) : String.format(java.util.Locale.ROOT, "%s %,d", e.getKey(), e.getValue()));
+				shown.add(raid ? String.format(Locale.ROOT, "%,d %s", e.getValue(), e.getKey()) : String.format(Locale.ROOT, "%s %,d", e.getKey(), e.getValue()));
 			}
 		}
 		return "<html><body style='width: 165px'>" + String.join(" \u00b7 ", shown) + "</body></html>";
@@ -624,7 +633,7 @@ final class Texts
 	/** Kill count per boss on a combined page, e.g. "Dagannoth Rex: 436". */
 	static String levelCell(int level, Integer count)
 	{
-		return String.format(java.util.Locale.ROOT, "<td><font color='#ffffff'>Level %s:</font></td><td align=right>&nbsp;%,d</td>",
+		return String.format(Locale.ROOT, "<td><font color='#ffffff'>Level %s:</font></td><td align=right>&nbsp;%,d</td>",
 			BossDefinition.delveLevelLabel(level), count == null ? 0 : count);
 	}
 
@@ -632,22 +641,22 @@ final class Texts
 	{
 		if (expected >= 100)
 		{
-			return String.format(java.util.Locale.ROOT, "%.0f", expected);
+			return String.format(Locale.ROOT, "%.0f", expected);
 		}
 		if (expected >= 10)
 		{
-			return String.format(java.util.Locale.ROOT, "%.1f", expected);
+			return String.format(Locale.ROOT, "%.1f", expected);
 		}
-		return String.format(java.util.Locale.ROOT, "%.2f", expected);
+		return String.format(Locale.ROOT, "%.2f", expected);
 	}
 
 	static String formatMultiple(double m)
 	{
 		if (m < 0.1)
 		{
-			return String.format(java.util.Locale.ROOT, "%.2f\u00d7", m);
+			return String.format(Locale.ROOT, "%.2f\u00d7", m);
 		}
-		return m < 10 ? String.format(java.util.Locale.ROOT, "%.1f\u00d7", m) : String.format(java.util.Locale.ROOT, "%.0f\u00d7", m);
+		return m < 10 ? String.format(Locale.ROOT, "%.1f\u00d7", m) : String.format(Locale.ROOT, "%.0f\u00d7", m);
 	}
 
 	static String formatPercent(double p)
@@ -656,7 +665,7 @@ final class Texts
 		{
 			return ">99.9%";
 		}
-		return String.format(java.util.Locale.ROOT, "%.1f%%", p * 100);
+		return String.format(Locale.ROOT, "%.1f%%", p * 100);
 	}
 
 	static String initials(String name)
@@ -687,7 +696,7 @@ final class Texts
 		{
 			return ">99%";
 		}
-		return String.format(java.util.Locale.ROOT, "%.0f%%", p);
+		return String.format(Locale.ROOT, "%.0f%%", p);
 	}
 
 	/**
@@ -711,9 +720,9 @@ final class Texts
 			}
 			if (same >= 0.5)
 			{
-				return String.format(java.util.Locale.ROOT, "%.0f%% have none", same * 100);
+				return String.format(Locale.ROOT, "%.0f%% have none", same * 100);
 			}
-			return String.format(java.util.Locale.ROOT, "only 1 in %,d has none", Math.max(2, Math.round(1 / Math.max(same, 0.0001))));
+			return String.format(Locale.ROOT, "only 1 in %,d has none", Math.max(2, Math.round(1 / Math.max(same, 0.0001))));
 		}
 		return luckShort(Luck.tieAware(fewer, same));
 	}
@@ -743,10 +752,10 @@ final class Texts
 		if (luck < 0.5)
 		{
 			return luck < 0.0001 ? "<1 in 10,000 as dry"
-				: String.format(java.util.Locale.ROOT, "1 in %,d as dry", Math.max(2, Math.round(1 / luck)));
+				: String.format(Locale.ROOT, "1 in %,d as dry", Math.max(2, Math.round(1 / luck)));
 		}
 		return 1 - luck < 0.0001 ? "<1 in 10,000 as lucky"
-			: String.format(java.util.Locale.ROOT, "1 in %,d as lucky", Math.max(2, Math.round(1 / (1 - luck))));
+			: String.format(Locale.ROOT, "1 in %,d as lucky", Math.max(2, Math.round(1 / (1 - luck))));
 	}
 
 	/**
@@ -760,7 +769,7 @@ final class Texts
 	 * always "On rate" (see {@code Luck.of}), so lists draw it quietly without hiding anything
 	 * dry. Never "Any unique".
 	 */
-	static boolean isQuiet(com.onrate.engine.stats.RowStats r)
+	static boolean isQuiet(RowStats r)
 	{
 		return r != null && !r.isAny() && r.getReceived() == 0 && r.getExpected() < TOO_EARLY_BELOW;
 	}
@@ -787,14 +796,14 @@ final class Texts
 		{
 			return "under 1 min";
 		}
-		return minutes >= 60 ? String.format(java.util.Locale.ROOT, "%dh %02dm", minutes / 60, minutes % 60) : minutes + " min";
+		return minutes >= 60 ? String.format(Locale.ROOT, "%dh %02dm", minutes / 60, minutes % 60) : minutes + " min";
 	}
 
 	/** First line of a trip row: "96 kills \u00b7 3 uniques" (units as the boss calls them, e.g. "kills" or "raids"). */
 	static String tripCounts(int kills, String units, int uniques)
 	{
 		String unit = kills == 1 && units.endsWith("s") ? units.substring(0, units.length() - 1) : units;
-		return String.format(java.util.Locale.ROOT, "%,d %s \u00b7 %s", kills, unit,
+		return String.format(Locale.ROOT, "%,d %s \u00b7 %s", kills, unit,
 			uniques == 0 ? "no uniques" : uniques == 1 ? "1 unique" : uniques + " uniques");
 	}
 
@@ -803,13 +812,13 @@ final class Texts
 	 * player would have by now at the drop rates, not a number owed. A cap (a pet is 1, Warm gloves 3) only
 	 * limits what counts as got; the expected number is the row's own, as in every other view.
 	 */
-	static String gotOfExpected(com.onrate.engine.stats.RowStats r)
+	static String gotOfExpected(RowStats r)
 	{
-		return String.format(java.util.Locale.ROOT, "%,d / %s", r.getReceived(), formatExpected(r.getExpected()));
+		return String.format(Locale.ROOT, "%,d / %s", r.getReceived(), formatExpected(r.getExpected()));
 	}
 
 	/** What a row says once you have every copy that counts: "have it", "have both", "have all 3". */
-	static String haveText(com.onrate.engine.stats.RowStats r)
+	static String haveText(RowStats r)
 	{
 		switch (r.getCap())
 		{
@@ -834,12 +843,12 @@ final class Texts
 	 * players would have by now while you don't ("6 in 10 players would have a Tumeken's shadow
 	 * by now"), or the luckiest item ("luckier than 97% of players"), whichever is furthest out.
 	 */
-	static String notableLine(java.util.List<com.onrate.engine.stats.RowStats> items)
+	static String notableLine(List<RowStats> items)
 	{
-		com.onrate.engine.stats.RowStats best = null;
+		RowStats best = null;
 		double bestShare = 0;
 		boolean bestLucky = false;
-		for (com.onrate.engine.stats.RowStats r : items)
+		for (RowStats r : items)
 		{
 			double[] shares = r == null || r.isAny() ? null : r.getShares();
 			if (shares == null)
@@ -870,17 +879,17 @@ final class Texts
 		String name = best.getLabel();
 		if (bestLucky)
 		{
-			return String.format(java.util.Locale.ROOT, "Luckiest: %s, luckier than %s of players.", name, sharePct(bestShare));
+			return String.format(Locale.ROOT, "Luckiest: %s, luckier than %s of players.", name, sharePct(bestShare));
 		}
 		if (best.getReceived() <= 0)
 		{
 			// with none, the players who have more are the ones who'd have one by now
 			String players = bestShare < 0.95
-				? String.format(java.util.Locale.ROOT, "%d in 10 players", (int) Math.floor(bestShare * 10))
+				? String.format(Locale.ROOT, "%d in 10 players", (int) Math.floor(bestShare * 10))
 				: sharePct(bestShare) + " of players";
-			return String.format(java.util.Locale.ROOT, "%s would have %s by now.", players, withArticle(name));
+			return String.format(Locale.ROOT, "%s would have %s by now.", players, withArticle(name));
 		}
-		return String.format(java.util.Locale.ROOT, "Driest: %s, drier than %s of players.", name, sharePct(bestShare));
+		return String.format(Locale.ROOT, "Driest: %s, drier than %s of players.", name, sharePct(bestShare));
 	}
 
 	/** An item this close to its expected count (a quarter either way) is "about on rate" for its own line. */
@@ -901,7 +910,7 @@ final class Texts
 	static List<String> notableLines(List<RowStats> items, List<RowStats> bosses, double countLuck, double valueLuck,
 		String what)
 	{
-		return notableLines(items, bosses, countLuck, valueLuck, what, java.util.Collections.emptyList());
+		return notableLines(items, bosses, countLuck, valueLuck, what, Collections.emptyList());
 	}
 
 	/** The same, with the page's own facts (the log forecast, the average pace) after the first ones. */
@@ -956,14 +965,14 @@ final class Texts
 			}
 			if (close != null)
 			{
-				facts.add(String.format(java.util.Locale.ROOT, "%s: %,d got, %s expected.", close.getLabel(),
+				facts.add(String.format(Locale.ROOT, "%s: %,d got, %s expected.", close.getLabel(),
 					close.getReceived(), formatExpected(close.getExpected())));
 			}
 			if (total >= 2 && have > 0)
 			{
 				facts.add(have == total && total == 2 ? "You have both " + what + " here."
-					: have == total ? String.format(java.util.Locale.ROOT, "You have all %d %s here.", total, what)
-					: String.format(java.util.Locale.ROOT, "You have %d of the %d %s here.", have, total, what));
+					: have == total ? String.format(Locale.ROOT, "You have all %d %s here.", total, what)
+					: String.format(Locale.ROOT, "You have %d of the %d %s here.", have, total, what));
 			}
 		}
 		else
@@ -999,12 +1008,12 @@ final class Texts
 			}
 			if (dry + on + lucky >= 2)
 			{
-				facts.add(String.format(java.util.Locale.ROOT, "Of %d bosses: %d drier than average, %d on rate, %d luckier.",
+				facts.add(String.format(Locale.ROOT, "Of %d bosses: %d drier than average, %d on rate, %d luckier.",
 					dry + on + lucky, dry, on, lucky));
 			}
 			if (most != null)
 			{
-				facts.add(String.format(java.util.Locale.ROOT, "Most %s: %s, %,d.", what, most.getLabel(), most.getReceived()));
+				facts.add(String.format(Locale.ROOT, "Most %s: %s, %,d.", what, most.getLabel(), most.getReceived()));
 			}
 		}
 		return facts;
@@ -1032,11 +1041,11 @@ final class Texts
 		}
 		if (petMissing && withoutPet > 0 && withoutPet < withPet)
 		{
-			return String.format(java.util.Locale.ROOT, "Rest of the log, 50%% chance: %,d more %s%s with the pet, %,d%s without.",
+			return String.format(Locale.ROOT, "Rest of the log, 50%% chance: %,d more %s%s with the pet, %,d%s without.",
 				withPet, units, aboutTime(withPet * seconds), withoutPet, aboutTime(withoutPet * seconds));
 		}
 		String what = onlyItem == null ? "Rest of the log" : "Last item for the log, " + onlyItem;
-		return String.format(java.util.Locale.ROOT, "%s: 50%% chance within %,d more %s%s.", what, withPet, units,
+		return String.format(Locale.ROOT, "%s: 50%% chance within %,d more %s%s.", what, withPet, units,
 			aboutTime(withPet * seconds));
 	}
 
@@ -1056,9 +1065,9 @@ final class Texts
 			return null;
 		}
 		double every = 1 / perKill;
-		String count = every >= 10 ? String.format(java.util.Locale.ROOT, "%,d", Math.round(every))
-			: String.format(java.util.Locale.ROOT, "%.1f", every);
-		return String.format(java.util.Locale.ROOT, "On average one %s every %s %s%s.", one, count, units,
+		String count = every >= 10 ? String.format(Locale.ROOT, "%,d", Math.round(every))
+			: String.format(Locale.ROOT, "%.1f", every);
+		return String.format(Locale.ROOT, "On average one %s every %s %s%s.", one, count, units,
 			aboutTime(every * seconds));
 	}
 
@@ -1072,20 +1081,20 @@ final class Texts
 		double hours = seconds / 3600;
 		if (hours < 1)
 		{
-			return String.format(java.util.Locale.ROOT, " (~%d min)", Math.max(1, Math.round(hours * 60)));
+			return String.format(Locale.ROOT, " (~%d min)", Math.max(1, Math.round(hours * 60)));
 		}
 		if (hours < 10)
 		{
-			return String.format(java.util.Locale.ROOT, " (~%.1f h)", hours);
+			return String.format(Locale.ROOT, " (~%.1f h)", hours);
 		}
-		return String.format(java.util.Locale.ROOT, " (~%,d h)", Math.round(hours));
+		return String.format(Locale.ROOT, " (~%,d h)", Math.round(hours));
 	}
 
 	/**
 	 * For the "Unique value" hover: the item most of the value comes from, when one item is at
 	 * least half of it ("Most of it is the Crystal tool seed (95%)."), else null.
 	 */
-	static String mainValueSource(java.util.List<String> names, java.util.List<Double> values)
+	static String mainValueSource(List<String> names, List<Double> values)
 	{
 		double total = 0;
 		int best = -1;
@@ -1102,7 +1111,7 @@ final class Texts
 		{
 			return null;
 		}
-		return String.format(java.util.Locale.ROOT, "Most of it is the %s (%.0f%%).", names.get(best), Math.floor(values.get(best) / total * 100));
+		return String.format(Locale.ROOT, "Most of it is the %s (%.0f%%).", names.get(best), Math.floor(values.get(best) / total * 100));
 	}
 
 	/** "a Tumeken's shadow", "an Elder maul", "Bandos boots" (a pair or a set takes none). */
@@ -1146,7 +1155,7 @@ final class Texts
 		}
 		if (received <= 0)
 		{
-			return same >= 0.995 ? ">99% have none" : String.format(java.util.Locale.ROOT, "%.0f%% have none", same * 100);
+			return same >= 0.995 ? ">99% have none" : String.format(Locale.ROOT, "%.0f%% have none", same * 100);
 		}
 		return "about average";
 	}
@@ -1179,7 +1188,7 @@ final class Texts
 		}
 		double rest = 1 - share;
 		return text + (rest < 0.0001 ? " (<1 in 10,000 players)"
-			: String.format(java.util.Locale.ROOT, " (1 in %,d players)", Math.max(2, Math.round(1 / rest))));
+			: String.format(Locale.ROOT, " (1 in %,d players)", Math.max(2, Math.round(1 / rest))));
 	}
 
 	/**
@@ -1191,13 +1200,13 @@ final class Texts
 		double p = share * 100;
 		if (share < 0.99)
 		{
-			return String.format(java.util.Locale.ROOT, "%d%%", Math.round(p));
+			return String.format(Locale.ROOT, "%d%%", Math.round(p));
 		}
 		if (share < 0.999)
 		{
-			return String.format(java.util.Locale.ROOT, "%.1f%%", Math.floor(p * 10) / 10);
+			return String.format(Locale.ROOT, "%.1f%%", Math.floor(p * 10) / 10);
 		}
-		return String.format(java.util.Locale.ROOT, "%.2f%%", Math.min(99.99, Math.floor(p * 100) / 100));
+		return String.format(Locale.ROOT, "%.2f%%", Math.min(99.99, Math.floor(p * 100) / 100));
 	}
 
 	/**
@@ -1215,9 +1224,9 @@ final class Texts
 		double more = Math.max(0, 1 - fewer - same);
 		if (received <= 0 || fewer <= 1e-12)
 		{
-			return String.format(java.util.Locale.ROOT, "%s of players have none by now, %s have one or more", pct(same), pct(more));
+			return String.format(Locale.ROOT, "%s of players have none by now, %s have one or more", pct(same), pct(more));
 		}
-		return String.format(java.util.Locale.ROOT, "%s of players have fewer, %s as many%s", pct(fewer), pct(same),
+		return String.format(Locale.ROOT, "%s of players have fewer, %s as many%s", pct(fewer), pct(same),
 			more < 0.0005 ? "" : ", " + pct(more) + " more");
 	}
 
@@ -1255,3 +1264,4 @@ final class Texts
 		return text == null ? null : text.replaceAll("<(?=[0-9])", "&lt;");
 	}
 }
+

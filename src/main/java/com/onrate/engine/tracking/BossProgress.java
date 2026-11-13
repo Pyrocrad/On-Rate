@@ -1,5 +1,7 @@
 package com.onrate.engine.tracking;
 
+import java.util.Set;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -55,7 +57,7 @@ public class BossProgress
 	 * Items the player left out of the calculations (normalized item names), e.g. an Araxyte
 	 * head that came from a slayer task, or jars they don't care about. Null in older saves.
 	 */
-	java.util.Set<String> leftOut;
+	Set<String> leftOut;
 	/**
 	 * Copies of shared items (pool key) On Rate saw this boss drop, for judging them per boss
 	 * (see {@link PoolSplit}). Null in older saves.
@@ -125,3 +127,4 @@ public class BossProgress
 		}
 	}
 }
+

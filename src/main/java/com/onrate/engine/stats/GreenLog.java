@@ -1,13 +1,7 @@
 package com.onrate.engine.stats;
 
-import com.onrate.engine.data.BossCatalog;
-import com.onrate.engine.data.BossDefinition;
-import com.onrate.engine.data.BossPart;
-import com.onrate.engine.data.DropDefinition;
-import com.onrate.engine.data.KillTimes;
-import com.onrate.engine.tracking.RateModel;
-import com.onrate.engine.tracking.TimeStats;
-import com.onrate.engine.tracking.Tracker;
+import com.onrate.engine.data.*;
+import com.onrate.engine.tracking.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;

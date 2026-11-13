@@ -1,5 +1,9 @@
 package com.onrate.engine.data;
 
+import java.util.LinkedHashMap;
+import java.util.TreeMap;
+import java.util.TreeSet;
+
 import com.google.gson.Gson;
 import java.io.Reader;
 import java.util.ArrayList;
@@ -26,12 +30,12 @@ public class BossCatalog
 	/** Items flagged clogShared in the data (dragon thrownaxes and knives): not tracked anywhere. */
 	private final Set<String> untrackedItems = new HashSet<>();
 	/** Display names of the shared items that were left out, for the panel. */
-	private final Set<String> excludedItems = new java.util.TreeSet<>();
+	private final Set<String> excludedItems = new TreeSet<>();
 	private final Set<String> allItemNames = new HashSet<>();
 	/** Untradeable items worth something through a conversion: normalized name to formula. */
 	private final Map<String, ValueFormula> valueFormulas = new HashMap<>();
-	private final Set<String> excludedBosses = new java.util.TreeSet<>();
-	private final Map<String, List<PoolSource>> pools = new java.util.TreeMap<>();
+	private final Set<String> excludedBosses = new TreeSet<>();
+	private final Map<String, List<PoolSource>> pools = new TreeMap<>();
 	private final Set<String> minionLootNames = new HashSet<>();
 	/** Bosses marked hidden in the data: prepared for a release, not part of the catalog yet. */
 	private final List<BossDefinition> hiddenBosses = new ArrayList<>();
@@ -215,7 +219,7 @@ public class BossCatalog
 	/** The pooled items this boss drops: pool key (normalized item name) to its drop row. */
 	public Map<String, DropDefinition> poolsOf(BossDefinition boss)
 	{
-		Map<String, DropDefinition> result = new java.util.LinkedHashMap<>();
+		Map<String, DropDefinition> result = new LinkedHashMap<>();
 		for (Map.Entry<String, List<PoolSource>> e : pools.entrySet())
 		{
 			for (PoolSource src : e.getValue())
@@ -338,3 +342,4 @@ public class BossCatalog
 		return Collections.unmodifiableSet(allItemNames);
 	}
 }
+

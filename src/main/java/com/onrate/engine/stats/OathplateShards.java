@@ -1,5 +1,9 @@
 package com.onrate.engine.stats;
 
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import java.util.Locale;
 import java.util.Random;
 
@@ -37,7 +41,7 @@ public final class OathplateShards
 		}
 		// the same chances are asked for on every draw and after every kill, and the answer never
 		// changes (the simulation starts from the same seed): it is worked out once per set of chances
-		String key = java.util.Arrays.toString(chances);
+		String key = Arrays.toString(chances);
 		synchronized (KNOWN)
 		{
 			Double known = KNOWN.get(key);
@@ -55,10 +59,10 @@ public final class OathplateShards
 	}
 
 	/** The last answers of {@link #expectedKills}, by the chances they are for. */
-	private static final java.util.Map<String, Double> KNOWN = new java.util.LinkedHashMap<String, Double>(16, 0.75f, true)
+	private static final Map<String, Double> KNOWN = new LinkedHashMap<String, Double>(16, 0.75f, true)
 	{
 		@Override
-		protected boolean removeEldestEntry(java.util.Map.Entry<String, Double> eldest)
+		protected boolean removeEldestEntry(Map.Entry<String, Double> eldest)
 		{
 			return size() > 64;
 		}
@@ -72,7 +76,7 @@ public final class OathplateShards
 		double total = 0;
 		for (int trial = 0; trial < TRIALS; trial++)
 		{
-			java.util.Arrays.fill(have, false);
+			Arrays.fill(have, false);
 			int missing = n;
 			double shards = 0;
 			int kills = 0;
@@ -137,3 +141,4 @@ public final class OathplateShards
 			dropsOnly, timed ? " (" + ItemTime.formatLong(dropsOnly * secondsPerKill) + ")" : "");
 	}
 }
+

@@ -1,18 +1,15 @@
 package com.onrate.service;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 import com.onrate.engine.data.KillTimes;
-import com.onrate.engine.stats.AccountStats;
-import com.onrate.engine.stats.ItemTime;
-import com.onrate.engine.stats.ItemTimes;
-import com.onrate.engine.stats.RaidSettings;
+import com.onrate.engine.stats.*;
 import com.onrate.engine.tracking.Tracker;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BooleanSupplier;
-import java.util.function.Consumer;
-import java.util.function.ToLongFunction;
+import java.util.function.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -90,7 +87,7 @@ public final class AccountPrecompute
 	private final AtomicBoolean running = new AtomicBoolean();
 	private volatile boolean stopped;
 	/** Number of the latest request: only its draw runs. */
-	private final java.util.concurrent.atomic.AtomicLong latest = new java.util.concurrent.atomic.AtomicLong();
+	private final AtomicLong latest = new AtomicLong();
 	/** Only set on the Swing thread, during the draw this class started. */
 	private Result lent;
 
@@ -291,3 +288,4 @@ public final class AccountPrecompute
 		nav.set(null);
 	}
 }
+

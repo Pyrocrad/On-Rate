@@ -1,13 +1,9 @@
 package com.onrate.engine.tracking;
 
-import com.onrate.engine.data.BossCatalog;
-import com.onrate.engine.data.BossDefinition;
-import com.onrate.engine.data.BossPart;
-import com.onrate.engine.data.DropDefinition;
-import com.onrate.engine.stats.AccountStats;
-import com.onrate.engine.stats.BossStats;
-import com.onrate.engine.stats.RaidSettings;
-import com.onrate.engine.stats.RowStats;
+import java.util.Iterator;
+
+import com.onrate.engine.data.*;
+import com.onrate.engine.stats.*;
 import com.onrate.engine.tracking.Tracker.LastUnique;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -166,7 +162,7 @@ final class HistoryBook
 			}
 		}
 		boolean removed = false;
-		for (java.util.Iterator<KillEntry.DropEntry> it = kill.drops.iterator(); listed && it.hasNext(); )
+		for (Iterator<KillEntry.DropEntry> it = kill.drops.iterator(); listed && it.hasNext(); )
 		{
 			if (it.next() == drop)
 			{
@@ -514,7 +510,7 @@ final class HistoryBook
 			}
 		}
 		// adding it again at the same kill count replaces what the player entered before (never a drop On Rate saw)
-		for (java.util.Iterator<KillEntry> kills = progress.kills.iterator(); kills.hasNext(); )
+		for (Iterator<KillEntry> kills = progress.kills.iterator(); kills.hasNext(); )
 		{
 			KillEntry k = kills.next();
 			if (inCounting(k, partName) && countOf(k, partName) == kc && k.drops != null
@@ -737,3 +733,4 @@ final class HistoryBook
 		return result == null ? new LastUnique(null, null, 0, earliest) : new LastUnique(result.item, result.boss, result.time, earliest);
 	}
 }
+

@@ -1,8 +1,6 @@
 package com.onrate.engine.tracking;
 
-import com.onrate.engine.data.BossCatalog;
-import com.onrate.engine.data.BossDefinition;
-import com.onrate.engine.data.DropDefinition;
+import com.onrate.engine.data.*;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;

@@ -1,14 +1,13 @@
 package com.onrate.engine.tracking;
 
+import java.util.function.Function;
+import java.util.function.IntSupplier;
+import java.util.function.ToIntFunction;
+import java.util.TreeSet;
 
-import com.onrate.engine.data.BossCatalog;
-import com.onrate.engine.data.BossDefinition;
-import com.onrate.engine.data.DropDefinition;
-import com.onrate.engine.stats.AccountStats;
-import com.onrate.engine.stats.SharedPool;
-import com.onrate.engine.stats.BossStats;
-import com.onrate.engine.stats.RaidSettings;
-import com.onrate.engine.stats.RowStats;
+
+import com.onrate.engine.data.*;
+import com.onrate.engine.stats.*;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -115,13 +114,13 @@ public class Tracker
 	}
 
 	/** How to count your team at a group boss kill, whichever the boss (see BossDefinition#isDetectTeam). */
-	public synchronized void setTeamSizeDetector(java.util.function.IntSupplier teamSize)
+	public synchronized void setTeamSizeDetector(IntSupplier teamSize)
 	{
 		ctx.setTeamSize(teamSize == null ? boss -> 0 : boss -> teamSize.getAsInt());
 	}
 
 	/** The same, told which boss it is for: each boss can count its team its own way. */
-	public synchronized void setTeamSizeDetectorFor(java.util.function.ToIntFunction<String> teamSize)
+	public synchronized void setTeamSizeDetectorFor(ToIntFunction<String> teamSize)
 	{
 		ctx.setTeamSize(teamSize == null ? boss -> 0 : teamSize);
 	}
@@ -131,7 +130,7 @@ public class Tracker
 	 * Everything to save, serialized while holding the lock: the main data, plus the History and
 	 * raids of the bosses that changed since the last save.
 	 */
-	public synchronized SaveData saveData(java.util.function.Function<Object, String> toJson)
+	public synchronized SaveData saveData(Function<Object, String> toJson)
 	{
 		SaveData data = new SaveData(toJson.apply(ctx.state()));
 		for (String name : ctx.killsChanged)
@@ -236,7 +235,7 @@ public class Tracker
 		BossProgress p = ctx.state().get(bossName);
 		if (p.leftOut == null)
 		{
-			p.leftOut = new java.util.TreeSet<>();
+			p.leftOut = new TreeSet<>();
 		}
 		if (leftOut)
 		{
@@ -322,7 +321,7 @@ public class Tracker
 	 * GE value the current trip's own kills should give (their delve level, raid points, team),
 	 * or NaN without a trip or when History lacks one of its kills.
 	 */
-	public synchronized double tripValue(java.util.function.ToLongFunction<String> prices)
+	public synchronized double tripValue(ToLongFunction<String> prices)
 	{
 		return trips.tripValue(prices);
 	}
@@ -1045,16 +1044,16 @@ public class Tracker
 		if (previous != null && kc > previous)
 		{
 			int kills = kc - previous;
-			text = String.format(java.util.Locale.ROOT, "%s after %,d %s (%s the drop rate).", name, kills, units(boss, kills), multiple(kills * rate));
+			text = String.format(Locale.ROOT, "%s after %,d %s (%s the drop rate).", name, kills, units(boss, kills), multiple(kills * rate));
 		}
 		else if (historyKnown && (before == null || before == 0) && kc > 0)
 		{
-			text = String.format(java.util.Locale.ROOT, "Your first %s, after %,d %s (%s the drop rate).", name, kc, units(boss, kc), multiple(kc * rate));
+			text = String.format(Locale.ROOT, "Your first %s, after %,d %s (%s the drop rate).", name, kc, units(boss, kc), multiple(kc * rate));
 		}
 		else if (progress.trackingStartKc != null && kc > progress.trackingStartKc)
 		{
 			int kills = kc - progress.trackingStartKc;
-			text = String.format(java.util.Locale.ROOT, "%s after at least %,d %s.", name, kills, units(boss, kills));
+			text = String.format(Locale.ROOT, "%s after at least %,d %s.", name, kills, units(boss, kills));
 		}
 		if (text != null && rate > 0)
 		{
@@ -1117,9 +1116,9 @@ public class Tracker
 	{
 		if (m < 0.1)
 		{
-			return String.format(java.util.Locale.ROOT, "%.2fx", m);
+			return String.format(Locale.ROOT, "%.2fx", m);
 		}
-		return m < 10 ? String.format(java.util.Locale.ROOT, "%.1fx", m) : String.format(java.util.Locale.ROOT, "%.0fx", m);
+		return m < 10 ? String.format(Locale.ROOT, "%.1fx", m) : String.format(Locale.ROOT, "%.0fx", m);
 	}
 
 	/**
@@ -1180,9 +1179,9 @@ public class Tracker
 		{
 			RowStats row = rowFor(s, names.get(0));
 			String streak = row.isStreakExact()
-				? String.format(java.util.Locale.ROOT, "%,d %s without one", row.getStreak(), units(boss, row.getStreak()))
-				: String.format(java.util.Locale.ROOT, "at least %,d %s since your last one", row.getStreak(), units(boss, row.getStreak()));
-			outbox.add(new Note(Note.Kind.MILESTONE, String.format(java.util.Locale.ROOT, "%s: %s, %dx the drop rate.",
+				? String.format(Locale.ROOT, "%,d %s without one", row.getStreak(), units(boss, row.getStreak()))
+				: String.format(Locale.ROOT, "at least %,d %s since your last one", row.getStreak(), units(boss, row.getStreak()));
+			outbox.add(new Note(Note.Kind.MILESTONE, String.format(Locale.ROOT, "%s: %s, %dx the drop rate.",
 				names.get(0), streak, levels.get(0))));
 			return;
 		}
@@ -1207,8 +1206,8 @@ public class Tracker
 			list.append(" and ").append(names.size() - shown).append(" more");
 		}
 		outbox.add(new Note(Note.Kind.MILESTONE, same
-			? String.format(java.util.Locale.ROOT, "%s: %d items passed %dx the drop rate dry: %s.", boss.getName(), names.size(), top, list)
-			: String.format(java.util.Locale.ROOT, "%s: %d items passed a dry milestone: %s.", boss.getName(), names.size(), list)));
+			? String.format(Locale.ROOT, "%s: %d items passed %dx the drop rate dry: %s.", boss.getName(), names.size(), top, list)
+			: String.format(Locale.ROOT, "%s: %d items passed a dry milestone: %s.", boss.getName(), names.size(), list)));
 	}
 
 	private static RowStats rowFor(BossStats s, String label)
@@ -1618,3 +1617,4 @@ public class Tracker
 	}
 
 }
+

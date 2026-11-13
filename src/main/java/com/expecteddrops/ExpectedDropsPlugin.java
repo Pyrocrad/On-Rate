@@ -1,9 +1,15 @@
 package com.expecteddrops;
 
-import com.expecteddrops.ui.ExpectedDropsPanel;
-import com.expecteddrops.ui.LuckColours;
-import com.expecteddrops.ui.Palette;
-import com.expecteddrops.ui.ViewOptions;
+import java.util.Arrays;
+import java.awt.Color;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import com.onrate.engine.data.KillTimes;
+import com.onrate.engine.data.LadlorChart;
+import java.time.LocalDate;
+import java.util.Locale;
+
+import com.expecteddrops.ui.*;
 import com.google.gson.Gson;
 import com.google.inject.Provides;
 import com.onrate.engine.data.Bundled;
@@ -11,17 +17,8 @@ import com.onrate.engine.math.Verdict;
 import com.onrate.engine.raids.RaidDataImport;
 import com.onrate.engine.stats.BossStats;
 import com.onrate.engine.stats.RaidSettings;
-import com.onrate.engine.tracking.Note;
-import com.onrate.engine.tracking.Tracker;
-import com.onrate.engine.tracking.TripStats;
-import com.onrate.game.ClogReader;
-import com.onrate.game.ConfigRaidSettings;
-import com.onrate.game.LootTrackerStatus;
-import com.onrate.game.PriceBook;
-import com.onrate.game.RaidPointsReader;
-import com.onrate.game.RaidTimesImport;
-import com.onrate.game.RollCounters;
-import com.onrate.game.TeamDetector;
+import com.onrate.engine.tracking.*;
+import com.onrate.game.*;
 import com.onrate.service.AccountPrecompute;
 import com.onrate.store.Keys;
 import com.onrate.store.ProfileStore;
@@ -42,31 +39,18 @@ import net.runelite.api.GameState;
 import net.runelite.api.ItemComposition;
 import net.runelite.api.ScriptID;
 import net.runelite.api.Skill;
-import net.runelite.api.events.ChatMessage;
-import net.runelite.api.events.GameStateChanged;
-import net.runelite.api.events.GameTick;
-import net.runelite.api.events.ScriptPostFired;
-import net.runelite.api.events.StatChanged;
-import net.runelite.api.events.VarbitChanged;
-import net.runelite.api.events.WidgetLoaded;
+import net.runelite.api.events.*;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
-import net.runelite.client.chat.ChatColorType;
-import net.runelite.client.chat.ChatMessageBuilder;
-import net.runelite.client.chat.ChatMessageManager;
-import net.runelite.client.chat.QueuedMessage;
+import net.runelite.client.chat.*;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.events.ConfigChanged;
-import net.runelite.client.events.PluginChanged;
-import net.runelite.client.events.RuneScapeProfileChanged;
+import net.runelite.client.events.*;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.ItemStack;
-import net.runelite.client.plugins.Plugin;
-import net.runelite.client.plugins.PluginDescriptor;
-import net.runelite.client.plugins.PluginManager;
+import net.runelite.client.plugins.*;
 import net.runelite.client.plugins.loottracker.LootReceived;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
@@ -189,7 +173,7 @@ public class ExpectedDropsPlugin extends Plugin
 	 * only when they hold something, so a second start changes nothing and the settings that replaced
 	 * them keep whatever the player set.
 	 */
-	static void clearOldSettings(java.util.function.Function<String, String> saved, java.util.function.Consumer<String> unset)
+	static void clearOldSettings(Function<String, String> saved, Consumer<String> unset)
 	{
 		for (String key : OLD_SETTINGS)
 		{
@@ -213,8 +197,8 @@ public class ExpectedDropsPlugin extends Plugin
 			key -> configManager.unsetConfiguration(ExpectedDropsConfig.GROUP, key));
 		// Only the rates bundled with the plugin: On Rate reads and writes no files.
 		// Kill times and the Ladlor chart are read with RuneLite's Gson (the Plugin Hub refuses fresh ones).
-		com.onrate.engine.data.KillTimes.bundled(gson);
-		com.onrate.engine.data.LadlorChart.bundled(gson);
+		KillTimes.bundled(gson);
+		LadlorChart.bundled(gson);
 		tracker = new Tracker(Bundled.catalog(gson));
 		// the RS-profile calls RuneLite offers follow its current profile; these name the one loaded
 		// (the same settings and keys: getRSProfileConfiguration is getConfiguration with the current one)
@@ -526,15 +510,15 @@ public class ExpectedDropsPlugin extends Plugin
 		Palette.setHigherContrast(config.higherContrastBars());
 		String units = Tracker.unit(stats.getBoss());
 		String one = Tracker.unitOne(stats.getBoss());
-		String tripText = String.format(java.util.Locale.ROOT, "%,d %s · %d unique%s", trip.getKills(), trip.getKills() == 1 ? one : units,
+		String tripText = String.format(Locale.ROOT, "%,d %s · %d unique%s", trip.getKills(), trip.getKills() == 1 ? one : units,
 			trip.getReceived(), trip.getReceived() == 1 ? "" : "s");
 		double tripLuck = trip.getLuck();
-		String tripExpected = trip.getExpected() >= 10 ? String.format(java.util.Locale.ROOT, "%.1f", trip.getExpected())
-			: String.format(java.util.Locale.ROOT, "%.2f", trip.getExpected());
+		String tripExpected = trip.getExpected() >= 10 ? String.format(Locale.ROOT, "%.1f", trip.getExpected())
+			: String.format(Locale.ROOT, "%.2f", trip.getExpected());
 		boolean early = !Double.isNaN(tripLuck) && Verdict.tripTooEarly(trip.getExpected());
 		overlayInfo = new OverlayInfo(trip.getBoss(), tripText, tripExpected,
 			Double.isNaN(tripLuck) ? "-" : early ? "Too early" : Verdict.labelOf(tripLuck),
-			Double.isNaN(tripLuck) ? java.awt.Color.WHITE : early ? java.awt.Color.LIGHT_GRAY : Palette.text(Palette.luck(tripLuck).brighter()),
+			Double.isNaN(tripLuck) ? Color.WHITE : early ? Color.LIGHT_GRAY : Palette.text(Palette.luck(tripLuck).brighter()),
 			trip.getLastMillis());
 	}
 
@@ -668,7 +652,7 @@ public class ExpectedDropsPlugin extends Plugin
 	}
 
 	/** Settings the panel writes itself while the player clicks around: they change no numbers. */
-	private static final Set<String> UI_STATE_KEYS = new HashSet<>(java.util.Arrays.asList(
+	private static final Set<String> UI_STATE_KEYS = new HashSet<>(Arrays.asList(
 		Keys.LAST_PAGE, "foldState", "showLuckGraph", "itemView", "showWelcome", "showOverlay", Keys.FIRST_RUN, Keys.TIMES_NOTICE, Keys.NEWS_NOTICE));
 
 	/** The Loot Tracker was turned on or off: the panel's note follows. */
@@ -1028,7 +1012,7 @@ public class ExpectedDropsPlugin extends Plugin
 			return;
 		}
 		long millis = System.currentTimeMillis();
-		long day = java.time.LocalDate.now().toEpochDay();
+		long day = LocalDate.now().toEpochDay();
 		if (now || day != historyPointDay || millis - historyPointAt >= HISTORY_POINT_MILLIS)
 		{
 			t.recordHistory(day, raidSettings());
@@ -1086,3 +1070,4 @@ public class ExpectedDropsPlugin extends Plugin
 		return book == null ? -1 : book.idOf(itemName);
 	}
 }
+

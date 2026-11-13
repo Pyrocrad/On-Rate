@@ -1,18 +1,14 @@
 package com.expecteddrops.ui;
 
+
 import java.awt.BasicStroke;
 import java.awt.Component;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Insets;
 import java.awt.Rectangle;
-import java.awt.event.FocusAdapter;
-import java.awt.event.FocusEvent;
-import java.awt.event.KeyEvent;
-import javax.swing.AbstractAction;
-import javax.swing.BorderFactory;
-import javax.swing.JComponent;
-import javax.swing.KeyStroke;
+import java.awt.event.*;
+import javax.swing.*;
 import javax.swing.border.Border;
 import java.util.ArrayList;
 import java.util.List;
@@ -66,7 +62,7 @@ final class Activatable
 		AbstractAction activate = new AbstractAction()
 		{
 			@Override
-			public void actionPerformed(java.awt.event.ActionEvent e)
+			public void actionPerformed(ActionEvent e)
 			{
 				action.run();
 			}
@@ -105,12 +101,12 @@ final class Activatable
 		AbstractAction menu = new AbstractAction()
 		{
 			@Override
-			public void actionPerformed(java.awt.event.ActionEvent e)
+			public void actionPerformed(ActionEvent e)
 			{
 				show.run();
 			}
 		};
-		c.getInputMap(JComponent.WHEN_FOCUSED).put(KeyStroke.getKeyStroke(KeyEvent.VK_F10, java.awt.event.InputEvent.SHIFT_DOWN_MASK), "contextMenu");
+		c.getInputMap(JComponent.WHEN_FOCUSED).put(KeyStroke.getKeyStroke(KeyEvent.VK_F10, InputEvent.SHIFT_DOWN_MASK), "contextMenu");
 		c.getInputMap(JComponent.WHEN_FOCUSED).put(KeyStroke.getKeyStroke(KeyEvent.VK_CONTEXT_MENU, 0), "contextMenu");
 		c.getActionMap().put("contextMenu", menu);
 	}
@@ -171,7 +167,7 @@ final class Activatable
 			c.getActionMap().put(name, new AbstractAction()
 			{
 				@Override
-				public void actionPerformed(java.awt.event.ActionEvent e)
+				public void actionPerformed(ActionEvent e)
 				{
 					run.run();
 				}
@@ -225,3 +221,4 @@ final class Activatable
 		}
 	}
 }
+

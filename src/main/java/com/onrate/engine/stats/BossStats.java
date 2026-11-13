@@ -1,5 +1,7 @@
 package com.onrate.engine.stats;
 
+import com.onrate.engine.data.DropDefinition;
+
 import com.onrate.engine.data.BossDefinition;
 import java.util.List;
 import java.util.Map;
@@ -18,7 +20,7 @@ public class BossStats
 	private final double raidUniqueChance;
 	private final Map<Integer, Integer> levelCounts;
 	private Map<String, Integer> partCounts;
-	private List<com.onrate.engine.data.DropDefinition> drops;
+	private List<DropDefinition> drops;
 
 	public BossStats(BossDefinition boss, int killCount, boolean killCountKnown, boolean clogSynced,
 		RowStats anyRow, List<RowStats> rows, double raidUniqueChance, Map<Integer, Integer> levelCounts)
@@ -68,12 +70,12 @@ public class BossStats
 	 * The drop of each row, in the same order: the boss's own uniques, then any shared items
 	 * the player chose to judge on each boss separately.
 	 */
-	public List<com.onrate.engine.data.DropDefinition> getDrops()
+	public List<DropDefinition> getDrops()
 	{
 		return drops != null ? drops : boss.getDrops();
 	}
 
-	public void setDrops(List<com.onrate.engine.data.DropDefinition> drops)
+	public void setDrops(List<DropDefinition> drops)
 	{
 		this.drops = drops;
 	}
@@ -101,3 +103,4 @@ public class BossStats
 		return raidUniqueChance;
 	}
 }
+

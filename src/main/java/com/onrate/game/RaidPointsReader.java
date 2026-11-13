@@ -38,9 +38,9 @@
  */
 package com.onrate.game;
 
-import com.onrate.game.toa.RaidState;
-import com.onrate.game.toa.RaidStateTracker;
-import com.onrate.game.toa.ToaPointsEstimator;
+import net.runelite.api.WorldView;
+
+import com.onrate.game.toa.*;
 import com.onrate.engine.tracking.RaidRecord;
 import com.onrate.engine.raids.FracturedContribution;
 import com.onrate.engine.tracking.Tracker;
@@ -53,19 +53,8 @@ import net.runelite.api.Client;
 import net.runelite.api.Hitsplat;
 import net.runelite.api.NPC;
 import net.runelite.api.Player;
-import net.runelite.api.events.ActorDeath;
-import net.runelite.api.events.AnimationChanged;
-import net.runelite.api.events.ChatMessage;
-import net.runelite.api.events.GameStateChanged;
-import net.runelite.api.events.GameTick;
-import net.runelite.api.events.HitsplatApplied;
-import net.runelite.api.events.ItemSpawned;
-import net.runelite.api.events.VarbitChanged;
-import net.runelite.api.events.WidgetLoaded;
-import net.runelite.api.gameval.AnimationID;
-import net.runelite.api.gameval.InterfaceID;
-import net.runelite.api.gameval.VarPlayerID;
-import net.runelite.api.gameval.VarbitID;
+import net.runelite.api.events.*;
+import net.runelite.api.gameval.*;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.Subscribe;
@@ -237,7 +226,7 @@ public class RaidPointsReader
 	/** Players in the raid's instance right now, you included; 0 when it can't be told. */
 	private int playersInRaid()
 	{
-		net.runelite.api.WorldView view = client.getTopLevelWorldView();
+		WorldView view = client.getTopLevelWorldView();
 		if (view == null)
 		{
 			return 0;
@@ -465,3 +454,4 @@ public class RaidPointsReader
 		return value instanceof Number ? ((Number) value).intValue() : -1;
 	}
 }
+
