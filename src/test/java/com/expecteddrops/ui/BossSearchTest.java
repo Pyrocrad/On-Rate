@@ -151,7 +151,8 @@ public class BossSearchTest
 	@Test
 	public void clogSharedItemsMatchNothing()
 	{
-		assertTrue(names("dragon 2h").isEmpty());
+		assertTrue(names("dragon thrownaxe").isEmpty());
+		assertTrue(names("dragon knife").isEmpty());
 	}
 
 	@Test

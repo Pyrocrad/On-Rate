@@ -93,6 +93,7 @@
     {
       "name": "Callisto and Artio", "clog": ["Callisto and Artio"], "parts": [{"name": "Callisto", "kc": ["Callisto"], "loot": ["Callisto"]}, {"name": "Artio", "kc": ["Artio"], "loot": ["Artio"]}], "note": "Callisto and Artio share one collection log page, but each has its own kill count and drop rates. Hover a row to see both.",
       "drops": [
+        {"name": "Dragon 2h sword", "partRates": {"Callisto": "1/256", "Artio": "1/358"}},
         {"name": "Dragon pickaxe", "partRates": {"Callisto": "1/256", "Artio": "1/358"}},
         {"name": "Claws of callisto", "partRates": {"Callisto": "1/196", "Artio": "1/618"}},
         {"name": "Voidwaker hilt", "partRates": {"Callisto": "1/360", "Artio": "1/912"}},
@@ -132,6 +133,7 @@
     {
       "name": "Chaos Elemental", "kc": ["Chaos Elemental"], "loot": ["Chaos Elemental"], "clog": ["Chaos Elemental"],
       "drops": [
+        {"name": "Dragon 2h sword", "rate": "1/64"},
         {"name": "Dragon pickaxe", "rate": "1/256"},
         {"name": "Pet chaos elemental", "rate": "1/300", "pet": true}
       ]
@@ -300,7 +302,7 @@
       "drops": [
         {"name": "Kq head", "rate": "1/128"},
         {"name": "Dragon chainbody", "rate": "1/128", "alsoFrom": "dust devils and smoke devils"},
-        {"name": "Dragon 2h sword", "rate": "1/256", "clogShared": true},
+        {"name": "Dragon 2h sword", "rate": "1/256"},
         {"name": "Dragon pickaxe", "rate": "1/400"},
         {"name": "Jar of sand", "rate": "1/2000"},
         {"name": "Kalphite princess", "rate": "1/3000", "pet": true}
@@ -418,6 +420,7 @@
     {
       "name": "Scorpia", "kc": ["Scorpia"], "loot": ["Scorpia"], "clog": ["Scorpia"],
       "drops": [
+        {"name": "Dragon 2h sword", "rate": "1/128"},
         {"name": "Odium shard 3", "rate": "1/256"},
         {"name": "Malediction shard 3", "rate": "1/256"},
         {"name": "Scorpia's offspring", "rate": "1/2016", "pet": true}
@@ -563,6 +566,7 @@
     {
       "name": "Venenatis and Spindel", "clog": ["Venenatis and Spindel"], "parts": [{"name": "Venenatis", "kc": ["Venenatis"], "loot": ["Venenatis"]}, {"name": "Spindel", "kc": ["Spindel"], "loot": ["Spindel"]}], "note": "Venenatis and Spindel share one collection log page, but each has its own kill count and drop rates. Hover a row to see both.",
       "drops": [
+        {"name": "Dragon 2h sword", "partRates": {"Venenatis": "1/256", "Spindel": "1/358"}},
         {"name": "Dragon pickaxe", "partRates": {"Venenatis": "1/256", "Spindel": "1/358"}},
         {"name": "Fangs of venenatis", "partRates": {"Venenatis": "1/196", "Spindel": "1/618"}},
         {"name": "Voidwaker gem", "partRates": {"Venenatis": "1/360", "Spindel": "1/912"}},
@@ -573,6 +577,7 @@
     {
       "name": "Vet'ion and Calvar'ion", "clog": ["Vet'ion and Calvar'ion"], "parts": [{"name": "Vet'ion", "kc": ["Vet'ion"], "loot": ["Vet'ion"]}, {"name": "Calvar'ion", "kc": ["Calvar'ion"], "loot": ["Calvar'ion"]}], "note": "Vet'ion and Calvar'ion share one collection log page, but each has its own kill count and drop rates. Hover a row to see both.",
       "drops": [
+        {"name": "Dragon 2h sword", "partRates": {"Vet'ion": "1/256", "Calvar'ion": "1/358"}},
         {"name": "Dragon pickaxe", "partRates": {"Vet'ion": "1/256", "Calvar'ion": "1/358"}},
         {"name": "Skull of vet'ion", "partRates": {"Vet'ion": "1/196", "Calvar'ion": "1/618"}},
         {"name": "Voidwaker blade", "partRates": {"Vet'ion": "1/360", "Calvar'ion": "1/912"}},

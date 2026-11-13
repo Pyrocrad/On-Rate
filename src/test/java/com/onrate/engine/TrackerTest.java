@@ -572,7 +572,7 @@ public class TrackerTest
 		// their bosses, so they would count as expected but never as received
 		for (String item : new String[]{"Dragon pickaxe", "Godsword shard 1", "Godsword shard 2", "Godsword shard 3",
 			"Chromium ingot", "Virtus mask", "Virtus robe top", "Virtus robe bottom", "Dragon chainbody",
-			"Draconic visage", "Uncut onyx", "Pet chaos elemental", "Dragon 2h sword", "Dragon thrownaxe", "Dragon knife"})
+			"Draconic visage", "Uncut onyx", "Pet chaos elemental", "Dragon thrownaxe", "Dragon knife"})
 		{
 			assertTrue(item, catalog.getExcludedItems().contains(item));
 			for (BossDefinition boss : catalog.getBosses())
@@ -647,7 +647,22 @@ public class TrackerTest
 		}
 		assertTrue(chaos);
 		// flagged items that also come from outside the bosses are never pooled
-		assertFalse(catalog.getPools().containsKey("dragon 2h sword"));
+		assertFalse(catalog.getPools().containsKey("dragon thrownaxe"));
+	}
+
+	@Test
+	public void dragon2hSwordIsPooledAcrossAllItsBosses()
+	{
+		assertTrue(catalog.getPools().containsKey("dragon 2h sword"));
+		java.util.Set<String> bosses = new java.util.TreeSet<>();
+		for (BossCatalog.PoolSource src : catalog.getPools().get("dragon 2h sword"))
+		{
+			bosses.add(src.getBoss().getName());
+		}
+		assertEquals(new java.util.TreeSet<>(java.util.Arrays.asList("Kalphite Queen", "Chaos Elemental",
+			"Scorpia", "Callisto and Artio", "Venenatis and Spindel", "Vet'ion and Calvar'ion")), bosses);
+		assertFalse(catalog.isUntracked("Dragon 2h sword"));
+		assertTrue(catalog.getExcludedItems().contains("Dragon 2h sword"));
 	}
 
 	@Test
@@ -947,7 +962,7 @@ public class TrackerTest
 	{
 		assertTrue(catalog.isUntracked("Dragon thrownaxe"));
 		assertTrue(catalog.isUntracked("dragon knife"));
-		assertTrue(catalog.isUntracked("Dragon 2h sword"));
+		assertFalse(catalog.isUntracked("Dragon 2h sword"));
 		// pooled items and normal rows are still tracked
 		assertFalse(catalog.isUntracked("Dragon axe"));
 		assertFalse(catalog.isUntracked("Dragon pickaxe"));

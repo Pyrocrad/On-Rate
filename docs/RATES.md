@@ -30,7 +30,7 @@ Unless a line says otherwise, rates come from the boss's page on the [Old School
 | Fortis Colosseum | [Rewards Chest (Fortis Colosseum)](https://oldschool.runescape.wiki/w/Fortis_chest) | Chances per wave from wave 4 (echo crystal 1/310 to 1/32, sunfire fanatic armour 1.5 times that for any of the three pieces, tonalztics from wave 7 at 1/1,312 to 1/192), at most one unique per wave. A run counts every wave up to the one you claimed at; a whole run is about 1/12 for an echo crystal, 1/8 for armour and 1/83 for tonalztics. Smol heredit is 1/200 for beating wave 12. Dizana's quiver is guaranteed for beating wave 12 and isn't counted. Completions from before On Rate count as wave 12 claims. |
 | Giant Mole | [Giant Mole](https://oldschool.runescape.wiki/w/Giant_Mole) | Mole claws and skins drop every kill, so they aren't tracked. |
 | Hueycoatl | [The Hueycoatl](https://oldschool.runescape.wiki/w/The_Hueycoatl), [Huberte](https://oldschool.runescape.wiki/w/Huberte) | |
-| Kalphite Queen | [Kalphite Queen](https://oldschool.runescape.wiki/w/Kalphite_Queen) | |
+| Kalphite Queen | [Kalphite Queen](https://oldschool.runescape.wiki/w/Kalphite_Queen), [Dragon 2h sword](https://oldschool.runescape.wiki/w/Dragon_2h_sword) | Dragon 2h sword 1/256. It also drops from other bosses, so it is judged with them under Shared with other bosses: Callisto and Vet'ion and Venenatis 1/256, Artio and Calvar'ion and Spindel 1/358, Scorpia 1/128, Chaos Elemental 2/128. |
 | King Black Dragon | [King Black Dragon](https://oldschool.runescape.wiki/w/King_Black_Dragon) | |
 | Kraken | [Kraken](https://oldschool.runescape.wiki/w/Kraken) | |
 | Maggot King | [Maggot King](https://oldschool.runescape.wiki/w/Maggot_King) | Open-stomach pet rate. Taking eggs instead gives about 1/1,502, which On Rate can't see. |
@@ -59,6 +59,7 @@ Unless a line says otherwise, rates come from the boss's page on the [Old School
 
 | Boss | Was | Now | Why |
 |---|---|---|---|
+| Kalphite Queen and other Wilderness bosses | Dragon 2h sword left out | Counted and judged on all the bosses that drop it (1/256, 1/358, 1/128, 2/128 by boss) | [Dragon 2h sword](https://oldschool.runescape.wiki/w/Dragon_2h_sword): every source is a boss On Rate tracks, so one log total can be judged against all their kills, like the dragon pickaxe. Rates are unchanged. |
 | Grotesque Guardians | Gloves 1/500, ring 1/500, hammer 1/750, core 1/1,000 | 1/250, 1/250, 1/375, 1/500 | The Guardians roll their table twice per kill. The old numbers were per roll. |
 | Araxxor | Noxious point, blade and pommel 1/200 each | 1/600 each | 1/200 is the chance of any halberd piece; each piece is a third of that. |
 | Tombs of Amascut | Osmumten's fang and Lightbearer weight 7 at every raid level | Weight drops from raid level 350 on (fang 6/4/4/3, Lightbearer 6/5/4/3.5 at 350/400/450/500) | The chest's item mix changes at high raid levels. |
