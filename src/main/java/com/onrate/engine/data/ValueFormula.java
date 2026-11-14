@@ -1,5 +1,6 @@
 package com.onrate.engine.data;
 
+import lombok.Getter;
 import java.util.regex.Matcher;
 
 import java.util.ArrayList;
@@ -23,7 +24,7 @@ public final class ValueFormula
 	private final List<Character> signs = new ArrayList<>();
 	private final List<List<String>> terms = new ArrayList<>();
 	private final List<List<Character>> productOps = new ArrayList<>();
-	private final Set<String> itemNames = new LinkedHashSet<>();
+	@Getter private final Set<String> itemNames = new LinkedHashSet<>();
 
 	private ValueFormula()
 	{
@@ -81,12 +82,6 @@ public final class ValueFormula
 	private static boolean isNumber(String s)
 	{
 		return s.matches("\\d+(\\.\\d+)?");
-	}
-
-	/** The item names the formula looks up a price for. */
-	public Set<String> getItemNames()
-	{
-		return itemNames;
 	}
 
 	/**

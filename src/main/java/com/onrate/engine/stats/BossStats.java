@@ -1,5 +1,7 @@
 package com.onrate.engine.stats;
 
+import lombok.Getter;
+import lombok.Setter;
 import com.onrate.engine.data.DropDefinition;
 
 import com.onrate.engine.data.BossDefinition;
@@ -11,16 +13,16 @@ import java.util.Map;
  */
 public class BossStats
 {
-	private final BossDefinition boss;
-	private final int killCount;
-	private final boolean killCountKnown;
-	private final boolean clogSynced;
-	private final RowStats anyRow;
-	private final List<RowStats> rows;
-	private final double raidUniqueChance;
-	private final Map<Integer, Integer> levelCounts;
-	private Map<String, Integer> partCounts;
-	private List<DropDefinition> drops;
+	@Getter private final BossDefinition boss;
+	@Getter private final int killCount;
+	@Getter private final boolean killCountKnown;
+	@Getter private final boolean clogSynced;
+	@Getter private final RowStats anyRow;
+	@Getter private final List<RowStats> rows;
+	@Getter private final double raidUniqueChance;
+	@Getter private final Map<Integer, Integer> levelCounts;
+	@Getter @Setter private Map<String, Integer> partCounts;
+	@Setter private List<DropDefinition> drops;
 
 	public BossStats(BossDefinition boss, int killCount, boolean killCountKnown, boolean clogSynced,
 		RowStats anyRow, List<RowStats> rows, double raidUniqueChance, Map<Integer, Integer> levelCounts)
@@ -35,37 +37,6 @@ public class BossStats
 		this.raidUniqueChance = raidUniqueChance;
 	}
 
-	public BossDefinition getBoss()
-	{
-		return boss;
-	}
-
-	public int getKillCount()
-	{
-		return killCount;
-	}
-
-	/** False when the kill count was only counted from loot since the plugin was installed. */
-	public boolean isKillCountKnown()
-	{
-		return killCountKnown;
-	}
-
-	public boolean isClogSynced()
-	{
-		return clogSynced;
-	}
-
-	public RowStats getAnyRow()
-	{
-		return anyRow;
-	}
-
-	public List<RowStats> getRows()
-	{
-		return rows;
-	}
-
 	/**
 	 * The drop of each row, in the same order: the boss's own uniques, then any shared items
 	 * the player chose to judge on each boss separately.
@@ -73,34 +44,6 @@ public class BossStats
 	public List<DropDefinition> getDrops()
 	{
 		return drops != null ? drops : boss.getDrops();
-	}
-
-	public void setDrops(List<DropDefinition> drops)
-	{
-		this.drops = drops;
-	}
-
-	/** Kill count per part for combined pages, otherwise null. */
-	public Map<String, Integer> getPartCounts()
-	{
-		return partCounts;
-	}
-
-	public void setPartCounts(Map<String, Integer> partCounts)
-	{
-		this.partCounts = partCounts;
-	}
-
-	/** Completions per delve level for delve bosses, otherwise null. */
-	public Map<Integer, Integer> getLevelCounts()
-	{
-		return levelCounts;
-	}
-
-	/** Unique chance per raid used for the numbers, or NaN for a normal boss. */
-	public double getRaidUniqueChance()
-	{
-		return raidUniqueChance;
 	}
 }
 

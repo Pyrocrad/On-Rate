@@ -1,6 +1,9 @@
 package com.expecteddrops.ui;
 
+import lombok.Getter;
+
 /** The display settings the panel follows. */
+@Getter
 public class ViewOptions
 {
 	/** Plain defaults: target bars, GE value on, extras off. */
@@ -27,36 +30,5 @@ public class ViewOptions
 		this.luckGraph = luckGraph;
 		this.tripCard = tripCard;
 		this.colourBlind = colourBlind;
-	}
-
-	public ItemView getItemView()
-	{
-		return itemView;
-	}
-
-	public boolean isGeValue()
-	{
-		return geValue;
-	}
-
-	public boolean isLuckGraph()
-	{
-		return luckGraph;
-	}
-
-	public boolean isTripCard()
-	{
-		return tripCard;
-	}
-
-	/** The account overview's Items tab. */
-	public boolean isTopItems()
-	{
-		return topItems;
-	}
-
-	public boolean isColourBlind()
-	{
-		return colourBlind;
 	}
 }

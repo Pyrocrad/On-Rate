@@ -1,5 +1,6 @@
 package com.onrate.game;
 
+import lombok.AllArgsConstructor;
 import net.runelite.api.Actor;
 import net.runelite.api.Client;
 import net.runelite.api.NPC;
@@ -12,6 +13,7 @@ import net.runelite.api.coords.LocalPoint;
  * (Nex, Yama, the Hueycoatl, Corp). Zalcano and the Fractured Archive can't be told that way
  * (mining and smithing count there, and the raid is an instance), so they use the players around you.
  */
+@AllArgsConstructor
 public final class TeamDetector
 {
 	/** Players within this many tiles of you count as your team where hits can't tell. */
@@ -20,11 +22,6 @@ public final class TeamDetector
 
 	private final Client client;
 	private final TeamSpotter spotter = new TeamSpotter();
-
-	public TeamDetector(Client client)
-	{
-		this.client = client;
-	}
 
 	/** Notes who is hitting a group boss. Call every game tick. */
 	public void onTick(long now)

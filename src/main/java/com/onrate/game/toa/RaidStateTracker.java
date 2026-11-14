@@ -34,6 +34,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package com.onrate.game.toa;
 
+import lombok.Getter;
 import net.runelite.api.Client;
 import net.runelite.api.Player;
 import net.runelite.api.coords.LocalPoint;
@@ -55,7 +56,7 @@ public class RaidStateTracker
 
 	private final Client client;
 
-	private RaidState currentState = DEFAULT_STATE;
+	@Getter private RaidState currentState = DEFAULT_STATE;
 
 	// delay inRaid = false by 3 ticks to alleviate any unexpected delays between rooms
 	private int raidLeaveTicks = 0;
@@ -63,11 +64,6 @@ public class RaidStateTracker
 	public RaidStateTracker(Client client)
 	{
 		this.client = client;
-	}
-
-	public RaidState getCurrentState()
-	{
-		return currentState;
 	}
 
 	/**

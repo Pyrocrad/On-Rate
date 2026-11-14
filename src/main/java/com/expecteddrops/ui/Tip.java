@@ -1,5 +1,7 @@
 package com.expecteddrops.ui;
 
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import java.awt.Color;
 import java.util.ArrayList;
 import java.util.List;
@@ -10,17 +12,13 @@ import java.util.List;
  * <pre>new Tip("Vorkath's head").row("Drop rate", "1/50 per kill").note("Counted from ...").wide()</pre>
  * Lines and rows show in the order they were added; rows next to each other form one table.
  */
+@AllArgsConstructor(access = AccessLevel.PACKAGE)
 final class Tip
 {
 	private final String title;
 	/** Lines (a String) and rows (a String[] of label and value), in order. */
 	private final List<Object> parts = new ArrayList<>();
 	private final List<String> notes = new ArrayList<>();
-
-	Tip(String title)
-	{
-		this.title = title;
-	}
 
 	Tip line(String html)
 	{

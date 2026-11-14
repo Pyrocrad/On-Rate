@@ -1,5 +1,6 @@
 package com.onrate.engine.stats;
 
+import lombok.Getter;
 import java.util.ArrayList;
 
 import java.util.Collections;
@@ -12,23 +13,23 @@ import java.util.Locale;
  */
 public class ItemTime
 {
-	private final String boss;
-	private final String label;
-	private final String iconItem;
-	private final boolean pet;
-	private final boolean have;
-	private final double secondsPerDrop;
-	private final double secondsPerKill;
-	private final double chancePerKill;
-	private final boolean estimated;
-	private final boolean lowConfidence;
+	@Getter private final String boss;
+	@Getter private final String label;
+	@Getter private final String iconItem;
+	@Getter private final boolean pet;
+	@Getter private final boolean have;
+	@Getter private final double secondsPerDrop;
+	@Getter private final double secondsPerKill;
+	@Getter private final double chancePerKill;
+	@Getter private final boolean estimated;
+	@Getter private final boolean lowConfidence;
 	private final boolean usesOwn;
-	private final boolean raid;
-	private final String basis;
-	private final String unit;
-	private String hint;
+	@Getter private final boolean raid;
+	@Getter private final String basis;
+	@Getter private final String unit;
+	@Getter private String hint;
 	private List<String> guides = Collections.emptyList();
-	private int received;
+	@Getter private int received;
 
 	ItemTime(String boss, String label, String iconItem, boolean pet, boolean have, double secondsPerDrop,
 		double secondsPerKill, double chancePerKill, boolean estimated, boolean usesOwn, boolean lowConfidence, boolean raid, String basis, String unit)
@@ -47,12 +48,6 @@ public class ItemTime
 		this.raid = raid;
 		this.basis = basis;
 		this.unit = unit;
-	}
-
-	/** An extra line for the hover about another way to get the item (Oathplate shards), or null. */
-	public String getHint()
-	{
-		return hint;
 	}
 
 	ItemTime withHint(String hint)
@@ -76,12 +71,6 @@ public class ItemTime
 		return this;
 	}
 
-	/** How many of the item you have (the collection log's count). */
-	public int getReceived()
-	{
-		return received;
-	}
-
 	/**
 	 * The same boss's time for a unique of any kind: this time per kill over the chance of some unique
 	 * in a kill. A copy; this item stays as it is.
@@ -98,90 +87,16 @@ public class ItemTime
 		return this;
 	}
 
-	public String getBoss()
-	{
-		return boss;
-	}
-
-	public String getLabel()
-	{
-		return label;
-	}
-
-	public String getIconItem()
-	{
-		return iconItem;
-	}
-
-	public boolean isPet()
-	{
-		return pet;
-	}
-
-	/** True when you already have at least one copy of the item. */
-	public boolean isHave()
-	{
-		return have;
-	}
-
-	/** Average seconds to get one copy. */
-	public double getSecondsPerDrop()
-	{
-		return secondsPerDrop;
-	}
-
-	/** Seconds one kill (raid, delve) takes in this calculation. */
-	public double getSecondsPerKill()
-	{
-		return secondsPerKill;
-	}
-
-	/** Your chance of the item in one kill (raid, delve): from your points for raids, your depths for Doom. */
-	public double getChancePerKill()
-	{
-		return chancePerKill;
-	}
-
-	/** True when the time per kill is the plugin's estimate, not an average of your own timed kills. */
-	public boolean isEstimated()
-	{
-		return estimated;
-	}
-
 	/** True when some of the time per kill is your own timed kills (all of it when {@link #isEstimated()} is false). */
 	public boolean usesOwnTimes()
 	{
 		return usesOwn;
 	}
 
-	/** True for a raid item: Chambers, Tombs, Theatre of Blood, the Fractured Archive. */
-	public boolean isRaid()
-	{
-		return raid;
-	}
-
 	/** Where the time per kill comes from, short: "your times", "wiki rate" or "wiki + yours". */
 	public String getSourceTag()
 	{
 		return !estimated ? "your times" : usesOwn ? "wiki + yours" : "wiki rate";
-	}
-
-	/** True when the estimate rests on a thin source. */
-	public boolean isLowConfidence()
-	{
-		return lowConfidence;
-	}
-
-	/** One sentence on where the time per kill comes from. */
-	public String getBasis()
-	{
-		return basis;
-	}
-
-	/** "kill", "raid" or "delve". */
-	public String getUnit()
-	{
-		return unit;
 	}
 
 	/** "45 min", "3.3 h", "145 h": a long time in the units that read best. */

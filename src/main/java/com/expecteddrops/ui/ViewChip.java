@@ -1,5 +1,7 @@
 package com.expecteddrops.ui;
 
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import java.awt.Color;
 
 import java.awt.BasicStroke;
@@ -266,16 +268,11 @@ final class ViewChip extends JPanel
 	}
 
 	/** A 14 x 14 sketch of each view, drawn in one muted colour. */
+	@AllArgsConstructor(access = AccessLevel.PACKAGE)
 	static final class ViewIcon implements Icon
 	{
 		private final ItemView view;
 		private final Color color;
-
-		ViewIcon(ItemView view, Color color)
-		{
-			this.view = view;
-			this.color = color;
-		}
 
 		@Override
 		public void paintIcon(Component c, Graphics graphics, int x, int y)

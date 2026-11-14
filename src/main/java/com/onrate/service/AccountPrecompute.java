@@ -1,5 +1,7 @@
 package com.onrate.service;
 
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.onrate.engine.data.KillTimes;
@@ -34,47 +36,29 @@ public final class AccountPrecompute
 	private static final Logger log = LoggerFactory.getLogger(AccountPrecompute.class);
 
 	/** One calculation and the draw to run when it is ready. */
+	@AllArgsConstructor(access = AccessLevel.PACKAGE)
 	private static final class Job
 	{
 		final RaidSettings raids;
 		final ToLongFunction<String> prices;
 		final Runnable draw;
 		final long seq;
-
-		Job(RaidSettings raids, ToLongFunction<String> prices, Runnable draw, long seq)
-		{
-			this.raids = raids;
-			this.prices = prices;
-			this.draw = draw;
-			this.seq = seq;
-		}
 	}
 
 	/** A request's move to a boss, and the number of that request. */
+	@AllArgsConstructor(access = AccessLevel.PACKAGE)
 	private static final class Nav
 	{
 		final Runnable show;
 		final long seq;
-
-		Nav(Runnable show, long seq)
-		{
-			this.show = show;
-			this.seq = seq;
-		}
 	}
 
+	@AllArgsConstructor(access = AccessLevel.PACKAGE)
 	private static final class Result
 	{
 		final boolean withPrices;
 		final AccountStats account;
 		final List<ItemTime> times;
-
-		Result(boolean withPrices, AccountStats account, List<ItemTime> times)
-		{
-			this.withPrices = withPrices;
-			this.account = account;
-			this.times = times;
-		}
 	}
 
 	private final Tracker tracker;

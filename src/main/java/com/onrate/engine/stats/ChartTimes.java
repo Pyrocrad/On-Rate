@@ -1,5 +1,8 @@
 package com.onrate.engine.stats;
 
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import java.util.Arrays;
 import com.onrate.engine.data.KillTimes;
 import java.util.function.Predicate;
@@ -176,26 +179,11 @@ public final class ChartTimes
 	}
 
 	/** The time for everything the listed chart items still need, and how many items had no time and are left out of it. */
+	@AllArgsConstructor(access = AccessLevel.PACKAGE)
 	public static final class Total
 	{
-		private final double seconds;
-		private final int withoutTime;
-
-		Total(double seconds, int withoutTime)
-		{
-			this.seconds = seconds;
-			this.withoutTime = withoutTime;
-		}
-
-		public double getSeconds()
-		{
-			return seconds;
-		}
-
-		public int getWithoutTime()
-		{
-			return withoutTime;
-		}
+		@Getter private final double seconds;
+		@Getter private final int withoutTime;
 	}
 
 	/**

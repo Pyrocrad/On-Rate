@@ -1,5 +1,6 @@
 package com.onrate.engine.data;
 
+import lombok.Getter;
 import com.google.gson.Gson;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -21,77 +22,31 @@ public final class LadlorChart
 	/** A drop a chart item needs, or a number of kills of a boss (a reward that is sure at that kill count). */
 	public static final class Need
 	{
-		private String boss;
-		private String drop;
-		private Integer kills;
+		@Getter private String boss;
+		@Getter private String drop;
+		@Getter private Integer kills;
 		private Integer count;
-
-		public String getBoss()
-		{
-			return boss;
-		}
-
-		/** The drop's name as the boss page has it, or null for a kill-count need. */
-		public String getDrop()
-		{
-			return drop;
-		}
 
 		/** How many of the drop are needed (crystal armour seeds: 3 for the body), at least 1. */
 		public int getCount()
 		{
 			return count == null || count < 1 ? 1 : count;
 		}
-
-		/** Kills of the boss needed, or null for a drop. */
-		public Integer getKills()
-		{
-			return kills;
-		}
 	}
 
 	/** One item of the chart. */
 	public static final class Item
 	{
-		private int step;
-		private String name;
-		private String icon;
+		@Getter private int step;
+		@Getter private String name;
+		@Getter private String icon;
 		private List<Need> needs;
-		private String note;
-		private String route;
-
-		/** Its place in the chart: items of one step share a number. */
-		public int getStep()
-		{
-			return step;
-		}
-
-		public String getName()
-		{
-			return name;
-		}
-
-		/** An item name for the picture. */
-		public String getIcon()
-		{
-			return icon;
-		}
+		@Getter private String note;
+		@Getter private String route;
 
 		public List<Need> getNeeds()
 		{
 			return needs == null ? Collections.emptyList() : needs;
-		}
-
-		/** What the chart item needs besides these drops and isn't counted, or null. */
-		public String getNote()
-		{
-			return note;
-		}
-
-		/** A second way to get the item with its own explanation ("oathplate-shards"), or null. */
-		public String getRoute()
-		{
-			return route;
 		}
 	}
 

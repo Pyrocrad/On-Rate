@@ -1,5 +1,6 @@
 package com.onrate.engine.stats;
 
+import lombok.Getter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -11,24 +12,24 @@ import com.onrate.engine.math.Poisson;
  */
 public class RowStats
 {
-	private final String label;
-	private final String iconItem;
-	private double rate;
-	private final double expected;
-	private final int received;
-	private final boolean any;
-	private boolean once;
-	private int cap;
-	private Integer streak;
-	private boolean streakExact;
+	@Getter private final String label;
+	@Getter private final String iconItem;
+	@Getter private double rate;
+	@Getter private final double expected;
+	@Getter private final int received;
+	@Getter private final boolean any;
+	@Getter private boolean once;
+	@Getter private int cap;
+	@Getter private Integer streak;
+	@Getter private boolean streakExact;
 	/** Fewest and most kills between two drops On Rate saw, or null. */
-	private Integer fastest;
-	private Integer longest;
-	private double driestMultiple = Double.NaN;
-	private String driestItem;
+	@Getter private Integer fastest;
+	@Getter private Integer longest;
+	@Getter private double driestMultiple = Double.NaN;
+	@Getter private String driestItem;
 	private String mark = "";
 	/** How the expected count is made up (see {@link Parts}), or null for a single plain count. */
-	private Parts parts;
+	@Getter private Parts parts;
 	/** Set on a copy made for a list ordered by something else (see {@link #withDisplayLuck}). */
 	private Double luckOverride;
 
@@ -224,11 +225,6 @@ public class RowStats
 		return this;
 	}
 
-	public Parts getParts()
-	{
-		return parts;
-	}
-
 	/** Sets the dry streak: kills since the last copy (or since tracking began when not exact). */
 	public RowStats withStreak(Integer kills, boolean exact)
 	{
@@ -243,16 +239,6 @@ public class RowStats
 		this.fastest = fastest;
 		this.longest = longest;
 		return this;
-	}
-
-	public Integer getFastest()
-	{
-		return fastest;
-	}
-
-	public Integer getLongest()
-	{
-		return longest;
 	}
 
 	/** For the "Any" row: the summed rate of all its items, so its streak can be expressed in rates. */
@@ -283,81 +269,16 @@ public class RowStats
 		return label + mark;
 	}
 
-	public double getDriestMultiple()
-	{
-		return driestMultiple;
-	}
-
-	public String getDriestItem()
-	{
-		return driestItem;
-	}
-
-	/** Kills since the last copy, or null when unknown (or the item is a pet you already have). */
-	public Integer getStreak()
-	{
-		return streak;
-	}
-
-	/** False when the last copy came before On Rate started tracking: the streak is a minimum. */
-	public boolean isStreakExact()
-	{
-		return streakExact;
-	}
-
 	/** The streak in multiples of the drop rate: 1.0 means one full drop rate without a copy. */
 	public double getStreakMultiple()
 	{
 		return streak == null ? Double.NaN : streak * rate;
 	}
 
-	public boolean isOnce()
-	{
-		return once;
-	}
-
-	/** At most this many copies count, 0 for no limit. */
-	public int getCap()
-	{
-		return cap;
-	}
-
 	/** True when you have every copy that counts (a pet you own, both titan scrolls). */
 	public boolean isComplete()
 	{
 		return cap > 0 && received >= cap;
-	}
-
-	public String getLabel()
-	{
-		return label;
-	}
-
-	/** Item name to show as the icon, or null for the "Any" row. */
-	public String getIconItem()
-	{
-		return iconItem;
-	}
-
-	/** Per-kill rate (0 for the "Any" row). */
-	public double getRate()
-	{
-		return rate;
-	}
-
-	public double getExpected()
-	{
-		return expected;
-	}
-
-	public int getReceived()
-	{
-		return received;
-	}
-
-	public boolean isAny()
-	{
-		return any;
 	}
 
 	/**

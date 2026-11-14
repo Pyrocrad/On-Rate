@@ -1,5 +1,6 @@
 package com.onrate.engine.tracking;
 
+import lombok.Getter;
 import com.onrate.engine.math.Luck;
 import com.onrate.engine.math.Poisson;
 
@@ -7,6 +8,7 @@ import java.util.Collections;
 import java.util.List;
 
 /** The current trip: kills, uniques and what was expected since it started. */
+@Getter
 public class TripStats
 {
 	private final String boss;
@@ -33,60 +35,6 @@ public class TripStats
 		this.received = received;
 		this.expected = expected;
 		this.drops = Collections.unmodifiableList(drops);
-	}
-
-	public String getBoss()
-	{
-		return boss;
-	}
-
-	public long getStartMillis()
-	{
-		return startMillis;
-	}
-
-	public long getLastMillis()
-	{
-		return lastMillis;
-	}
-
-	public int getKills()
-	{
-		return kills;
-	}
-
-	public int getReceived()
-	{
-		return received;
-	}
-
-	public double getExpected()
-	{
-		return expected;
-	}
-
-	/** Items received this trip, one entry per drop. */
-	public List<String> getDrops()
-	{
-		return drops;
-	}
-
-	/** Expected from shared items (godsword shards...) the boss drops, part of {@link #getExpected()}. */
-	public double getSharedExpected()
-	{
-		return sharedExpected;
-	}
-
-	/** Shared items received this trip, part of {@link #getReceived()}. */
-	public int getSharedReceived()
-	{
-		return sharedReceived;
-	}
-
-	/** Names of the shared items counted in the shared figures. */
-	public List<String> getSharedNames()
-	{
-		return sharedNames;
 	}
 
 	/** Luck for this trip alone, from the first kill on (NaN only when nothing is expected). */

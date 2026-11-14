@@ -35,6 +35,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package com.onrate.game.toa;
 
+import lombok.Getter;
+import lombok.Setter;
 import java.util.Arrays;
 
 import java.util.ArrayList;
@@ -159,23 +161,12 @@ public class ToaPointsEstimator
 	private int nonPartyPoints; // points that are earned once by the entire party
 	private final List<Integer> seenMvpItems = new ArrayList<>(4);
 
-	private int teamSize;
+	@Getter @Setter private int teamSize;
 	private int wardenDowns;
 
 	public ToaPointsEstimator()
 	{
 		reset();
-	}
-
-	/** The party size changed (from the raid state). */
-	public void setTeamSize(int teamSize)
-	{
-		this.teamSize = teamSize;
-	}
-
-	public int getTeamSize()
-	{
-		return teamSize;
 	}
 
 	/** You left a room: puzzle rooms give fixed points. */

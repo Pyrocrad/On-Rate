@@ -1,5 +1,6 @@
 package com.onrate.game;
 
+import lombok.AllArgsConstructor;
 import com.onrate.engine.tracking.Tracker;
 import java.util.HashMap;
 import java.util.Map;
@@ -14,6 +15,7 @@ import net.runelite.api.gameval.VarbitID;
  * not yet collected. When it drops, each reward collected is one roll; the counter and the total
  * subdues also give the number of rolls from before On Rate was running.
  */
+@AllArgsConstructor
 public final class RollCounters
 {
 	/** Boss name, the game's counter of uncollected rewards, and the total subdues. */
@@ -26,12 +28,6 @@ public final class RollCounters
 	private final Tracker tracker;
 	/** Each counter's value last seen this login; a drop means rewards were collected. */
 	private final Map<String, Integer> last = new HashMap<>();
-
-	public RollCounters(Client client, Tracker tracker)
-	{
-		this.client = client;
-		this.tracker = tracker;
-	}
 
 	/** @param changed told the boss whose numbers changed, and whether a roll was just counted */
 	public void onVarbit(VarbitChanged event, BiConsumer<String, Boolean> changed)

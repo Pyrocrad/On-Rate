@@ -1,5 +1,6 @@
 package com.onrate.engine.tracking;
 
+import lombok.Getter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -10,7 +11,7 @@ import java.util.List;
  */
 public class TimeStats
 {
-	private final int count;
+	@Getter private final int count;
 	private final int best;
 	private final int average;
 	private final int median;
@@ -30,12 +31,6 @@ public class TimeStats
 		this.average = (int) Math.round((double) sum / count);
 		this.median = count % 2 == 1 ? sorted.get(count / 2) : (int) Math.round((sorted.get(count / 2 - 1) + sorted.get(count / 2)) / 2.0);
 		this.last = last;
-	}
-
-	/** Kills with a time. */
-	public int getCount()
-	{
-		return count;
 	}
 
 	public int getBestMillis()

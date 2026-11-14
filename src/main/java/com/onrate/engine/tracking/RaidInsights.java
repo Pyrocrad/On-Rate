@@ -1,5 +1,8 @@
 package com.onrate.engine.tracking;
 
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import com.onrate.engine.data.*;
 import com.onrate.engine.stats.RaidSettings;
 import java.util.ArrayList;
@@ -31,10 +34,10 @@ public final class RaidInsights
 	{
 		private final String part;
 		private final int team;
-		private final int levelFrom;
+		@Getter private final int levelFrom;
 		private int raids;
 		private double chanceSum;
-		private int timed;
+		@Getter private int timed;
 		private double timedChance;
 		private double timedGp;
 		private long timedMillis;
@@ -80,22 +83,10 @@ public final class RaidInsights
 			return players;
 		}
 
-		/** Tombs of Amascut: the first raid level of the step, or -1 (another raid, or unknown). */
-		public int getLevelFrom()
-		{
-			return levelFrom;
-		}
-
 		/** Raids of this setup with a known purple chance. */
 		public int getRaids()
 		{
 			return raids;
-		}
-
-		/** Raids of this setup with both a purple chance and a time. */
-		public int getTimed()
-		{
-			return timed;
 		}
 
 		/** True once there are enough timed raids for an hour figure. */
@@ -163,21 +154,11 @@ public final class RaidInsights
 	}
 
 	/** A personal best: its value and the raid that set it. */
+	@AllArgsConstructor(access = AccessLevel.PACKAGE)
 	public static final class Best
 	{
-		private final double value;
+		@Getter private final double value;
 		private final RaidRecord raid;
-
-		Best(double value, RaidRecord raid)
-		{
-			this.value = value;
-			this.raid = raid;
-		}
-
-		public double getValue()
-		{
-			return value;
-		}
 
 		public RaidRecord getRaid()
 		{
@@ -196,12 +177,12 @@ public final class RaidInsights
 	{
 		private final String part;
 		private final int team;
-		private Best fastest;
-		private Best mostPoints;
-		private Best highestLevel;
-		private Best biggestShare;
+		@Getter private Best fastest;
+		@Getter private Best mostPoints;
+		@Getter private Best highestLevel;
+		@Getter private Best biggestShare;
 		private int raids;
-		private int withoutDeath;
+		@Getter private int withoutDeath;
 		private int withDeaths;
 		private final int players;
 
@@ -228,40 +209,10 @@ public final class RaidInsights
 			return players;
 		}
 
-		/** Fastest raid; value in milliseconds. */
-		public Best getFastest()
-		{
-			return fastest;
-		}
-
-		/** Most of your own points (Chambers, Tombs). */
-		public Best getMostPoints()
-		{
-			return mostPoints;
-		}
-
-		/** Highest raid level (Tombs). */
-		public Best getHighestLevel()
-		{
-			return highestLevel;
-		}
-
-		/** Biggest contribution out of 700 (The Fractured Archive). */
-		public Best getBiggestShare()
-		{
-			return biggestShare;
-		}
-
 		/** Raids of this mode and team size. */
 		public int getRaids()
 		{
 			return raids;
-		}
-
-		/** Raids whose deaths are known and were 0 (Theatre of Blood). */
-		public int getWithoutDeath()
-		{
-			return withoutDeath;
 		}
 
 		/** Raids whose deaths are known. */
@@ -275,20 +226,14 @@ public final class RaidInsights
 	public static final class Point
 	{
 		private final RaidRecord raid;
-		private final double chance;
-		private final List<String> uniques;
+		@Getter private final double chance;
+		@Getter private final List<String> uniques;
 
 		Point(RaidRecord raid, double chance, List<String> uniques)
 		{
 			this.raid = raid;
 			this.chance = chance;
 			this.uniques = uniques == null ? Collections.emptyList() : uniques;
-		}
-
-		/** The uniques this raid gave you, from History or Raid Data Tracker; empty for none. */
-		public List<String> getUniques()
-		{
-			return uniques;
 		}
 
 		public RaidRecord getRaid()
@@ -308,12 +253,6 @@ public final class RaidInsights
 			return raid.personalPoints;
 		}
 
-		/** That raid's purple chance (0 to 1), NaN when unknown. */
-		public double getChance()
-		{
-			return chance;
-		}
-
 		/** True when this raid gave you a unique (History, or Raid Data Tracker for raids it read). */
 		public boolean isPurple()
 		{
@@ -328,12 +267,12 @@ public final class RaidInsights
 	/** Group by the other choice only: the mode, or at Tombs of Amascut the raid level. */
 	public static final int BY_CHOICE = 2;
 
-	private final List<Setup> setups;
-	private final List<Bests> bests;
+	@Getter private final List<Setup> setups;
+	@Getter private final List<Bests> bests;
 	private final Map<String, List<Point>> points;
 	private final List<String> order;
 	/** Your latest raids with a known chance, all modes together, or null when there are none. */
-	private Setup recent;
+	@Getter private Setup recent;
 
 	private RaidInsights(List<Setup> setups, List<Bests> bests, Map<String, List<Point>> points, List<String> order)
 	{
@@ -341,12 +280,6 @@ public final class RaidInsights
 		this.bests = bests;
 		this.points = points;
 		this.order = order;
-	}
-
-	/** Setups, those with enough timed raids first, sorted by purple chance an hour, highest first. */
-	public List<Setup> getSetups()
-	{
-		return setups;
 	}
 
 	/**
@@ -409,10 +342,6 @@ public final class RaidInsights
 	 * Your latest {@link RaidHabits#RECENT} raids with a known chance, all modes together, as one row:
 	 * how you raid now, for the collection log forecast. Null when On Rate saw none.
 	 */
-	public Setup getRecent()
-	{
-		return recent;
-	}
 
 	private static Setup recentOf(BossDefinition boss, Map<String, BossPart> parts, List<RaidRecord> all, RaidSettings settings)
 	{
@@ -437,12 +366,6 @@ public final class RaidInsights
 			addItems(boss, part, r, chance, recent);
 		}
 		return recent.raids == 0 ? null : recent;
-	}
-
-	/** Personal bests per mode and team size, in the boss's mode order then team size. */
-	public List<Bests> getBests()
-	{
-		return bests;
 	}
 
 	/** Raids per mode, oldest first, for the graph. */

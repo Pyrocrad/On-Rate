@@ -1,5 +1,6 @@
 package com.onrate.engine.stats;
 
+import lombok.Getter;
 import java.util.Collections;
 import java.util.List;
 
@@ -12,14 +13,14 @@ public class ChartTime
 	/** One drop (or set of kills) the chart item needs. */
 	public static final class Part
 	{
-		private final String label;
-		private final String boss;
-		private final boolean have;
-		private final double seconds;
-		private final double chancePerKill;
-		private final double secondsPerKill;
-		private final String dropKey;
-		private final int missing;
+		@Getter private final String label;
+		@Getter private final String boss;
+		@Getter private final boolean have;
+		@Getter private final double seconds;
+		@Getter private final double chancePerKill;
+		@Getter private final double secondsPerKill;
+		@Getter private final String dropKey;
+		@Getter private final int missing;
 
 		Part(String label, String boss, boolean have, double seconds, double chancePerKill, double secondsPerKill)
 		{
@@ -37,63 +38,17 @@ public class ChartTime
 			this.chancePerKill = chancePerKill;
 			this.secondsPerKill = secondsPerKill;
 		}
-
-		/** Which drop this is (boss and drop), or null for kills of a boss: the same drop in two chart items shares kills. */
-		public String getDropKey()
-		{
-			return dropKey;
-		}
-
-		/** How many copies of the drop are still missing (0 when you have them), 0 for a kill-count part. */
-		public int getMissing()
-		{
-			return missing;
-		}
-
-		/** Your chance of this drop in one kill, NaN for a reward that is sure at a kill count. */
-		public double getChancePerKill()
-		{
-			return chancePerKill;
-		}
-
-		/** Seconds one kill takes at this part's boss, NaN when unknown. */
-		public double getSecondsPerKill()
-		{
-			return secondsPerKill;
-		}
-
-		public String getLabel()
-		{
-			return label;
-		}
-
-		public String getBoss()
-		{
-			return boss;
-		}
-
-		/** True when you already have this part. */
-		public boolean isHave()
-		{
-			return have;
-		}
-
-		/** Average seconds for this part alone, NaN when it has no time. */
-		public double getSeconds()
-		{
-			return seconds;
-		}
 	}
 
-	private final int step;
-	private final String name;
-	private final String icon;
-	private final String note;
-	private final List<Part> parts;
-	private final double seconds;
-	private final boolean estimated;
+	@Getter private final int step;
+	@Getter private final String name;
+	@Getter private final String icon;
+	@Getter private final String note;
+	@Getter private final List<Part> parts;
+	@Getter private final double seconds;
+	@Getter private final boolean estimated;
 	private final boolean usesOwn;
-	private String route;
+	@Getter private String route;
 
 	ChartTime(int step, String name, String icon, String note, List<Part> parts, double seconds, boolean estimated, boolean usesOwn)
 	{
@@ -107,60 +62,15 @@ public class ChartTime
 		this.usesOwn = usesOwn;
 	}
 
-	/** A second way to get the item, explained for the hover (Oathplate shards), or null. */
-	public String getRoute()
-	{
-		return route;
-	}
-
 	ChartTime withRoute(String route)
 	{
 		this.route = route;
 		return this;
 	}
 
-	/** Its place in the chart. */
-	public int getStep()
-	{
-		return step;
-	}
-
-	public String getName()
-	{
-		return name;
-	}
-
-	public String getIcon()
-	{
-		return icon;
-	}
-
-	/** What the chart item needs besides its drops and isn't counted, or null. */
-	public String getNote()
-	{
-		return note;
-	}
-
-	public List<Part> getParts()
-	{
-		return parts;
-	}
-
-	/** Average seconds to get everything still missing, NaN when some part has no time. */
-	public double getSeconds()
-	{
-		return seconds;
-	}
-
 	public boolean hasTime()
 	{
 		return !Double.isNaN(seconds);
-	}
-
-	/** True when some of the time per kill is the wiki rate, not your own kills. */
-	public boolean isEstimated()
-	{
-		return estimated;
 	}
 
 	public boolean usesOwnTimes()

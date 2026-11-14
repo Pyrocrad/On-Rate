@@ -1,6 +1,8 @@
 package com.onrate.engine.data;
 
 
+import lombok.Getter;
+import lombok.Setter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -11,15 +13,15 @@ import java.util.Map;
  */
 public class DropDefinition
 {
-	private String name;
+	@Getter private String name;
 	private String label;
-	private String rate;
-	private Double weight;
-	private String perUnique;
+	@Getter private String rate;
+	@Getter @Setter private Double weight;
+	@Getter @Setter private String perUnique;
 	/** Tombs of Amascut: lowest raid level where this unique drops normally (below it, 1 in 50 is kept). */
-	private Integer minRaidLevel;
+	@Getter @Setter private Integer minRaidLevel;
 	/** A drop that is guaranteed on this kill (Vorkath's head on the 50th): that kill's roll becomes a sure drop. */
-	private Integer guaranteedAt;
+	@Getter private Integer guaranteedAt;
 	/** Tombs of Amascut: weight from a raid level on (e.g. {"400": 4}); below the lowest key the normal weight. */
 	private Map<String, Double> levelWeights;
 	/** Items that drop in stacks: average stack size. The collection log counts items, not drops. */
@@ -27,23 +29,23 @@ public class DropDefinition
 	/** Most copies the collection log can count (2 for the two Royal Titans prayer scrolls). */
 	private Integer max;
 	/** Rate per minion kill (God Wars bodyguards), added for each minion of the boss. */
-	private String minionRate;
-	private List<String> match;
-	private Boolean any;
-	private Boolean pet;
+	@Getter private String minionRate;
+	@Setter private List<String> match;
+	@Setter private Boolean any;
+	@Setter private Boolean pet;
 	private Boolean clogShared;
 	/** True for items you can only get once (a prayer scroll you read). Pets count as once too. */
 	private Boolean once;
 	/** True when this drop does not scale with damage share at team bosses (e.g. Bran). */
 	private Boolean noShare;
 	/** Other monsters that drop this item, whose drops the collection log counts here too. */
-	private String alsoFrom;
+	@Getter private String alsoFrom;
 	/** What an untradeable item is worth, from tradeable ones ("Noxious halberd / 3"). See {@link ValueFormula}. */
-	private String valueFrom;
+	@Getter private String valueFrom;
 	/** A line for the item's hover about how it drops (e.g. no repeats until you have all four). */
-	private String note;
+	@Getter private String note;
 	/** Per-level rates for delve bosses, keyed "1".."9" (9 = level 8+). */
-	private Map<String, String> levelRates;
+	@Setter private Map<String, String> levelRates;
 	/** Per-part rates for combined pages, keyed by part name. */
 	private Map<String, String> partRates;
 	/** Raid modes whose unique table differs: weight per part name. */
@@ -59,25 +61,10 @@ public class DropDefinition
 		this.rate = rate;
 	}
 
-	public String getName()
-	{
-		return name;
-	}
-
 	/** Text shown in the panel: the label if set, otherwise the item name. */
 	public String getDisplayName()
 	{
 		return label != null && !label.isEmpty() ? label : name;
-	}
-
-	public String getRate()
-	{
-		return rate;
-	}
-
-	public Double getWeight()
-	{
-		return weight;
 	}
 
 	/** Weight of this item in one raid mode (falls back to the normal weight). */
@@ -110,11 +97,6 @@ public class DropDefinition
 		return w;
 	}
 
-	public String getMinionRate()
-	{
-		return minionRate;
-	}
-
 	public boolean hasLevelWeights()
 	{
 		return levelWeights != null && !levelWeights.isEmpty();
@@ -128,26 +110,6 @@ public class DropDefinition
 			return quantity;
 		}
 		return Math.max(1, (int) Math.round(quantity / stack));
-	}
-
-	public Integer getGuaranteedAt()
-	{
-		return guaranteedAt;
-	}
-
-	public Integer getMinRaidLevel()
-	{
-		return minRaidLevel;
-	}
-
-	public void setMinRaidLevel(Integer minRaidLevel)
-	{
-		this.minRaidLevel = minRaidLevel;
-	}
-
-	public String getPerUnique()
-	{
-		return perUnique;
 	}
 
 	/** The item name plus every extra name that counts for this row. */
@@ -173,11 +135,6 @@ public class DropDefinition
 		return levelRates == null ? null : levelRates.get(String.valueOf(level));
 	}
 
-	public void setLevelRates(Map<String, String> levelRates)
-	{
-		this.levelRates = levelRates;
-	}
-
 	/** Rate text for one part of a combined page, or null if that part doesn't drop it. */
 	public String getPartRate(String part)
 	{
@@ -187,16 +144,6 @@ public class DropDefinition
 	public boolean hasPartRates()
 	{
 		return partRates != null && !partRates.isEmpty();
-	}
-
-	public String getValueFrom()
-	{
-		return valueFrom;
-	}
-
-	public String getNote()
-	{
-		return note;
 	}
 
 	public boolean countsTowardAny()
@@ -231,12 +178,6 @@ public class DropDefinition
 		return max == null ? 0 : max;
 	}
 
-	/** "araxytes": other monsters that drop it (the log counts theirs too), or null. */
-	public String getAlsoFrom()
-	{
-		return alsoFrom;
-	}
-
 	public boolean isNoShare()
 	{
 		return noShare != null && noShare;
@@ -245,31 +186,6 @@ public class DropDefinition
 	public boolean isClogSharedFlag()
 	{
 		return clogShared != null && clogShared;
-	}
-
-	public void setWeight(Double weight)
-	{
-		this.weight = weight;
-	}
-
-	public void setPerUnique(String perUnique)
-	{
-		this.perUnique = perUnique;
-	}
-
-	public void setPet(boolean pet)
-	{
-		this.pet = pet;
-	}
-
-	public void setAny(boolean any)
-	{
-		this.any = any;
-	}
-
-	public void setMatch(List<String> match)
-	{
-		this.match = match;
 	}
 }
 

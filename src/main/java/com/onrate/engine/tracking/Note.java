@@ -1,8 +1,13 @@
 package com.onrate.engine.tracking;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
 /**
  * A chat message the plugin wants to show the player.
  */
+@Getter
+@AllArgsConstructor
 public class Note
 {
 	public enum Kind
@@ -17,22 +22,6 @@ public class Note
 
 	private final Kind kind;
 	private final String text;
-
-	public Note(Kind kind, String text)
-	{
-		this.kind = kind;
-		this.text = text;
-	}
-
-	public Kind getKind()
-	{
-		return kind;
-	}
-
-	public String getText()
-	{
-		return text;
-	}
 
 	@Override
 	public String toString()

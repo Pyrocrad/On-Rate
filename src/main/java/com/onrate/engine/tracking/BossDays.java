@@ -1,32 +1,17 @@
 package com.onrate.engine.tracking;
 
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import java.util.List;
 
 /** A boss's kills, uniques and expected over a stretch of days (Recent tab). */
+@AllArgsConstructor(access = AccessLevel.PACKAGE)
 public class BossDays
 {
-	private final String boss;
+	@Getter private final String boss;
 	private final DayCount count;
-	private final List<String> uniqueNames;
-
-	BossDays(String boss, DayCount count, List<String> uniqueNames)
-	{
-		this.boss = boss;
-		this.count = count;
-		this.uniqueNames = uniqueNames;
-	}
-
-	/** The uniques in those days that History knows the name of, oldest first ("Tyrannical ring"). */
-	public List<String> getUniqueNames()
-	{
-		return uniqueNames;
-	}
-
-	/** The boss name, or null for the total of all bosses. */
-	public String getBoss()
-	{
-		return boss;
-	}
+	@Getter private final List<String> uniqueNames;
 
 	public int getKills()
 	{

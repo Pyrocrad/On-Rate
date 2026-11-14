@@ -34,6 +34,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package com.onrate.game.toa;
 
+import lombok.Getter;
+
 /**
  * The rooms of the Tombs of Amascut, found from the map region you stand in.
  */
@@ -60,24 +62,14 @@ public enum RaidRoom
 	}
 
 	private final int[] regionIds;
-	private final String displayName;
-	private final RaidRoomType roomType;
+	@Getter private final String displayName;
+	@Getter private final RaidRoomType roomType;
 
 	RaidRoom(int[] regionIds, String displayName, RaidRoomType roomType)
 	{
 		this.regionIds = regionIds;
 		this.displayName = displayName;
 		this.roomType = roomType;
-	}
-
-	public String getDisplayName()
-	{
-		return displayName;
-	}
-
-	public RaidRoomType getRoomType()
-	{
-		return roomType;
 	}
 
 	public static RaidRoom forRegionId(int region)

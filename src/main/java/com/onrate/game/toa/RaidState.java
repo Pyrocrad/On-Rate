@@ -34,11 +34,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package com.onrate.game.toa;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import java.util.Objects;
 
 /**
  * Where you are in the Tombs of Amascut on one game tick.
  */
+@Getter
+@AllArgsConstructor
 public final class RaidState
 {
 
@@ -46,34 +50,6 @@ public final class RaidState
 	private final boolean inRaid;
 	private final RaidRoom currentRoom;
 	private final int playerCount;
-
-	public RaidState(boolean inLobby, boolean inRaid, RaidRoom currentRoom, int playerCount)
-	{
-		this.inLobby = inLobby;
-		this.inRaid = inRaid;
-		this.currentRoom = currentRoom;
-		this.playerCount = playerCount;
-	}
-
-	public boolean isInLobby()
-	{
-		return inLobby;
-	}
-
-	public boolean isInRaid()
-	{
-		return inRaid;
-	}
-
-	public RaidRoom getCurrentRoom()
-	{
-		return currentRoom;
-	}
-
-	public int getPlayerCount()
-	{
-		return playerCount;
-	}
 
 	@Override
 	public boolean equals(Object o)

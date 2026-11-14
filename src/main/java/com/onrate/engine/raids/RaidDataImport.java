@@ -1,5 +1,7 @@
 package com.onrate.engine.raids;
 
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import com.google.gson.*;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -63,6 +65,7 @@ public final class RaidDataImport
 	 * it ended, how long it took (-1 when unknown), the team, the points, the raid level (Tombs only,
 	 * else -1) and the unique it gave you (null for none, or a unique that went to a teammate).
 	 */
+	@AllArgsConstructor(access = AccessLevel.PACKAGE)
 	public static final class Raid
 	{
 		public final String part;
@@ -74,19 +77,6 @@ public final class RaidDataImport
 		public final int totalPoints;
 		public final int raidLevel;
 		public final String unique;
-
-		Raid(String part, int kc, long when, long millis, int teamSize, int personalPoints, int totalPoints, int raidLevel, String unique)
-		{
-			this.part = part;
-			this.kc = kc;
-			this.when = when;
-			this.millis = millis;
-			this.teamSize = teamSize;
-			this.personalPoints = personalPoints;
-			this.totalPoints = totalPoints;
-			this.raidLevel = raidLevel;
-			this.unique = unique;
-		}
 	}
 
 	/** One raid time, by boss and raid mode. {@code when} is when the raid ended, in epoch millis. */

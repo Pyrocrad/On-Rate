@@ -1,5 +1,8 @@
 package com.onrate.engine.tracking;
 
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import java.util.function.Function;
 import java.util.function.IntSupplier;
 import java.util.function.ToIntFunction;
@@ -52,23 +55,18 @@ public class Tracker
 	private static final long PET_WINDOW_MILLIS = 60_000;
 
 	/** An item from a loot event, already resolved to its name. */
+	@AllArgsConstructor
 	public static class LootItem
 	{
 		final String name;
 		final int quantity;
-
-		public LootItem(String name, int quantity)
-		{
-			this.name = name;
-			this.quantity = quantity;
-		}
 	}
 
 	private static final int[] MILESTONES = {2, 3, 5, 10};
 	/** A kill count jump bigger than this (a sync, a first message) doesn't announce milestones. */
 	private static final int MAX_QUIET_JUMP = 5;
 
-	private final BossCatalog catalog;
+	@Getter private final BossCatalog catalog;
 	private final List<Note> outbox = new ArrayList<>();
 	private String lastBoss;
 	/** For combined pages: which part (e.g. Dagannoth Rex) was killed last. */
@@ -107,11 +105,6 @@ public class Tracker
 	private final SharedItems sharedItems;
 	/** Kill and raid times: matching time messages to kills, and times imported from Raid Data Tracker. */
 	private final FightTimes fightTimes;
-
-	public BossCatalog getCatalog()
-	{
-		return catalog;
-	}
 
 	/** How to count your team at a group boss kill, whichever the boss (see BossDefinition#isDetectTeam). */
 	public synchronized void setTeamSizeDetector(IntSupplier teamSize)
@@ -1543,20 +1536,13 @@ public class Tracker
 	}
 
 	/** See {@link #lastUnique()}: the item (null when none in History), its boss and time, and History's start. */
+	@AllArgsConstructor(access = AccessLevel.PACKAGE)
 	public static final class LastUnique
 	{
 		public final String item;
 		public final String boss;
 		public final long time;
 		public final long historyStart;
-
-		LastUnique(String item, String boss, long time, long historyStart)
-		{
-			this.item = item;
-			this.boss = boss;
-			this.time = time;
-			this.historyStart = historyStart;
-		}
 	}
 
 	/** The current trip's numbers, or null when there is no trip. */

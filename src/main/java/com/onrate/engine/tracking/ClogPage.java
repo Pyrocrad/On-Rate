@@ -1,5 +1,7 @@
 package com.onrate.engine.tracking;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -26,18 +28,12 @@ public final class ClogPage
 	private static final Pattern COUNTER_LINE = Pattern.compile(".*:\\s*[\\d,]+\\s*");
 
 	/** One item of a page, as the widget shows it. */
+	@AllArgsConstructor
 	public static final class Item
 	{
 		final String name;
 		final int quantity;
 		final int opacity;
-
-		public Item(String name, int quantity, int opacity)
-		{
-			this.name = name;
-			this.quantity = quantity;
-			this.opacity = opacity;
-		}
 	}
 
 	/** Why a page could not be read. */
@@ -54,11 +50,11 @@ public final class ClogPage
 	/** What was read. Use title, counters and items only when {@link #getProblem()} is null. */
 	public static final class Result
 	{
-		private final Problem problem;
-		private final String title;
-		private final List<String> counters;
-		private final Map<String, Integer> items;
-		private final boolean allFaded;
+		@Getter private final Problem problem;
+		@Getter private final String title;
+		@Getter private final List<String> counters;
+		@Getter private final Map<String, Integer> items;
+		@Getter private final boolean allFaded;
 
 		Result(Problem problem, String title, List<String> counters, Map<String, Integer> items, boolean allFaded)
 		{
@@ -67,35 +63,6 @@ public final class ClogPage
 			this.counters = Collections.unmodifiableList(counters);
 			this.items = Collections.unmodifiableMap(items);
 			this.allFaded = allFaded;
-		}
-
-		public Problem getProblem()
-		{
-			return problem;
-		}
-
-		/** Page title with tags removed; empty when there is none. */
-		public String getTitle()
-		{
-			return title;
-		}
-
-		/** Header lines after the title ("Vorkath kills: 123"), tags removed. */
-		public List<String> getCounters()
-		{
-			return counters;
-		}
-
-		/** Quantity obtained per item name; 0 for items the player does not have. */
-		public Map<String, Integer> getItems()
-		{
-			return items;
-		}
-
-		/** True when the page has items and every one reads as not obtained. */
-		public boolean isAllFaded()
-		{
-			return allFaded;
 		}
 	}
 

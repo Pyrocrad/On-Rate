@@ -76,6 +76,7 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.*;
+import net.runelite.client.util.ImageUtil;
 
 /**
  * Side panel: pick a boss, see expected vs received for each unique.
@@ -131,35 +132,6 @@ public class ExpectedDropsPanel extends PluginPanel
 	{
 		c.setMaximumSize(new Dimension(Integer.MAX_VALUE, h));
 	}
-	private static void hair(Container c)
-	{
-		c.add(spacer(Theme.HAIR));
-	}
-
-	private static void gapS(Container c)
-	{
-		c.add(spacer(Theme.S));
-	}
-
-	private static void gapM(Container c)
-	{
-		c.add(spacer(Theme.M));
-	}
-
-	private static void hide(Component c)
-	{
-		c.setVisible(false);
-	}
-
-	private static void center(JLabel c)
-	{
-		c.setHorizontalAlignment(SwingConstants.CENTER);
-	}
-
-	private static void right(JLabel c)
-	{
-		c.setHorizontalAlignment(SwingConstants.RIGHT);
-	}
 	private static void onClick(Component c, Runnable action)
 	{
 		c.addMouseListener(new MouseAdapter()
@@ -211,6 +183,8 @@ public class ExpectedDropsPanel extends PluginPanel
 	private final Supplier<RaidSettings> raidSettings;
 	private final ToIntFunction<String> itemIdFor;
 	private final Runnable save;
+	private final BooleanSupplier showWelcome;
+	private final Runnable dismissWelcome;
 	private final ToLongFunction<String> priceOf;
 	private final Supplier<ViewOptions> options;
 	private final JLabel helpLabel = new JLabel("?");
@@ -227,8 +201,21 @@ public class ExpectedDropsPanel extends PluginPanel
 	private String helpPage;
 	private JPanel tabsRow;
 
+	private final Card welcomePanel = new Card();
+	/** The welcome guide's and the notice's old edge (a bar down the left), for when the card look is off. */
+	private Border welcomeBorder;
+	private Border timesNoticeBorder;
 	/** Inside a guide or notice card: the old padding, plus the outline. */
 	private static final Border CARD_PADDING = new EmptyBorder(Theme.M + 1, Theme.M + 1, Theme.M + 1, Theme.M + 1);
+	/** The verdict words in the welcome guide's key, with the luck each stands for: recoloured with the palette. */
+	private final List<JLabel> welcomeVerdicts = new ArrayList<>();
+	private static final double[] WELCOME_VERDICT_LUCK = {0.005, 0.05, 0.22, 0.40, 0.50, 0.60, 0.78, 0.95, 0.995};
+	/** The guide's reference part (verdict key, limits, odd moments): folded until "How to read it" is clicked. */
+	private final JPanel welcomeMore = new JPanel();
+	private boolean welcomeMoreOpen;
+	/** "3 of N pages opened · next: Vorkath" and its bar, inside the guide (N is the number of log pages On Rate reads). */
+	private final JLabel welcomeProgress = new JLabel();
+	private final TargetBar welcomeProgressBar = new TargetBar();
 	private final JLabel setupHeader = new JLabel();
 	/** One line, only when a log page was opened but could not be read. */
 	private final JLabel setupProblem = new JLabel();
@@ -481,6 +468,16 @@ public class ExpectedDropsPanel extends PluginPanel
 	/** Opens or closes the Luck over time section (remembered; see {@link #setGraphOpener}). */
 	private Consumer<Boolean> setGraphOpen = open -> { };
 	private final JLabel graphTitle = new JLabel();
+	/** Once, during a long trip: a line on the trip card offering the in-game overlay. */
+	private JLabel overlayOfferLabel;
+	private BooleanSupplier overlayOn = () -> true;
+	private BooleanSupplier overlayOfferSeen = () -> true;
+	private Runnable markOverlayOfferSeen = () -> { };
+	private Runnable turnOnOverlay = () -> { };
+	private boolean overlayOfferOnScreen;
+	/** A trip this long (kills, or minutes) is when the overlay is worth offering. */
+	static final int OVERLAY_OFFER_KILLS = 30;
+	static final int OVERLAY_OFFER_MINUTES = 45;
 	private final JLabel summaryLabel = new JLabel();
 	private final JLabel levelsLabel = new JLabel();
 	private final JButton expectedTab = new JButton("Expected");
@@ -502,19 +499,21 @@ public class ExpectedDropsPanel extends PluginPanel
 	private boolean updatingSelection;
 
 	public ExpectedDropsPanel(Tracker tracker, ItemManager itemManager, Supplier<RaidSettings> raidSettings,
-		ToIntFunction<String> itemIdFor, Runnable save,
+		ToIntFunction<String> itemIdFor, Runnable save, BooleanSupplier showWelcome, Runnable dismissWelcome,
 		ToLongFunction<String> priceOf)
 	{
-		this(tracker, itemManager, raidSettings, itemIdFor, save, priceOf, () -> ViewOptions.DEFAULT);
+		this(tracker, itemManager, raidSettings, itemIdFor, save, showWelcome, dismissWelcome, priceOf, () -> ViewOptions.DEFAULT);
 	}
 
 	public ExpectedDropsPanel(Tracker tracker, ItemManager itemManager, Supplier<RaidSettings> raidSettings,
-		ToIntFunction<String> itemIdFor, Runnable save,
+		ToIntFunction<String> itemIdFor, Runnable save, BooleanSupplier showWelcome, Runnable dismissWelcome,
 		ToLongFunction<String> priceOf, Supplier<ViewOptions> options)
 	{
 		super();
 		this.options = options;
 		this.priceOf = priceOf;
+		this.showWelcome = showWelcome;
+		this.dismissWelcome = dismissWelcome;
 		this.tracker = tracker;
 		this.itemManager = itemManager;
 		this.raidSettings = raidSettings;
@@ -573,11 +572,17 @@ public class ExpectedDropsPanel extends PluginPanel
 		titleRow.add(titleRight, BorderLayout.EAST);
 		maxHeight(titleRow, 18);
 		top.add(titleRow);
-		gapM(top);
+		top.add(spacer(Theme.M));
 		buildFoldCard(helpCard, helpText);
 		top.add(helpCard);
 
-		gapM(top);
+		buildWelcome();
+		welcomeBorder = welcomePanel.getBorder();
+		top.add(welcomePanel);
+		buildTimesNotice();
+		timesNoticeBorder = timesNoticePanel.getBorder();
+		top.add(timesNoticePanel);
+		top.add(spacer(Theme.M));
 
 		small(setupHeader);
 		left(setupHeader);
@@ -602,7 +607,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		setupProblem.setIconTextGap(Theme.S);
 		setupProblem.setBorder(new EmptyBorder(0, 0, Theme.M, 0));
 		left(setupProblem);
-		hide(setupProblem);
+		setupProblem.setVisible(false);
 		top.add(setupProblem);
 		// styled like the line above: neutral text with an info mark, hidden unless the Loot Tracker is off
 		small(lootTrackerOffLabel);
@@ -614,7 +619,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		lootTrackerOffLabel.setIconTextGap(Theme.S);
 		lootTrackerOffLabel.setBorder(new EmptyBorder(0, 0, Theme.M, 0));
 		left(lootTrackerOffLabel);
-		hide(lootTrackerOffLabel);
+		lootTrackerOffLabel.setVisible(false);
 		top.add(lootTrackerOffLabel);
 		clear(setupList);
 		left(setupList);
@@ -673,9 +678,9 @@ public class ExpectedDropsPanel extends PluginPanel
 		muted(noMatchLabel);
 		noMatchLabel.setBorder(new EmptyBorder(Theme.S, 0, 0, 0));
 		left(noMatchLabel);
-		hide(noMatchLabel);
+		noMatchLabel.setVisible(false);
 		top.add(noMatchLabel);
-		gapS(top);
+		top.add(spacer(Theme.S));
 
 		fillBossList("");
 		maxHeight(bossSelect, 26);
@@ -704,14 +709,14 @@ public class ExpectedDropsPanel extends PluginPanel
 			}
 		});
 		top.add(bossSelect);
-		gapM(top);
+		top.add(spacer(Theme.M));
 
 		// header: boss icon, name and kill count, then the verdict in big letters
 		JPanel header = headerRow;
 		clear(header);
 		left(header);
 		headerIcon.setPreferredSize(new Dimension(36, 32));
-		center(headerIcon);
+		headerIcon.setHorizontalAlignment(SwingConstants.CENTER);
 		header.add(headerIcon, BorderLayout.WEST);
 		JPanel names = new JPanel();
 		names.setLayout(new BoxLayout(names, BoxLayout.Y_AXIS));
@@ -725,7 +730,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		header.add(names, BorderLayout.CENTER);
 		maxHeight(header, 36);
 		top.add(header);
-		gapS(top);
+		top.add(spacer(Theme.S));
 
 		verdictLabel.setFont(FontManager.getRunescapeBoldFont().deriveFont(Font.PLAIN, 24f));
 		left(verdictLabel);
@@ -738,7 +743,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		gray(notableLabel);
 		left(notableLabel);
 		notableLabel.setBorder(new EmptyBorder(0, 0, Theme.S, 0));
-		hide(notableLabel);
+		notableLabel.setVisible(false);
 		// a click shows the next fact (see showTiles)
 		onClick(notableLabel, () -> nextFact());
 		Activatable.install(notableLabel, "Next fact", this::nextFact);
@@ -747,7 +752,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		muted(lastUniqueLabel);
 		left(lastUniqueLabel);
 		lastUniqueLabel.setBorder(new EmptyBorder(0, 0, Theme.S, 0));
-		hide(lastUniqueLabel);
+		lastUniqueLabel.setVisible(false);
 		top.add(lastUniqueLabel);
 
 		for (JLabel l : new JLabel[]{summaryLabel, valueLabel, syncLabel, hintLabel})
@@ -764,7 +769,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		gray(levelsLabel);
 		left(levelsLabel);
 		top.add(levelsLabel);
-		gapM(top);
+		top.add(spacer(Theme.M));
 
 		graphPanel.setLayout(new BoxLayout(graphPanel, BoxLayout.Y_AXIS));
 		clear(graphPanel);
@@ -786,7 +791,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			refresh();
 		});
 		graphPanel.add(graphTitle);
-		hair(graphPanel);
+		graphPanel.add(spacer(Theme.HAIR));
 		graphWindowRow.setLayout(new BoxLayout(graphWindowRow, BoxLayout.Y_AXIS));
 		clear(graphWindowRow);
 		left(graphWindowRow);
@@ -800,7 +805,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		gray(graphHint);
 		left(graphHint);
 		graphPanel.add(graphHint);
-		gapM(graphPanel);
+		graphPanel.add(spacer(Theme.M));
 		topItemsPanel.setLayout(new BoxLayout(topItemsPanel, BoxLayout.Y_AXIS));
 		clear(topItemsPanel);
 		left(topItemsPanel);
@@ -828,7 +833,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		itemsLegend.setToolTipText(new Tip(null).line("The white line is how many you should have by now. A bar short of it is behind; "
 			+ "past it is ahead. Rare items have their line near the start.").small());
 		itemsHeading.add(itemsLegend);
-		hide(itemsHeading);
+		itemsHeading.setVisible(false);
 		top.add(itemsHeading);
 
 		JPanel tabs = new JPanel(new GridLayout(1, 2, 2, 0));
@@ -863,7 +868,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		// the Pets slider (only for "Closest to green log") sits beside the View button
 		sortEnd.setLayout(new BoxLayout(sortEnd, BoxLayout.X_AXIS));
 		clear(sortEnd);
-		hide(petsSwitch);
+		petsSwitch.setVisible(false);
 		sortEnd.add(petsSwitch);
 		sortEnd.add(accountViewChip);
 		sortRow.add(sortEnd, BorderLayout.EAST);
@@ -881,7 +886,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		gray(noteLabel);
 		left(noteLabel);
 		bottom.add(noteLabel);
-		gapM(bottom);
+		bottom.add(spacer(Theme.M));
 
 		small(resetButton);
 		muted(resetButton);
@@ -1188,6 +1193,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		profileState = state;
 		refresh();
+		showTimesNoticeWhenReady();
 	}
 
 	/** For tests: whether the "Loot Tracker is off" note is shown. */
@@ -1262,7 +1268,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		left(text);
 		card.setBorder(CARD_PADDING);
 		card.add(text);
-		hide(card);
+		card.setVisible(false);
 	}
 
 	private void toggleHelp()
@@ -1295,8 +1301,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		helpOpen = false;
 		aboutOpen = false;
-		hide(helpCard);
-		hide(aboutCard);
+		helpCard.setVisible(false);
+		aboutCard.setVisible(false);
 		foldsChanged();
 	}
 
@@ -1328,6 +1334,9 @@ public class ExpectedDropsPanel extends PluginPanel
 			closeFolds();
 		}
 		timeIndex = null;
+		// the graph offer was on screen and this redraw may move on from it (see the end)
+		boolean overlayWasOnScreen = overlayOfferOnScreen && overlayOfferLabel != null && overlayOfferLabel.isShowing();
+		overlayOfferOnScreen = false;
 		insightsThisDraw.clear();
 		drawing = true;
 		try
@@ -1345,9 +1354,18 @@ public class ExpectedDropsPanel extends PluginPanel
 			Card.box(rowsPanel);
 			Card.box(topItemsPanel);
 		}
+		welcomePanel.setBoxed(boxes);
+		welcomePanel.setBorder(boxes ? CARD_PADDING : welcomeBorder);
+		timesNoticePanel.setBoxed(boxes);
 		helpCard.setBoxed(boxes);
 		aboutCard.setBoxed(boxes);
+		timesNoticePanel.setBorder(boxes ? CARD_PADDING : timesNoticeBorder);
 		updateFooter();
+		// seen, and the player went on to another page or tab: never again on this account
+		if (overlayWasOnScreen && !overlayOfferOnScreen)
+		{
+			markOverlayOfferSeen.run();
+		}
 	}
 
 	/** True while {@link #draw()} runs: only then are a raid's insights shared between the parts of the page. */
@@ -1367,6 +1385,185 @@ public class ExpectedDropsPanel extends PluginPanel
 			return tracker.raidInsights(bossName, gp ? priceOf : null);
 		}
 		return insightsThisDraw.computeIfAbsent(bossName + (gp ? "|gp" : "|"), k -> tracker.raidInsights(bossName, gp ? priceOf : null));
+	}
+
+	/** Whether the one-time notice about the times feature is still due, and marking it shown. */
+	private BooleanSupplier timesNoticeDue = () -> false;
+	private Runnable markTimesNoticeShown = () -> { };
+
+	/**
+	 * The one-time notice about the Time page, for players who had On Rate before it: a card in the panel,
+	 * like the welcome guide. It appears the first time the panel is on screen, and is marked as shown
+	 * then, so it never comes back, whatever the player does with it. The plugin decides who it is for (a new install is
+	 * never due).
+	 */
+	public void setTimesNotice(BooleanSupplier due, Runnable markShown)
+	{
+		timesNoticeDue = due == null ? () -> false : due;
+		markTimesNoticeShown = markShown == null ? () -> { } : markShown;
+		addHierarchyListener(e ->
+		{
+			if ((e.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0)
+			{
+				showTimesNoticeWhenReady();
+			}
+		});
+		showTimesNoticeWhenReady();
+	}
+
+	/**
+	 * Shows the notice only when the panel is on screen and an account is loaded. Until then nothing is
+	 * taken, so the notice is not marked shown before the player can see it (for instance while the panel is
+	 * still on the log-in or loading message); it is tried again when either changes.
+	 */
+	void showTimesNoticeWhenReady()
+	{
+		if (profileLoaded() && isShowing())
+		{
+			showTimesNoticeOnce();
+		}
+	}
+
+	/** The notice's paragraphs: what is new and where to find it. */
+	static String[] timesNoticeParagraphs()
+	{
+		return new String[]{
+			"On Rate now times your kills and raids. The <font color='#ffffff'>Time</font> page (Items tab) shows how long each "
+				+ "item you don't have takes on average, from the OSRS Wiki's kill speed until you have your own.",
+			"Raid pages have three new sections under History: <font color='#ffffff'>purple chance by setup</font> (which of "
+				+ "your team sizes, modes and raid levels gets the most purples an hour), your personal bests, and your points over time.",
+			"If you use the Raid Data Tracker plugin, On Rate can read your raids from it, so those sections fill straight "
+				+ "away. Choose its folder under Raids in On Rate's settings; that has to be done again each time RuneLite starts. "
+				+ "You can turn the import off there too.",
+			"This message only shows once.",
+		};
+	}
+
+	/** The notice card, built like the welcome guide: in the panel, under the title. Hidden until it is due. */
+	private final Card timesNoticePanel = new Card();
+	/** The notice's "Show me" button: the Time page lives on the Items tab, so it needs that tab to be on. */
+	private final JButton timesNoticeShow = new JButton("Show me");
+
+	private void buildTimesNotice()
+	{
+		timesNoticePanel.setLayout(new BoxLayout(timesNoticePanel, BoxLayout.Y_AXIS));
+		left(timesNoticePanel);
+		darker(timesNoticePanel);
+		timesNoticePanel.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createMatteBorder(0, 3, 0, 0, Theme.OUTLINE),
+			new EmptyBorder(Theme.M, Theme.M, Theme.M, Theme.M)));
+		JLabel title = new JLabel("New in On Rate");
+		bold(title);
+		title.setForeground(Theme.TEXT);
+		left(title);
+		timesNoticePanel.add(title);
+		String[] paragraphs = timesNoticeParagraphs();
+		for (int i = 0; i < paragraphs.length; i++)
+		{
+			boolean last = i == paragraphs.length - 1;
+			JLabel text = smallLabel(Theme.wrap(paragraphs[i], Theme.CARD_TEXT_WIDTH), Theme.TEXT_MUTED);
+			left(text);
+			text.setBorder(last ? new EmptyBorder(Theme.S, 0, 0, 0)
+				: BorderFactory.createCompoundBorder(BorderFactory.createMatteBorder(i == 0 ? 0 : 1, 0, 0, 0, Theme.DIVIDER),
+					new EmptyBorder(i == 0 ? Theme.HAIR : Theme.S + 1, 0, Theme.S + 1, 0)));
+			timesNoticePanel.add(text);
+		}
+		JButton show = timesNoticeShow;
+		small(show);
+		show.setFocusPainted(false);
+		show.setToolTipText("Opens the Time page; the raid sections are on each raid's page");
+		show.addActionListener(e ->
+		{
+			if (!options.get().isTopItems())
+			{
+				// no Items tab, so no Time page: say so and keep the notice, instead of closing it on nothing
+				syncTimesNoticeShow();
+				return;
+			}
+			closeTimesNotice();
+			openTimePage();
+		});
+		JButton gotIt = new JButton("Got it");
+		small(gotIt);
+		gotIt.setFocusPainted(false);
+		gotIt.addActionListener(e -> closeTimesNotice());
+		JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, Theme.S, 0));
+		clear(buttons);
+		left(buttons);
+		buttons.setBorder(new EmptyBorder(Theme.S, 0, 0, 0));
+		buttons.add(show);
+		buttons.add(gotIt);
+		fullWidth(buttons);
+		timesNoticePanel.add(buttons);
+		fullWidth(timesNoticePanel);
+		timesNoticePanel.setVisible(false);
+	}
+
+	/** Disables "Show me" and says why while the Items tab is off; the Time page is part of that tab. */
+	private void syncTimesNoticeShow()
+	{
+		boolean itemsOn = options.get().isTopItems();
+		timesNoticeShow.setEnabled(itemsOn);
+		timesNoticeShow.setToolTipText(itemsOn ? "Opens the Time page; the raid sections are on each raid's page"
+			: "The Time page is part of the Items tab, which is off. Turn on Items tab under Display in the settings");
+	}
+
+	private void closeTimesNotice()
+	{
+		timesNoticePanel.setVisible(false);
+		revalidate();
+		repaint();
+	}
+
+	/** True when the notice is due now, and marks it shown: it must never come back, however it is closed. */
+	boolean takeTimesNotice()
+	{
+		if (!timesNoticeDue.getAsBoolean())
+		{
+			return false;
+		}
+		markTimesNoticeShown.run();
+		return true;
+	}
+
+	/** Shows the card when it is due: marked shown first, so it stays through this session's redraws but never returns. */
+	void showTimesNoticeOnce()
+	{
+		if (takeTimesNotice())
+		{
+			syncTimesNoticeShow();
+			fullWidth(timesNoticePanel);
+			timesNoticePanel.setVisible(true);
+			revalidate();
+			repaint();
+		}
+	}
+
+	/** Whether the notice card is on screen. */
+	boolean isTimesNoticeVisible()
+	{
+		return timesNoticePanel.isVisible();
+	}
+
+	/** Goes to the account overview's Items tab, on its Time page. */
+	public void openTimePage()
+	{
+		accountTab = TAB_ITEMS;
+		topMode = TOP_TIME;
+		showBoss(ACCOUNT);
+	}
+
+	/**
+	 * The overlay offer: during a long trip at one boss, one line on the trip card that turns
+	 * the in-game overlay on when clicked. Shown once per account (remembered as for the graph
+	 * offer), never when the overlay is on, and not in a session that already showed a tip.
+	 */
+	public void setOverlayOffer(BooleanSupplier on, BooleanSupplier seen, Runnable markSeen, Runnable turnOn)
+	{
+		overlayOn = on == null ? () -> true : on;
+		overlayOfferSeen = seen == null ? () -> true : seen;
+		markOverlayOfferSeen = markSeen == null ? () -> { } : markSeen;
+		turnOnOverlay = turnOn == null ? () -> { } : turnOn;
 	}
 
 	/**
@@ -1558,11 +1755,18 @@ public class ExpectedDropsPanel extends PluginPanel
 
 	private void drawPage()
 	{
+		// before login the guide's setup steps would read as if the account had nothing yet
+		welcomePanel.setVisible(showWelcome.getAsBoolean() && profileLoaded());
 		refreshSetup();
 
 		String bossName = selectedPage();
 		ViewOptions o = options.get();
 		Palette.setColourBlind(o.isColourBlind());
+		for (int i = 0; i < welcomeVerdicts.size(); i++)
+		{
+			// the guide's key follows the colour-blind setting like the verdicts do
+			welcomeVerdicts.get(i).setForeground(welcomeVerdictColor(i));
+		}
 		rowsPanel.removeAll();
 		styleTabs();
 		boolean account = ACCOUNT.equals(bossName);
@@ -1583,13 +1787,13 @@ public class ExpectedDropsPanel extends PluginPanel
 		sortControls(true);
 		accountViewChip.setView(o.getItemView());
 		bossViewChip.setView(o.getItemView());
-		hide(itemsHeading);
+		itemsHeading.setVisible(false);
 		itemsLegend.setVisible(o.getItemView() == ItemView.TARGET_BARS);
 		tabsRow.setVisible(o.getItemView() == ItemView.DELVE_BARS);
 		syncLabel.setVisible(!account);
-		hide(valueLabel);
-		hide(hintLabel);
-		hide(lastUniqueLabel);
+		valueLabel.setVisible(false);
+		hintLabel.setVisible(false);
+		lastUniqueLabel.setVisible(false);
 		headerIcon.setIcon(null);
 		headerIcon.setText(null);
 		headerIcon.setVisible(true);
@@ -1627,7 +1831,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			kcLabel.setText(partLine(stats.getPartCounts(), raid, stats.getKillCount()));
 			// the full names on hover, for when the line is cut off
 			kcLabel.setToolTipText(partTable(stats.getPartCounts(), raid));
-			hide(levelsLabel);
+			levelsLabel.setVisible(false);
 		}
 		else if (delve)
 		{
@@ -1640,7 +1844,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			kcLabel.setText(stats.isKillCountKnown()
 				? String.format(Locale.ROOT, "%,d %s", stats.getKillCount(), Tracker.unit(stats.getBoss()))
 				: String.format(Locale.ROOT, "%,d %s tracked", stats.getKillCount(), Tracker.unit(stats.getBoss())));
-			hide(levelsLabel);
+			levelsLabel.setVisible(false);
 		}
 		String reminder = tracker.syncReminder(stats.getBoss().getName());
 		if (tracker.logPageUnreadable(stats.getBoss().getName()))
@@ -1664,7 +1868,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			// all good: nothing to say
 			syncLabel.setToolTipText(null);
 			syncLabel.setText("");
-			hide(syncLabel);
+			syncLabel.setVisible(false);
 		}
 		else
 		{
@@ -1678,7 +1882,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			// before login a "load this page" or "counting from now on" line would be about nobody's data
 			syncLabel.setToolTipText(null);
 			syncLabel.setText("");
-			hide(syncLabel);
+			syncLabel.setVisible(false);
 		}
 		RowStats any = stats.getAnyRow();
 		// everything this boss drops is shared (Chaos Elemental): no verdict of its own
@@ -2135,10 +2339,10 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		RowStats total = account.getTotal();
 		shareText = ShareText.account(account, o.isGeValue());
-		hide(resetButton);
+		resetButton.setVisible(false);
 		aboutLink.setText("");
 		setAbout(null);
-		hide(levelsLabel);
+		levelsLabel.setVisible(false);
 		levelsLabel.setToolTipText(null);
 		headerName.setText("Your account");
 		headerName.setToolTipText(null);
@@ -2158,8 +2362,8 @@ public class ExpectedDropsPanel extends PluginPanel
 		// the name and the count on one line: the account has no picture to make room for
 		headerName.setText("<html>Your account <font color='" + Theme.hex(Theme.TEXT_MUTED) + "' size='-1'>\u00b7 "
 			+ kcLabel.getText() + "</font></html>");
-		hide(kcLabel);
-		hide(headerIcon);
+		kcLabel.setVisible(false);
+		headerIcon.setVisible(false);
 		double[] accountValue = o.isGeValue() && account.getExpectedValue() > 0 && !Double.isNaN(account.getValueLuck())
 			? new double[]{account.getReceivedValue(), account.getExpectedValue(), account.getValueLuck()} : null;
 		estimateNote = null;
@@ -2176,7 +2380,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			// one quiet block under the tiles instead of two
 			lastUniqueLabel.setText(Theme.wrap(html(notableText + " " + lastUniqueText), Theme.TEXT_WIDTH));
-			hide(notableLabel);
+			notableLabel.setVisible(false);
 		}
 
 		List<HistoryPoint> history = tracker.history();
@@ -2296,12 +2500,12 @@ public class ExpectedDropsPanel extends PluginPanel
 			}
 			else
 			{
-				hide(sortRow);
+				sortRow.setVisible(false);
 			}
 		}
 		else if (tabs && accountTab == TAB_RECENT)
 		{
-			hide(sortRow);
+			sortRow.setVisible(false);
 			renderRecentTab();
 		}
 		else
@@ -2350,7 +2554,12 @@ public class ExpectedDropsPanel extends PluginPanel
 
 	boolean isSetupShown()
 	{
-		return setupHeader.isVisible();
+		return setupHeader.isVisible() || welcomePanel.isVisible();
+	}
+
+	boolean isWelcomeShown()
+	{
+		return welcomePanel.isVisible();
 	}
 
 	/** What On Rate knows about your team at a group boss, for the note under the items. */
@@ -2535,7 +2744,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			return;
 		}
-		gapS(rowsPanel);
+		rowsPanel.add(spacer(Theme.S));
 		JLabel line = smallLabel("<html><body style='width: " + Theme.TEXT_WIDTH + "px'>" + String.join(" \u00b7 ", parts) + "</body></html>",
 			ColorScheme.LIGHT_GRAY_COLOR);
 		left(line);
@@ -2625,7 +2834,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			block.add(line);
 		}
 		fullWidth(block);
-		hair(rowsPanel);
+		rowsPanel.add(spacer(Theme.HAIR));
 		rowsPanel.add(Card.row(block));
 		return true;
 	}
@@ -2690,7 +2899,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		days |= renderDays("Last 7 days", tracker.recentDays(7, nowMs));
 		if (days)
 		{
-			gapM(rowsPanel);
+			rowsPanel.add(spacer(Theme.M));
 		}
 		List<TripStats> trips = tripList ? tracker.recentTrips(nowMs) : Collections.emptyList();
 		if (!trips.isEmpty())
@@ -2701,10 +2910,10 @@ public class ExpectedDropsPanel extends PluginPanel
 			rowsPanel.add(tripsTitle);
 			for (TripStats t : trips)
 			{
-				hair(rowsPanel);
+				rowsPanel.add(spacer(Theme.HAIR));
 				rowsPanel.add(tripRow(t, nowMs));
 			}
-			gapM(rowsPanel);
+			rowsPanel.add(spacer(Theme.M));
 		}
 		List<RecentDrop> recent = tracker.recentDrops(cappedListNotes ? Integer.MAX_VALUE : RECENT_SHOWN);
 		int recentTotal = recent.size();
@@ -2735,7 +2944,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		long now = System.currentTimeMillis();
 		for (RecentDrop r : recent)
 		{
-			hair(rowsPanel);
+			rowsPanel.add(spacer(Theme.HAIR));
 			rowsPanel.add(recentDropRow(r, now));
 		}
 	}
@@ -2787,7 +2996,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			refresh();
 		};
 		JLabel label = smallLabel(text, selected ? Theme.TEXT : Theme.TEXT_MUTED);
-		center(label);
+		label.setHorizontalAlignment(SwingConstants.CENTER);
 		label.setOpaque(selected);
 		label.setBackground(Theme.SURFACE_SELECTED);
 		label.setBorder(new EmptyBorder(Theme.HAIR, Theme.S, Theme.HAIR, Theme.S));
@@ -2811,7 +3020,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		tiles.add(recentTile("Last 7 days", week.get(0)));
 		fullWidth(tiles);
 		rowsPanel.add(tiles);
-		gapS(rowsPanel);
+		rowsPanel.add(spacer(Theme.S));
 
 		JPanel switcher = new JPanel(new GridLayout(1, 3, Theme.HAIR, Theme.HAIR));
 		switcher.setBackground(Theme.SURFACE);
@@ -2822,7 +3031,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		switcher.add(recentSwitch("Trips", RECENT_TRIPS));
 		fullWidth(switcher);
 		rowsPanel.add(switcher);
-		gapS(rowsPanel);
+		rowsPanel.add(spacer(Theme.S));
 
 		if (recentView == RECENT_BOSSES)
 		{
@@ -2864,7 +3073,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		long now = System.currentTimeMillis();
 		for (RecentDrop r : recent.subList(0, shown))
 		{
-			hair(rowsPanel);
+			rowsPanel.add(spacer(Theme.HAIR));
 			KillEntry.DropEntry d = r.getDrop();
 			BossDefinition boss = tracker.getCatalog().byName(r.getBoss());
 			String unit = boss == null ? "kill" : Tracker.unitOne(boss);
@@ -2910,10 +3119,10 @@ public class ExpectedDropsPanel extends PluginPanel
 			clear(east);
 			JLabel count = smallLabel(String.format(Locale.ROOT, "%,d", d.getUniques()), colour);
 			count.setFont(FontManager.getRunescapeFont());
-			right(count);
+			count.setHorizontalAlignment(SwingConstants.RIGHT);
 			east.add(count);
 			JLabel what = smallLabel(d.getUniques() == 1 ? "unique" : "uniques", ColorScheme.LIGHT_GRAY_COLOR);
-			right(what);
+			what.setHorizontalAlignment(SwingConstants.RIGHT);
 			east.add(what);
 			panel.add(east, BorderLayout.EAST);
 			fullWidth(panel);
@@ -2928,7 +3137,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			addUniqueNames(tip, false, d, week);
 			String bossName = d.getBoss();
 			setTip(panel, tip.wide(), () -> showBoss(bossName));
-			hair(rowsPanel);
+			rowsPanel.add(spacer(Theme.HAIR));
 			rowsPanel.add(Card.row(panel));
 		}
 	}
@@ -2945,7 +3154,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		recentNote("Kept until RuneLite closes or you switch account.");
 		for (TripStats t : trips)
 		{
-			hair(rowsPanel);
+			rowsPanel.add(spacer(Theme.HAIR));
 			rowsPanel.add(tripRow(t, nowMs));
 		}
 	}
@@ -3022,7 +3231,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				"Drops that came sooner than their drop rate says on average, luckiest first.");
 			for (RecentDrop r : lucky.subList(0, luckyShown))
 			{
-				hair(rowsPanel);
+				rowsPanel.add(spacer(Theme.HAIR));
 				rowsPanel.add(dropRow(r, now));
 			}
 		}
@@ -3034,7 +3243,7 @@ public class ExpectedDropsPanel extends PluginPanel
 					+ "longest first (as a multiple of the drop rate).");
 			for (Wait w : waits.subList(0, waitsShown))
 			{
-				hair(rowsPanel);
+				rowsPanel.add(spacer(Theme.HAIR));
 				rowsPanel.add(w.drop != null ? dropRow(w.drop, now) : waitingRow(w.ongoing, w.multiple));
 			}
 		}
@@ -3048,7 +3257,7 @@ public class ExpectedDropsPanel extends PluginPanel
 	/** The same for a list that stops at {@code base} entries instead of {@link #DROPS_SHOWN}. */
 	private void dropListTitle(String heading, int shown, int total, int base, Runnable toggle, String help)
 	{
-		gapM(rowsPanel);
+		rowsPanel.add(spacer(Theme.M));
 		JPanel line = new JPanel(new BorderLayout());
 		clear(line);
 		left(line);
@@ -3268,7 +3477,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			historyLimitBoss = boss.getName();
 			historyLimit = 10;
 		}
-		gapM(rowsPanel);
+		rowsPanel.add(spacer(Theme.M));
 		JLabel title = smallLabel((historyOpen ? "\u25be" : "\u25b8") + " HISTORY", Theme.TEXT_MUTED);
 		brightenOnHover(title);
 		left(title);
@@ -3483,7 +3692,7 @@ public class ExpectedDropsPanel extends PluginPanel
 						if (boxes)
 						{
 							// the heading is the first row of the card its part rows go in
-							gapS(rowsPanel);
+							rowsPanel.add(spacer(Theme.S));
 							heading.setBorder(new EmptyBorder(Theme.HAIR, 0, Theme.HAIR, 0));
 							rowsPanel.add(Card.row(heading));
 						}
@@ -3492,7 +3701,7 @@ public class ExpectedDropsPanel extends PluginPanel
 							heading.setBorder(new EmptyBorder(Theme.S, 0, 0, 0));
 							rowsPanel.add(heading);
 						}
-						hair(rowsPanel);
+						rowsPanel.add(spacer(Theme.HAIR));
 						summary = true;
 					}
 					rowsPanel.add(cardRow(part.getName(), String.format(Locale.ROOT, "%.1f%%", a * 100), Color.WHITE, tip));
@@ -3506,7 +3715,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		else if (!delve)
 		{
-			gapS(rowsPanel);
+			rowsPanel.add(spacer(Theme.S));
 			rowsPanel.add(cardRow("Seen", String.format(Locale.ROOT, "last %,d %s%s", seen, unit, seen == 1 ? "" : "s"), Color.WHITE, tip));
 			// a boss whose drops are all shared has no expected of its own
 			rowsPanel.add(cardRow("Uniques", boss.getDrops().isEmpty() ? String.format(Locale.ROOT, "%,d", drops)
@@ -3733,7 +3942,7 @@ public class ExpectedDropsPanel extends PluginPanel
 	/** A folding heading under History, like History's own. */
 	private void addFoldHeading(String text, boolean open, String tip, Runnable toggle)
 	{
-		gapM(rowsPanel);
+		rowsPanel.add(spacer(Theme.M));
 		JLabel title = smallLabel((open ? "▾ " : "▸ ") + text, Theme.TEXT_MUTED);
 		brightenOnHover(title);
 		left(title);
@@ -3774,7 +3983,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			int index = i;
 			boolean on = i == selected;
 			JLabel label = smallLabel(labels[i], on ? Color.WHITE : ColorScheme.LIGHT_GRAY_COLOR);
-			center(label);
+			label.setHorizontalAlignment(SwingConstants.CENTER);
 			label.setOpaque(true);
 			label.setBackground(on ? Theme.SURFACE_SELECTED : Theme.SURFACE_RAISED);
 			label.setBorder(BorderFactory.createCompoundBorder(
@@ -4236,7 +4445,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		JLabel b = smallLabel(most, color);
 		for (JLabel l : new JLabel[]{a, b})
 		{
-			right(l);
+			l.setHorizontalAlignment(SwingConstants.RIGHT);
 			l.setPreferredSize(new Dimension(FORECAST_COLUMN, l.getPreferredSize().height));
 			numbers.add(l);
 		}
@@ -4406,7 +4615,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		left(bar);
 		bar.setPreferredSize(new Dimension(1, 4));
 		maxHeight(bar, 4);
-		hair(row);
+		row.add(spacer(Theme.HAIR));
 		row.add(bar);
 		fullWidth(row);
 		setTip(row, tip, null);
@@ -4515,11 +4724,11 @@ public class ExpectedDropsPanel extends PluginPanel
 			BorderFactory.createMatteBorder(0, 0, 1, 0, ColorScheme.DARK_GRAY_COLOR), new EmptyBorder(Theme.HAIR, Theme.S, Theme.HAIR, Theme.S)));
 		line.add(smallLabel(team, color == Color.WHITE ? ColorScheme.LIGHT_GRAY_COLOR : color));
 		JLabel a = smallLabel(fastest, color);
-		right(a);
+		a.setHorizontalAlignment(SwingConstants.RIGHT);
 		a.setToolTipText(fastestTip);
 		line.add(a);
 		JLabel b = smallLabel(other, color);
-		right(b);
+		b.setHorizontalAlignment(SwingConstants.RIGHT);
 		b.setToolTipText(otherTip);
 		line.add(b);
 		maxHeight(line, 20);
@@ -4596,7 +4805,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			return;
 		}
 		rowsPanel.add(graph);
-		hair(rowsPanel);
+		rowsPanel.add(spacer(Theme.HAIR));
 		JLabel key = smallLabel("<html><font color='" + Theme.hex(new Color(150, 150, 150)) + "'>●</font> a raid  <font color='"
 			+ Theme.hex(Theme.TEXT) + "'>—</font> last " + RaidPointsGraph.AVERAGE + "  <font color='" + Theme.hex(Theme.RAID_PURPLE)
 			+ "'>◆</font> purple</html>", ColorScheme.LIGHT_GRAY_COLOR);
@@ -4926,7 +5135,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		boolean selected = accountTab == tab;
 		JLabel label = smallLabel(text, selected ? Color.WHITE : ColorScheme.LIGHT_GRAY_COLOR);
 		bold(label);
-		center(label);
+		label.setHorizontalAlignment(SwingConstants.CENTER);
 		label.setBorder(BorderFactory.createCompoundBorder(
 			BorderFactory.createMatteBorder(0, 0, 2, 0, selected ? Theme.ACCENT : ColorScheme.DARK_GRAY_COLOR),
 			new EmptyBorder(Theme.HAIR, Theme.S, Theme.S, Theme.S)));
@@ -4968,9 +5177,9 @@ public class ExpectedDropsPanel extends PluginPanel
 		switcher.add(topSwitch("Single drops", topMode == TOP_DROPS, TOP_DROPS));
 		switcher.add(topSwitch("Time", topMode == TOP_TIME, TOP_TIME));
 		maxHeight(switcher, 46);
-		gapS(rowsPanel);
+		rowsPanel.add(spacer(Theme.S));
 		rowsPanel.add(switcher);
-		gapS(rowsPanel);
+		rowsPanel.add(spacer(Theme.S));
 
 		if (topMode == TOP_TIME)
 		{
@@ -5142,7 +5351,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				+ "so a time from your own kills is a little shorter than your real time.");
 		for (ItemTime t : todo.subList(0, shown))
 		{
-			hair(rowsPanel);
+			rowsPanel.add(spacer(Theme.HAIR));
 			rowsPanel.add(timeRow(t));
 		}
 	}
@@ -5181,7 +5390,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				+ "drops at different bosses add up, drops at one boss come on the same kills.");
 		for (ChartTime t : chart.subList(0, shown))
 		{
-			hair(rowsPanel);
+			rowsPanel.add(spacer(Theme.HAIR));
 			rowsPanel.add(chartRow(t));
 		}
 	}
@@ -5573,17 +5782,17 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		else if (view == ItemView.GAUGE)
 		{
-			hair(rowsPanel);
+			rowsPanel.add(spacer(Theme.HAIR));
 			rowsPanel.add(stripRow(r.getIconItem(), r.getShownLabel(), false, r.isComplete() ? 1.0 : r.getLuck(), tip, open));
 		}
 		else if (view == ItemView.DELVE_BARS)
 		{
-			hair(rowsPanel);
+			rowsPanel.add(spacer(Theme.HAIR));
 			rowsPanel.add(buildRow(r, tip, open));
 		}
 		else
 		{
-			hair(rowsPanel);
+			rowsPanel.add(spacer(Theme.HAIR));
 			// the verdict stays the main reading; on the Items page "got / expected" sits beside the dot
 			rowsPanel.add(luckRow(r, tip, open, h.isPet() && !r.isComplete()
 				? String.format(Locale.ROOT, "%s \u00b7 %s", Verdict.labelOf(r.getLuck()), formatPercent(r.getChanceAtLeastOne())) : null,
@@ -5602,7 +5811,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			return;
 		}
-		gapM(rowsPanel);
+		rowsPanel.add(spacer(Theme.M));
 		JLabel title = smallLabel("SHARED WITH OTHER BOSSES", Theme.TEXT_MUTED);
 		left(title);
 		boolean anyMenu = false;
@@ -5645,7 +5854,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			}
 			else
 			{
-				hair(rowsPanel);
+				rowsPanel.add(spacer(Theme.HAIR));
 				rowsPanel.add(withSplitMenu(targetRow(row, tip), pool));
 			}
 			if (pool.isSplitNeedsAnswer() && splitMenu)
@@ -5681,7 +5890,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		if (text.length() > 0)
 		{
-			gapS(rowsPanel);
+			rowsPanel.add(spacer(Theme.S));
 			JLabel line = smallLabel("<html><body style='width: " + Theme.TEXT_WIDTH + "px'>" + text + "</body></html>", ColorScheme.LIGHT_GRAY_COLOR);
 			left(line);
 			rowsPanel.add(line);
@@ -5950,7 +6159,7 @@ public class ExpectedDropsPanel extends PluginPanel
 	private JLabel topSwitch(String text, boolean selected, int mode)
 	{
 		JLabel label = smallLabel(text, selected ? Theme.TEXT : Theme.TEXT_MUTED);
-		center(label);
+		label.setHorizontalAlignment(SwingConstants.CENTER);
 		label.setOpaque(selected);
 		label.setBackground(Theme.SURFACE_SELECTED);
 		label.setBorder(new EmptyBorder(Theme.HAIR, Theme.S, Theme.HAIR, Theme.S));
@@ -6249,7 +6458,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				{
 					if (i > 0)
 					{
-						hair(rowsPanel);
+						rowsPanel.add(spacer(Theme.HAIR));
 					}
 					rowsPanel.add(withLeaveOutMenu(row(all.get(i), stats, unit), bossName, all.get(i), false));
 				}
@@ -6278,7 +6487,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				rowsPanel.add(gauge);
 				for (RowStats r : all)
 				{
-					hair(rowsPanel);
+					rowsPanel.add(spacer(Theme.HAIR));
 					rowsPanel.add(withLeaveOutMenu(stripRow(r.isAny() ? null : r.getIconItem(), r.isAny() ? "Any unique" : r.getLabel(),
 						r.isAny(), r.isComplete() ? 1.0 : r.getLuck(), itemTooltip(r, stats, unit), null, Texts.isQuiet(r)), bossName, r, false));
 				}
@@ -6294,14 +6503,14 @@ public class ExpectedDropsPanel extends PluginPanel
 				{
 					if (i > 0)
 					{
-						hair(rowsPanel);
+						rowsPanel.add(spacer(Theme.HAIR));
 					}
 					rowsPanel.add(withLeaveOutMenu(targetRow(all.get(i), itemTooltip(all.get(i), stats, unit)), bossName, all.get(i), false));
 				}
 		}
 		if (!leftOut.isEmpty())
 		{
-			gapM(rowsPanel);
+			rowsPanel.add(spacer(Theme.M));
 			rowsPanel.add(sectionHeader("LEFT OUT", "right-click to count again",
 				"You left these out of the calculations: they don't count for this boss's verdicts, the account "
 					+ "overview, the Items tab or dry messages. Right-click one to count it again."));
@@ -6769,7 +6978,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		if (!withSort)
 		{
 			// the Pets slider belongs to the Bosses list's "Closest to green log" sort
-			hide(petsSwitch);
+			petsSwitch.setVisible(false);
 		}
 		accountViewChip.setVisible(viewButtons);
 		accountViewChip.setCompact(true);
@@ -6889,7 +7098,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				rowsPanel.add(buildRow(total, accountTooltip(total, account), null));
 				for (RowStats row : rows)
 				{
-					hair(rowsPanel);
+					rowsPanel.add(spacer(Theme.HAIR));
 					rowsPanel.add(buildRow(shownRow(row, byValue), accountTooltip(row, account, byValue), () -> showBoss(row.getLabel())));
 				}
 				break;
@@ -6917,7 +7126,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				rowsPanel.add(gauge);
 				for (RowStats row : rows)
 				{
-					hair(rowsPanel);
+					rowsPanel.add(spacer(Theme.HAIR));
 					rowsPanel.add(stripRow(row.getIconItem(), row.getShownLabel(), false, shownRow(row, byValue).getLuck(),
 						accountTooltip(row, account, byValue), () -> showBoss(row.getLabel())));
 				}
@@ -6928,7 +7137,7 @@ public class ExpectedDropsPanel extends PluginPanel
 					RowStats row = rows.get(i);
 					if (i > 0)
 					{
-						hair(rowsPanel);
+						rowsPanel.add(spacer(Theme.HAIR));
 					}
 					boolean streak = sortSelect.getSelectedItem() == Sort.STREAK;
 					GreenLog.Page page = greenLogPages == null ? null : greenLogPages.get(row.getLabel());
@@ -7024,7 +7233,7 @@ public class ExpectedDropsPanel extends PluginPanel
 	{
 		JLabel icon = new JLabel();
 		icon.setPreferredSize(new Dimension(size * 36 / 32 + 2, size));
-		center(icon);
+		icon.setHorizontalAlignment(SwingConstants.CENTER);
 		int id = item == null ? -1 : itemIdFor.applyAsInt(item);
 		if (id > 0 && itemManager != null)
 		{
@@ -7190,7 +7399,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		{
 			// the figure shares the strip's line, so the row is no taller than without it
 			JLabel figureLabel = smallLabel(figure, r.getReceived() > 0 ? Theme.TEXT : Theme.TEXT_MUTED);
-			right(figureLabel);
+			figureLabel.setHorizontalAlignment(SwingConstants.RIGHT);
 			figureLabel.setPreferredSize(new Dimension(FIGURE_WIDTH, strip.getPreferredSize().height));
 			JPanel under = new JPanel(new BorderLayout(Theme.S, 0));
 			clear(under);
@@ -7267,7 +7476,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		clear(right);
 		right.add(smallLabel("Got / Exp", ColorScheme.LIGHT_GRAY_COLOR), BorderLayout.CENTER);
 		JLabel luck = smallLabel("Luck", ColorScheme.LIGHT_GRAY_COLOR);
-		center(luck);
+		luck.setHorizontalAlignment(SwingConstants.CENTER);
 		luck.setPreferredSize(new Dimension(38, 14));
 		luck.setToolTipText(new Tip(null)
 			.line("How lucky you are. 50% is average, lower is drier, higher is luckier.").small());
@@ -7427,7 +7636,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			n.setText(shown.startsWith("<html>")
 				? shown.replace("<html>", "<html><div style='text-align: center'>").replace("</html>", "</div></html>")
 				: shown);
-			center(n);
+			n.setHorizontalAlignment(SwingConstants.CENTER);
 		}
 		n.setAlignmentX(CENTER_ALIGNMENT);
 		// room for two lines in every cell, so the rings stay the same size and line up
@@ -7563,7 +7772,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		head.add(smallLabel(minutes >= 60 ? String.format(Locale.ROOT, "%dh %02dm", minutes / 60, minutes % 60) : minutes + " min",
 			ColorScheme.LIGHT_GRAY_COLOR), BorderLayout.EAST);
 		card.add(head);
-		gapS(card);
+		card.add(spacer(Theme.S));
 
 		// the verdict first, or how far off one is
 		double luck = trip.getLuck();
@@ -7593,14 +7802,14 @@ public class ExpectedDropsPanel extends PluginPanel
 		JLabel why = smallLabel(Theme.wrap(html(sentence), Theme.TEXT_WIDTH), Theme.TEXT);
 		left(why);
 		card.add(why);
-		gapS(card);
+		card.add(spacer(Theme.S));
 		if (tripBar)
 		{
 			double[] shares = trip.getShares();
 			double fill = Double.isNaN(luck) || tripEarlyNow ? 0
 				: shares == null ? 0 : Math.min(1.0, trip.getReceived() <= 0 ? 0 : shares[0]);
 			card.add(progressBar(fill, Double.isNaN(luck) || tripEarlyNow ? Theme.QUIET_MARK : luckColor(luck)));
-			gapS(card);
+			card.add(spacer(Theme.S));
 		}
 
 		double perHour = trip.getKillsPerHour();
@@ -7623,7 +7832,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			tiles.add(tile(killsLabel, killsValue));
 			tiles.add(tile("Uniques / expected", uniquesValue));
 			card.add(tiles);
-			gapS(card);
+			card.add(spacer(Theme.S));
 		}
 
 		if (!trip.getDrops().isEmpty())
@@ -7671,7 +7880,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		long limitMinutes = tracker.tripIdleLimitMillis() / 60_000;
 		String tripUnit = Tracker.units(tripBoss, 1);
 		String idle = Texts.tripIdle(idleMinutes, limitMinutes, tripUnit);
-		gapS(card);
+		card.add(spacer(Theme.S));
 		JPanel foot = new JPanel(new BorderLayout());
 		clear(foot);
 		left(foot);
@@ -7690,9 +7899,15 @@ public class ExpectedDropsPanel extends PluginPanel
 		});
 		foot.add(reset, BorderLayout.EAST);
 		card.add(foot);
+		// the overlay is not shown at raids, the Inferno or the Fight Caves, so it is not offered there
+		if ((tripBoss == null || !Tracker.isLongRun(tripBoss))
+			&& (trip.getKills() >= OVERLAY_OFFER_KILLS || minutes >= OVERLAY_OFFER_MINUTES))
+		{
+			addOverlayOffer(card);
+		}
 		fullWidth(card);
 		rowsPanel.add(card);
-		gapM(rowsPanel);
+		rowsPanel.add(spacer(Theme.M));
 	}
 
 	/** A thin bar filled to {@code fraction} (0 to 1), for the trip card. */
@@ -7743,6 +7958,33 @@ public class ExpectedDropsPanel extends PluginPanel
 		lastUniqueLabel.setText(Theme.wrap(html(text), Theme.TEXT_WIDTH));
 		lastUniqueLabel.setToolTipText("From History: the drops On Rate saw since you installed it. Items you left out don't count.");
 		lastUniqueLabel.setVisible(true);
+	}
+
+	/** The overlay offer line at the bottom of a long trip's card, when it's due (see {@link #setOverlayOffer}). */
+	private void addOverlayOffer(JPanel card)
+	{
+		if (overlayOn.getAsBoolean() || overlayOfferSeen.getAsBoolean())
+		{
+			return;
+		}
+		JLabel offer = smallLabel(Theme.wrap("Long trip? The in-game overlay shows this on screen. Click to turn it on.",
+			Theme.TEXT_WIDTH - 30), Theme.TEXT_MUTED);
+		offer.setIcon(Theme.infoIcon());
+		offer.setVerticalTextPosition(SwingConstants.TOP);
+		left(offer);
+		offer.setBorder(new EmptyBorder(Theme.S, 0, 0, 0));
+		hand(offer);
+		offer.setToolTipText("Turns on In-game overlay in the settings (Display). This note shows only once.");
+		onClick(offer, () ->
+		{
+			overlayOfferOnScreen = false;
+			offer.setVisible(false);
+			markOverlayOfferSeen.run();
+			turnOnOverlay.run();
+		});
+		card.add(offer);
+		overlayOfferLabel = offer;
+		overlayOfferOnScreen = true;
 	}
 
 	/** "<br><br>Most of it is the Crystal tool seed (95%)." for the value hover, or "" when it's spread out. */
@@ -7806,7 +8048,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		name.setVerticalAlignment(SwingConstants.TOP);
 		row.add(name, BorderLayout.WEST);
 		JLabel shown = smallLabel(value, valueColor);
-		right(shown);
+		shown.setHorizontalAlignment(SwingConstants.RIGHT);
 		shown.setVerticalAlignment(SwingConstants.TOP);
 		row.add(shown, BorderLayout.CENTER);
 		for (JComponent c : new JComponent[]{row, name, shown})
@@ -7823,14 +8065,278 @@ public class ExpectedDropsPanel extends PluginPanel
 		t.setBackground(Theme.SURFACE_RAISED);
 		t.setBorder(new EmptyBorder(Theme.HAIR, Theme.HAIR, Theme.S, Theme.HAIR));
 		JLabel a = smallLabel(title, ColorScheme.LIGHT_GRAY_COLOR);
-		center(a);
+		a.setHorizontalAlignment(SwingConstants.CENTER);
 		JLabel b = new JLabel(value);
 		bold(b);
 		b.setForeground(Color.WHITE);
-		center(b);
+		b.setHorizontalAlignment(SwingConstants.CENTER);
 		t.add(a, BorderLayout.NORTH);
 		t.add(b, BorderLayout.CENTER);
 		return t;
+	}
+
+	private void buildWelcome()
+	{
+		welcomePanel.setLayout(new BoxLayout(welcomePanel, BoxLayout.Y_AXIS));
+		left(welcomePanel);
+		darker(welcomePanel);
+		welcomePanel.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createMatteBorder(0, 3, 0, 0, Theme.OUTLINE),
+			new EmptyBorder(Theme.M, Theme.M, Theme.M, Theme.M)));
+
+		JLabel title = new JLabel("Are you on rate?");
+		bold(title);
+		title.setForeground(Theme.TEXT);
+		left(title);
+		welcomePanel.add(title);
+		JLabel intro = smallLabel(Theme.wrap("On Rate compares the uniques you got with what a typical player "
+			+ "would have by now, at the same drop rates and kill counts.", 160), Theme.TEXT_MUTED);
+		left(intro);
+		intro.setBorder(new EmptyBorder(Theme.HAIR, 0, Theme.M, 0));
+		welcomePanel.add(intro);
+
+		// numbered steps, each a row with a thin line above it, like the rows in the hovers
+		String[][] steps = {
+			{"Open your collection log", "and click the page of each boss you do. That loads your kill count and past drops."},
+			{"Keep Loot Tracker on.", "On Rate reads new drops from it."},
+			{"Go kill something.", "The panel follows your kills."},
+		};
+		for (int i = 0; i < steps.length; i++)
+		{
+			JLabel step = smallLabel(Theme.wrap("<font color='" + Theme.hex(Theme.TEXT) + "'>" + steps[i][0] + "</font> "
+				+ steps[i][1], 135), Theme.TEXT_MUTED);
+			step.setIcon(Theme.stepIcon(i + 1));
+			step.setIconTextGap(Theme.M);
+			step.setVerticalAlignment(SwingConstants.TOP);
+			step.setVerticalTextPosition(SwingConstants.TOP);
+			left(step);
+			step.setBorder(BorderFactory.createCompoundBorder(
+				BorderFactory.createMatteBorder(1, 0, 0, 0, Theme.DIVIDER), new EmptyBorder(Theme.S + 1, 0, Theme.S + 1, 0)));
+			welcomePanel.add(step);
+		}
+
+		// how far the collection log pages are, with the next one to open
+		JPanel progress = new JPanel();
+		progress.setLayout(new BoxLayout(progress, BoxLayout.Y_AXIS));
+		clear(progress);
+		left(progress);
+		progress.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createMatteBorder(1, 0, 0, 0, Theme.DIVIDER), new EmptyBorder(Theme.S + 1, 0, Theme.S, 0)));
+		small(welcomeProgress);
+		muted(welcomeProgress);
+		left(welcomeProgress);
+		left(welcomeProgressBar);
+		progress.add(welcomeProgress);
+		progress.add(welcomeProgressBar);
+		fullWidth(progress);
+		progress.setVisible(false);
+		welcomeProgressPanel = progress;
+		welcomePanel.add(progress);
+
+		JButton gotIt = new JButton("Hide guide");
+		small(gotIt);
+		gotIt.setFocusPainted(false);
+		gotIt.setToolTipText(Theme.wrap(Texts.HIDE_GUIDE_TIP, Theme.TIP_WIDE));
+		gotIt.addActionListener(e ->
+		{
+			dismissWelcome.run();
+			welcomePanel.setVisible(false);
+			revalidate();
+			repaint();
+		});
+		JPanel buttonRow = new JPanel(new BorderLayout());
+		clear(buttonRow);
+		left(buttonRow);
+		buttonRow.setBorder(new EmptyBorder(Theme.S, 0, Theme.S, 0));
+		buttonRow.add(gotIt, BorderLayout.WEST);
+		fullWidth(buttonRow);
+		welcomePanel.add(buttonRow);
+
+		// the reference part, folded: how to read the words, what they don't mean, and odd moments
+		JLabel toggle = smallLabel("", Theme.TEXT_MUTED);
+		left(toggle);
+		hand(toggle);
+		toggle.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createMatteBorder(1, 0, 0, 0, Theme.DIVIDER), new EmptyBorder(Theme.S + 1, 0, Theme.S, 0)));
+		Runnable flip = () ->
+		{
+			welcomeMoreOpen = !welcomeMoreOpen;
+			styleWelcomeToggle(toggle);
+			welcomeMore.setVisible(welcomeMoreOpen);
+			fullWidth(welcomePanel);
+			revalidate();
+			repaint();
+		};
+		toggle.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mouseClicked(MouseEvent e)
+			{
+				flip.run();
+			}
+
+			@Override
+			public void mouseEntered(MouseEvent e)
+			{
+				toggle.setForeground(Theme.TEXT);
+			}
+
+			@Override
+			public void mouseExited(MouseEvent e)
+			{
+				muted(toggle);
+			}
+		});
+		styleWelcomeToggle(toggle);
+		Activatable.install(toggle, "How to read it", flip);
+		welcomePanel.add(toggle);
+
+		welcomeMore.setLayout(new BoxLayout(welcomeMore, BoxLayout.Y_AXIS));
+		clear(welcomeMore);
+		left(welcomeMore);
+		// how the verdict words are drawn: your rank among 100 typical players
+		welcomeMore.add(welcomeHeading("Where the words come from",
+			"Your rank among 100 typical players with your kill counts, driest first."));
+		String[] ranks = {"1", "2 to 10", "11 to 35", "36 to 45", "46 to 55", "56 to 65", "66 to 90", "91 to 99", "100"};
+		welcomeVerdicts.clear();
+		for (int i = 0; i < ranks.length; i++)
+		{
+			JPanel row = new JPanel(new BorderLayout(Theme.M, 0));
+			clear(row);
+			left(row);
+			row.setBorder(BorderFactory.createCompoundBorder(
+				BorderFactory.createMatteBorder(1, 0, 0, 0, Theme.DIVIDER), new EmptyBorder(Theme.HAIR, 0, Theme.HAIR, 0)));
+			JLabel word = smallLabel(Verdict.labelOf(WELCOME_VERDICT_LUCK[i]), welcomeVerdictColor(i));
+			welcomeVerdicts.add(word);
+			row.add(word, BorderLayout.WEST);
+			JLabel range = smallLabel(ranks[i], Theme.TEXT);
+			range.setHorizontalAlignment(SwingConstants.RIGHT);
+			row.add(range, BorderLayout.CENTER);
+			fullWidth(row);
+			welcomeMore.add(row);
+		}
+
+		// what the numbers can't tell you
+		welcomeMore.add(welcomeHeading("What this does not mean", null));
+		String[] limits = {
+			"\"Players\" is the drop-rate maths, not real accounts. On Rate has no player data.",
+			"Every kill is its own roll. Being dry doesn't make a drop more likely next, and being spooned "
+				+ "doesn't make one less likely.",
+			"Rates are solo base rates without diary, Combat Achievement or Slayer boosts, so you may look "
+				+ "drier than a boosted rate would say.",
+		};
+		for (String limit : limits)
+		{
+			welcomeMore.add(welcomeLine(null, limit));
+		}
+
+		// what the panel shows in less common moments, so none of it comes as a surprise
+		welcomeMore.add(welcomeHeading("Things you may see", null));
+		String[][] moments = {
+			{"\"Not synced\"", "on a boss: On Rate has its kill count but not your drops from before. Open its log "
+				+ "page once."},
+			{"Team bosses:", "Royal Titans and older Yama kills count as duo. Change that under Team bosses in the settings."},
+			{"Drops from before:", "right-click an item you have and choose \"I got this at kill...\" to add it. "
+				+ "Items > Single drops then shows how lucky that drop was."},
+			{"Left out:", "right-click an item to leave it out of the calculations (a drop you got elsewhere). "
+				+ "Right-click again to count it."},
+			{"Shared items:", "items several bosses drop are judged on all of them together."},
+		};
+		for (String[] m : moments)
+		{
+			welcomeMore.add(welcomeLine(m[0], m[1]));
+		}
+		JLabel help = smallLabel("Click the ? for help.", Theme.TEXT_MUTED);
+		left(help);
+		fullWidth(help);
+		help.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createMatteBorder(1, 0, 0, 0, Theme.DIVIDER), new EmptyBorder(Theme.S + 1, 0, Theme.S, 0)));
+		welcomeMore.add(help);
+		welcomeMore.setVisible(welcomeMoreOpen);
+		welcomePanel.add(welcomeMore);
+		// the guide's height is that of its folded part; it grows when the fold opens (see the toggle)
+		fullWidth(welcomePanel);
+	}
+
+	private void styleWelcomeToggle(JLabel toggle)
+	{
+		toggle.setText((welcomeMoreOpen ? "\u25be " : "\u25b8 ") + "How to read it");
+	}
+
+	/** The progress block inside the guide, shown while collection log pages are missing. */
+	private JPanel welcomeProgressPanel;
+
+	/** The colour of the welcome key's verdict word {@code i}, as the boss page shows it. */
+	private static Color welcomeVerdictColor(int i)
+	{
+		double luck = WELCOME_VERDICT_LUCK[i];
+		return Verdict.isOnRate(luck) ? Theme.TEXT : Palette.onRow(Palette.verdict(luck).brighter());
+	}
+
+	/** A wrapped grey line in the welcome guide with a thin line above, starting with an optional white lead. */
+	private static JLabel welcomeLine(String lead, String text)
+	{
+		String html = lead == null ? text : "<font color='" + Theme.hex(Theme.TEXT) + "'>" + lead + "</font> " + text;
+		JLabel line = smallLabel(Theme.wrap(html, 160), Theme.TEXT_MUTED);
+		left(line);
+		line.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createMatteBorder(1, 0, 0, 0, Theme.DIVIDER), new EmptyBorder(Theme.S, 0, Theme.S, 0)));
+		fullWidth(line);
+		return line;
+	}
+
+	/** A section title in the welcome guide, with an optional grey line under it. */
+	private static JPanel welcomeHeading(String title, String sub)
+	{
+		JPanel p = new JPanel();
+		p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
+		clear(p);
+		left(p);
+		p.setBorder(new EmptyBorder(Theme.M + Theme.S, 0, Theme.S, 0));
+		JLabel t = new JLabel(title);
+		bold(t);
+		t.setForeground(Theme.TEXT);
+		left(t);
+		p.add(t);
+		if (sub != null)
+		{
+			JLabel s = smallLabel(Theme.wrap(sub, 160), Theme.TEXT_MUTED);
+			left(s);
+			p.add(s);
+		}
+		fullWidth(p);
+		return p;
+	}
+
+	/** "3 of N pages opened · next: Vorkath" in the guide; gone once every page is loaded. */
+	private void updateWelcomeProgress(int total, int done, List<SyncStatus> missing)
+	{
+		if (welcomeProgressPanel == null)
+		{
+			return;
+		}
+		boolean show = total > 0 && !missing.isEmpty();
+		if (show)
+		{
+			// a page of a boss you killed is the next one to open, else the first missing
+			SyncStatus next = missing.get(0);
+			for (SyncStatus s : missing)
+			{
+				if (s.isKilled())
+				{
+					next = s;
+					break;
+				}
+			}
+			welcomeProgress.setText(String.format(Locale.ROOT, "<html><font color='%s'>%d of %d</font> pages " + (setupWording ? "opened" : "loaded") + " · next: %s</html>",
+				Theme.hex(Theme.TEXT), done, total, Texts.html(next.getPage())));
+			welcomeProgressBar.set(done / (double) total, -1, Theme.PROGRESS);
+		}
+		if (welcomeProgressPanel.isVisible() != show)
+		{
+			welcomeProgressPanel.setVisible(show);
+			fullWidth(welcomePanel);
+		}
 	}
 
 	/** Header (see {@link Texts#setupHeader}) plus, when expanded, the pages still to open. */
@@ -7846,6 +8352,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			}
 		}
 		int done = checklist.size() - missing.size();
+		updateWelcomeProgress(checklist.size(), done, missing);
 
 		String problem = Texts.setupProblem(tracker.unreadablePages(), tracker.isHeaderUnreadable());
 		setupProblem.setText(problem == null ? "" : Theme.wrap(problem, Theme.TEXT_WIDTH - 14));
@@ -7856,10 +8363,10 @@ public class ExpectedDropsPanel extends PluginPanel
 		if (!profileLoaded())
 		{
 			// nothing is loaded yet, so there is nothing to load either: no checklist before login
-			hide(setupProblem);
-			hide(setupHeader);
-			hide(setupGap);
-			hide(setupList);
+			setupProblem.setVisible(false);
+			setupHeader.setVisible(false);
+			setupGap.setVisible(false);
+			setupList.setVisible(false);
 			return;
 		}
 		// all loaded: nothing to say, so the line is gone; it only shows when something is missing
@@ -7868,7 +8375,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		setupGap.setVisible(show);
 		if (!show)
 		{
-			hide(setupList);
+			setupList.setVisible(false);
 			return;
 		}
 
@@ -7888,9 +8395,9 @@ public class ExpectedDropsPanel extends PluginPanel
 			if (status == null)
 			{
 				// something is missing, so the counts cannot be zero; never show "null"
-				hide(setupHeader);
-				hide(setupGap);
-				hide(setupList);
+				setupHeader.setVisible(false);
+				setupGap.setVisible(false);
+				setupList.setVisible(false);
 				return;
 			}
 		}
@@ -7999,7 +8506,7 @@ public class ExpectedDropsPanel extends PluginPanel
 
 		JLabel icon = new JLabel();
 		icon.setPreferredSize(new Dimension(36, 32));
-		center(icon);
+		icon.setHorizontalAlignment(SwingConstants.CENTER);
 		if (row.isAny())
 		{
 			icon.setText(row.getLabel());
@@ -8060,7 +8567,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		JLabel count = new JLabel(String.valueOf(number));
 		bold(count);
 		count.setForeground(number > 0 ? Color.WHITE : ColorScheme.LIGHT_GRAY_COLOR);
-		right(count);
+		count.setHorizontalAlignment(SwingConstants.RIGHT);
 		count.setPreferredSize(new Dimension(30, 32));
 
 		panel.add(icon, BorderLayout.WEST);

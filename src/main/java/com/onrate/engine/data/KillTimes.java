@@ -1,5 +1,6 @@
 package com.onrate.engine.data;
 
+import lombok.Getter;
 import com.google.gson.Gson;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -28,10 +29,10 @@ public final class KillTimes
 	/** A figure from the file: kills (raids, completions) per hour, and where it comes from. */
 	public static final class Estimate
 	{
-		private final double killsPerHour;
-		private final List<String> guides;
-		private final String note;
-		private final boolean lowConfidence;
+		@Getter private final double killsPerHour;
+		@Getter private final List<String> guides;
+		@Getter private final String note;
+		@Getter private final boolean lowConfidence;
 
 		Estimate(Raw raw)
 		{
@@ -41,32 +42,9 @@ public final class KillTimes
 			this.lowConfidence = "low".equals(raw.confidence);
 		}
 
-		public double getKillsPerHour()
-		{
-			return killsPerHour;
-		}
-
 		public double getSecondsPerKill()
 		{
 			return 3600.0 / killsPerHour;
-		}
-
-		/** Titles of the OSRS Wiki pages the figure comes from. */
-		public List<String> getGuides()
-		{
-			return guides;
-		}
-
-		/** What the figure assumes, or null. */
-		public String getNote()
-		{
-			return note;
-		}
-
-		/** True when only a thin source was found. */
-		public boolean isLowConfidence()
-		{
-			return lowConfidence;
 		}
 	}
 
@@ -74,8 +52,8 @@ public final class KillTimes
 	public static final class Doom
 	{
 		private double[] secondsPerLevel;
-		private double bankingSecondsPerRun;
-		private int assumedDepthWithoutHistory = 8;
+		@Getter private double bankingSecondsPerRun;
+		@Getter private int assumedDepthWithoutHistory = 8;
 
 		/** Seconds for one delve of this level (1 to 8, 9 for the deep delves). */
 		public double secondsFor(int level)
@@ -85,17 +63,6 @@ public final class KillTimes
 				return Double.NaN;
 			}
 			return secondsPerLevel[Math.max(0, Math.min(secondsPerLevel.length, level) - 1)];
-		}
-
-		/** Banking and walking back after each run (claiming), which the fight times don't include. */
-		public double getBankingSecondsPerRun()
-		{
-			return bankingSecondsPerRun;
-		}
-
-		public int getAssumedDepthWithoutHistory()
-		{
-			return assumedDepthWithoutHistory;
 		}
 
 		public boolean isAvailable()

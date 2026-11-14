@@ -1,5 +1,8 @@
 package com.onrate.engine.stats;
 
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import com.onrate.engine.data.*;
 import com.onrate.engine.tracking.*;
 import java.util.ArrayList;
@@ -32,15 +35,15 @@ public final class GreenLog
 	/** One boss's page. */
 	public static final class Page
 	{
-		private final String boss;
-		private final List<String> missing;
-		private final boolean petLeftOut;
-		private final double secondsPerKill;
-		private final boolean estimated;
-		private final String unit;
-		private final double averageSeconds;
-		private final double medianSeconds;
-		private final double likelySeconds;
+		@Getter private final String boss;
+		@Getter private final List<String> missing;
+		@Getter private final boolean petLeftOut;
+		@Getter private final double secondsPerKill;
+		@Getter private final boolean estimated;
+		@Getter private final String unit;
+		@Getter private final double averageSeconds;
+		@Getter private final double medianSeconds;
+		@Getter private final double likelySeconds;
 
 		Page(String boss, List<String> missing, boolean petLeftOut, double secondsPerKill, boolean estimated, String unit,
 			double averageSeconds, double medianSeconds, double likelySeconds)
@@ -56,81 +59,24 @@ public final class GreenLog
 			this.likelySeconds = likelySeconds;
 		}
 
-		public String getBoss()
-		{
-			return boss;
-		}
-
-		/** The items still missing, as the boss lists them. Empty when the page is done (pets aside). */
-		public List<String> getMissing()
-		{
-			return missing;
-		}
-
 		public boolean isDone()
 		{
 			return missing.isEmpty();
-		}
-
-		/** True when pets are left out and the page's pet is still missing. */
-		public boolean isPetLeftOut()
-		{
-			return petLeftOut;
-		}
-
-		/** Seconds of one kill (raid, delve) in this forecast; NaN when unknown. */
-		public double getSecondsPerKill()
-		{
-			return secondsPerKill;
-		}
-
-		/** True when the time per kill is the wiki's rate, not your own timed kills. */
-		public boolean isEstimated()
-		{
-			return estimated;
-		}
-
-		/** "kill", "raid" or "delve". */
-		public String getUnit()
-		{
-			return unit;
 		}
 
 		/**
 		 * The average time to get everything missing, the figure the Time page and Ladlor's chart give (for one
 		 * item, its time per kill over its chance). 0 when done, NaN when it can't be said.
 		 */
-		public double getAverageSeconds()
-		{
-			return averageSeconds;
-		}
-
-		/** Seconds until half of players are done: 0 when done, NaN when it can't be said. */
-		public double getMedianSeconds()
-		{
-			return medianSeconds;
-		}
-
-		/** Seconds until 9 in 10 players are done: 0 when done, NaN when it can't be said. */
-		public double getLikelySeconds()
-		{
-			return likelySeconds;
-		}
 	}
 
 	/** One missing item: its label, its chance in a kill and whether it's a pet. */
+	@AllArgsConstructor(access = AccessLevel.PACKAGE)
 	private static final class Missing
 	{
 		final String label;
 		final double chance;
 		final boolean pet;
-
-		Missing(String label, double chance, boolean pet)
-		{
-			this.label = label;
-			this.chance = chance;
-			this.pet = pet;
-		}
 	}
 
 	/**

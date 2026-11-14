@@ -1,5 +1,7 @@
 package com.onrate.engine.tracking;
 
+import lombok.Getter;
+
 /** The outcome of adding a past drop by hand: added, or why it was refused. */
 public enum PastDropResult
 {
@@ -17,7 +19,7 @@ public enum PastDropResult
 	/** History is full of newer kills. */
 	HISTORY_FULL(false);
 
-	private final boolean retryable;
+	@Getter private final boolean retryable;
 
 	PastDropResult(boolean retryable)
 	{
@@ -27,11 +29,5 @@ public enum PastDropResult
 	public boolean isAdded()
 	{
 		return this == ADDED;
-	}
-
-	/** True when entering a different kill count could work, so the dialog can ask again. */
-	public boolean isRetryable()
-	{
-		return retryable;
 	}
 }

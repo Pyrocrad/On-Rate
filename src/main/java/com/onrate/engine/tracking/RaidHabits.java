@@ -1,5 +1,7 @@
 package com.onrate.engine.tracking;
 
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import com.onrate.engine.data.BossDefinition;
 import com.onrate.engine.data.BossPart;
 import java.util.ArrayList;
@@ -16,6 +18,7 @@ import java.util.function.Function;
  * completions) can use these instead of the settings' typical values. Worked out from the saved
  * raid records only; nothing here is saved.
  */
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public final class RaidHabits
 {
 	/** A raid mode needs this many recorded raids before its average is used. */
@@ -28,13 +31,6 @@ public final class RaidHabits
 	private final Map<String, Double> chances;
 	private final Map<String, Integer> teams;
 	private final Map<String, Integer> raids;
-
-	private RaidHabits(Map<String, Double> chances, Map<String, Integer> teams, Map<String, Integer> raids)
-	{
-		this.chances = chances;
-		this.teams = teams;
-		this.raids = raids;
-	}
 
 	/** No recorded raids: every mode keeps its setting. */
 	public static RaidHabits none()

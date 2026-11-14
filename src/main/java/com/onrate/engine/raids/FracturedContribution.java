@@ -1,5 +1,7 @@
 package com.onrate.engine.raids;
 
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
@@ -57,18 +59,13 @@ public class FracturedContribution
 	}
 
 	/** What On Rate saw of one raid. */
+	@AllArgsConstructor(access = AccessLevel.PACKAGE)
 	public static final class Result
 	{
 		/** Your contribution out of 700 before deaths, or -1 when a fight was missed. */
 		public final double contribution;
 		/** Your deaths in the raid. */
 		public final int deaths;
-
-		Result(double contribution, int deaths)
-		{
-			this.contribution = contribution;
-			this.deaths = deaths;
-		}
 	}
 
 	private final Map<Room, long[]> damage = new EnumMap<>(Room.class);

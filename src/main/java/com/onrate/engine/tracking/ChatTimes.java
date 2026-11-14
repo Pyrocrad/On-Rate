@@ -1,5 +1,8 @@
 package com.onrate.engine.tracking;
 
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -42,27 +45,11 @@ public final class ChatTimes
 	}
 
 	/** A time read from a message and how sure we are it is the whole kill's. */
+	@AllArgsConstructor(access = AccessLevel.PACKAGE)
 	public static final class Reading
 	{
-		private final int millis;
-		private final int rank;
-
-		Reading(int millis, int rank)
-		{
-			this.millis = millis;
-			this.rank = rank;
-		}
-
-		public int getMillis()
-		{
-			return millis;
-		}
-
-		/** Higher wins when several messages of one kill give a time. */
-		public int getRank()
-		{
-			return rank;
-		}
+		@Getter private final int millis;
+		@Getter private final int rank;
 	}
 
 	/** The time of the whole kill or raid in this message, or null when it has none. */

@@ -1,5 +1,7 @@
 package com.expecteddrops.ui;
 
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import com.onrate.engine.data.*;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -24,16 +26,11 @@ final class BossSearch
 	static final int MIN_ITEM_CHARS = 3;
 
 	/** One boss in the result. {@code reason} is the item it was found by, null for a name match. */
+	@AllArgsConstructor(access = AccessLevel.PACKAGE)
 	static final class Hit
 	{
 		private final BossDefinition boss;
 		private final String reason;
-
-		Hit(BossDefinition boss, String reason)
-		{
-			this.boss = boss;
-			this.reason = reason;
-		}
 
 		BossDefinition boss()
 		{

@@ -1,5 +1,7 @@
 package com.onrate.engine.data;
 
+import lombok.Getter;
+import lombok.Setter;
 import java.util.function.Predicate;
 
 import java.util.ArrayList;
@@ -11,16 +13,16 @@ import java.util.List;
  */
 public class BossDefinition
 {
-	private String name;
+	@Getter private String name;
 	private List<String> kc;
 	private List<String> loot;
 	private List<String> clog;
-	private String raid;
+	@Getter @Setter private String raid;
 	private String kcMode;
-	private Boolean delve;
+	@Setter private Boolean delve;
 	/** Team boss whose uniques scale with your damage share (setting key), or null. */
-	private String team;
-	private String note;
+	@Getter private String team;
+	@Getter private String note;
 	/** Slayer level needed to fight this boss (a Slayer boss), or null when none is needed. */
 	private Integer slayerLevel;
 	private List<DropDefinition> drops;
@@ -65,11 +67,6 @@ public class BossDefinition
 	public int getSlayerLevel()
 	{
 		return slayerLevel == null ? 0 : slayerLevel;
-	}
-
-	public String getName()
-	{
-		return name;
 	}
 
 	/** Whether this boss page may show the UNIQUES FORECAST table (on unless "logForecast": false). */
@@ -146,11 +143,6 @@ public class BossDefinition
 		return parts == null ? Collections.emptyList() : parts;
 	}
 
-	public String getTeam()
-	{
-		return team;
-	}
-
 	public boolean hasParts()
 	{
 		return parts != null && !parts.isEmpty();
@@ -159,17 +151,6 @@ public class BossDefinition
 	public List<String> getClogPages()
 	{
 		return clog == null ? Collections.emptyList() : clog;
-	}
-
-	/** "cox", "tob", "toa" or null for a normal boss. */
-	public String getRaid()
-	{
-		return raid;
-	}
-
-	public void setRaid(String raid)
-	{
-		this.raid = raid;
 	}
 
 	/** Delve levels tracked for delve bosses: 1-8, plus 9 for "8+" (deep delves). */
@@ -181,11 +162,6 @@ public class BossDefinition
 		return delve != null && delve;
 	}
 
-	public void setDelve(boolean delve)
-	{
-		this.delve = delve;
-	}
-
 	public static String delveLevelLabel(int level)
 	{
 		return level >= DELVE_LEVELS ? "8+" : String.valueOf(level);
@@ -195,11 +171,6 @@ public class BossDefinition
 	public boolean combineKcWithMax()
 	{
 		return "max".equalsIgnoreCase(kcMode);
-	}
-
-	public String getNote()
-	{
-		return note;
 	}
 
 	/** Drops the uniques that match, e.g. items several bosses share. */

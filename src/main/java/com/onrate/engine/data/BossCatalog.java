@@ -1,5 +1,8 @@
 package com.onrate.engine.data;
 
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import java.util.LinkedHashMap;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -21,7 +24,7 @@ import java.util.Set;
  */
 public class BossCatalog
 {
-	private final List<BossDefinition> bosses;
+	@Getter private final List<BossDefinition> bosses;
 	private final Map<String, BossDefinition> byName = new HashMap<>();
 	private final Map<String, BossDefinition> byKcName = new HashMap<>();
 	private final Map<String, BossDefinition> byLootName = new HashMap<>();
@@ -165,26 +168,11 @@ public class BossCatalog
 	}
 
 	/** One boss that drops a pooled (shared) item, with its drop definition. */
+	@AllArgsConstructor(access = AccessLevel.PACKAGE)
 	public static final class PoolSource
 	{
-		private final BossDefinition boss;
-		private final DropDefinition drop;
-
-		PoolSource(BossDefinition boss, DropDefinition drop)
-		{
-			this.boss = boss;
-			this.drop = drop;
-		}
-
-		public BossDefinition getBoss()
-		{
-			return boss;
-		}
-
-		public DropDefinition getDrop()
-		{
-			return drop;
-		}
+		@Getter private final BossDefinition boss;
+		@Getter private final DropDefinition drop;
 	}
 
 	/** Items several bosses drop, keyed by normalized name, with every boss that drops them. */
@@ -268,11 +256,6 @@ public class BossCatalog
 			.replace(' ', ' ')
 			.trim()
 			.toLowerCase(Locale.ROOT);
-	}
-
-	public List<BossDefinition> getBosses()
-	{
-		return bosses;
 	}
 
 	public BossDefinition byName(String name)
