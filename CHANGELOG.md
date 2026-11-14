@@ -5,6 +5,7 @@ Updates come through the Plugin Hub. Each heading is the date of that update; **
 **Next update**
 
 *Removed*
+- **One-time cards:** the *New in On Rate* notice about the Time page and the one-time offer to turn on the in-game overlay (a line on a long trip's card) are gone. The Time page and the overlay stay; turn the overlay on under Display in the settings.
 - **Welcome guide:** the getting-started card at the top of the panel, its *Show welcome guide* setting and the panel opening by itself the first time are gone. The collection log line under the title still tells you which pages to open.
 
 *Redesigned*

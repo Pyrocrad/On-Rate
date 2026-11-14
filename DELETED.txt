@@ -1,2 +1,1 @@
-﻿docs\first-run.png
-src\test\java\com\expecteddrops\ui\HideGuideTest.java
+﻿src\test\java\com\expecteddrops\TimesNoticeTest.java
