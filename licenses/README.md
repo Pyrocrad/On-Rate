@@ -1,7 +1,7 @@
 # Third-party code
 
 On Rate's raid points reading is adapted from **Raid Data Tracker** by Raitab
-(https://github.com/Raitab/raid-data-tracker, branch `raid-data-tracker`, commit `963f3c4f`),
+(https://runelite.net/plugin-hub/show/raid-data-tracker, branch `raid-data-tracker`, commit `963f3c4f`),
 released under the BSD 2-Clause licence. Its copyright holders are CasvM, LlemonDuck and
 TheStonedTurtle; the Tombs of Amascut points estimate in it comes from the Tombs of Amascut
 plugin by LlemonDuck and TheStonedTurtle. The full licence is in

@@ -24,7 +24,7 @@ Use the [bug](https://github.com/Pyrocrad/On-Rate/issues/new/choose) or idea tem
 2. Run **Tasks → application → run** in the Gradle tool window to start RuneLite with the plugin, or `./gradlew test` to run the tests.
 3. Keep a change small and say what it fixes. If it changes any number a player sees, say so in your pull request so it can go under *Changes that affect your numbers* in [CHANGELOG.md](CHANGELOG.md).
 
-Every push is built and tested automatically. A green tick means it builds and passes its tests.
+Every upload to GitHub is built and tested automatically. A green tick next to a commit means it builds and passes its tests. To correct a drop rate, see *Checking again* in [docs/RATES.md](docs/RATES.md).
 
 How the panel and the maths work is explained in [docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md).
 
