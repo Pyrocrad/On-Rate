@@ -409,6 +409,114 @@ public class TimePageTest
 		assertTrue(pick(high, "Pets").toString(), pick(high, "Pets").stream().anyMatch(t -> t.equals("Pet smoke devil")));
 	}
 
+	@Test
+	public void theTimesNoticeIsTakenOnceAndNeverAgain() throws Exception
+	{
+		ExpectedDropsPanel panel = panel(tracker());
+		boolean[] seen = {false};
+		int[] marked = {0};
+		panel.setTimesNotice(() -> !seen[0], () ->
+		{
+			seen[0] = true;
+			marked[0]++;
+		});
+		assertTrue(panel.takeTimesNotice());
+		assertEquals(1, marked[0]);
+		// shown already: opening the panel again, or any redraw, never asks twice
+		assertFalse(panel.takeTimesNotice());
+		assertFalse(panel.takeTimesNotice());
+		assertEquals(1, marked[0]);
+	}
+
+	@Test
+	public void noNoticeWhenNobodyAsksForIt() throws Exception
+	{
+		ExpectedDropsPanel panel = panel(tracker());
+		assertFalse(panel.takeTimesNotice());
+		panel.setTimesNotice(() -> false, () -> { throw new AssertionError("marked without being shown"); });
+		assertFalse(panel.takeTimesNotice());
+	}
+
+	@Test
+	public void theNoticeIsACardInThePanelThatShowsOnceAndCloses() throws Exception
+	{
+		ExpectedDropsPanel panel = panel(tracker());
+		assertFalse(panel.isTimesNoticeVisible());
+		boolean[] seen = {false};
+		panel.setTimesNotice(() -> !seen[0], () -> seen[0] = true);
+		// not due until the panel is on screen
+		assertFalse(panel.isTimesNoticeVisible());
+		panel.showTimesNoticeOnce();
+		assertTrue(panel.isTimesNoticeVisible());
+		// the card stays through redraws, and a second time on screen doesn't ask again
+		panel.refresh();
+		assertTrue(panel.isTimesNoticeVisible());
+		panel.showTimesNoticeOnce();
+		assertTrue(seen[0]);
+		// "Got it" closes it, and it never comes back
+		javax.swing.JButton gotIt = find(panel, "Got it");
+		gotIt.doClick();
+		assertFalse(panel.isTimesNoticeVisible());
+		panel.showTimesNoticeOnce();
+		assertFalse(panel.isTimesNoticeVisible());
+	}
+
+	@Test
+	public void theNoticeIsNotTakenWhileThePanelIsNotOnScreenOrNoAccountIsLoaded() throws Exception
+	{
+		ExpectedDropsPanel panel = panel(tracker());
+		int[] marked = {0};
+		panel.setTimesNotice(() -> marked[0] == 0, () -> marked[0]++);
+		// a panel that is not on screen (as in tests) never takes the notice
+		panel.showTimesNoticeWhenReady();
+		assertEquals(0, marked[0]);
+		assertFalse(panel.isTimesNoticeVisible());
+		// nor does one still waiting for an account
+		panel.setProfileState(ExpectedDropsPanel.ProfileState.LOADING);
+		panel.showTimesNoticeWhenReady();
+		assertEquals(0, marked[0]);
+		assertFalse(panel.isTimesNoticeVisible());
+	}
+
+	@Test
+	public void showMeOpensTheTimePage() throws Exception
+	{
+		ExpectedDropsPanel panel = panel(tracker());
+		panel.setTimesNotice(() -> true, () -> { });
+		panel.showTimesNoticeOnce();
+		find(panel, "Show me").doClick();
+		assertFalse(panel.isTimesNoticeVisible());
+		List<String> out = new ArrayList<>();
+		texts(panel, out);
+		assertTrue(out.toString(), out.stream().anyMatch(t -> t.contains("Quickest first")));
+	}
+
+	@Test
+	public void showMeIsDisabledAndExplainedWhenTheItemsTabIsOff() throws Exception
+	{
+		ExpectedDropsPanel panel = new ExpectedDropsPanel(tracker(), null, () -> RAIDS, s -> -1, () -> { }, name -> 0L,
+			() -> new ViewOptions(ItemView.TARGET_BARS, false, false, false, false, false));
+		panel.setTimesNotice(() -> true, () -> { });
+		panel.showTimesNoticeOnce();
+		javax.swing.JButton show = find(panel, "Show me");
+		assertFalse(show.isEnabled());
+		assertTrue(show.getToolTipText(), show.getToolTipText().contains("Items tab"));
+		assertTrue(panel.isTimesNoticeVisible());
+	}
+
+	@Test
+	public void theNoticeSaysWhereTheTimePageIsAndAboutRaidDataTracker()
+	{
+		String text = String.join(" ", ExpectedDropsPanel.timesNoticeParagraphs());
+		assertTrue(text.contains("Time</font> page"));
+		assertTrue(text.contains("Raid Data Tracker"));
+		assertTrue(text.contains("only shows once"));
+		assertTrue(text.contains("purple chance by setup"));
+		// the folder is chosen by the player and not kept: the notice must not say raids are read at login
+		assertTrue(text.contains("each time RuneLite starts"));
+		assertFalse(text.contains("when you log in"));
+	}
+
 	private static javax.swing.JButton find(Component c, String text)
 	{
 		if (c instanceof javax.swing.JButton && text.equals(((javax.swing.JButton) c).getText()))
