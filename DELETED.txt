@@ -1,1 +1,10 @@
-﻿src\test\java\com\expecteddrops\TimesNoticeTest.java
+﻿src\main\java\com\expecteddrops\OnRateOverlay.java
+src\main\java\com\expecteddrops\OverlayInfo.java
+src\main\java\com\expecteddrops\ui\Activatable.java
+src\main\java\com\expecteddrops\ui\ShareText.java
+src\main\java\com\onrate\engine\tracking\Note.java
+src\test\java\com\expecteddrops\ui\ActivatableTest.java
+src\test\java\com\expecteddrops\ui\ItemRowNamesTest.java
+src\test\java\com\expecteddrops\ui\PaletteBarContrastTest.java
+src\test\java\com\expecteddrops\ui\ShareLinkTest.java
+src\test\java\com\expecteddrops\ui\ShareTextTest.java

@@ -52,8 +52,6 @@ class LuckGraph extends JComponent
 	private int hover = -1;
 	/** Left margin, measured from the axis-word font the first time it is needed. */
 	private int padLeft = -1;
-	/** True while the marker was put there with the keyboard (it goes when the focus does). */
-	private boolean keyboardHover;
 
 	LuckGraph()
 	{
@@ -61,7 +59,6 @@ class LuckGraph extends JComponent
 		setMaximumSize(new Dimension(Integer.MAX_VALUE, HEIGHT));
 		setAlignmentX(LEFT_ALIGNMENT);
 		ToolTipManager.sharedInstance().registerComponent(this);
-		installKeyboard();
 		addMouseMotionListener(new MouseMotionAdapter()
 		{
 			@Override
@@ -92,63 +89,6 @@ class LuckGraph extends JComponent
 			accessibleContext.setAccessibleName("Your account's luck over time");
 		}
 		return accessibleContext;
-	}
-
-	/**
-	 * Keyboard way to read the graph: Tab to it, then Left and Right (Home, End) move the marker from point to
-	 * point; the point's text is the same as the tooltip and is set as the description for screen readers.
-	 */
-	private void installKeyboard()
-	{
-		setFocusable(true);
-		addFocusListener(new FocusAdapter()
-		{
-			@Override
-			public void focusGained(FocusEvent e)
-			{
-				repaint();
-			}
-
-			@Override
-			public void focusLost(FocusEvent e)
-			{
-				if (keyboardHover)
-				{
-					keyboardHover = false;
-					setHover(-1);
-				}
-				repaint();
-			}
-		});
-		bindKey(KeyEvent.VK_LEFT, "markerLeft", () -> moveMarker(hover < 0 ? points.size() - 1 : hover - 1));
-		bindKey(KeyEvent.VK_RIGHT, "markerRight", () -> moveMarker(hover < 0 ? points.size() - 1 : hover + 1));
-		bindKey(KeyEvent.VK_HOME, "markerFirst", () -> moveMarker(0));
-		bindKey(KeyEvent.VK_END, "markerLast", () -> moveMarker(points.size() - 1));
-	}
-
-	private void bindKey(int key, String name, Runnable run)
-	{
-		getInputMap(WHEN_FOCUSED).put(KeyStroke.getKeyStroke(key, 0), name);
-		getActionMap().put(name, new AbstractAction()
-		{
-			@Override
-			public void actionPerformed(ActionEvent e)
-			{
-				run.run();
-			}
-		});
-	}
-
-	private void moveMarker(int index)
-	{
-		if (points.isEmpty())
-		{
-			return;
-		}
-		int clamped = Math.max(0, Math.min(points.size() - 1, index));
-		keyboardHover = true;
-		setHover(clamped);
-		getAccessibleContext().setAccessibleDescription(textFor(clamped).replace("<br>", ", ").replaceAll("<[^>]*>", ""));
 	}
 
 	private void setHover(int index)

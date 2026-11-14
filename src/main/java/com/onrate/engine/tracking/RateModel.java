@@ -4,20 +4,9 @@ import com.onrate.engine.math.*;
 import com.onrate.engine.data.*;
 import com.onrate.engine.stats.*;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.TreeMap;
-import java.util.function.ToLongFunction;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * What a drop should give, from its rate, the raid points saved with each raid, the raid level,

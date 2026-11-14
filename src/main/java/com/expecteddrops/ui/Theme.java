@@ -2,7 +2,6 @@ package com.expecteddrops.ui;
 
 import java.awt.Font;
 import net.runelite.client.ui.FontManager;
-import java.awt.FontMetrics;
 import java.util.Locale;
 
 import java.awt.BasicStroke;

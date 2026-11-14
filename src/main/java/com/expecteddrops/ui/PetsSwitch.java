@@ -47,7 +47,6 @@ final class PetsSwitch extends JPanel
 				}
 			}
 		});
-		Activatable.install(this, "Pets", this::toggle);
 		update();
 	}
 

@@ -18,10 +18,6 @@ public final class Palette
 	static final Color CB_GOOD = new Color(40, 110, 200);
 
 	private static volatile boolean colourBlind;
-	private static volatile boolean higherContrast;
-
-	/** The Time bar's fill when the bars are higher-contrast (the usual one is {@link Theme#PROGRESS}). */
-	static final Color PROGRESS_HIGH = new Color(120, 138, 158);
 
 	private Palette()
 	{
@@ -32,35 +28,6 @@ public final class Palette
 	/** True while the Custom scheme is picked: its colours are the player's own, so text on them is lifted. */
 	private static volatile boolean customScheme;
 
-	/** The "Higher-contrast bars" setting: lifts bar fills (see {@link #barFill}). Off by default. */
-	public static void setHigherContrast(boolean on)
-	{
-		higherContrast = on;
-	}
-
-	static boolean isHigherContrast()
-	{
-		return higherContrast;
-	}
-
-	/**
-	 * The colour to draw a bar fill in: unchanged unless Higher-contrast bars is on, then lightened in
-	 * 0.02 steps until it is at least 3:1 against the track it sits on. The bar's length and the text
-	 * on it carry the meaning; this only makes the fill easier to tell from its track.
-	 */
-	static Color barFill(Color fill, Color track)
-	{
-		if (!higherContrast || fill == null || track == null)
-		{
-			return fill;
-		}
-		Color c = fill;
-		for (int i = 1; i <= 50 && contrast(c, track) < 3.0; i++)
-		{
-			c = blend(fill, Color.WHITE, 0.02 * i);
-		}
-		return c;
-	}
 
 	/** WCAG contrast ratio between two colours (1 to 21). */
 	static double contrast(Color a, Color b)

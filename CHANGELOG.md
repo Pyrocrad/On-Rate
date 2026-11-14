@@ -5,7 +5,12 @@ Updates come through the Plugin Hub. Each heading is the date of that update; **
 **Next update**
 
 *Removed*
-- **One-time cards:** the *New in On Rate* notice about the Time page and the one-time offer to turn on the in-game overlay (a line on a long trip's card) are gone. The Time page and the overlay stay; turn the overlay on under Display in the settings.
+- **One-time cards:** the *New in On Rate* notice about the Time page and the one-time offer to turn on the in-game overlay are gone.
+- **In-game overlay:** removed, with its setting.
+- **Chat messages:** sync reminders, drop messages and dry milestone messages are removed, with their settings.
+- **Copy my luck:** the footer link is removed.
+- **Higher-contrast bars:** the setting is removed.
+- **Keyboard use:** Tab, Enter and Space activation, the focus ring, the arrow keys on the luck graph and the item rows' keyboard names are removed. The mouse works as before.
 - **Welcome guide:** the getting-started card at the top of the panel, its *Show welcome guide* setting and the panel opening by itself the first time are gone. The collection log line under the title still tells you which pages to open.
 
 *Redesigned*
@@ -20,16 +25,11 @@ Updates come through the Plugin Hub. Each heading is the date of that update; **
 - **Closest to green log:** a new sort in the account overview's boss list. It puts the bosses whose collection log page is closest to done first, and shows on each row the average time to get everything still missing, the same figure as the Time page and Ladlor's chart (hover for what is missing and when half and 9 in 10 players are done). Items several bosses drop (dragon pickaxe) count on every page that lists them once you have them from any boss. The time of a kill is the one the Time page uses: your own average, else the wiki's (marked with ~). A small Pets slider next to the sort leaves pets out (default) or counts them; it starts off again after a restart. Nothing else changes.
 *Fixed*
 - **Cut-off notes:** the notes on the Single drops page and the Time page are no longer wider than the panel, so their last words are not cut off.
-*Accessibility*
-- **Item rows by keyboard:** the rows on the bars view can take the keyboard focus, are named after their item for screen readers, and show their tooltip while focused. Nothing looks different.
 *Easier to read*
 - **Luck text contrast:** verdict words, luck percentages and pill text in the dry colours (Classic, Purple, Colour-blind and the others) are lifted a little toward white where needed so they stay readable on the dark panel. The luck colours of bars, dots and graphs are unchanged. The search box hint is lighter too.
-*Keyboard*
-- **Everything you can do with the mouse works from the keyboard:** the pages of the collection log checklist, the Expected / Received tabs (with a visible focus ring), and the boss rows of the account overview and Recent (Enter or Space opens the boss). The overview's boss list is one Tab stop: Up, Down, Home and End move between its rows. Shift+F10 or the context-menu key opens the right-click menus (leave out, shared items, I got this at kill, Remove from History). On the luck graph, Tab to it and use Left, Right, Home and End to move the marker along the days.
 
 *Behind the scenes*
 - **Clearer "I got this at..." dialog:** when On Rate can't add a past drop because of the number you typed (too high, or a kill it saw itself), it says why and asks again with your entries kept, instead of closing the dialog. Refusals a different number can't fix still close it, with the reason.
-- **Time page notice waits for you:** the one-time notice about the Time page now only counts as shown once the panel is on screen with your account loaded, not while it still says to log in or is loading.
 - **Readable Custom luck colours:** text in a Custom luck colour is lightened just enough to stay readable (4.5:1 contrast) on the dark panel. The bars, rings and dots keep the exact colours you picked; the ready-made sets are unchanged.
 - **One place for text widths:** the widths that wrap text in the panel, its tooltips and its dialogs now come from one list instead of numbers typed in many places. The panel looks the same; the two dialogs that were 220 and 260 wide (Add to History, collection log) are now the same width as the others.
 - **Screen-reader names:** the boss search, the boss and sort drop-downs, the Time page's Show drop-down and the Expected / Received tabs now have names (the selected tab says so), and the raid points graph names its mode (points or purple chance). Nothing you see changes.

@@ -49,7 +49,7 @@ class EffortBar extends JComponent
 		int h = getHeight();
 		g.setColor(Theme.TRACK);
 		g.fillRect(0, 0, w, h);
-		g.setColor(Palette.isHigherContrast() ? Palette.PROGRESS_HIGH : Theme.PROGRESS);
+		g.setColor(Theme.PROGRESS);
 		g.fillRect(0, 0, (int) Math.round(w * fraction), h);
 		g.dispose();
 	}

@@ -19,7 +19,6 @@ import com.onrate.engine.stats.RaidChance;
 import com.onrate.engine.stats.RaidSettings;
 import com.onrate.engine.stats.RowStats;
 import com.onrate.engine.stats.SharedPool;
-import com.onrate.engine.tracking.Note;
 import com.onrate.engine.tracking.PastDropResult;
 import com.onrate.engine.tracking.BossDays;
 import com.onrate.engine.tracking.RaidRecord;
@@ -1253,104 +1252,6 @@ public class TrackerTest
 	}
 
 	@Test
-	public void dryStreaksAndDropMessages()
-	{
-		Map<String, Integer> items = new LinkedHashMap<>();
-		items.put("Vorkath's head", 7);
-		items.put("Dragonbone necklace", 0);
-		tracker.onClogPage("Vorkath", Collections.singletonList("Vorkath kills: 350"), items);
-		vorkathKc(351);
-		tracker.drainNotes();
-
-		BossStats stats = tracker.stats("Vorkath", RAIDS);
-		// never had a necklace: the streak is the whole kill count
-		assertEquals(351, (int) row(stats, "Dragonbone necklace").getStreak());
-		assertTrue(row(stats, "Dragonbone necklace").isStreakExact());
-		// had heads before tracking: only a minimum is known
-		assertEquals(1, (int) row(stats, "Vorkath's head").getStreak());
-		assertFalse(row(stats, "Vorkath's head").isStreakExact());
-
-		for (int kc = 352; kc <= 380; kc++)
-		{
-			vorkathKc(kc);
-		}
-		tracker.onLoot("Vorkath", 1, Collections.singletonList(new Tracker.LootItem("Vorkath's head", 1)), now);
-		List<Note> notes = tracker.drainNotes();
-		assertEquals(1, notes.size());
-		assertEquals(Note.Kind.DROP, notes.get(0).getKind());
-		assertEquals("Vorkath's head after at least 30 kills.", notes.get(0).getText());
-
-		for (int kc = 381; kc <= 420; kc++)
-		{
-			vorkathKc(kc);
-		}
-		tracker.onLoot("Vorkath", 1, Collections.singletonList(new Tracker.LootItem("Vorkath's head", 1)), now);
-		notes = tracker.drainNotes();
-		assertEquals("Vorkath's head after 40 kills (0.8x the drop rate).", notes.get(notes.size() - 1).getText());
-		stats = tracker.stats("Vorkath", RAIDS);
-		assertEquals(0, (int) row(stats, "Vorkath's head").getStreak());
-		assertTrue(row(stats, "Vorkath's head").isStreakExact());
-
-		tracker.onLoot("Vorkath", 1, Collections.singletonList(new Tracker.LootItem("Dragonbone necklace", 1)), now);
-		notes = tracker.drainNotes();
-		assertEquals("Your first Dragonbone necklace, after 420 kills (0.4x the drop rate).", notes.get(0).getText());
-	}
-
-	@Test
-	public void milestonesAreAnnouncedOncePerLevel()
-	{
-		Map<String, Integer> items = new LinkedHashMap<>();
-		items.put("Vorkath's head", 7);
-		tracker.onClogPage("Vorkath", Collections.singletonList("Vorkath kills: 100"), items);
-		vorkathKc(100);
-		tracker.onLoot("Vorkath", 1, Collections.singletonList(new Tracker.LootItem("Vorkath's head", 1)), now);
-		tracker.drainNotes();
-
-		List<String> milestones = new ArrayList<>();
-		for (int kc = 101; kc <= 210; kc++)
-		{
-			vorkathKc(kc);
-			for (Note n : tracker.drainNotes())
-			{
-				if (n.getKind() == Note.Kind.MILESTONE && n.getText().startsWith("Vorkath's head"))
-				{
-					milestones.add(kc + " " + n.getText());
-				}
-			}
-		}
-		assertEquals(Arrays.asList(
-			"200 Vorkath's head: 100 kills without one, 2x the drop rate."), milestones);
-	}
-
-	@Test
-	public void bigJumpsStayQuiet()
-	{
-		tracker.onClogPage("Vorkath", Collections.singletonList("Vorkath kills: 5000"), new LinkedHashMap<>());
-		vorkathKc(10);
-		vorkathKc(5000);
-		vorkathKc(5001);
-		for (Note n : tracker.drainNotes())
-		{
-			assertFalse(n.toString(), n.getKind() == Note.Kind.MILESTONE);
-		}
-	}
-
-	@Test
-	public void manyItemsAtOnceBecomeOneMessage()
-	{
-		tracker.onClogPage("Barrows Chests", Collections.singletonList("Barrows Chests opened: 680"), new LinkedHashMap<>());
-		List<Note> notes = new ArrayList<>();
-		for (int kc = 680; kc <= 702; kc++)
-		{
-			tracker.onChatMessage("Your Barrows chest count is: <col=ff0000>" + kc + "</col>.", now);
-			notes.addAll(tracker.drainNotes());
-		}
-		assertEquals(1, notes.size());
-		assertEquals("Barrows: 24 items passed 2x the drop rate dry: Ahrim's hood, Ahrim's robetop, Ahrim's robeskirt and 21 more.",
-			notes.get(0).getText());
-	}
-
-	@Test
 	public void moonsOfPerilCountsLunarChests()
 	{
 		tracker.onChatMessage("Your Lunar Chest count is: <col=ff0000>236</col>.", now);
@@ -2296,23 +2197,6 @@ public class TrackerTest
 	}
 
 	@Test
-	public void aTripEndsWithoutASummaryLine()
-	{
-		tracker.setSettings(RAIDS);
-		for (int kc = 100; kc < 110; kc++)
-		{
-			tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>" + kc + "</col>.", now + (kc - 100) * 60_000L);
-		}
-		// a kill at another boss ends the Vorkath trip, and so does the button
-		tracker.onChatMessage("Your Zulrah kill count is: <col=ff0000>50</col>.", now + 20 * 60_000L);
-		tracker.resetTrip();
-		for (Note n : tracker.drainNotes())
-		{
-			assertFalse(n.getKind() == Note.Kind.TRIP);
-		}
-	}
-
-	@Test
 	public void recordsAndTheLastUnique()
 	{
 		tracker.setSettings(RAIDS);
@@ -2699,15 +2583,6 @@ public class TrackerTest
 		assertEquals(2, raid.tripStats().getKills());
 		raid.onChatMessage("Your completed Chambers of Xeric count is: <col=ff0000>12</col>.", now + 2 * LONG_TRIP + 1);
 		assertEquals(1, raid.tripStats().getKills());
-	}
-
-	@Test
-	public void switchingAccountsDropsPendingNotes()
-	{
-		tracker.onChatMessage("Your Vorkath kill count is: <col=ff0000>1</col>.", 1000);
-		tracker.onLoot("Vorkath", 1, java.util.Collections.singletonList(new Tracker.LootItem("Vorkath's head", 1)), 1000);
-		tracker.setState(null);
-		assertTrue(tracker.drainNotes().isEmpty());
 	}
 
 	@Test

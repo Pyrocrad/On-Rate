@@ -16,12 +16,11 @@ Every boss has a drop rate and you have a kill count. On Rate does the sum for y
 
 - **One verdict per boss, two ways:** how many uniques you got, and what they are worth in GP. Two twisted bows can be dry on the count and spooned on the value, and you see both.
 - **Your whole account on one screen:** every boss added up and sorted driest first, your driest and luckiest items, your pets, luck over time, and what you killed and got today and this week.
-- **Share it:** one click on **Copy my luck** puts your verdicts on the clipboard as plain text, ready for Discord or Reddit. Nothing is sent anywhere.
 - **Every item against what you should have by now:** the bar is what you got, the white line is what you should have.
 - **How lucky each drop really was:** hover any item for its drop rate, your dry streak and how many players would have fewer or more. The **Single drops** view lists your luckiest drops and longest waits, each judged by how long it took against its drop rate.
 - **History per boss:** the kills On Rate saw and what they dropped, and how long each kill or raid took (read from the game's own time message). The boss page shows your average time.
 - **Your best way to raid:** raid pages show your purple chance and GP value an hour for each setup you did (team size, mode or raid level), your personal bests, and your points over your last 40 raids.
-- **Live while you play:** a trip card for the boss you are killing (kills, uniques, expected, value per hour) and an optional in-game overlay. Raid purple chances use your own raid points, and at Nex, Yama, the Hueycoatl, Corp and Zalcano it counts your team (History shows your kills by team size).
+- **Live while you play:** a trip card for the boss you are killing (kills, uniques, expected, value per hour). Raid purple chances use your own raid points, and at Nex, Yama, the Hueycoatl, Corp and Zalcano it counts your team (History shows your kills by team size).
 - **Time to get what you're missing:** the **Time** page shows how long, on average, each item you don't have takes to get, including every step of the Ladlor's chart. [How it works](docs/HOW-IT-WORKS.md#the-time-page).
 - **Your past drops, imported:** it reads them from the collection log, then updates by itself after every kill.
 - **Private:** no web requests. Everything is saved in RuneLite's own settings, per account. The only files it reads are Raid Data Tracker's (read only, never written).

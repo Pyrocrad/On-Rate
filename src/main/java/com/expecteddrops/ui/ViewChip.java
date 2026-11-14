@@ -67,7 +67,6 @@ final class ViewChip extends JPanel
 				}
 			}
 		});
-		Activatable.install(this, "View", this::open);
 		update();
 	}
 

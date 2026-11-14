@@ -242,8 +242,6 @@ public class ProfileLoadTest
 	{
 		gameState(GameState.LOGGED_IN);
 		runeLiteProfile("A");
-		@SuppressWarnings("unchecked") Set<String> reminded = (Set<String>) get("remindedThisSession");
-		reminded.add("Vorkath");
 		String savedA = profiles.of("A").get("progress");
 
 		gameState(GameState.LOGIN_SCREEN);
@@ -253,7 +251,6 @@ public class ProfileLoadTest
 		assertEquals(7, vorkathKills());
 		assertEquals("A's History is not B's", 0, tracker.killsSeen("Vorkath"));
 		assertEquals(ProfileState.LOADED, shown());
-		assertTrue("B gets its own reminder to open the log page", reminded.isEmpty());
 		assertEquals(savedA, profiles.of("A").get("progress"));
 
 		// B's kill is saved to B

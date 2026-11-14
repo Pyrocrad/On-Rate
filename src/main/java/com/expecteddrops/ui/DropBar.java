@@ -90,7 +90,7 @@ class DropBar extends JComponent
 			int filled = (int) Math.round((w - 2) * fraction);
 			if (filled > 0)
 			{
-				g2.setColor(Palette.barFill(fill, TRACK));
+				g2.setColor(fill);
 				g2.fillRect(1, 1, filled, h - 2);
 				// a lighter strip on top gives the fill a bit of depth
 				g2.setColor(new Color(255, 255, 255, 28));

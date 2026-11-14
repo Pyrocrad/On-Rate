@@ -1,21 +1,17 @@
 package com.expecteddrops;
 
 import java.util.Arrays;
-import java.awt.Color;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import com.onrate.engine.data.KillTimes;
 import com.onrate.engine.data.LadlorChart;
 import java.time.LocalDate;
-import java.util.Locale;
 
 import com.expecteddrops.ui.*;
 import com.google.gson.Gson;
 import com.google.inject.Provides;
 import com.onrate.engine.data.Bundled;
-import com.onrate.engine.math.Verdict;
 import com.onrate.engine.raids.RaidDataImport;
-import com.onrate.engine.stats.BossStats;
 import com.onrate.engine.stats.RaidSettings;
 import com.onrate.engine.tracking.*;
 import com.onrate.game.*;
@@ -54,7 +50,6 @@ import net.runelite.client.plugins.*;
 import net.runelite.client.plugins.loottracker.LootReceived;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
-import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.Filepath;
 import net.runelite.client.util.ImageUtil;
 
@@ -119,19 +114,12 @@ public class ExpectedDropsPlugin extends Plugin
 	private ScheduledExecutorService executor;
 
 	@Inject
-	private OverlayManager overlayManager;
-	@Inject
 	private PluginManager pluginManager;
-
-	private OnRateOverlay overlay;
-	/** What the overlay shows; worked out after each kill on the client thread. */
-	private volatile OverlayInfo overlayInfo;
 
 	/** Reads raid points at the end of each raid (see RaidPointsReader for the credits). */
 	private RaidPointsReader raidPoints;
 
 	/** Bosses we already reminded about this session, so the reminder shows once. */
-	private final Set<String> remindedThisSession = new HashSet<>();
 
 	private Tracker tracker;
 	private ExpectedDropsPanel panel;
@@ -275,9 +263,6 @@ public class ExpectedDropsPlugin extends Plugin
 			.build();
 		clientToolbar.addNavigation(navButton);
 
-		overlay = new OnRateOverlay(this, config, () -> overlayInfo);
-		overlayManager.add(overlay);
-
 		updateLootTrackerStatus();
 
 		raidPoints = new RaidPointsReader(client, clientThread, tracker, boss -> changed(boss, false), config::readRaidPoints);
@@ -314,12 +299,6 @@ public class ExpectedDropsPlugin extends Plugin
 			eventBus.unregister(raidPoints);
 			raidPoints = null;
 		}
-		if (overlay != null)
-		{
-			overlayManager.remove(overlay);
-			overlay = null;
-		}
-		overlayInfo = null;
 		clientToolbar.removeNavigation(navButton);
 		navButton = null;
 		ExpectedDropsPanel closing = panel;
@@ -430,58 +409,8 @@ public class ExpectedDropsPlugin extends Plugin
 	ViewOptions viewOptions()
 	{
 		Palette.setScheme(config.luckColours(), config.dryColour(), config.onRateColour());
-		Palette.setHigherContrast(config.higherContrastBars());
 		return new ViewOptions(config.itemView(), config.showGeValue(), config.showLuckGraph(),
 			config.showTrip(), config.luckColours() == LuckColours.COLOUR_BLIND, config.showTopItems());
-	}
-
-	/** This trip at the boss you are killing, for the overlay. */
-	private void updateOverlayInfo(Tracker tracker)
-	{
-		TripStats trip = tracker.tripStats();
-		if (trip == null)
-		{
-			overlayInfo = null;
-			return;
-		}
-		BossStats stats = tracker.stats(trip.getBoss(), raidSettings());
-		if (stats == null || Tracker.isLongRun(stats.getBoss()))
-		{
-			// a raid, the Inferno or the Fight Caves takes too long for the box to stay up to date
-			overlayInfo = null;
-			return;
-		}
-		Palette.setScheme(config.luckColours(), config.dryColour(), config.onRateColour());
-		Palette.setHigherContrast(config.higherContrastBars());
-		String units = Tracker.unit(stats.getBoss());
-		String one = Tracker.unitOne(stats.getBoss());
-		String tripText = String.format(Locale.ROOT, "%,d %s · %d unique%s", trip.getKills(), trip.getKills() == 1 ? one : units,
-			trip.getReceived(), trip.getReceived() == 1 ? "" : "s");
-		double tripLuck = trip.getLuck();
-		String tripExpected = trip.getExpected() >= 10 ? String.format(Locale.ROOT, "%.1f", trip.getExpected())
-			: String.format(Locale.ROOT, "%.2f", trip.getExpected());
-		boolean early = !Double.isNaN(tripLuck) && Verdict.tripTooEarly(trip.getExpected());
-		overlayInfo = new OverlayInfo(trip.getBoss(), tripText, tripExpected,
-			Double.isNaN(tripLuck) ? "-" : early ? "Too early" : Verdict.labelOf(tripLuck),
-			Double.isNaN(tripLuck) ? Color.WHITE : early ? Color.LIGHT_GRAY : Palette.text(Palette.luck(tripLuck).brighter()),
-			trip.getLastMillis());
-	}
-
-	/** Item names that fit the overlay: cut at a word, "Deadeye prayer scroll" becomes "Deadeye prayer...". */
-	static String shortName(String label)
-	{
-		return shortName(label, 18);
-	}
-
-	/** Same, cut to {@code max} characters (the overlay's driest line shares its row with the streak). */
-	static String shortName(String label, int max)
-	{
-		if (label.length() <= max)
-		{
-			return label;
-		}
-		int cut = label.lastIndexOf(' ', max - 3);
-		return label.substring(0, cut > 0 ? cut : max - 3) + "...";
 	}
 
 	/** The player's raid, team and duo settings, as the numbers the drop maths needs. */
@@ -598,7 +527,7 @@ public class ExpectedDropsPlugin extends Plugin
 
 	/** Settings the panel writes itself while the player clicks around: they change no numbers. */
 	private static final Set<String> UI_STATE_KEYS = new HashSet<>(Arrays.asList(
-		Keys.LAST_PAGE, "foldState", "showLuckGraph", "itemView", "showOverlay"));
+		Keys.LAST_PAGE, "foldState", "showLuckGraph", "itemView"));
 
 	/** The Loot Tracker was turned on or off: the panel's note follows. */
 	@Subscribe
@@ -687,7 +616,6 @@ public class ExpectedDropsPlugin extends Plugin
 			team.killCounted(boss);
 			changed(boss, true);
 		}
-		postNotes();
 	}
 
 	@Subscribe
@@ -719,7 +647,6 @@ public class ExpectedDropsPlugin extends Plugin
 			// a visage from a regular dragon, a chainbody from a smoke devil: noted as not from a boss
 			changed(null, false);
 		}
-		postNotes();
 	}
 
 	@Subscribe
@@ -794,8 +721,6 @@ public class ExpectedDropsPlugin extends Plugin
 			return;
 		}
 		recordHistoryPoint(false);
-		// also when raid points come in after the kill, so the overlay shows them
-		updateOverlayInfo(t);
 		save();
 		if (book != null)
 		{
@@ -803,7 +728,6 @@ public class ExpectedDropsPlugin extends Plugin
 		}
 		if (fromKill)
 		{
-			remindToSync(t, boss);
 		}
 		ExpectedDropsPanel p = panel;
 		if (p == null || pc == null)
@@ -815,54 +739,6 @@ public class ExpectedDropsPlugin extends Plugin
 		// a burst draws once; the newest boss to follow is kept even if a later event doesn't follow
 		pc.request(raidSettings(), viewOptions().isGeValue() ? this::priceOf : null,
 			follow ? () -> p.showBoss(boss) : null, p::refresh);
-	}
-
-	/** Posts drop and milestone messages from the tracker, if the player wants them. */
-	private void postNotes()
-	{
-		Tracker t = tracker;
-		if (t == null)
-		{
-			return;
-		}
-		for (Note note : t.drainNotes())
-		{
-			boolean wanted = note.getKind() == Note.Kind.MILESTONE
-				? config.milestoneMessages() : config.dropMessages();
-			if (wanted)
-			{
-				postChat(note.getText());
-			}
-		}
-	}
-
-	private void postChat(String text)
-	{
-		String message = new ChatMessageBuilder()
-			.append(ChatColorType.HIGHLIGHT)
-			.append("On Rate: ")
-			.append(ChatColorType.NORMAL)
-			.append(text)
-			.build();
-		chatMessageManager.queue(QueuedMessage.builder()
-			.type(ChatMessageType.CONSOLE)
-			.runeLiteFormattedMessage(message)
-			.build());
-	}
-
-	/** Once per session, tells the player in chat which page loads this boss's history. */
-	private void remindToSync(Tracker tracker, String boss)
-	{
-		if (!config.syncReminders() || !remindedThisSession.add(boss))
-		{
-			return;
-		}
-		String reminder = tracker.syncReminder(boss);
-		if (reminder == null)
-		{
-			return;
-		}
-		postChat(reminder);
 	}
 
 	private void loadProfile()
@@ -892,7 +768,6 @@ public class ExpectedDropsPlugin extends Plugin
 		{
 			pc.supersede();
 		}
-		remindedThisSession.clear();
 		team.clear();
 		importRaidTimes();
 		ExpectedDropsPanel p = panel;

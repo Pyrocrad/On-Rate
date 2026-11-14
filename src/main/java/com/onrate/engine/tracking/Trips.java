@@ -22,7 +22,6 @@ final class Trips
 	private final BossCatalog catalog;
 	private final Statistics statistics;
 	private final SharedItems sharedItems;
-	private final List<Note> outbox;
 
 	/** A trip ends after this long without a kill, or when you kill another boss. */
 	static final long TRIP_IDLE_MILLIS = 30 * 60_000;
@@ -44,13 +43,12 @@ final class Trips
 	/** The trip already archived into {@link #finished} (or skipped), so it is never listed twice. */
 	private Trip archived;
 
-	Trips(TrackerContext ctx, Statistics statistics, SharedItems sharedItems, List<Note> outbox)
+	Trips(TrackerContext ctx, Statistics statistics, SharedItems sharedItems)
 	{
 		this.ctx = ctx;
 		this.catalog = ctx.catalog;
 		this.statistics = statistics;
 		this.sharedItems = sharedItems;
-		this.outbox = outbox;
 	}
 
 	/** The numbers just before the kill being counted now, or null outside a kill. */

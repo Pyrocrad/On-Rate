@@ -22,51 +22,8 @@ public interface ExpectedDropsConfig extends Config
 	}
 
 	@ConfigSection(
-		name = "Chat messages",
-		description = "What On Rate says in your chat box",
-		position = 3
-	)
-	String chatSection = "chat";
-
-	@ConfigItem(
-		keyName = "syncReminders",
-		name = "Sync reminders",
-		description = "After you kill a boss that isn't loaded yet, say in chat which collection log page to open. Once per boss each session.",
-		position = 4,
-		section = chatSection
-	)
-	default boolean syncReminders()
-	{
-		return true;
-	}
-
-	@ConfigItem(
-		keyName = "dropMessages",
-		name = "Drop messages",
-		description = "When a unique drops, say in chat how many kills it took against the drop rate.",
-		position = 5,
-		section = chatSection
-	)
-	default boolean dropMessages()
-	{
-		return true;
-	}
-
-	@ConfigItem(
-		keyName = "milestoneMessages",
-		name = "Dry milestone messages",
-		description = "Say in chat when an item passes 2x, 3x, 5x or 10x its drop rate without dropping",
-		position = 6,
-		section = chatSection
-	)
-	default boolean milestoneMessages()
-	{
-		return true;
-	}
-
-	@ConfigSection(
 		name = "Display",
-		description = "What the panel and overlay show",
+		description = "What the panel shows",
 		position = 6
 	)
 	String displaySection = "display";
@@ -161,18 +118,6 @@ public interface ExpectedDropsConfig extends Config
 		return true;
 	}
 
-	@ConfigItem(
-		keyName = "showOverlay",
-		name = "In-game overlay",
-		description = "Show a small box on the game screen with this trip's kills, uniques, expected and luck while you kill a boss. Not shown at raids, the Inferno or the Fight Caves.",
-		position = 13,
-		section = displaySection
-	)
-	default boolean showOverlay()
-	{
-		return false;
-	}
-
 	/** Old setting, now the "Colour-blind" luck colours: read once on start-up, kept so it is not lost. */
 	@ConfigItem(
 		keyName = "colourBlind",
@@ -221,19 +166,6 @@ public interface ExpectedDropsConfig extends Config
 	default Color onRateColour()
 	{
 		return new Color(170, 150, 20);
-	}
-
-	@ConfigItem(
-		keyName = "higherContrastBars",
-		name = "Higher-contrast bars",
-		description = "Draw the progress and item bars with a lighter fill, so they stand out more from their track. "
-			+ "Only the shade changes; the numbers and text stay the same.",
-		position = 17,
-		section = displaySection
-	)
-	default boolean higherContrastBars()
-	{
-		return false;
 	}
 
 	@ConfigSection(

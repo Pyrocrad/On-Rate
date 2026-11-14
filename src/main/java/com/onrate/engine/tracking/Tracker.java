@@ -62,12 +62,7 @@ public class Tracker
 		final int quantity;
 	}
 
-	private static final int[] MILESTONES = {2, 3, 5, 10};
-	/** A kill count jump bigger than this (a sync, a first message) doesn't announce milestones. */
-	private static final int MAX_QUIET_JUMP = 5;
-
 	@Getter private final BossCatalog catalog;
-	private final List<Note> outbox = new ArrayList<>();
 	private String lastBoss;
 	/** For combined pages: which part (e.g. Dagannoth Rex) was killed last. */
 	private String lastPart;
@@ -81,7 +76,7 @@ public class Tracker
 		this.sharedItems = new SharedItems(ctx);
 		this.statistics = new Statistics(ctx, sharedItems);
 		this.dayCounts = new DayCounts(ctx, statistics);
-		this.trips = new Trips(ctx, statistics, sharedItems, outbox);
+		this.trips = new Trips(ctx, statistics, sharedItems);
 		this.raidData = new RaidRecords(ctx, statistics, dayCounts);
 		this.clogSync = new ClogSync(ctx, statistics);
 		this.historyBook = new HistoryBook(ctx, statistics, raidData);
@@ -580,18 +575,10 @@ public class Tracker
 		return raidData.averagePurpleChance(bossName, part);
 	}
 
-	/** Settings used for streaks and milestone messages (raid chances, team shares). */
+	/** Settings used for streaks (raid chances, team shares). */
 	public synchronized void setSettings(RaidSettings settings)
 	{
 		ctx.setSettings(settings);
-	}
-
-	/** Chat messages produced since the last call (drops and milestones). */
-	public synchronized List<Note> drainNotes()
-	{
-		List<Note> notes = new ArrayList<>(outbox);
-		outbox.clear();
-		return notes;
 	}
 
 	public synchronized void setState(TrackerState state)
@@ -602,7 +589,6 @@ public class Tracker
 		ctx.raidsChanged.clear();
 		// another account: nothing of the last one's session carries over
 		dayCounts.clear();
-		outbox.clear();
 		pendingWave = null;
 		lastPart = null;
 		lastKillMillis = 0;
@@ -706,7 +692,6 @@ public class Tracker
 			lastPart = Statistics.partForName(boss, counter, true);
 			statistics.startTracking(boss);
 			raidData.onRaidCompletion(boss, lastPart, kc, nowMillis);
-			checkMilestones(boss);
 			return boss.getName();
 		}
 
@@ -882,7 +867,6 @@ public class Tracker
 		markKill(boss, nowMillis);
 		trips.afterKill(boss, nowMillis);
 		statistics.startTracking(boss);
-		checkMilestones(boss);
 		return boss.getName();
 	}
 
@@ -1033,25 +1017,6 @@ public class Tracker
 		String name = drop.getDisplayName().equals(drop.getName()) ? itemName : drop.getDisplayName();
 		// "first" is only certain when the collection log told us the history of this item
 		boolean historyKnown = progress.clogSynced && !catalog.isClogShared(key);
-		String text = null;
-		if (previous != null && kc > previous)
-		{
-			int kills = kc - previous;
-			text = String.format(Locale.ROOT, "%s after %,d %s (%s the drop rate).", name, kills, units(boss, kills), multiple(kills * rate));
-		}
-		else if (historyKnown && (before == null || before == 0) && kc > 0)
-		{
-			text = String.format(Locale.ROOT, "Your first %s, after %,d %s (%s the drop rate).", name, kc, units(boss, kc), multiple(kc * rate));
-		}
-		else if (progress.trackingStartKc != null && kc > progress.trackingStartKc)
-		{
-			int kills = kc - progress.trackingStartKc;
-			text = String.format(Locale.ROOT, "%s after at least %,d %s.", name, kills, units(boss, kills));
-		}
-		if (text != null && rate > 0)
-		{
-			outbox.add(new Note(Note.Kind.DROP, text));
-		}
 		// records: the kills this drop took, when known exactly
 		Integer took = previous != null && kc > previous ? Integer.valueOf(kc - previous)
 			: historyKnown && (before == null || before == 0) && kc > 0 ? Integer.valueOf(kc) : null;
@@ -1112,107 +1077,6 @@ public class Tracker
 			return String.format(Locale.ROOT, "%.2fx", m);
 		}
 		return m < 10 ? String.format(Locale.ROOT, "%.1fx", m) : String.format(Locale.ROOT, "%.0fx", m);
-	}
-
-	/**
-	 * After a kill: announce items that just passed 2x, 3x, 5x or 10x the drop rate
-	 * without dropping. Several at once become one message. A big jump in kill count
-	 * (first sync, first message after installing) only catches up quietly.
-	 */
-	private void checkMilestones(BossDefinition boss)
-	{
-		BossProgress progress = ctx.state().get(boss.getName());
-		BossStats s = statistics.stats(boss.getName(), ctx.settings());
-		if (s == null)
-		{
-			return;
-		}
-		int kc = s.getKillCount();
-		Integer lastChecked = progress.lastCheckedKc;
-		boolean quiet = lastChecked == null || kc <= lastChecked || kc - lastChecked > MAX_QUIET_JUMP;
-		progress.lastCheckedKc = kc;
-
-		List<String> names = new ArrayList<>();
-		List<Integer> levels = new ArrayList<>();
-		for (int i = 0; i < s.getRows().size(); i++)
-		{
-			RowStats row = s.getRows().get(i);
-			DropDefinition drop = s.getDrops().get(i);
-			if (!statistics.counts(boss, drop, progress) || row.getStreak() == null || row.getRate() <= 0)
-			{
-				continue;
-			}
-			double m = row.getStreakMultiple();
-			int level = -1;
-			for (int t = 0; t < MILESTONES.length; t++)
-			{
-				if (m >= MILESTONES[t])
-				{
-					level = t;
-				}
-			}
-			String key = BossCatalog.normalize(drop.getName());
-			int announced = progress.milestone.getOrDefault(key, -1);
-			if (level > announced)
-			{
-				progress.milestone.put(key, level);
-				if (!quiet)
-				{
-					names.add(row.getLabel());
-					levels.add(MILESTONES[level]);
-				}
-			}
-		}
-		if (names.isEmpty())
-		{
-			return;
-		}
-		String unit = unit(boss);
-		if (names.size() == 1)
-		{
-			RowStats row = rowFor(s, names.get(0));
-			String streak = row.isStreakExact()
-				? String.format(Locale.ROOT, "%,d %s without one", row.getStreak(), units(boss, row.getStreak()))
-				: String.format(Locale.ROOT, "at least %,d %s since your last one", row.getStreak(), units(boss, row.getStreak()));
-			outbox.add(new Note(Note.Kind.MILESTONE, String.format(Locale.ROOT, "%s: %s, %dx the drop rate.",
-				names.get(0), streak, levels.get(0))));
-			return;
-		}
-		int top = levels.get(0);
-		boolean same = levels.stream().allMatch(l -> l == top);
-		StringBuilder list = new StringBuilder();
-		int shown = Math.min(3, names.size());
-		for (int i = 0; i < shown; i++)
-		{
-			if (i > 0)
-			{
-				list.append(i == shown - 1 && names.size() == shown ? " and " : ", ");
-			}
-			list.append(names.get(i));
-			if (!same)
-			{
-				list.append(" (").append(levels.get(i)).append("x)");
-			}
-		}
-		if (names.size() > shown)
-		{
-			list.append(" and ").append(names.size() - shown).append(" more");
-		}
-		outbox.add(new Note(Note.Kind.MILESTONE, same
-			? String.format(Locale.ROOT, "%s: %d items passed %dx the drop rate dry: %s.", boss.getName(), names.size(), top, list)
-			: String.format(Locale.ROOT, "%s: %d items passed a dry milestone: %s.", boss.getName(), names.size(), list)));
-	}
-
-	private static RowStats rowFor(BossStats s, String label)
-	{
-		for (RowStats row : s.getRows())
-		{
-			if (row.getLabel().equals(label))
-			{
-				return row;
-			}
-		}
-		return null;
 	}
 
 	/**

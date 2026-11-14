@@ -20,8 +20,6 @@ import java.awt.Container;
 import java.time.format.DateTimeFormatter;
 import javax.swing.text.DefaultFormatter;
 import java.awt.FlowLayout;
-import java.awt.event.FocusAdapter;
-import java.awt.event.FocusEvent;
 import java.awt.Graphics2D;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -42,7 +40,6 @@ import java.awt.Point;
 import java.awt.RenderingHints;
 import java.awt.geom.RoundRectangle2D;
 import java.util.Set;
-import java.awt.datatransfer.StringSelection;
 import java.awt.Toolkit;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -492,11 +489,6 @@ public class ExpectedDropsPanel extends PluginPanel
 	private final JLabel aboutLink = new JLabel();
 	private final JLabel aboutSep = new JLabel();
 	private final JLabel resetSep = new JLabel();
-	/** Account overview: copies your verdicts as text to paste anywhere. Only shown once a boss is loaded. */
-	private final JLabel shareLink = new JLabel("<html><u>Copy my luck</u></html>");
-	private final JLabel shareSep = new JLabel();
-	/** What "Copy my luck" copies, or null when there is nothing to share on this page. */
-	private String shareText;
 
 	private Tab tab = Tab.EXPECTED;
 	private boolean updatingSelection;
@@ -550,7 +542,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		gray(helpLabel);
 		hand(helpLabel);
 		onClick(helpLabel, () -> toggleHelp());
-		Activatable.install(helpLabel, "Help for this page", this::toggleHelp);
 		JPanel titleRow = new JPanel(new BorderLayout());
 		clear(titleRow);
 		left(titleRow);
@@ -584,11 +575,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		hand(setupHeader);
 		setupHeader.setToolTipText("Show or hide the collection log pages you still need to open");
 		onClick(setupHeader, () ->
-		{
-			setupExpanded = !setupExpanded;
-			refresh();
-		});
-		Activatable.install(setupHeader, "Show or hide the collection log pages you still need to open", () ->
 		{
 			setupExpanded = !setupExpanded;
 			refresh();
@@ -741,7 +727,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		hide(notableLabel);
 		// a click shows the next fact (see showTiles)
 		onClick(notableLabel, () -> nextFact());
-		Activatable.install(notableLabel, "Next fact", this::nextFact);
 		top.add(notableLabel);
 		small(lastUniqueLabel);
 		muted(lastUniqueLabel);
@@ -776,11 +761,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		hand(graphTitle);
 		graphTitle.setToolTipText("Your account's luck, one point per day you play");
 		onClick(graphTitle, () ->
-		{
-			setGraphOpen.accept(!options.get().isLuckGraph());
-			refresh();
-		});
-		Activatable.install(graphTitle, "Luck over time", () ->
 		{
 			setGraphOpen.accept(!options.get().isLuckGraph());
 			refresh();
@@ -889,13 +869,11 @@ public class ExpectedDropsPanel extends PluginPanel
 		resetButton.setToolTipText("Forget the kill count and drops tracked for this boss (asks first)");
 		hand(resetButton);
 		onClick(resetButton, () -> resetSelected());
-		Activatable.install(resetButton, "Reset this boss", this::resetSelected);
 		// About, Feedback and Reset: one quiet line (About and Reset only where they apply, see updateFooter)
 		small(aboutLink);
 		gray(aboutLink);
 		hand(aboutLink);
 		onClick(aboutLink, () -> toggleAbout());
-		Activatable.install(aboutLink, "About this page", this::toggleAbout);
 		buildFoldCard(aboutCard, aboutText);
 		// Escape closes whichever one is open
 		KeyStroke escape = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0);
@@ -914,8 +892,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		footer.add(aboutLink);
 		footer.add(footerDot(aboutSep));
 		footer.add(feedbackLink());
-		footer.add(footerDot(shareSep));
-		footer.add(buildShareLink());
 		footer.add(footerDot(resetSep));
 		footer.add(resetButton);
 		maxHeight(footer, 18);
@@ -1553,7 +1529,6 @@ public class ExpectedDropsPanel extends PluginPanel
 				link.setForeground(Theme.TEXT);
 			}
 		});
-		Activatable.install(link, tip, action);
 	}
 
 	private void drawPage()
@@ -1594,7 +1569,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		headerIcon.setText(null);
 		headerIcon.setVisible(true);
 		kcLabel.setVisible(true);
-		shareText = null;
 		if (account)
 		{
 			refreshAccount(o);
@@ -2134,7 +2108,6 @@ public class ExpectedDropsPanel extends PluginPanel
 			account = tracker.accountStats(raidSettings.get(), o.isGeValue() ? priceOf : null);
 		}
 		RowStats total = account.getTotal();
-		shareText = ShareText.account(account, o.isGeValue());
 		hide(resetButton);
 		aboutLink.setText("");
 		setAbout(null);
@@ -2421,73 +2394,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				gray(link);
 			}
 		});
-		return Activatable.install(link, "Feedback, opens GitHub in your browser", () -> LinkBrowser.browse(REPORT_URL));
-	}
-
-	/** How long "Copied!" stays on the link before it says "Copy my luck" again. */
-	private static final int COPIED_MILLIS = 2000;
-
-	/** A quiet footer link that copies the account's verdicts as plain text. Nothing is sent anywhere. */
-	private JLabel buildShareLink()
-	{
-		small(shareLink);
-		gray(shareLink);
-		left(shareLink);
-		shareLink.setToolTipText("Copies your account's verdicts as text, to paste into Discord or Reddit.");
-		hand(shareLink);
-		shareLink.addMouseListener(new MouseAdapter()
-		{
-			@Override
-			public void mouseClicked(MouseEvent e)
-			{
-				copyLuck();
-			}
-
-			@Override
-			public void mouseEntered(MouseEvent e)
-			{
-				shareLink.setForeground(Color.WHITE);
-			}
-
-			@Override
-			public void mouseExited(MouseEvent e)
-			{
-				gray(shareLink);
-			}
-		});
-		Activatable.install(shareLink, "Copy my luck, copies your verdicts as text", this::copyLuck);
-		return shareLink;
-	}
-
-	/** Puts the share text on the clipboard and says so on the link for a moment. */
-	private void copyLuck()
-	{
-		String text = shareText;
-		if (text == null)
-		{
-			return;
-		}
-		try
-		{
-			Toolkit.getDefaultToolkit().getSystemClipboard()
-				.setContents(new StringSelection(text), null);
-		}
-		catch (RuntimeException e)
-		{
-			// no clipboard to copy to (some desktops lock it): say so rather than pretend it worked
-			shareLink.setText("<html><u>Couldn't copy</u></html>");
-			resetShareLinkSoon();
-			return;
-		}
-		shareLink.setText("<html><u>Copied!</u></html>");
-		resetShareLinkSoon();
-	}
-
-	private void resetShareLinkSoon()
-	{
-		Timer timer = new Timer(COPIED_MILLIS, e -> shareLink.setText("<html><u>Copy my luck</u></html>"));
-		timer.setRepeats(false);
-		timer.start();
+		return link;
 	}
 
 	/** The quiet dot between footer links. */
@@ -2506,9 +2413,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		aboutLink.setVisible(about);
 		aboutSep.setVisible(about);
 		resetSep.setVisible(resetButton.isVisible());
-		boolean share = shareText != null;
-		shareLink.setVisible(share);
-		shareSep.setVisible(share);
 	}
 
 	private static final String ESTIMATE_NOTE = "Estimate: it depends on your team, raid points or setup, which On Rate can't always see.";
@@ -2796,7 +2700,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			hand(label);
 			onClick(label, () -> pick.run());
 		}
-		return Activatable.install(label, text + (selected ? ", selected" : ""), pick);
+		return label;
 	}
 
 	/** The Recent tab: the two tiles, the switch, and the page the switch is on. */
@@ -3089,7 +2993,7 @@ public class ExpectedDropsPanel extends PluginPanel
 					gray(more);
 				}
 			});
-			line.add(Activatable.install(more, tip, flip), BorderLayout.EAST);
+			line.add(more, BorderLayout.EAST);
 		}
 		else
 		{
@@ -3275,12 +3179,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		title.setToolTipText("The " + unit + "s and drops On Rate saw since you installed it");
 		hand(title);
 		onClick(title, () ->
-		{
-			historyOpen = !historyOpen;
-			rememberFolds();
-			refresh();
-		});
-		Activatable.install(title, "History, " + (historyOpen ? "open" : "closed"), () ->
 		{
 			historyOpen = !historyOpen;
 			rememberFolds();
@@ -3744,11 +3642,6 @@ public class ExpectedDropsPanel extends PluginPanel
 			toggle.run();
 			refresh();
 		});
-		Activatable.install(title, capital(text.toLowerCase(Locale.ROOT)) + ", " + (open ? "open" : "closed"), () ->
-		{
-			toggle.run();
-			refresh();
-		});
 		rowsPanel.add(title);
 	}
 
@@ -3794,11 +3687,6 @@ public class ExpectedDropsPanel extends PluginPanel
 					refresh();
 				});
 			}
-			Activatable.install(label, labels[i] + (on ? ", selected" : ""), () ->
-			{
-				pick.accept(index);
-				refresh();
-			});
 			cells.add(label);
 		}
 		fullWidth(row);
@@ -4748,7 +4636,6 @@ public class ExpectedDropsPanel extends PluginPanel
 			refresh();
 		};
 		onClick(link, () -> action.run());
-		Activatable.install(link, text, action);
 		rowsPanel.add(link);
 	}
 
@@ -4942,12 +4829,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				refresh();
 			});
 		}
-		return Activatable.install(label, text + " tab" + (selected ? ", selected" : ""), () ->
-		{
-			accountTab = tab;
-			rememberAccountPage();
-			refresh();
-		});
+		return label;
 	}
 
 	/** How many items each list of the Items page shows before "show all" (as in the Single drops page). */
@@ -5964,12 +5846,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				refresh();
 			});
 		}
-		return Activatable.install(label, text + (selected ? ", selected" : ""), () ->
-		{
-			topMode = mode;
-			rememberAccountPage();
-			refresh();
-		});
+		return label;
 	}
 
 	/**
@@ -6717,10 +6594,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			JComponent jc = (JComponent) c;
 			if (!jc.isFocusable())
 			{
-				String name = Activatable.plain(jc.getToolTipText());
-				Activatable.install(jc, (name.isEmpty() ? "Item" : name) + ", options", () -> menu.show(jc, 0, jc.getHeight()));
 			}
-			Activatable.onContextMenu(jc, () -> menu.show(jc, 0, jc.getHeight()));
 		}
 		popupMouse(c, menu);
 	}
@@ -6864,14 +6738,12 @@ public class ExpectedDropsPanel extends PluginPanel
 	private void renderAccountItems(AccountStats account, RowStats total, List<RowStats> rows, ItemView view,
 		Map<String, double[]> byValue)
 	{
-		rowGroup = new Activatable.Group();
 		try
 		{
 			renderAccountRows(account, total, rows, view, byValue);
 		}
 		finally
 		{
-			rowGroup = null;
 		}
 	}
 
@@ -7486,7 +7358,6 @@ public class ExpectedDropsPanel extends PluginPanel
 		applyTip(panel, tip, click);
 		if (onClick != null)
 		{
-			Activatable.install(panel, Activatable.plain(tip), onClick, rowGroup);
 		}
 	}
 
@@ -7975,7 +7846,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				gray(label);
 			}
 		});
-		return Activatable.install(label, status.getPage() + ", show it here", () -> showBoss(status.getBosses().get(0)));
+		return label;
 	}
 
 	private JPanel row(RowStats row, BossStats stats, String unit)
@@ -7987,7 +7858,6 @@ public class ExpectedDropsPanel extends PluginPanel
 	 * While the account overview's boss list is drawn: its rows share one Tab stop (Up and Down move
 	 * between them). Null elsewhere. Only touched on the Swing thread.
 	 */
-	private static Activatable.Group rowGroup;
 
 	private JPanel buildRow(RowStats row, String tip, Runnable onClick)
 	{
@@ -8089,46 +7959,11 @@ public class ExpectedDropsPanel extends PluginPanel
 		count.setToolTipText(tip);
 		if (onClick != null)
 		{
-			Activatable.install(panel, row.getShownLabel() + ", open", onClick, rowGroup);
 		}
 		else if (itemNames && !row.isAny())
 		{
-			nameRow(panel, row.getShownLabel(), tip);
 		}
 		return Card.row(panel);
-	}
-
-	/**
-	 * Makes an item row reachable by keyboard: it can take the focus, its accessible name is the item's name (its
-	 * description the tooltip as plain text), and the tooltip shows while it has the focus.
-	 */
-	private static void nameRow(JPanel panel, String name, String tip)
-	{
-		panel.setFocusable(true);
-		panel.getAccessibleContext().setAccessibleName(name);
-		if (tip != null)
-		{
-			panel.getAccessibleContext().setAccessibleDescription(tip.replaceAll("<[^>]*>", " ").replaceAll("\\s+", " ").trim());
-		}
-		panel.addFocusListener(new FocusAdapter()
-		{
-			@Override
-			public void focusGained(FocusEvent e)
-			{
-				if (panel.isShowing())
-				{
-					ToolTipManager.sharedInstance().mouseMoved(new MouseEvent(panel, MouseEvent.MOUSE_MOVED,
-						System.currentTimeMillis(), 0, panel.getWidth() / 2, panel.getHeight() / 2, 0, false));
-				}
-			}
-
-			@Override
-			public void focusLost(FocusEvent e)
-			{
-				ToolTipManager.sharedInstance().mouseExited(new MouseEvent(panel, MouseEvent.MOUSE_EXITED,
-					System.currentTimeMillis(), 0, 0, 0, 0, false));
-			}
-		});
 	}
 
 	/**
@@ -8594,9 +8429,9 @@ public class ExpectedDropsPanel extends PluginPanel
 	{
 		// the card look: no grey underline under the tab that isn't selected, as on the account tabs
 		Color unselected = boxes ? ColorScheme.DARK_GRAY_COLOR : ColorScheme.MEDIUM_GRAY_COLOR;
-		return Activatable.withRing(BorderFactory.createCompoundBorder(
+		return BorderFactory.createCompoundBorder(
 			BorderFactory.createMatteBorder(0, 0, 2, 0, selected ? Theme.ACCENT : unselected),
-			new EmptyBorder(Theme.S, 0, Theme.HAIR, 0)));
+			new EmptyBorder(Theme.S, 0, Theme.HAIR, 0));
 	}
 
 	private void resetSelected()
