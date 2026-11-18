@@ -97,19 +97,23 @@ public final class RateModel
 	/**
 	 * The Fractured Archive: your chance from your contribution (or an even share of the team when
 	 * it is unknown) after your deaths. A raid saved before the game update of 11 November 2026 keeps
-	 * the chance it had then (1 in 14, +4% per player beyond two, whatever {@code baseChance} is now);
-	 * raids since use the game's fixed chance for their team size, scaled from {@code baseChance}.
+	 * the chance it had then (1 in 14, +4% per player beyond two, whatever {@code baseChance} is now); one
+	 * from before the update of 18 November 2026 had a duo at 1 in 16; raids since use the game's fixed
+	 * chance for their team size (a duo: 1 in 17), scaled from {@code baseChance}.
 	 */
 	static double fracturedChance(RaidRecord record, double baseChance, int teamSize)
 	{
 		int team = Math.max(1, teamSize);
 		boolean before = RaidChance.tfaBeforeChange(record.savedMillis);
+		boolean week = !before && RaidChance.tfaBeforeDuoChange(record.savedMillis);
 		if (record.contribution < 0)
 		{
-			return before ? RaidChance.tfaEvenBefore(team, record.deaths) : RaidChance.tfaEven(team, record.deaths, baseChance);
+			return before ? RaidChance.tfaEvenBefore(team, record.deaths)
+				: week ? RaidChance.tfaEvenWeek(team, record.deaths) : RaidChance.tfaEven(team, record.deaths, baseChance);
 		}
 		double kept = RaidChance.tfaContributionAfterDeaths(record.contribution, team, record.deaths);
-		return before ? RaidChance.tfaBefore(kept, team) : RaidChance.tfa(kept, team, baseChance);
+		return before ? RaidChance.tfaBefore(kept, team)
+			: week ? RaidChance.tfaWeek(kept, team) : RaidChance.tfa(kept, team, baseChance);
 	}
 
 	/**

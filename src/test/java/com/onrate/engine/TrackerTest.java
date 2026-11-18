@@ -1483,19 +1483,19 @@ public class TrackerTest
 		assertEquals(1 - Math.exp(-1), row.getChanceAtLeastOne(), 1e-12);
 	}
 
-	/** A moment after the game update of 11 November 2026 that fixed the team chance per raid size. */
-	private static final long AFTER_TFA_CHANGE = RaidChance.TFA_CHANGE_MILLIS + 3_600_000;
+	/** A moment after the game update of 18 November 2026 (a duo at 1 in 17, the other sizes fixed per raid size). */
+	private static final long AFTER_TFA_CHANGE = RaidChance.TFA_DUO_CHANGE_MILLIS + 3_600_000;
 
 	@Test
 	public void fracturedArchiveSinceTheUpdateUsesTheFixedChanceOfTheTeamSize()
 	{
-		// raids On Rate couldn't count use the setting: a duo, 1 in 16 for the team, 1 in 32 each
+		// raids On Rate couldn't count use the setting: a duo, 1 in 17 for the team, 1 in 34 each
 		RaidSettings duo = raid -> "fractured".equals(raid) ? RaidChance.tfaEven(2, 0, RaidChance.TFA_BASE_CHANCE) : 0;
 		int[] around = {0};
 		tracker.setTeamSizeDetector(() -> around[0]);
 		long t = AFTER_TFA_CHANGE;
 		tracker.onChatMessage("Your The Fractured Archive completion count is: <col=ff0000>10</col>.", t);
-		assertEquals(10 / 32.0 * 5 / 15, row(tracker.stats("The Fractured Archive", duo), "Rondache").getExpected(), 1e-12);
+		assertEquals(10 / 34.0 * 5 / 15, row(tracker.stats("The Fractured Archive", duo), "Rondache").getExpected(), 1e-12);
 
 		// four players around you: 1 in 10.5 for the team, a quarter each
 		around[0] = 4;
@@ -1514,7 +1514,7 @@ public class TrackerTest
 		assertEquals(eight, history.get(0).getPurpleChance(), 1e-12);
 		assertEquals(four, history.get(1).getPurpleChance(), 1e-12);
 		BossStats after = tracker.stats("The Fractured Archive", duo);
-		assertEquals((10 / 32.0 + four + eight) * 5 / 15, row(after, "Rondache").getExpected(), 1e-12);
+		assertEquals((10 / 34.0 + four + eight) * 5 / 15, row(after, "Rondache").getExpected(), 1e-12);
 		// the pet and folio don't depend on the purple or the team
 		assertEquals(12 / 750.0, row(after, "Orion").getExpected(), 1e-12);
 		assertEquals(12 / 15.0, row(after, "Archivist's folio (inert)").getExpected(), 1e-12);

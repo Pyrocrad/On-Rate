@@ -409,16 +409,16 @@ public interface ExpectedDropsConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "tfaSoloDuoChance",
+		keyName = "tfaDuoChance",
 		name = "Fractured Archive team purple chance (%)",
-		description = "The team's chance of a unique per Fractured Archive raid for a solo or duo with no deaths: 1 in 16 (6.25%). "
-			+ "Bigger teams have their own chance, worked out from this one (1 in 12.5 for three players, up to 1 in 7.5 for eight), and you get your share of the damage. "
-			+ "Every raid since the game update of 11 November 2026 uses it, including ones where On Rate counted your team. Raids from before it keep the chance they had (1 in 14).",
+		description = "The team's chance of a unique per Fractured Archive raid for a duo with no deaths: 1 in 17 (5.88%). "
+			+ "A solo and bigger teams have their own chance, worked out from this one (1 in 16 for a solo, 1 in 12.5 for three players, up to 1 in 7.5 for eight), and you get your share of the damage. "
+			+ "Every raid since the game update of 18 November 2026 uses it, including ones where On Rate counted your team. Raids from before it keep the chance they had (1 in 16 for a duo, 1 in 14 before 11 November).",
 		position = 46,
 		section = raidChancesSection
 	)
 	default double tfaTeamChance()
 	{
-		return 100 / 16.0;
+		return 100 / 17.0;
 	}
 }

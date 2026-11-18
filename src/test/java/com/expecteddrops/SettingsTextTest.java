@@ -52,7 +52,7 @@ public class SettingsTextTest
 			{"toaNormalUniqueChance", "Tombs of Amascut purple chance, Normal (%)"},
 			{"toaExpertUniqueChance", "Tombs of Amascut purple chance, Expert Mode (%)"},
 			{"tfaTeamSize", "Fractured Archive team size"},
-			{"tfaSoloDuoChance", "Fractured Archive team purple chance (%)"},
+			{"tfaDuoChance", "Fractured Archive team purple chance (%)"},
 		};
 		int found = 0;
 		for (Method m : ExpectedDropsConfig.class.getMethods())

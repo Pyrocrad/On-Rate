@@ -1761,7 +1761,7 @@ public class ExpectedDropsPanel extends PluginPanel
 				note.append(String.format(Locale.ROOT, "Raids On Rate didn't track use a team of %d ("
 					+ (learned > 0 ? "your usual team, from your last " + learned + " raids" : "<i>Fractured Archive team size</i>")
 					+ ") and an even share of the damage: "
-					+ "%.2f%% each. The team rolls %.2f%% (%.2f%% for a solo or duo, more for each bigger team). "
+					+ "%.2f%% each. The team rolls %.2f%% (%.2f%% for a duo, more for each bigger team). "
 					+ "Change these under <i>Raids</i> and <i>Raid purple chances</i> in On Rate's settings.",
 					team, raidSettings.get().uniqueChance("fractured") * 100, raidSettings.get().uniqueChance("fractured") * team * 100,
 					raidSettings.get().tfaBaseChance() * 100));

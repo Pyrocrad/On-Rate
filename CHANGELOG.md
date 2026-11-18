@@ -51,6 +51,9 @@ Updates come through the Plugin Hub. Each heading is the date of that update; **
 *Game update of 11 November 2026*
 - **The Fractured Archive's new loot rates:** the team's purple chance is now fixed per raid size (1 in 16 for a solo or duo, up to 1 in 7.5 for eight players) and elemental fragments are 1/14. Raids On Rate saved before the update keep the chance they had, so your luck so far doesn't shift. **Fractured Archive team purple chance (%)** (formerly TFA team (%)) in the settings goes back to the new default (6.25%), also if you had changed it.
 
+*Game update of 18 November 2026*
+- **The Fractured Archive's duo chance:** the team's purple chance for a duo goes from 1 in 16 to 1 in 17 (1 in 34 each in an even duo). A solo stays 1 in 16 and the bigger teams are unchanged. Raids On Rate saved before the update keep the chance they had. **Fractured Archive team purple chance (%)** in the settings is now the duo's chance and goes to the new default (5.88%), also if you had changed it.
+
 *Fixes*
 - **Right-click hints match the menu:** a hover or tooltip only says "Right-click" when that row really has a right-click menu. Shared items with no place to move older copies to no longer promise one.
 *Changed*

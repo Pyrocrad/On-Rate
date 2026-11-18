@@ -19,7 +19,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * The Fractured Archive around the game update of 11 November 2026, 11:30 UTC: which raids keep the
+ * The Fractured Archive around the game update of 11 November 2026, 11:30 UTC (and the duo change of
+ * 18 November): which raids keep the
  * chance of before it, which get the fixed chance of their team size, at the very moment of the
  * change, for every team size, in any time zone and after saving and loading.
  */
@@ -27,7 +28,11 @@ public class FracturedArchiveUpdateTest
 {
 	private static final String TFA = "The Fractured Archive";
 	private static final long CHANGE = RaidChance.TFA_CHANGE_MILLIS;
+	/** The team chances between the updates of 11 and 18 November. */
 	private static final double[] ONE_IN = {16, 16, 12.5, 10.5, 9.5, 8.5, 8, 7.5};
+	/** The team chances since the update of 18 November (a duo is 1 in 17). */
+	private static final double[] ONE_IN_NOW = {16, 17, 12.5, 10.5, 9.5, 8.5, 8, 7.5};
+	private static final long DUO_CHANGE = RaidChance.TFA_DUO_CHANGE_MILLIS;
 	/** Raids On Rate didn't count: none in these tests, so the setting's own chance never matters. */
 	private static final RaidSettings RAIDS = raid -> 0;
 
@@ -57,6 +62,11 @@ public class FracturedArchiveUpdateTest
 	private static double since(int team)
 	{
 		return 1 / ONE_IN[team - 1] / team;
+	}
+
+	private static double now(int team)
+	{
+		return 1 / ONE_IN_NOW[team - 1] / team;
 	}
 
 	/** Each raid's chance as History shows it, oldest first. */
@@ -107,13 +117,27 @@ public class FracturedArchiveUpdateTest
 			assertEquals(team + " players before", before(team), chances[team - 1], 1e-15);
 			assertEquals(team + " players since", since(team), chances[8 + team - 1], 1e-15);
 		}
-		// solo and duo dropped from 1 in 14 to 1 in 16; from three players up the team's chance went up
+		// solo and duo dropped from 1 in 14 to 1 in 16 (the duo to 1 in 17 a week later); from three players up the team's chance went up
 		assertTrue(since(1) < before(1));
 		assertTrue(since(2) < before(2));
 		for (int team = 3; team <= 8; team++)
 		{
 			assertTrue(team + " players", since(team) > before(team));
 		}
+	}
+
+	@Test
+	public void theDuoChangeOfTheEighteenthMovesOnlyTheDuoAndTheSolo()
+	{
+		raid(2, DUO_CHANGE - 1);
+		raid(2, DUO_CHANGE);
+		raid(1, DUO_CHANGE + 1);
+		raid(3, DUO_CHANGE + 2);
+		double[] chances = chances();
+		assertEquals(1 / 32.0, chances[0], 1e-15);
+		assertEquals(1 / 34.0, chances[1], 1e-15);
+		assertEquals(1 / 16.0, chances[2], 1e-15);
+		assertEquals(1 / 12.5 / 3, chances[3], 1e-15);
 	}
 
 	@Test
@@ -209,12 +233,14 @@ public class FracturedArchiveUpdateTest
 	}
 
 	@Test
-	public void theSettingsChanceMovesOnlyTheRaidsSinceTheUpdateWhateverTheirTeam()
+	public void theSettingsChanceMovesOnlyTheRaidsSinceTheDuoChangeWhateverTheirTeam()
 	{
 		raid(1, CHANGE - 1);
 		raid(6, CHANGE - 1);
 		raid(1, CHANGE);
 		raid(6, CHANGE);
+		raid(1, DUO_CHANGE);
+		raid(6, DUO_CHANGE);
 		RaidSettings tripled = new RaidSettings()
 		{
 			@Override
@@ -231,6 +257,6 @@ public class FracturedArchiveUpdateTest
 		};
 		BossStats stats = tracker.stats(TFA, tripled);
 		double rondache = stats.getRows().stream().filter(r -> r.getLabel().equals("Rondache")).findFirst().get().getExpected();
-		assertEquals((before(1) + before(6) + 3 * since(1) + 3 * since(6)) * 5 / 15, rondache, 1e-12);
+		assertEquals((before(1) + before(6) + since(1) + since(6) + 3 * now(1) + 3 * now(6)) * 5 / 15, rondache, 1e-12);
 	}
 }

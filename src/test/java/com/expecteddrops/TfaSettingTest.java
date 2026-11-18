@@ -38,16 +38,16 @@ public class TfaSettingTest
 	{
 		Method m = ExpectedDropsConfig.class.getMethod("tfaTeamChance");
 		ConfigItem item = m.getAnnotation(ConfigItem.class);
-		assertEquals("tfaSoloDuoChance", item.keyName());
+		assertEquals("tfaDuoChance", item.keyName());
 		assertEquals("Fractured Archive team purple chance (%)", item.name());
-		assertEquals(6.25, new ExpectedDropsConfig()
+		assertEquals(100 / 17.0, new ExpectedDropsConfig()
 		{
 		}.tfaTeamChance(), 0);
 		// what it says matches the rules it stands for
-		assertTrue(item.description().contains("1 in 16 (6.25%)"));
+		assertTrue(item.description().contains("1 in 17 (5.88%)"));
 		assertTrue(item.description().contains("1 in 12.5 for three"));
 		assertTrue(item.description().contains("1 in 7.5 for eight"));
-		assertTrue(item.description().contains("11 November 2026"));
+		assertTrue(item.description().contains("18 November 2026"));
 		assertFalse(item.description().contains("7.14"));
 		assertFalse(item.description().contains("adds 4%"));
 	}
@@ -57,6 +57,7 @@ public class TfaSettingTest
 	{
 		List<String> old = Arrays.asList(ExpectedDropsPlugin.OLD_SETTINGS);
 		assertTrue(old.contains("tfaTeamChance"));
+		assertTrue(old.contains("tfaSoloDuoChance"));
 		// a key in use on that list would be wiped at every start
 		for (Method m : ExpectedDropsConfig.class.getMethods())
 		{
@@ -76,7 +77,7 @@ public class TfaSettingTest
 		Map<String, String> saved = new HashMap<>();
 		saved.put("tfaTeamChance", "7.142857142857143");
 		saved.put("showTrip", "true");
-		saved.put("tfaSoloDuoChance", "9.0");
+		saved.put("tfaDuoChance", "9.0");
 		saved.put("tfaTeamSize", "4");
 		List<String> unset = new ArrayList<>();
 		ExpectedDropsPlugin.clearOldSettings(saved::get, key ->
@@ -87,7 +88,7 @@ public class TfaSettingTest
 		assertEquals(2, unset.size());
 		assertTrue(unset.contains("tfaTeamChance"));
 		assertFalse(saved.containsKey("tfaTeamChance"));
-		assertEquals("9.0", saved.get("tfaSoloDuoChance"));
+		assertEquals("9.0", saved.get("tfaDuoChance"));
 		assertEquals("4", saved.get("tfaTeamSize"));
 
 		// the next start, and the one after: nothing left to clear, nothing reset again
@@ -95,14 +96,14 @@ public class TfaSettingTest
 		ExpectedDropsPlugin.clearOldSettings(saved::get, unset::add);
 		ExpectedDropsPlugin.clearOldSettings(saved::get, unset::add);
 		assertTrue(unset.isEmpty());
-		assertEquals("9.0", saved.get("tfaSoloDuoChance"));
+		assertEquals("9.0", saved.get("tfaDuoChance"));
 	}
 
 	@Test
 	public void aPlayerWhoNeverHadTheOldValueLosesNothing()
 	{
 		Map<String, String> saved = new HashMap<>();
-		saved.put("tfaSoloDuoChance", "6.25");
+		saved.put("tfaDuoChance", "5.88");
 		List<String> unset = new ArrayList<>();
 		ExpectedDropsPlugin.clearOldSettings(saved::get, unset::add);
 		assertTrue(unset.isEmpty());
@@ -110,7 +111,7 @@ public class TfaSettingTest
 	}
 
 	@Test
-	public void theSettingIsThePercentForASoloOrDuoAndIsKeptBetween0And100()
+	public void theSettingIsThePercentForADuoAndIsKeptBetween0And100()
 	{
 		assertEquals(RaidChance.TFA_BASE_CHANCE, new ConfigRaidSettings(new ExpectedDropsConfig()
 		{
@@ -127,7 +128,7 @@ public class TfaSettingTest
 	@Test
 	public void raidsOnRateDidntCountUseTheFixedChanceOfTheSettingsTeamSize()
 	{
-		double[] oneIn = {16, 16, 12.5, 10.5, 9.5, 8.5, 8, 7.5};
+		double[] oneIn = {16, 17, 12.5, 10.5, 9.5, 8.5, 8, 7.5};
 		for (int team = 1; team <= 8; team++)
 		{
 			int size = team;

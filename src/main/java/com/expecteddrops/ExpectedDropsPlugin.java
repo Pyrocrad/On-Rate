@@ -154,6 +154,9 @@ public class ExpectedDropsPlugin extends Plugin
 		// The Fractured Archive's team chance from before the game update of 11 November 2026 (1 in 14):
 		// its setting has a new key, so the new chance (1 in 16) applies to everyone
 		"tfaTeamChance",
+		// the same setting from the week of 11 to 18 November 2026 (1 in 16 for a solo or duo): a duo is
+		// now 1 in 17, so it has a new key and the new default applies to everyone
+		"tfaSoloDuoChance",
 	};
 
 	/**

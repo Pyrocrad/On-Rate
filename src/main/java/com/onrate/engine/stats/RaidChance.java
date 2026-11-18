@@ -19,15 +19,24 @@ public final class RaidChance
 	public static final double TOA_LOW_LEVEL_KEEP = 1 / 50.0;
 
 	/**
-	 * The Fractured Archive: the team's chance of a unique in a solo or duo raid with no deaths, 1 in 16
-	 * (since the game update of 11 November 2026; see {@link #TFA_CHANGE_MILLIS}).
+	 * The Fractured Archive: the team's chance of a unique in a duo raid with no deaths, 1 in 17 (since
+	 * the game update of 18 November 2026; see {@link #TFA_DUO_CHANGE_MILLIS}). A solo is 1 in 16.
 	 */
-	public static final double TFA_BASE_CHANCE = 1 / 16.0;
+	public static final double TFA_BASE_CHANCE = 1 / 17.0;
 	/**
 	 * Since that update the team's chance is fixed per raid size: one raid in this many gives the team a
-	 * unique with 1, 2, 3... 8 players and no deaths (Jagex's loot scaling post).
+	 * unique with 1, 2, 3... 8 players and no deaths (Jagex's loot scaling post; the duo changed on 18 November).
 	 */
-	private static final double[] TFA_ONE_IN = {16, 16, 12.5, 10.5, 9.5, 8.5, 8, 7.5};
+	private static final double[] TFA_ONE_IN = {16, 17, 12.5, 10.5, 9.5, 8.5, 8, 7.5};
+	/** The same chances between the updates of 11 and 18 November 2026: a duo was still 1 in 16. */
+	private static final double[] TFA_ONE_IN_WEEK = {16, 16, 12.5, 10.5, 9.5, 8.5, 8, 7.5};
+	/** The duo's team chance between the updates of 11 and 18 November 2026: 1 in 16. */
+	public static final double TFA_BASE_CHANCE_WEEK = 1 / 16.0;
+	/**
+	 * When the update that made a duo 1 in 17 went live: 18 November 2026, 11:30 UTC (the usual time of
+	 * the Wednesday update, a week after {@link #TFA_CHANGE_MILLIS}). Raids saved before it keep the chance they had.
+	 */
+	public static final long TFA_DUO_CHANGE_MILLIS = 1_795_001_400_000L;
 	/**
 	 * When the game update with those chances went live: 11 November 2026, 11:30 UTC (the usual time
 	 * of the Wednesday update; the worlds are down around it, so no raid spans it). Raids saved before it
@@ -50,14 +59,21 @@ public final class RaidChance
 	}
 
 	/**
-	 * The Fractured Archive's team-size multiplier on the base chance: 1 up to two players, then what
-	 * the game's fixed chance for that size is over the solo and duo one (three players: 16 / 12.5 =
-	 * x1.28, eight: 16 / 7.5 = x2.13). The base stays a setting, so every size follows a change to it.
+	 * The Fractured Archive's team-size multiplier on the base (duo) chance: 1 for two players, then what
+	 * the game's fixed chance for that size is over the duo one (a solo: 17 / 16 = x1.06, three players:
+	 * 17 / 12.5 = x1.36, eight: 17 / 7.5 = x2.27). The base stays a setting, so every size follows a change to it.
 	 */
 	public static double tfaTeamMultiplier(int teamSize)
 	{
 		int team = Math.max(1, Math.min(TFA_MAX_TEAM, teamSize));
-		return TFA_ONE_IN[0] / TFA_ONE_IN[team - 1];
+		return TFA_ONE_IN[1] / TFA_ONE_IN[team - 1];
+	}
+
+	/** The multiplier between the updates of 11 and 18 November 2026: 1 up to two players, three: 16 / 12.5 = x1.28. */
+	public static double tfaTeamMultiplierWeek(int teamSize)
+	{
+		int team = Math.max(1, Math.min(TFA_MAX_TEAM, teamSize));
+		return TFA_ONE_IN_WEEK[1] / TFA_ONE_IN_WEEK[team - 1];
 	}
 
 	/**
@@ -75,6 +91,12 @@ public final class RaidChance
 	public static boolean tfaBeforeChange(long savedMillis)
 	{
 		return savedMillis < TFA_CHANGE_MILLIS;
+	}
+
+	/** True for a raid saved before the update of 18 November 2026 (a duo was 1 in 16 then, or older). */
+	public static boolean tfaBeforeDuoChange(long savedMillis)
+	{
+		return savedMillis < TFA_DUO_CHANGE_MILLIS;
 	}
 
 	/** Contribution an even share of the raid gives you: 700 solo, 350 in a duo, 175 in a four. */
@@ -98,7 +120,7 @@ public final class RaidChance
 	 * base x multiplier x your contribution / 700.
 	 *
 	 * @param contribution your contribution after deaths (0 to 700)
-	 * @param baseChance   the team's chance for a solo or duo with no deaths (1/16 since 11 November 2026)
+	 * @param baseChance   the team's chance for a duo with no deaths (1/17 since 18 November 2026)
 	 * @return NaN when the contribution is unknown (negative)
 	 */
 	public static double tfa(double contribution, int teamSize, double baseChance)
@@ -109,6 +131,24 @@ public final class RaidChance
 		}
 		double share = Math.min(contribution, TFA_RAID_CONTRIBUTION) / TFA_RAID_CONTRIBUTION;
 		return Math.max(0, baseChance) * tfaTeamMultiplier(teamSize) * share;
+	}
+
+	/** {@link #tfa} for a raid from the week between the updates of 11 and 18 November 2026 (a duo: 1 in 16). */
+	public static double tfaWeek(double contribution, int teamSize)
+	{
+		if (contribution < 0 || Double.isNaN(contribution))
+		{
+			return Double.NaN;
+		}
+		double share = Math.min(contribution, TFA_RAID_CONTRIBUTION) / TFA_RAID_CONTRIBUTION;
+		return TFA_BASE_CHANCE_WEEK * tfaTeamMultiplierWeek(teamSize) * share;
+	}
+
+	/** {@link #tfaEven} for a raid from the week between the updates of 11 and 18 November 2026 (a duo: 1/32 each). */
+	public static double tfaEvenWeek(int teamSize, int deaths)
+	{
+		double contribution = tfaContributionAfterDeaths(tfaExpectedContribution(teamSize), teamSize, deaths);
+		return tfaWeek(contribution, teamSize);
 	}
 
 	/**
@@ -127,7 +167,7 @@ public final class RaidChance
 
 	/**
 	 * Your chance when only the team size (and maybe your deaths) is known: you are assumed to do
-	 * an even share of the damage. A duo with no deaths gets 1/32 each.
+	 * an even share of the damage. A duo with no deaths gets 1/34 each.
 	 *
 	 * @param deaths your deaths, or a negative number when unknown (counted as none)
 	 */
