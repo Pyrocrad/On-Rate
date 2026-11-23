@@ -52,6 +52,54 @@ public final class ItemTimes
 		BossPart assumedPart;
 	}
 
+	/**
+	 * Drops the collection log still needs for this item's row: 0 when you have it, 1 for a normal row you don't
+	 * have, and for a row of pieces (the Hydra's ring pieces, "pieces" in bosses.json) the pieces you are missing.
+	 * {@link ItemTime#isHave()} stays "at least one", as the original has it; this is the green-log reading.
+	 */
+	public static int piecesMissing(BossCatalog catalog, ItemTime t)
+	{
+		DropDefinition drop = dropOf(catalog, t);
+		if (drop == null || drop.pieces() <= 1 || t.isPet())
+		{
+			return t.isHave() ? 0 : 1;
+		}
+		return drop.piecesMissing(t.getReceived());
+	}
+
+	/**
+	 * The item as the Time page and the green log should read it: a row of pieces you are not done with is not
+	 * had yet, and its time is for the drops still missing. Any other item comes back as it is.
+	 */
+	public static ItemTime asLogNeeds(BossCatalog catalog, ItemTime t)
+	{
+		DropDefinition drop = dropOf(catalog, t);
+		if (drop == null || drop.pieces() <= 1 || t.isPet())
+		{
+			return t;
+		}
+		int missing = drop.piecesMissing(t.getReceived());
+		return missing == 0 ? t : t.forPiecesMissing(missing, drop.pieces());
+	}
+
+	private static DropDefinition dropOf(BossCatalog catalog, ItemTime t)
+	{
+		BossDefinition boss = catalog.byName(t.getBoss());
+		if (boss == null || t.getIconItem() == null)
+		{
+			return null;
+		}
+		String key = BossCatalog.normalize(t.getIconItem());
+		for (DropDefinition d : boss.getDrops())
+		{
+			if (BossCatalog.normalize(d.getName()).equals(key))
+			{
+				return d;
+			}
+		}
+		return null;
+	}
+
 	/** All items with a time, for every boss that has one; items you have are included (see {@link ItemTime#isHave()}). */
 	public static List<ItemTime> compute(Tracker tracker, KillTimes web, RaidSettings raids)
 	{

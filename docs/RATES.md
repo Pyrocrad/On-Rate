@@ -6,14 +6,14 @@ Unless a line says otherwise, rates come from the boss's page on the [Old School
 
 **Last full check: 18 October 2026.**
 
-**Items other monsters drop too.** The collection log counts these from every source, so a boss's number can include copies it didn't drop. On Rate still counts them for the boss, and their hover says where else they come from, with a right-click to leave them out: the Alchemical Hydra's eye, fang, heart and tail (hydras), the Kraken tentacle (cave krakens), the Glacial temotli (Frost Nagua), Tempoross's dragon harpoon (wyrms), the Araxyte head (araxytes), the Smouldering stone (hellhounds) and the Occult necklace (regular smoke devils). Shared items work the same way, without the right-click: the dragon chainbody (dust devils and smoke devils), draconic visage (other dragons and skeletal wyverns) and uncut onyx (Zalcano and the Fortis Colosseum). Sources from the wiki's drop tables and its list of items on more than one collection log page.
+**Items other monsters drop too.** The collection log counts these from every source, so a boss's number can include copies it didn't drop. On Rate still counts them for the boss, and their hover says where else they come from, with a right-click to leave them out: the Alchemical Hydra's ring pieces and tail (hydras), the Kraken tentacle (cave krakens), the Glacial temotli (Frost Nagua), Tempoross's dragon harpoon (wyrms), the Araxyte head (araxytes), the Smouldering stone (hellhounds) and the Occult necklace (regular smoke devils). Shared items work the same way, without the right-click: the dragon chainbody (dust devils and smoke devils), draconic visage (other dragons and skeletal wyverns) and uncut onyx (Zalcano and the Fortis Colosseum). Sources from the wiki's drop tables and its list of items on more than one collection log page.
 
 ## Checked and matching the wiki
 
 | Boss | Wiki page | Notes |
 |---|---|---|
 | Abyssal Sire | [Abyssal Sire](https://oldschool.runescape.wiki/w/Abyssal_Sire) | Unsired 1/100. The jar and pet come out of the Unsired, so their per-kill rates are worked out from it, and the Unsired itself is not counted as a unique. |
-| Alchemical Hydra | [Alchemical Hydra](https://oldschool.runescape.wiki/w/Alchemical_Hydra) | Dragon thrownaxes and knives (1/2,000 each) are left out: wyrms, drakes and hydras drop them too, and the collection log has one total for all of them, so the ones the Hydra did drop aren't counted either. |
+| Alchemical Hydra | [Alchemical Hydra](https://oldschool.runescape.wiki/w/Alchemical_Hydra) | One roll at 1/181 gives the next Brimstone ring piece, always in the same order (eye, fang, heart), so the three pieces are one row: 1/181 a kill, not 1/181 each. Its log needs all three, so the Time page, the green log and the forecast wait for three drops. Dragon thrownaxes and knives (1/2,000 each) are left out: wyrms, drakes and hydras drop them too, and the collection log has one total for all of them, so the ones the Hydra did drop aren't counted either. |
 | Amoxliatl | [Amoxliatl](https://oldschool.runescape.wiki/w/Amoxliatl) | |
 | Araxxor | [Araxxor](https://oldschool.runescape.wiki/w/Araxxor) | 1/200 for any halberd piece, 1/600 for each one. You get no duplicate pieces until you have a full set, which this doesn't model. |
 | Barrows | [Barrows](https://oldschool.runescape.wiki/w/Barrows) | 7 rolls of 1/2,448 per item: all six brothers killed. |
@@ -97,7 +97,7 @@ An item you can't trade has no Grand Exchange price, so On Rate prices it from w
 | Mokhaiotl cloth | Confliction gauntlets − Tormented bracelet − 10,000 × Demon tear (as on the wiki) |
 | Magus, Venator, Bellator, Ultor vestige | its ring − 3 × Chromium ingot |
 | Executioner's axe head, Eye of the duke, Leviathan's lure, Siren's staff | Soulreaper axe ÷ 4 (an estimate: four bosses each drop one piece) |
-| Hydra's eye, fang, heart | Brimstone ring ÷ 3 |
+| Hydra's eye, fang, heart (one row) | Brimstone ring ÷ 3 each |
 | Ancient icon | 5,000 × Ancient essence (as on the wiki) |
 
 Pets, most jars, the Hydra heads and similar have no conversion and stay at 0 GP.

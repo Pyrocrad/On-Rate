@@ -13,9 +13,7 @@
       "name": "Alchemical Hydra", "slayerLevel": 95, "kc": ["Alchemical Hydra"], "loot": ["Alchemical Hydra"], "clog": ["Alchemical Hydra"],
       "note": "Dragon thrownaxes and knives are left out: wyrms, drakes and hydras drop them too, and the collection log has one total for all of them, so On Rate can't tell which came from the Hydra. That means the ones the Hydra did drop aren't counted either.",
       "drops": [
-        {"name": "Hydra's eye", "valueFrom": "Brimstone ring / 3", "rate": "1/181", "alsoFrom": "hydras"},
-        {"name": "Hydra's fang", "valueFrom": "Brimstone ring / 3", "rate": "1/181", "alsoFrom": "hydras"},
-        {"name": "Hydra's heart", "valueFrom": "Brimstone ring / 3", "rate": "1/181", "alsoFrom": "hydras"},
+        {"name": "Hydra's eye", "label": "Brimstone ring pieces", "valueFrom": "Brimstone ring / 3", "rate": "1/181", "alsoFrom": "hydras", "match": ["Hydra's fang", "Hydra's heart"], "pieces": 3, "icon": "Brimstone ring", "note": "One roll at 1/181 gives the next ring piece, always in the same order: eye, then fang, then heart. So the three pieces are one row."},
         {"name": "Hydra tail", "rate": "1/513", "alsoFrom": "hydras"},
         {"name": "Hydra leather", "rate": "1/514"},
         {"name": "Hydra's claw", "rate": "1/1001"},

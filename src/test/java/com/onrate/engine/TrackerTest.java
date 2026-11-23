@@ -886,8 +886,8 @@ public class TrackerTest
 		assertFalse(hasRow(s, "Dragon knife"));
 		assertEquals(1, s.getAnyRow().getReceived());
 		double expected = s.getAnyRow().getExpected();
-		// what's left: the brimstone pieces, tail, leather, claw, heads, jar and the pet
-		double rates = 3 / 181.0 + 1 / 513.0 + 1 / 514.0 + 1 / 1001.0 + 1 / 256.0 + 1 / 2000.0;
+		// what's left: the brimstone pieces (one roll), tail, leather, claw, heads, jar and the pet
+		double rates = 1 / 181.0 + 1 / 513.0 + 1 / 514.0 + 1 / 1001.0 + 1 / 256.0 + 1 / 2000.0;
 		assertEquals(2000 * rates + Poisson.chanceAtLeastOne(2000 / 3000.0), expected, 1e-9);
 		AccountStats gp = tracker.accountStats(RAIDS, item -> 1_000_000L);
 		// more thrownaxes and knives in the log change nothing: not the uniques, not the GP value
@@ -2897,8 +2897,6 @@ public class TrackerTest
 		// boss items whose collection log entry also counts copies from monsters outside the bosses
 		Map<String, String> expected = new java.util.TreeMap<>();
 		expected.put("Alchemical Hydra/Hydra's eye", "hydras");
-		expected.put("Alchemical Hydra/Hydra's fang", "hydras");
-		expected.put("Alchemical Hydra/Hydra's heart", "hydras");
 		expected.put("Alchemical Hydra/Hydra tail", "hydras");
 		expected.put("Kraken/Kraken tentacle", "cave krakens");
 		expected.put("Amoxliatl/Glacial temotli", "Frost Nagua");
@@ -2943,8 +2941,8 @@ public class TrackerTest
 		page.put("Hydra's claw", 1);
 		tracker.onClogPage("Alchemical Hydra", Collections.singletonList("Alchemical Hydra kills: 1000"), page);
 		BossStats s = tracker.stats("Alchemical Hydra", RAIDS);
-		assertEquals(2, row(s, "Hydra's eye").getReceived());
-		assertEquals(1000 / 181.0, row(s, "Hydra's eye").getExpected(), 1e-9);
+		assertEquals(2, row(s, "Brimstone ring pieces").getReceived());
+		assertEquals(1000 / 181.0, row(s, "Brimstone ring pieces").getExpected(), 1e-9);
 		assertEquals(3, s.getAnyRow().getReceived());
 		double any = s.getAnyRow().getExpected();
 		// a player who got theirs from hydras leaves it out, as before
@@ -2952,6 +2950,41 @@ public class TrackerTest
 		s = tracker.stats("Alchemical Hydra", RAIDS);
 		assertEquals(1, s.getAnyRow().getReceived());
 		assertEquals(any - 1000 / 181.0, s.getAnyRow().getExpected(), 1e-9);
+	}
+
+	@Test
+	public void hydraRingPiecesAreOneRollCountedOnce()
+	{
+		// the reported case: 693 kills, one of each piece. One 1/181 roll gives the next piece in order.
+		Map<String, Integer> page = new LinkedHashMap<>();
+		page.put("Hydra's eye", 1);
+		page.put("Hydra's fang", 1);
+		page.put("Hydra's heart", 1);
+		tracker.onClogPage("Alchemical Hydra", Collections.singletonList("Alchemical Hydra kills: 693"), page);
+		BossStats s = tracker.stats("Alchemical Hydra", RAIDS);
+		assertEquals(3, row(s, "Brimstone ring pieces").getReceived());
+		assertEquals(693 / 181.0, row(s, "Brimstone ring pieces").getExpected(), 1e-9);
+		assertFalse(hasRow(s, "Hydra's eye"));
+		assertFalse(hasRow(s, "Hydra's fang"));
+		assertFalse(hasRow(s, "Hydra's heart"));
+		// the uniques total counts the roll once (it was 3 / 181 in 1.9)
+		assertEquals(3, s.getAnyRow().getReceived());
+		double rates = 1 / 181.0 + 1 / 513.0 + 1 / 514.0 + 1 / 1001.0 + 1 / 256.0 + 1 / 2000.0;
+		assertEquals(693 * rates + Poisson.chanceAtLeastOne(693 / 3000.0), s.getAnyRow().getExpected(), 1e-9);
+	}
+
+	@Test
+	public void aLeftOutFangOrHeartLeavesTheRingRowOutAfterLoading()
+	{
+		// saved by 1.9, when the fang and heart were rows of their own
+		tracker.setLeftOut("Alchemical Hydra", "Hydra's heart", true);
+		tracker.setState(tracker.getState());
+		assertTrue(tracker.isLeftOut("Alchemical Hydra", "Hydra's eye"));
+		assertFalse(tracker.isLeftOut("Alchemical Hydra", "Hydra's heart"));
+		// counting it again works as for any row
+		tracker.setLeftOut("Alchemical Hydra", "Hydra's eye", false);
+		tracker.setState(tracker.getState());
+		assertFalse(tracker.isLeftOut("Alchemical Hydra", "Hydra's eye"));
 	}
 
 	/** The Kings with 3 dragon axes in the log and Wintertodt's kills known: the axe is shared by both. */

@@ -81,6 +81,18 @@ public class ItemTime
 			estimated, usesOwn, lowConfidence, raid, basis, unit).withHint(hint).withGuides(guides);
 	}
 
+	/**
+	 * A row of pieces that come one per drop (the Hydra's ring pieces) with {@code missing} of its {@code pieces}
+	 * still to get: not had yet, and the average time is for that many drops. A copy; this item stays as it is.
+	 */
+	public ItemTime forPiecesMissing(int missing, int pieces)
+	{
+		String left = String.format(java.util.Locale.ROOT, "You still need %d of the %d pieces. They come one per drop, "
+			+ "so this is the time for %d drop%s.", missing, pieces, missing, missing == 1 ? "" : "s");
+		return new ItemTime(boss, label, iconItem, pet, false, secondsPerDrop * missing, secondsPerKill, chancePerKill,
+			estimated, usesOwn, lowConfidence, raid, basis, unit).withHint(left).withGuides(guides).withReceived(received);
+	}
+
 	ItemTime withReceived(int received)
 	{
 		this.received = received;

@@ -19,17 +19,57 @@ public final class LogForecast
 	/** The chance to have every item after {@code raids} more raids (0 to 1). */
 	public static double chanceDone(double[] perRaid, long raids)
 	{
+		return chanceDone(perRaid, null, raids);
+	}
+
+	/**
+	 * The chance to have every item after {@code raids} more raids, when item {@code i} needs {@code copies[i]}
+	 * more drops (the Hydra's ring pieces: one roll gives the next piece, so the row needs three drops).
+	 * Null copies means one of each.
+	 */
+	public static double chanceDone(double[] perRaid, int[] copies, long raids)
+	{
 		double done = 1;
-		for (double p : perRaid)
+		for (int i = 0; i < perRaid.length; i++)
 		{
+			double p = perRaid[i];
 			if (!(p > 0))
 			{
 				return 0;
 			}
-			// 1 - (1 - p)^n, kept accurate for tiny chances
-			done *= -Math.expm1(raids * Math.log1p(-Math.min(p, 1)));
+			int need = copies == null ? 1 : copies[i];
+			if (need <= 0)
+			{
+				continue;
+			}
+			done *= need == 1
+				// 1 - (1 - p)^n, kept accurate for tiny chances
+				? -Math.expm1(raids * Math.log1p(-Math.min(p, 1)))
+				: atLeast(need, raids, p);
 		}
 		return done;
+	}
+
+	/** The chance of at least {@code need} drops in {@code n} rolls at chance {@code p} each. */
+	static double atLeast(int need, long n, double p)
+	{
+		if (p >= 1)
+		{
+			return n >= need ? 1 : 0;
+		}
+		if (n < need)
+		{
+			return 0;
+		}
+		// 1 minus the chance of 0, 1, ... need - 1 drops; each term from the one before
+		double term = Math.exp(n * Math.log1p(-p));
+		double fewer = 0;
+		for (int j = 0; j < need; j++)
+		{
+			fewer += term;
+			term *= (double) (n - j) / (j + 1) * p / (1 - p);
+		}
+		return Math.max(0, Math.min(1, 1 - fewer));
 	}
 
 	/**
@@ -38,11 +78,17 @@ public final class LogForecast
 	 */
 	public static long raidsFor(double[] perRaid, double chance)
 	{
+		return raidsFor(perRaid, null, chance);
+	}
+
+	/** As {@link #raidsFor(double[], double)}, when item {@code i} needs {@code copies[i]} more drops (null: one each). */
+	public static long raidsFor(double[] perRaid, int[] copies, double chance)
+	{
 		if (perRaid.length == 0)
 		{
 			return 0;
 		}
-		if (chanceDone(perRaid, MAX_RAIDS) < chance)
+		if (chanceDone(perRaid, copies, MAX_RAIDS) < chance)
 		{
 			return NEVER;
 		}
@@ -51,7 +97,7 @@ public final class LogForecast
 		while (lo < hi)
 		{
 			long mid = (lo + hi) >>> 1;
-			if (chanceDone(perRaid, mid) >= chance)
+			if (chanceDone(perRaid, copies, mid) >= chance)
 			{
 				hi = mid;
 			}

@@ -17,6 +17,7 @@ Updates come through the Plugin Hub. Each heading is the date of that update; **
 - **Recent tab as tiles and pages:** **Today** and **Last 7 days** are two tiles at the top (kills, uniques, coloured when clearly more or fewer than expected; hover for the numbers). Under them a switch shows one list at a time: **Uniques** (your latest uniques, top 10 of N with show all), **By boss** (a row per boss for the last 7 days, click to open it) or **Trips** (this session's finished trips). Nothing is counted differently.
 
 *Changes that affect your numbers*
+- **Alchemical Hydra ring pieces:** the Hydra's eye, fang and heart are now one **Brimstone ring pieces** row at 1/181, with the Brimstone ring as its picture. One roll gives the next piece in a fixed order (eye, fang, heart), so the old three rows at 1/181 each expected three times too many pieces, and the Hydra's uniques and dry numbers counted that roll three times. At 693 kills you now expect 3.83 pieces, not 11.49. The Time page, Closest to green log and the uniques forecast count the ring as done only with all three pieces, and wait for the drops still missing. If you had left out the eye, fang or heart, the new row starts out left out. Each piece is still worth a third of a Brimstone ring.
 - **Dragon 2h sword:** it now counts. Its one collection log total is judged on all nine bosses that drop it (Kalphite Queen, Callisto, Artio, Vet'ion, Calvar'ion, Venenatis, Spindel, Scorpia and Chaos Elemental), the same way as the dragon pickaxe, so no single boss looks luckier than it was. It shows under **Shared with other bosses** and counts toward uniques and GP value. Rates are unchanged.
 
 *Forecast*
@@ -26,6 +27,7 @@ Updates come through the Plugin Hub. Each heading is the date of that update; **
 *Fixed*
 - **Cut-off notes:** the notes on the Single drops page and the Time page are no longer wider than the panel, so their last words are not cut off.
 *Easier to read*
+- **Bars with tabs, first row:** on the Expected tab the Any unique row (and the account total) now says "6.85 expected by now" instead of a bar with "84.6%" and the count rounded down to 6, which read like a chance. The item rows and the Received tab are unchanged.
 - **Luck text contrast:** verdict words, luck percentages and pill text in the dry colours (Classic, Purple, Colour-blind and the others) are lifted a little toward white where needed so they stay readable on the dark panel. The luck colours of bars, dots and graphs are unchanged. The search box hint is lighter too.
 
 *Behind the scenes*

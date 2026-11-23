@@ -107,7 +107,7 @@ public final class PriceBook
 		{
 			return price;
 		}
-		ValueFormula formula = catalog.getValueFormula(itemName);
+		ValueFormula formula = catalog.valueFormulaFor(itemName);
 		return formula == null ? 0 : formula.evaluate(this::tradedPrice);
 	}
 

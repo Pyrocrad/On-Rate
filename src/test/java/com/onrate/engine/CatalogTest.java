@@ -131,11 +131,16 @@ public class CatalogTest
 				{
 					found++;
 					assertFalse(drop.getName(), com.onrate.engine.data.ValueFormula.parse(drop.getValueFrom()).getItemNames().isEmpty());
-					assertNotNull(drop.getName(), catalog.getValueFormula(drop.getName()));
+					// every item the row counts has the formula (the Hydra's fang and heart too)
+					for (String item : drop.getAllNames())
+					{
+						assertNotNull(item, catalog.valueFormulaFor(item));
+					}
 				}
 			}
 		}
-		assertTrue(found >= 18);
+		// 16 rows since 1.10: the Hydra's three ring pieces are one row
+		assertTrue(found >= 16);
 	}
 
 	@Test

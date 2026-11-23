@@ -37,6 +37,8 @@ public class BossCatalog
 	private final Set<String> allItemNames = new HashSet<>();
 	/** Untradeable items worth something through a conversion: normalized name to formula. */
 	private final Map<String, ValueFormula> valueFormulas = new HashMap<>();
+	/** The formula of each item a row with "valueFrom" counts, its "match" items too (see {@link #valueFormulaFor}). */
+	private final Map<String, ValueFormula> rowValueFormulas = new HashMap<>();
 	private final Set<String> excludedBosses = new TreeSet<>();
 	private final Map<String, List<PoolSource>> pools = new TreeMap<>();
 	private final Set<String> minionLootNames = new HashSet<>();
@@ -65,7 +67,13 @@ public class BossCatalog
 			{
 				if (drop.getValueFrom() != null)
 				{
-					valueFormulas.put(normalize(drop.getName()), ValueFormula.parse(drop.getValueFrom()));
+					ValueFormula formula = ValueFormula.parse(drop.getValueFrom());
+					valueFormulas.put(normalize(drop.getName()), formula);
+					// every other item the row counts is worth the same (each Brimstone ring piece is a third of a ring)
+					for (String item : drop.getAllNames())
+					{
+						rowValueFormulas.put(normalize(item), formula);
+					}
 				}
 				for (String item : drop.getAllNames())
 				{
@@ -301,6 +309,17 @@ public class BossCatalog
 	}
 
 	/** How to price an untradeable item from tradeable ones, or null when it has no such value. */
+	/**
+	 * What an untradeable item is worth, for prices: {@link #getValueFormula}, or the formula of the row that counts
+	 * it (the Hydra's fang and heart, in the eye's "Brimstone ring pieces" row since 1.10). Kept apart from
+	 * getValueFormula, which the data parity test compares with the original item by item; no get prefix on purpose.
+	 */
+	public ValueFormula valueFormulaFor(String itemName)
+	{
+		ValueFormula own = getValueFormula(itemName);
+		return own != null ? own : rowValueFormulas.get(normalize(itemName));
+	}
+
 	public ValueFormula getValueFormula(String itemName)
 	{
 		return valueFormulas.get(normalize(itemName));

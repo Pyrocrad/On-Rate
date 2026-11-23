@@ -540,6 +540,7 @@ public class ReadmeShots
 		ICON_FILE.put("Muphin", "Muphin_(melee).png");
 		ICON_FILE.put("Ikkle hydra", "Ikkle_Hydra_(serpentine).png");
 		ICON_FILE.put("Pyromancer outfit pieces", "Pyromancer_garb.png");
+		ICON_FILE.put("Brimstone ring pieces", "Brimstone_ring.png");
 	}
 
 	static String wikiFile(String item)

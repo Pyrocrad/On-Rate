@@ -400,6 +400,21 @@ public class ExpectedDropsPanel extends PluginPanel
 	 * off, because the original panel it compares with has none (TripListTest covers the rows).
 	 */
 	private boolean tripList = true;
+
+	/**
+	 * A row of pieces that come one per drop (the Hydra's ring pieces, "pieces" in bosses.json) counts as done
+	 * on the Time page and in the log forecast only with every piece, and its time is for the pieces still
+	 * missing. Always on for players; the pixel parity test turns it off, because the original panel counts
+	 * one copy as done (LogPiecesTest covers the engine side).
+	 */
+	private boolean logPieces = true;
+
+	/**
+	 * Bars with tabs, Expected tab: the first row (Any unique, or the account total) says "6.85 expected by now"
+	 * instead of a "progress to the next one" bar and the count rounded down, which players read as a chance. Always
+	 * on for players; the pixel parity test turns it off, because the original draws the bar (TotalBarTextTest).
+	 */
+	private boolean totalBarText = true;
 	/**
 	 * True once the page being drawn has shown something the item view changes (bars, table, rings or gauge). The View
 	 * buttons are only shown then: on a page without such rows (Time, Single drops, an empty list, a boss whose
@@ -3927,13 +3942,13 @@ public class ExpectedDropsPanel extends PluginPanel
 		rowsPanel.add(forecastRow("", "50% chance", "90% chance", Theme.TEXT_MUTED, null));
 		if (!missing.isEmpty())
 		{
-			addForecast(missing.size() == 1 ? missing.get(0) : "All uniques", p, avg, unit);
+			addForecast(missing.size() == 1 ? missing.get(0) : "All uniques", p, copiesOf(m, false), avg, unit);
 		}
 		if (!Double.isNaN(pet))
 		{
 			double[] withPet = Arrays.copyOf(p, p.length + 1);
 			withPet[p.length] = pet;
-			addForecast(missing.isEmpty() ? "The pet" : "With the pet", withPet, avg, unit);
+			addForecast(missing.isEmpty() ? "The pet" : "With the pet", withPet, copiesOf(m, true), avg, unit);
 		}
 		return true;
 	}
@@ -3943,9 +3958,33 @@ public class ExpectedDropsPanel extends PluginPanel
 	{
 		final List<String> names = new ArrayList<>();
 		final List<Double> chances = new ArrayList<>();
+		/** Drops each item still needs: 1, or more for a row of pieces (the Hydra's ring). */
+		final List<Integer> copies = new ArrayList<>();
 		double pet = Double.NaN;
 		/** The pet's row label, when it is missing. */
 		String petLabel;
+	}
+
+	/**
+	 * The drops each missing item needs, for {@link LogForecast} (with one more for the pet when {@code withPet}),
+	 * or null for one each: raids and combined pages only ever need one.
+	 */
+	private static int[] copiesOf(RaidMissing m, boolean withPet)
+	{
+		if (m.copies.size() != m.names.size())
+		{
+			return null;
+		}
+		int[] c = new int[m.copies.size() + (withPet ? 1 : 0)];
+		for (int i = 0; i < m.copies.size(); i++)
+		{
+			c[i] = m.copies.get(i);
+		}
+		if (withPet)
+		{
+			c[c.length - 1] = 1;
+		}
+		return c;
 	}
 
 	/** The missing uniques of a raid at how you raid now (your last raids, else the settings). */
@@ -3987,11 +4026,18 @@ public class ExpectedDropsPanel extends PluginPanel
 		RaidMissing m = new RaidMissing();
 		for (RowStats r : counted)
 		{
-			if (r == null || r.isAny() || r.getReceived() > 0 || r.isComplete() || !(r.getRate() > 0))
+			if (r == null || r.isAny() || r.isComplete() || !(r.getRate() > 0))
 			{
 				continue;
 			}
 			DropDefinition drop = findDrop(stats.getDrops(), r.getLabel());
+			// a row of pieces (the Hydra's ring) is missing until every piece is in; any other row until one is
+			int need = logPieces && drop != null && drop.pieces() > 1 && !drop.isPet()
+				? drop.piecesMissing(r.getReceived()) : r.getReceived() > 0 ? 0 : 1;
+			if (need == 0)
+			{
+				continue;
+			}
 			if (drop != null && drop.getGuaranteedAt() != null)
 			{
 				// a guaranteed drop (Vorkath's head) isn't an independent roll: left out, said under the table
@@ -4007,8 +4053,9 @@ public class ExpectedDropsPanel extends PluginPanel
 				}
 				continue;
 			}
-			m.names.add(r.getLabel());
+			m.names.add(need > 1 ? r.getLabel() + " (" + need + " to go)" : r.getLabel());
 			m.chances.add(r.getRate());
+			m.copies.add(need);
 		}
 		return m;
 	}
@@ -4049,9 +4096,10 @@ public class ExpectedDropsPanel extends PluginPanel
 			List<Double> chances = new ArrayList<>();
 			double pet = Double.NaN;
 			String petLabel = null;
+			RaidMissing m;
 			if (raid)
 			{
-				RaidMissing m = raidMissing(stats, raidInsights(boss.getName(), false));
+				m = raidMissing(stats, raidInsights(boss.getName(), false));
 				names.addAll(m.names);
 				chances.addAll(m.chances);
 				pet = m.pet;
@@ -4059,7 +4107,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			}
 			else
 			{
-				RaidMissing m = killMissing(stats, counted);
+				m = killMissing(stats, counted);
 				names.addAll(m.names);
 				chances.addAll(m.chances);
 				pet = m.pet;
@@ -4067,13 +4115,13 @@ public class ExpectedDropsPanel extends PluginPanel
 			}
 			boolean petMissing = !Double.isNaN(pet);
 			double[] items = chances.stream().mapToDouble(Double::doubleValue).toArray();
-			long withoutPet = LogForecast.raidsFor(items, 0.5);
+			long withoutPet = LogForecast.raidsFor(items, copiesOf(m, false), 0.5);
 			long withPet = withoutPet;
 			if (petMissing)
 			{
 				double[] all = Arrays.copyOf(items, items.length + 1);
 				all[items.length] = pet;
-				withPet = LogForecast.raidsFor(all, 0.5);
+				withPet = LogForecast.raidsFor(all, copiesOf(m, true), 0.5);
 			}
 			String only = names.size() == 1 && !petMissing ? names.get(0) : names.isEmpty() && petMissing ? petLabel : null;
 			String line = Texts.logLeftLine(withPet, withoutPet, petMissing, seconds, units, only);
@@ -4092,10 +4140,10 @@ public class ExpectedDropsPanel extends PluginPanel
 	}
 
 	/** One forecast: its raids, and under it the hours at your average raid time when known. */
-	private void addForecast(String label, double[] perRaid, long avgMillis, String unit)
+	private void addForecast(String label, double[] perRaid, int[] copies, long avgMillis, String unit)
 	{
-		long half = LogForecast.raidsFor(perRaid, 0.5);
-		long most = LogForecast.raidsFor(perRaid, 0.9);
+		long half = LogForecast.raidsFor(perRaid, copies, 0.5);
+		long most = LogForecast.raidsFor(perRaid, copies, 0.9);
 		String tip = new Tip(label).row("50% chance to be done by", Texts.raidsText(half) + " " + unit)
 			.row("90% chance to be done by", Texts.raidsText(most) + " " + unit).wide();
 		rowsPanel.add(forecastRow(label, Texts.raidsText(half), Texts.raidsText(most), Color.WHITE, tip));
@@ -5005,6 +5053,10 @@ public class ExpectedDropsPanel extends PluginPanel
 		for (ItemTime t : ItemTimes.compute(tracker,
 			KillTimes.bundled(), raidSettings.get(), this::canFight))
 		{
+			if (logPieces)
+			{
+				t = ItemTimes.asLogNeeds(tracker.getCatalog(), t);
+			}
 			boolean inView = timeView == TimeView.PETS ? t.isPet() : !t.isPet() && (timeView != TimeView.RAIDS || t.isRaid());
 			if (inView && !t.isHave())
 			{
@@ -5461,7 +5513,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		else if (view == ItemView.DELVE_BARS)
 		{
 			hair(rowsPanel);
-			rowsPanel.add(buildRow(r, tip, open));
+			rowsPanel.add(buildRow(r, tip, open, r.isAny()));
 		}
 		else
 		{
@@ -6758,7 +6810,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		switch (view)
 		{
 			case DELVE_BARS:
-				rowsPanel.add(buildRow(total, accountTooltip(total, account), null));
+				rowsPanel.add(buildRow(total, accountTooltip(total, account), null, true));
 				for (RowStats row : rows)
 				{
 					hair(rowsPanel);
@@ -6891,12 +6943,45 @@ public class ExpectedDropsPanel extends PluginPanel
 		return p != null;
 	}
 
+	/** Row item and label to the item whose picture the row shows, from the "icon"s in bosses.json; built once. */
+	private Map<String, String> pictureItems;
+
+	/**
+	 * The item whose picture a row shows: the "icon" from bosses.json for a row that has one (the Brimstone ring
+	 * for the Hydra's ring pieces), else the row's own item. Matched on item and label together, so the eye
+	 * itself (a drop in the Recent list) keeps its own picture.
+	 */
+	private String pictureItem(String item, String label)
+	{
+		if (item == null || label == null || tracker == null)
+		{
+			return item;
+		}
+		if (pictureItems == null)
+		{
+			Map<String, String> map = new HashMap<>();
+			for (BossDefinition b : tracker.getCatalog().getBosses())
+			{
+				for (DropDefinition d : b.getDrops())
+				{
+					if (d.iconItem() != null)
+					{
+						map.put(BossCatalog.normalize(d.getName()) + "|" + BossCatalog.normalize(d.getDisplayName()), d.iconItem());
+					}
+				}
+			}
+			pictureItems = map;
+		}
+		return pictureItems.getOrDefault(BossCatalog.normalize(item) + "|" + BossCatalog.normalize(label), item);
+	}
+
 	/** An item picture scaled to {@code size} pixels high, or its initials. */
 	private JLabel itemIcon(String item, String label, int size)
 	{
 		JLabel icon = new JLabel();
 		icon.setPreferredSize(new Dimension(size * 36 / 32 + 2, size));
 		center(icon);
+		item = pictureItem(item, label);
 		int id = item == null ? -1 : itemIdFor.applyAsInt(item);
 		if (id > 0 && itemManager != null)
 		{
@@ -7264,6 +7349,7 @@ public class ExpectedDropsPanel extends PluginPanel
 
 	private void ringPicture(LuckRing ring, String item, String label)
 	{
+		item = pictureItem(item, label);
 		int id = item == null ? -1 : itemIdFor.applyAsInt(item);
 		if (id > 0 && itemManager != null)
 		{
@@ -7851,7 +7937,7 @@ public class ExpectedDropsPanel extends PluginPanel
 
 	private JPanel row(RowStats row, BossStats stats, String unit)
 	{
-		return buildRow(row, itemTooltip(row, stats, unit), null);
+		return buildRow(row, itemTooltip(row, stats, unit), null, row.isAny());
 	}
 
 	/**
@@ -7860,6 +7946,16 @@ public class ExpectedDropsPanel extends PluginPanel
 	 */
 
 	private JPanel buildRow(RowStats row, String tip, Runnable onClick)
+	{
+		return buildRow(row, tip, onClick, false);
+	}
+
+	/**
+	 * @param total the first row: the boss's Any unique, or the account's total. On the Expected tab it says how many
+	 *              you should have by now in words, without the "progress to the next one" bar, which on a total
+	 *              read as a chance and showed the count rounded down (see {@link #totalBarText}).
+	 */
+	private JPanel buildRow(RowStats row, String tip, Runnable onClick, boolean total)
 	{
 		JPanel panel = new JPanel(new BorderLayout(4, 0));
 		darker(panel);
@@ -7878,7 +7974,7 @@ public class ExpectedDropsPanel extends PluginPanel
 		}
 		else
 		{
-			int id = itemIdFor.applyAsInt(row.getIconItem());
+			int id = itemIdFor.applyAsInt(pictureItem(row.getIconItem(), row.getLabel()));
 			if (id > 0)
 			{
 				itemManager.getImage(id).addTo(icon);
@@ -7899,7 +7995,15 @@ public class ExpectedDropsPanel extends PluginPanel
 		// In the account overview each row is a boss: show its name inside the bar.
 		String name = onClick != null ? row.getShownLabel() : null;
 		int number;
-		if (tab == Tab.EXPECTED)
+		boolean blankNumber = false;
+		if (tab == Tab.EXPECTED && total && totalBarText)
+		{
+			// the total in words: "6.85 expected by now", no bar and no rounded-down count beside it
+			number = 0;
+			blankNumber = true;
+			bar.set(0, Theme.PROGRESS, Texts.formatExpected(row.getExpected()) + " expected by now");
+		}
+		else if (tab == Tab.EXPECTED)
 		{
 			double expected = row.getExpected();
 			number = (int) Math.floor(expected);
@@ -7927,7 +8031,7 @@ public class ExpectedDropsPanel extends PluginPanel
 			}
 		}
 
-		JLabel count = new JLabel(String.valueOf(number));
+		JLabel count = new JLabel(blankNumber ? "" : String.valueOf(number));
 		bold(count);
 		count.setForeground(number > 0 ? Color.WHITE : ColorScheme.LIGHT_GRAY_COLOR);
 		right(count);

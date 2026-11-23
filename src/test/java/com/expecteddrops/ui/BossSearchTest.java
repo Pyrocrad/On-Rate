@@ -78,8 +78,10 @@ public class BossSearchTest
 	public void ringMatchesWordStartsOnly()
 	{
 		List<String> found = names("ring");
-		assertEquals(6, found.size());
+		assertEquals(7, found.size());
 		assertTrue(found.contains("Dagannoth Kings"));
+		// the Hydra's "Brimstone ring pieces" row (since 1.10)
+		assertTrue(found.contains("Alchemical Hydra"));
 		assertFalse(found.contains("Cerberus"));
 		assertFalse(found.contains("Scorpia"));
 		assertFalse(found.contains("Fractured Archive"));

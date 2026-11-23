@@ -77,6 +77,8 @@ public final class GreenLog
 		final String label;
 		final double chance;
 		final boolean pet;
+		/** Drops still needed: 1, or more for a row of pieces (the Hydra's ring pieces). */
+		final int copies;
 	}
 
 	/**
@@ -114,7 +116,9 @@ public final class GreenLog
 				seconds = t.getSecondsPerKill();
 				estimated = t.isEstimated();
 				unit = t.getUnit();
-				if (t.isHave())
+				// a row of pieces (the Hydra's ring) is done only with every piece
+				int copies = ItemTimes.piecesMissing(catalog, t);
+				if (copies == 0)
 				{
 					continue;
 				}
@@ -123,7 +127,8 @@ public final class GreenLog
 					petLeftOut = true;
 					continue;
 				}
-				missing.add(new Missing(t.getLabel(), t.getChancePerKill(), t.isPet()));
+				String label = copies > 1 ? t.getLabel() + " (" + copies + " to go)" : t.getLabel();
+				missing.add(new Missing(label, t.getChancePerKill(), t.isPet(), copies));
 			}
 			BossStats stats = null;
 			for (SharedPool pool : pools)
@@ -150,7 +155,7 @@ public final class GreenLog
 						continue;
 					}
 					stats = stats != null ? stats : tracker.stats(boss.getName(), raids);
-					missing.add(new Missing(pool.getLabel(), sharedChance(boss, drop, stats, raids), drop.isPet()));
+					missing.add(new Missing(pool.getLabel(), sharedChance(boss, drop, stats, raids), drop.isPet(), 1));
 				}
 			}
 			if (known == 0)
@@ -173,13 +178,15 @@ public final class GreenLog
 	{
 		List<String> labels = new ArrayList<>();
 		double[] chances = new double[missing.size()];
+		int[] copies = new int[missing.size()];
 		for (int i = 0; i < chances.length; i++)
 		{
 			labels.add(missing.get(i).label);
 			chances[i] = missing.get(i).chance;
+			copies[i] = missing.get(i).copies;
 		}
 		return new Page(boss, labels, petLeftOut, seconds, estimated, unit,
-			averageSeconds(chances, seconds), seconds(chances, MEDIAN, seconds), seconds(chances, LIKELY, seconds));
+			averageSeconds(chances, copies, seconds), seconds(chances, copies, MEDIAN, seconds), seconds(chances, copies, LIKELY, seconds));
 	}
 
 	/** At most this many items are worked out exactly (see {@link ChartTimes#expectedKillsForAll}); more are summed kill by kill. */
@@ -190,6 +197,12 @@ public final class GreenLog
 	 * than the median (half of players are done by then) because a few players wait very long.
 	 */
 	static double averageSeconds(double[] chances, double secondsPerKill)
+	{
+		return averageSeconds(chances, null, secondsPerKill);
+	}
+
+	/** As {@link #averageSeconds(double[], double)}, when item {@code i} needs {@code copies[i]} drops (null: one each). */
+	static double averageSeconds(double[] chances, int[] copies, double secondsPerKill)
 	{
 		if (chances.length == 0)
 		{
@@ -208,7 +221,8 @@ public final class GreenLog
 		}
 		if (chances.length <= EXACT_ITEMS)
 		{
-			return ChartTimes.expectedKillsForAll(chances) * secondsPerKill;
+			return (copies == null ? ChartTimes.expectedKillsForAll(chances) : ChartTimes.expectedKillsForAll(chances, copies))
+				* secondsPerKill;
 		}
 		// a big page: the average wait is the sum over kills of the chance that something is still missing
 		double kills = 0;
@@ -216,7 +230,7 @@ public final class GreenLog
 		while (k < 1e9)
 		{
 			double step = Math.max(1, Math.floor(k * 0.01));
-			double still = 1 - LogForecast.chanceDone(chances, (long) k);
+			double still = 1 - LogForecast.chanceDone(chances, copies, (long) k);
 			if (still < 1e-12)
 			{
 				break;
@@ -230,11 +244,17 @@ public final class GreenLog
 	/** Seconds to finish with this chance, or NaN when an item can't drop or the time of a kill isn't known. */
 	static double seconds(double[] chances, double chance, double secondsPerKill)
 	{
+		return seconds(chances, null, chance, secondsPerKill);
+	}
+
+	/** As {@link #seconds(double[], double, double)}, when item {@code i} needs {@code copies[i]} drops (null: one each). */
+	static double seconds(double[] chances, int[] copies, double chance, double secondsPerKill)
+	{
 		if (chances.length == 0)
 		{
 			return 0;
 		}
-		long kills = LogForecast.raidsFor(chances, chance);
+		long kills = LogForecast.raidsFor(chances, copies, chance);
 		return kills == LogForecast.NEVER || !(secondsPerKill > 0) ? Double.NaN : kills * secondsPerKill;
 	}
 

@@ -608,6 +608,33 @@ public class Tracker
 					ctx.raidsChanged.add(e.getKey());
 				}
 				p.savedRaids = null;
+				carryLeftOutIntoCombinedRows(e.getKey(), p);
+			}
+		}
+	}
+
+	/**
+	 * An item left out in an older version that is now part of a combined row (the Hydra's fang and
+	 * heart, in the "Brimstone ring pieces" row since 1.10) leaves that row out, which is saved
+	 * under the row's item name.
+	 */
+	private void carryLeftOutIntoCombinedRows(String bossName, BossProgress p)
+	{
+		BossDefinition boss = catalog.byName(bossName);
+		if (boss == null || p.leftOut == null || p.leftOut.isEmpty())
+		{
+			return;
+		}
+		for (DropDefinition drop : boss.getDrops())
+		{
+			String rowKey = BossCatalog.normalize(drop.getName());
+			for (String item : drop.getAllNames())
+			{
+				String key = BossCatalog.normalize(item);
+				if (!key.equals(rowKey) && p.leftOut.remove(key))
+				{
+					p.leftOut.add(rowKey);
+				}
 			}
 		}
 	}

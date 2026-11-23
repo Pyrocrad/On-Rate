@@ -44,6 +44,16 @@ public class DropDefinition
 	@Getter private String valueFrom;
 	/** A line for the item's hover about how it drops (e.g. no repeats until you have all four). */
 	@Getter private String note;
+	/**
+	 * A row of different items that come one per drop, in a fixed order (the Hydra's eye, fang and heart):
+	 * the collection log needs this many drops of the row. Null for a normal row (one is enough).
+	 */
+	private Integer pieces;
+	/**
+	 * The item whose picture the row shows when it isn't the row's own item (the Brimstone ring for the
+	 * Hydra's ring pieces). Only for drawing: prices, matching and saved settings keep the row's own name.
+	 */
+	private String icon;
 	/** Per-level rates for delve bosses, keyed "1".."9" (9 = level 8+). */
 	@Setter private Map<String, String> levelRates;
 	/** Per-part rates for combined pages, keyed by part name. */
@@ -122,6 +132,27 @@ public class DropDefinition
 			names.addAll(match);
 		}
 		return Collections.unmodifiableList(names);
+	}
+
+	/**
+	 * How many drops of this row the collection log needs: 1, or the "pieces" from the data. Named without a get
+	 * prefix on purpose: the parity tests compare every getter with the original's.
+	 */
+	public int pieces()
+	{
+		return pieces == null || pieces < 1 ? 1 : pieces;
+	}
+
+	/** The "icon" item (the picture the row shows instead of its own item), or null. No get prefix: see {@link #pieces()}. */
+	public String iconItem()
+	{
+		return icon;
+	}
+
+	/** Drops of this row the collection log still needs when you have {@code received}. */
+	public int piecesMissing(int received)
+	{
+		return Math.max(0, pieces() - Math.max(0, received));
 	}
 
 	public boolean hasLevelRates()
